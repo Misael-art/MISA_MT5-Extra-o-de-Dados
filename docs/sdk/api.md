@@ -63,6 +63,66 @@ Compostos e relações permanecem em BD18b.
 
 Não há servidor HTTP: a futura API publicará este mesmo serviço.
 
+## Composições congeladas (BD12-SNAPSHOT)
+
+Adições compatíveis ao SDK1, independentes das políticas de composição de estratégias/trades:
+
+- `sdk.define_feature_composite(db, feature_id, name, algorithm_version, *, operation, inputs)`
+  registra uma receita imutável no catálogo existente. `inputs` é uma lista **ordenada** de pares
+  `(feature_id, algorithm_version)` já registrados. Retorna `True` se criou e `False` para repetição
+  idêntica; alterar receita/nome/unidade na mesma versão é recusado. Não grava valores calculados.
+- `sdk.query_composite_context(db, manifest_id, decision_times, *, targets)` carrega o snapshot
+  existente e avalia os alvos, lista de pares ID/versão, nos instantes UTC explícitos de
+  `decision_times` (lista/tupla). Nenhum fato ou definição da base atual completa o snapshot.
+  CLI e SDK delegam ao mesmo `features.compose_snapshot`, que usa o executor de dependências
+  existente; não há motor de expressões ou execução de código fornecido pelo usuário.
+
+Esta etapa oferece `difference` (duas entradas, esquerda menos direita) e `absolute` (uma
+entrada). Entradas e saídas precisam ter a mesma unidade declarada, `fraction` ou `price_units`.
+Outras unidades/escala restrita, inclusive percentuais, exigem outro contrato: diferença entre
+percentuais não é silenciosamente rotulada como a unidade original. Categorias/booleanos,
+códigos direcionais categóricos guardados em NUMBER e pivôs com eventos não qualificados são
+recusados. Não se transforma resultado numérico em intenção de compra/venda.
+
+Congele **todas** as receitas e versões dos pais usados, inclusive ancestrais. O grafo é validado
+antes do primeiro cálculo; receita/ciclo/versão ausente, metadados incompatíveis ou operador
+desconhecido geram erro. Limites:32 nós e200.000 pares nó/decisão, incluindo os pais. Cada ID
+tem uma versão por avaliação; cenários com versões diferentes do mesmo ID usam chamadas
+separadas. É um ativo/TF por snapshot; não há alinhamento implícito entre ativos ou TFs.
+
+Os pais usam o `asof_join` canônico. Só valores AVAILABLE da **mesma observação** podem ser
+combinados; estados ausentes/expirados e observações desencontradas tornam o descendente
+UNAVAILABLE, com motivo. Zero conhecido continua zero. Disponibilidade do resultado é o máximo
+declarado dos pais em cada decisão; uma revisão tardia de observação antiga não substitui a
+observação mais recente. Há proveniência por pai/versão/revisão/valor e avaliação de dois níveis.
+
+O envelope traz `composition_version`, `evaluation_id`, `implementation_sha256`, manifest, alvos,
+contratos, ordem `executed`, `context` e `qualification`. Cada canal tem valor/estado/motivo,
+unidade, parâmetros, observação e disponibilidade. A implementação identifica os módulos de
+grafo/contexto/store/snapshot e versões pandas/NumPy; `evaluation_id` também liga manifest,
+alvos e ordem das decisões. Essa assinatura ainda é por módulos; granularidade adicional pertence
+a BD13. Metadados de anotação das decisões não são parte da identidade matemática.
+
+É **contexto exploratório calculado**, sem materialização ou comprovação de sinal recebido
+historicamente. `materialized=False` e `operational_acceptance=False`; qualidade desconhecida
+da fonte não é promovida. Registro de receitas não faz seus valores aparecerem automaticamente
+nas séries armazenadas ou na UI. Materialização/recuperação ficam em BD14 e consumidores completos
+nas fichas BD19 correspondentes; os fatos originais e formatos de snapshot permanecem preservados.
+
+```sh
+./run.sh --cli --json analytics features define-composite --id qa.diff --name "Diferença" \
+  --algorithm-version v1 --operation difference --input qa.left v1 --input qa.right v1
+./run.sh --cli --json analytics features define-composite --id qa.absolute --name "Módulo" \
+  --algorithm-version v1 --operation absolute --input qa.diff v1
+./run.sh --cli --json laboratory freeze --symbol QA --tf M1 \
+  --stored-feature qa.left v1 --stored-feature qa.right v1 \
+  --stored-feature qa.diff v1 --stored-feature qa.absolute v1
+./run.sh --cli --json analytics features compose --manifest MANIFEST_ID \
+  --target qa.absolute v1 --as-of 2025-01-01T00:01:00Z
+```
+
+As entradas do exemplo precisam já existir, tipadas e com fatos; os comandos não inventam dados.
+
 ## Workflows de agentes (AIA-01)
 
 `open_workflow(db, config, *, read_account=None, config_path=None, db_override=None)`
