@@ -333,3 +333,27 @@ def pattern_campaign_status(db, protocol_id):
     if result["protocol"]["definition"].get("type") != "pattern_campaign_v1":
         raise ValueError("Protocolo não é campanha de padrões.")
     return result
+
+
+def pattern_validation_context(db, protocol_id):
+    """Entrega o plano congelado e conta toda a família antes da inferência P04."""
+    status = pattern_campaign_status(db, protocol_id)
+    definition = status["protocol"]["definition"]
+    plan = definition["validation_plan"]
+    fields = {"schema_version", "embargo_seconds", "bootstrap_replicates",
+              "block_length_sessions", "minimum_sessions"}
+    if set(plan) != fields or type(plan["schema_version"]) is not int or plan["schema_version"] != 1:
+        raise ValueError("Plano temporal P04 versionado e explícito obrigatório antes da avaliação.")
+    if type(plan["embargo_seconds"]) is not int or plan["embargo_seconds"] < 0 or any(
+            type(plan[key]) is not int or plan[key] < 1 for key in
+            ("bootstrap_replicates", "block_length_sessions", "minimum_sessions")):
+        raise ValueError("Durações e réplicas do plano temporal inválidas.")
+    planned = set(definition["grid"])
+    unplanned = {item["payload"]["definition_hash"] for item in status["requests"]
+                 if item["payload"]["definition_hash"] not in planned}
+    tests_counted = (len(planned) + len(unplanned)) * len(definition["endpoints"])
+    return {"roles": definition["roles"], "plan": plan, "criteria": definition["criteria"],
+            "seed": definition["seed"], "tests_counted": tests_counted,
+            "planned_definitions": len(planned), "unplanned_definitions": len(unplanned),
+            "confirmatory_family_frozen": bool(planned) and not unplanned,
+            "prior_external_exposure": "unknown", "qualified_final_holdout": False}

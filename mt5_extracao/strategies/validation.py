@@ -29,6 +29,72 @@ from .backtester import BacktestConfig, SymbolSpec, Trade, compute_metrics, run_
 
 log = logging.getLogger(__name__)
 
+
+def plan_pattern_folds(observations: pd.DataFrame, roles: dict, *, embargo_seconds: int) -> dict:
+    """Planeja cortes UTC globais de eventos sem consultar valores de desfecho.
+
+    O retorno contém índices do quadro original. Barras usadas como warmup podem
+    ser lidas pelo consumidor, mas somente ``scored`` pode entrar na inferência.
+    """
+    from mt5_extracao.analytics.associations import _utc_timestamp, _utc_series
+
+    if not isinstance(observations, pd.DataFrame):
+        raise ValueError("Observações precisam ser um DataFrame.")
+    required = {"source_namespace", "symbol", "timeframe", "session_id", "decision_at_utc",
+                "feature_available_at_utc", "label_end_utc", "label_available_at_utc"}
+    if required - set(observations):
+        raise ValueError("Observações sem identidade ou relógios: " + ", ".join(sorted(required - set(observations))))
+    if not observations.index.is_unique:
+        raise ValueError("Índices de observação precisam ser únicos para auditar os folds.")
+    if type(embargo_seconds) is not int or embargo_seconds < 0:
+        raise ValueError("Embargo precisa ser duração não negativa em segundos reais.")
+    if not isinstance(roles, dict) or set(roles) != {"train", "validation", "holdout"}:
+        raise ValueError("Cortes globais train/validation/holdout obrigatórios.")
+    intervals = {}
+    previous_end = None
+    for role in ("train", "validation", "holdout"):
+        window = roles[role]
+        if not isinstance(window, dict) or set(window) != {"start_utc", "end_utc"}:
+            raise ValueError("Janela global exige início e fim UTC explícitos.")
+        start, end = (_utc_timestamp(window[key], key) for key in ("start_utc", "end_utc"))
+        if start >= end or (previous_end is not None and start < previous_end):
+            raise ValueError("Janelas globais não podem se sobrepor ou inverter.")
+        intervals[role] = (start, end)
+        previous_end = end
+    work = observations.copy()
+    if work[list(required - {"decision_at_utc", "feature_available_at_utc", "label_end_utc", "label_available_at_utc"})].isna().any().any():
+        raise ValueError("Identidade e sessão de cada observação são obrigatórias.")
+    for field in ("decision_at_utc", "feature_available_at_utc"):
+        work[field] = _utc_series(work[field], field)
+    for field in ("label_end_utc", "label_available_at_utc"):
+        work[field] = _utc_series(work[field], field, allow_missing=True)
+    if (work["feature_available_at_utc"] > work["decision_at_utc"]).any():
+        raise ValueError("Vazamento futuro: característica disponível após a decisão.")
+    known_label = work["label_end_utc"].notna() & work["label_available_at_utc"].notna()
+    if ((work.loc[known_label, "label_end_utc"] <= work.loc[known_label, "decision_at_utc"]) |
+            (work.loc[known_label, "label_available_at_utc"] < work.loc[known_label, "label_end_utc"])).any():
+        raise ValueError("Relógios do desfecho contradizem a decisão ou a recepção.")
+    result = {"embargo_seconds": embargo_seconds, "roles": {}}
+    for role in ("train", "validation", "holdout"):
+        start, end = intervals[role]
+        selected = (work["decision_at_utc"] >= start) & (work["decision_at_utc"] < end)
+        next_start = intervals[{"train": "validation", "validation": "holdout"}[role]][0] if role != "holdout" else None
+        safe_end = min(end, next_start - pd.Timedelta(seconds=embargo_seconds)) if next_start is not None else end
+        embargoed = selected & (work["decision_at_utc"] >= safe_end)
+        complete = work["label_end_utc"].notna() & work["label_available_at_utc"].notna()
+        crossed = selected & ~embargoed & complete & (work["label_end_utc"] >= safe_end)
+        received = selected & complete & (work["label_available_at_utc"] <= end)
+        scored = selected & ~embargoed & ~crossed & received & (work["label_end_utc"] < end)
+        censored = selected & ~embargoed & ~crossed & ~received
+        result["roles"][role] = {
+            "window": {"start_utc": start.isoformat(), "end_utc": end.isoformat()},
+            "safe_end_utc": safe_end.isoformat(),
+            "selected": work.index[selected].tolist(), "scored": work.index[scored].tolist(),
+            "purged": work.index[crossed].tolist(), "embargoed": work.index[embargoed].tolist(),
+            "censored": work.index[censored].tolist(),
+        }
+    return result
+
 @dataclass
 class Criteria:
     min_profit_factor: float = 1.3
