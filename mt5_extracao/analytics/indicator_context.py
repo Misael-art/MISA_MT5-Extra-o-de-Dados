@@ -26,22 +26,28 @@ def _state(row):
     return "UNAVAILABLE", "NO_VALUE_AVAILABLE_AT_DECISION"
 
 
+def _ids(feature_ids, defaults):
+    if feature_ids is None:
+        return sorted(defaults)
+    if (not isinstance(feature_ids, (list, tuple, set, frozenset)) or
+            not feature_ids or not all(isinstance(ident, str) and ident.strip() for ident in feature_ids)):
+        raise ValueError("Selecione uma lista de IDs não vazios do catálogo.")
+    return sorted({ident.strip() for ident in feature_ids})
+
+
+def _version(value):
+    if value is not None and (not isinstance(value, str) or not value.strip()):
+        raise ValueError("algorithm_version precisa ser texto não vazio.")
+    return value.strip() if value is not None else None
+
+
 def _selection(db, feature_ids, algorithm_version):
     """Mesmo catálogo da consulta pública; o padrão legado continua na implementação local atual."""
     entries = query_service.definition_catalog(db)
     contracts = {(item["feature_id"], item["algorithm_version"]):item for item in entries}
     local_ids = {item["feature_id"] for item in indicator_registry.definitions()}
-    if feature_ids is None:
-        ids = sorted(local_ids)
-    else:
-        if (not isinstance(feature_ids, (list, tuple, set, frozenset)) or
-                not feature_ids or not all(isinstance(ident, str) and ident.strip() for ident in feature_ids)):
-            raise ValueError("Selecione uma lista de IDs não vazios do catálogo.")
-        ids = sorted({ident.strip() for ident in feature_ids})
-    if algorithm_version is not None:
-        if not isinstance(algorithm_version, str) or not algorithm_version.strip():
-            raise ValueError("algorithm_version precisa ser texto não vazio.")
-        algorithm_version = algorithm_version.strip()
+    ids = _ids(feature_ids, local_ids)
+    algorithm_version = _version(algorithm_version)
     known = {item["feature_id"] for item in entries}
     unknown = set(ids) - known
     if unknown:
@@ -87,16 +93,30 @@ def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_ver
     """
     selected = _selection(db, feature_ids, algorithm_version)
     timeframe = _timeframe(timeframe, algorithm_version)
+    return _context_rows(decisions, symbol, timeframe, selected,
+        lambda ident, version: feature_store.query_history(db, symbol=symbol, timeframe=timeframe,
+                                                         feature_id=ident, algorithm_version=version))
+
+
+def _context_rows(decisions, symbol, timeframe, selected, read_history, *, window=None, max_cells=None):
+    if not isinstance(decisions, pd.DataFrame):
+        raise ValueError("Informe uma tabela de decisões com decision_time e fuso explícito.")
+    if max_cells is not None and len(decisions) * len(selected) > max_cells:
+        raise ValueError(f"Contexto excede {max_cells} pares indicador/decisão; reduza a seleção.")
     frame = decisions.copy().reset_index(drop=True)
     if "decision_time" not in frame:
         raise ValueError("Informe decision_time com fuso para consultar os indicadores.")
     frame["decision_time"] = [feature_store._utc_timestamp(value, "decision_time") for value in frame.decision_time]
+    if window is not None:
+        first, last = window
+        if any(stamp < first or stamp > last for stamp in frame.decision_time):
+            raise ValueError(f"Decisão fora da janela congelada ({first.isoformat()} a {last.isoformat()}); "
+                             "escolha um instante coberto ou capture outra janela.")
     frame["_context_order"] = range(len(frame))
     frame["symbol"], frame["tf"] = symbol, timeframe
     columns = {}
     for ident, version, spec, registered in selected:
-        history = feature_store.query_history(db, symbol=symbol, timeframe=timeframe, feature_id=ident,
-                                              algorithm_version=version)
+        history = read_history(ident, version)
         if not registered and not history.empty:
             raise ValueError(f"Fatos sem definição registrada: {ident}@{version}. Confira o produtor.")
         joined = feature_store.asof_join(frame[["decision_time", "_context_order", "symbol", "tf"]], history)
@@ -113,6 +133,43 @@ def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_ver
         for name in ("observation_time", "available_at_utc", "source_revision", "revision", "metadata_json"):
             columns[prefix + name] = list(joined[name]) if name in joined else None
     return pd.concat([frame.drop(columns="_context_order"), pd.DataFrame(columns, index=frame.index)], axis=1)
+
+
+def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=None):
+    """Contexto causal somente dos fatos/contratos congelados, sem banco atual ou registry local."""
+    from mt5_extracao.analytics.datasets import Snapshot
+
+    if not isinstance(snapshot, Snapshot):
+        raise ValueError("Informe um snapshot canônico carregado ou capturado.")
+    definitions = snapshot.feature_definitions
+    ids = _ids(feature_ids, {entry["feature_id"] for entry in definitions})
+    explicit = _version(algorithm_version)
+    selected = []
+    for ident in ids:
+        matches = [entry for entry in definitions if entry["feature_id"] == ident and
+                   (explicit is None or entry["algorithm_version"] == explicit)]
+        if not matches:
+            raise ValueError(f"Indicador/versão não congelado: {ident}@{explicit or '*'}. "
+                             "Capture essa versão; a base atual não completa o snapshot.")
+        if len(matches) != 1:
+            raise ValueError(f"Mais de uma versão congelada de {ident}; informe algorithm_version explicitamente.")
+        entry = matches[0]
+        selected.append((ident, entry["algorithm_version"], entry, True))
+    manifest = snapshot.manifest
+    identity = dict(symbol=manifest["symbol"], tf=manifest["timeframe"], snapshot_manifest_id=snapshot.manifest_id,
+        base_namespace=manifest["source"]["namespace"], base_provider=manifest["source"]["provider"],
+        base_server=manifest["source"]["server"])
+    if isinstance(decisions, pd.DataFrame):
+        for name, expected in identity.items():
+            if name in decisions and any(value != expected for value in decisions[name].dropna()):
+                raise ValueError(f"Decisões de outra origem/seleção em {name}; use o contexto do snapshot escolhido.")
+    history = snapshot.feature_history
+    frame = _context_rows(decisions, identity["symbol"], identity["tf"], selected,
+        lambda ident, version: history.loc[(history.feature_id == ident) & (history.algorithm_version == version)],
+        window=snapshot.feature_window_utc, max_cells=query_service.MAX_SELECTION_ROWS)
+    for name, value in identity.items():
+        frame[name] = value
+    return frame
 
 
 def projection(db, *, symbol, timeframe, as_of, feature_ids=None, algorithm_version=None, start=None, end=None):

@@ -3328,3 +3328,31 @@ Próxima etapa: adaptar o contexto para os frames congelados e ligar a seleção
 ID/versão ao relatório e aos seletores do Laboratório. A UI ainda calcula fórmulas
 locais; a captura nova não declara BD19a integral, histórico de preços point-in-time,
 aceite nativo, financeiro ou Windows físico. Preservar esses limites ao integrar.
+
+## Continuidade do roadmap — BD19a-CONTEXT, 29/10/2026
+
+Base `189785e`/PR216, branch `codex/bd19-contexto-congelado`. O adaptador existente
+compartilha a construção do contexto entre fatos atuais e frames congelados;
+`features context --manifest ID` usa somente o snapshot4. Preserva valores/tipos,
+unidades/parâmetros e origem/manifest, mesmo importando em outro banco. Versão
+ambígua exige escolha; ausência não recorre ao registry/store atual. Decisões de
+outro escopo ou fora das fronteiras congeladas são recusadas. Validade aplicada
+por decisão, sem transformar valores em direções. [Contrato e exemplo](sdk/laboratorio_series.md#contexto-por-decisão-no-snapshot-bd19a-context).
+
+Baseline65, final153 distintos aprovados, inclusive importação/offset diferente,
+ausência de acesso ao banco/registry, tipos/zero/expiração, limites e M1/W1/MN1
+com +3 fixo sintético (não qualifica o servidor real). Launcher/CLI sobre fixture
+própria: opção nova recusada na prévia anterior; fonte novo retorna12 do snapshot
+e99 da base atual no mesmo instante. Bancada2.000revisões/500decisões,3 chamadas:
+101ms atual/68ms congelado; carga do snapshot327ms separada, sem ganho universal
+declarado. Recibos `state/qa-tmp/catalog-store/frozen-context-*`.
+
+Fonte `597de9e` publicado no [PR217](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/217),
+273 arquivos da prévia conferidos e launcher repetido: snapshot12 versus base999
+em M1, origem/versão preservadas e nenhuma exceção ou tarefa pendente no encerramento.
+Próxima frente: seletores e relatórios reais no Laboratório. A matriz de valores já
+calcula Spearman; concordância e candidatos usam regras de direção. Não transformar
+valores numéricos/categorias novos em compra/venda por inferência. Manter semântica,
+unidades, estados e metodologia explícitos,
+sem dados da base atual sob análise congelada. Aceites nativo/financeiro/Windows
+físico continuam separados.

@@ -243,6 +243,13 @@ class Snapshot:
         return [json.loads(value) for value in self._frames["feature_definitions"].definition_json]
 
     @property
+    def feature_window_utc(self):
+        if "feature_history" not in self._frames:
+            raise ValueError("Snapshot sem fatos de indicadores congelados; capture as versões explicitamente.")
+        return _window_utc(self._frames["bars"], self._manifest["timeframe"],
+                           self._manifest["time"]["broker_utc_offset_hours"])
+
+    @property
     def quality(self):
         from mt5_extracao.analytics import data_eligibility
         recorded = self._manifest["derivation"].get("data_quality")
@@ -438,6 +445,16 @@ def _capture_features(db, connection, pairs, symbol, timeframe, start, end):
     return pd.DataFrame(definitions), history
 
 
+def _window_utc(bars, timeframe, offset):
+    from mt5_extracao.analytics import instruments
+
+    tf = timeframes.parse(timeframe)
+    first = instruments.broker_utc(bars.time.iloc[0], offset)
+    last = pd.Timestamp(bars.time.iloc[-1])
+    close = last + (pd.offsets.MonthBegin(1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes or 1440))
+    return first, instruments.broker_utc(close, offset)
+
+
 def capture(db, symbol, timeframe, start=None, end=None, *, source=None, families=(), stored_features=()):
     """Captura dados consistentes e grava blocos deduplicados após encerrar a leitura."""
     tf = timeframes.parse(timeframe)
@@ -462,10 +479,7 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
         bars = db.load_ohlcv(symbol, tf.label, start, end, connection=conn)
         if bars.empty:
             raise ValueError(f"Sem barras de {symbol} {tf.name}; extraia o período antes de capturar os dados.")
-        first_utc = instruments.broker_utc(bars.time.iloc[0], db.broker_utc_offset)
-        last = pd.Timestamp(bars.time.iloc[-1])
-        close = last + (pd.offsets.MonthBegin(1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes or 1440))
-        end_utc = instruments.broker_utc(close, db.broker_utc_offset)
+        first_utc, end_utc = _window_utc(bars, tf.name, db.broker_utc_offset)
         market = {family: db.load_market_frame(symbol, family, first_utc, end_utc, connection=conn)
                   for family in sorted(set(families))}
         acquisition_evidence = _acquisition_evidence(db, symbol, (tf.label, *families), conn, first_utc, end_utc, bars)
@@ -525,7 +539,7 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
 
 
 def _validate_features(manifest, frames):
-    from mt5_extracao.analytics import feature_store, instruments, query_service
+    from mt5_extracao.analytics import feature_store, query_service
 
     offset = manifest["time"]["broker_utc_offset_hours"]
     if (manifest["time"]["offset_state"] != "declared" or type(offset) not in (int, float) or
@@ -574,10 +588,7 @@ def _validate_features(manifest, frames):
         raise ValueError("disponibilidade de indicador inválida")
     tf = timeframes.parse(manifest["timeframe"])
     bars, offset = frames["bars"], manifest["time"]["broker_utc_offset_hours"]
-    start = instruments.broker_utc(bars.time.iloc[0], offset)
-    last = pd.Timestamp(bars.time.iloc[-1])
-    end = instruments.broker_utc(last + (pd.offsets.MonthBegin(1) if tf.name == "MN1" else
-                                       pd.Timedelta(minutes=tf.minutes or 1440)), offset)
+    start, end = _window_utc(bars, tf.name, offset)
     if ((history.observation_time < start) | (history.observation_time >= end)).any():
         raise ValueError("observação fora da janela congelada")
     for row in history.itertuples(index=False):
