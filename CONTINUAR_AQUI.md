@@ -105,6 +105,22 @@ Composição operacional: App na PR279, HADOUKEN `28099386`/PR84 e Safety
 A prévia instalada ainda aponta para App `57d13ee`; atualizar somente após
 publicação e verificação pelo launcher, preservando as sessões abertas.
 
+## Estudo de descoberta de padrões —02/11/2026
+
+Pedido atual: primeiro estudo/plano/roadmap para outro agente implementar.
+[Roteiro T13.4-P00–P11](docs/analytics/DESCOBERTA_PADROES.md), com inventário
+confirmado, contratos, método, testes, marcos e repasse executável na seção11.
+P00 é somente documental; M1 exige P01–P07 e quatro famílias ponta a ponta.
+Próxima ficha dessa frente: P01 (catálogo/elegibilidade), sem criar motor/store/
+fila paralelos, sem ordens e sem reutilizar autorização DEMO anterior.
+“Infut/5h25” aguarda definição; não bloqueia as famílias genéricas.
+
+Base de origem Appc956305, PR279 operacional ainda aberta/draft; fonte e SHA
+documental atuais ficam no registro central Projects/.workspace. Este estudo
+preserva a frente operacional abaixo e os componentes existentes, sem repins
+ou modificação de runtime/prévia. Não interpretar publicação do plano como
+entrega de inteligência implementada ou aceite econômico.
+
 ## Execução do pilar operacional —01/11/2026
 
 Pedido atual do proprietário inclui App, HADOUKEN e Safety, de ponta a ponta.

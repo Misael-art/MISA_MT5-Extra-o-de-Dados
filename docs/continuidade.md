@@ -112,6 +112,23 @@ uma mudança instalada. T13.4-P00 permanece em `codex/plano-descoberta-padroes`/
 exige continuidade registrada e hoje impede criar aquela branch remota;
 resolução explícita pendente. O preparo oficial aceita os pins da branch E14.
 
+## Estudo de descoberta de padrões — 02/11/2026
+
+T13.4-P00: estudo solicitado primeiro pelo proprietário para outro agente
+implementar. [Arquitetura e roteiro](analytics/DESCOBERTA_PADROES.md) registram
+reuso comprovado de Dados/Analytics/experimentos/backtester/presets, lacunas de
+relógio/calendário/base e plano P01–P11 com testes e aceites. Primeiro marco
+P01–P07: quatro famílias pelo fluxo completo, sem ordens. P08–P11 ampliam
+sequências/contextos, relações, similaridade condicionada e observação.
+
+Fotografia Appc956305/PR279; HADOUKENadc5ecd/Safety27b8599 preservados. A base
+principal foi consultada apenas em metadados read-only, sem migração, fixtures
+privadas ou pesquisa financeira. Runtime/prévia e frente operacional conservados.
+Validação deste lote é documental (diff, referências e coerência), sem suíte
+pesada ou alegação de comportamento novo. Branch/SHA/PR atuais no registro
+central Projects/.workspace; próxima ficha desta frente é T13.4-P01. O exemplo
+“Infut/5h25” permanece pendente de definição, sem impedir as famílias genéricas.
+
 ## Novo host sem o disco antigo ou SD — 2026-10-24
 
 O proprietário confirmou que **não levará o SDCard**. A retomada atual é pela

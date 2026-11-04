@@ -210,7 +210,19 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ integrada no [PR116](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/116), merge 814ded9; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ integrada no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114), merge 2efdabf; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ integrada no [PR115](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/115), merge 2ca2fc0; evidências compatíveis reaproveitadas; Windows físico pendente |
-| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
+| T13.4 | Hipóteses H01 a H05 e motor amplo de descoberta/avaliação com validação temporal (A4) | T13.3; Dados/F18/F19/F20 por capacidade | Estudo P00 registrado em02/11/2026; implementação P01–P11 pendente no [roteiro](analytics/DESCOBERTA_PADROES.md). M1 exige P01–P07 e quatro famílias ponta a ponta; não conclui toda T13.4 |
+| T13.4-P00 | Estudo de arquitetura e roadmap de descoberta de padrões | Pedido do proprietário02/11/2026 | Entrega documental: código/contratos/base em leitura inspecionados, fontes primárias verificadas e repasse pronto; sem motor ou resultado financeiro novo |
+| T13.4-P01 | Catálogo e elegibilidade por família, fonte e período | BD03/04/05, T20.4/6 existentes | Planejada; preencher ou bloquear capacidade com motivo, sem presumir relógio/calendário/contrato |
+| T13.4-P02 | Gramática tipada, referências, eventos e desfechos | P01; BD06/08/18 | Planejada; avaliador causal comum a lote e incremental, sem colisão por ticker |
+| T13.4-P03 | Campanha, tentativas, orçamento e reserva auditável | P02; T20.12/24/25 | Planejada; estender experiments/Budget, não criar journal/fila paralelos |
+| T13.4-P04 | Baseline e validação temporal com seleção controlada | P03; T20.13/F18 | Planejada; purga por intervalo, cortes multiativo, blocos, multiplicidade e calibração |
+| T13.4-P05 | Adaptador de simulação e custos explícitos | P02/03; T20.3/5/8/9 | Planejada; reusar backtester, distinguir evento de operação e declarar incompatibilidades |
+| T13.4-P06 | Fluxo completo de quatro famílias e preset de pesquisa | P04/05; T19.25/T20.16/17 | Planejada; reversão/continuação por horário/gaps/rompimento-falha, catálogo, reprodução e zero aprovados suportado |
+| T13.4-P07 | Laboratório/SDK/CLI/Dashboard e aceite M1 | P06; T13.6/T20.22/23/DASH-06 | Planejada; mesmos resultados persistidos, launcher oficial e amostra real elegível ou aceite real pendente com motivo |
+| T13.4-P08 | Sequências, geometria, regimes, volume e combinações | M1; T13.4/F18/BD08/12 | Planejada; limites de complexidade, H01–H05 preservadas e sem ajuste futuro |
+| T13.4-P09 | Padrões entre ativos e grupos | P08; BD16/T18.3/4/T20.13 | Planejada; sincronização as-of e validação por ativo/grupo, sem causalidade presumida |
+| T13.4-P10 | Similaridade e descoberta explicável avançada | P08; P09 quando multiativo | Planejada e condicionada a ganho verificável sobre regras simples sob protocolo equivalente |
+| T13.4-P11 | Observação prospectiva e suspensão sem ordens | M1; T13.8/T20.18/19 | Planejada; sinais anteriores aos resultados, retomada e alarmes calibrados; janela futura real própria |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | DASH-00 (T13.6/App) | Plano do Dashboard Contínuo de Ativos e Robôs | Pedido do proprietário de 30/10/2026 | ✅ registro documental: [contratos, etapas DASH-01…14 e critérios de aceite](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md); implementação pendente, dependências F13 e aceites MQL5 separados |
@@ -3384,7 +3396,10 @@ A T12.4 começa por ensinar o executor a criar ordens pendentes.
 
 ## Fase 13 — MT5x Analytics: catálogo de evidências sobre ativos
 
-**Situação: planejada. Nada desta fase foi implementado.** Especificação do dono do projeto (2026-10-13), guardada
+**Situação reconciliada em02/11/2026:** T13.2/3/3b integradas conforme o painel;
+T13.1 e consumidores têm aceites delimitados. O motor T13.4 permanece pendente,
+com estudo e recortes P00–P11 no [roteiro ampliado](analytics/DESCOBERTA_PADROES.md).
+O levantamento abaixo conserva contexto histórico. Especificação do dono do projeto (2026-10-13), guardada
 como veio em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) (as seções citadas abaixo como "§" são de lá).
 Esta seção é o plano de implantação: o que já existe no código, onde a especificação e o código divergem, e as
 tarefas na ordem.
@@ -3531,6 +3546,14 @@ real por corretora.
   ativos. Entram como tarefas próprias quando houver dados.
 
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
+
+**Detalhamento solicitado em02/11/2026:** o
+[estudo e roteiro P00–P11](analytics/DESCOBERTA_PADROES.md) amplia a gramática para
+além de indicadores, preserva H01–H05 e vincula cada incremento aos serviços e
+donos existentes. O proprietário pediu esta entrega primeiro, para outro agente
+implementar. P00 não conclui o motor: M1 exige P01–P07 ponta a ponta; as famílias
+adicionais, hipóteses legadas e observação têm seus aceites P08–P11. O exemplo
+“Infut/5h25/1,3%/0,75%” permanece rascunho até definição de sua semântica.
 
 - **Objetivo:** descrever uma hipótese em um arquivo (condição, janela, desfecho, universo, custos), avaliá-la e
   guardar o resultado com amostra, taxa-base, *lift*, expectativa líquida, intervalo de confiança e resultado fora
