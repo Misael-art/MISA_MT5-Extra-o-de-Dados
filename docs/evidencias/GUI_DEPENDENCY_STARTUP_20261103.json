@@ -30,6 +30,32 @@
     "database_created": false,
     "installer_executed": false
   },
+  "rebased_launcher_qa": {
+    "source_code_commit": "13f6b9753e10971667a6f93a827c5be72f9964f3",
+    "base_app_commit": "0993ae7bdf2e3354afcccf45dd2a22069a8b460c",
+    "platform": "Linux/Xvfb, one virtual monitor",
+    "entry": "./run.sh --offline --config <isolated QA ini>",
+    "present_dependencies": {
+      "main_window_seen": true,
+      "qa_database_created": true,
+      "qa_database_quick_check": "ok"
+    },
+    "missing_pandas_simulation": {
+      "dialog_seen": true,
+      "installer_action_in_error": true,
+      "missing_package_in_error": true,
+      "database_created": false,
+      "installer_executed": false
+    },
+    "focused_gui_tests_passed": 5,
+    "offline_development_doctor": {
+      "ok": 16,
+      "warnings": 2,
+      "failures": 0,
+      "native_probe_performed": false
+    },
+    "qa_temporary_files_removed": true
+  },
   "limits": {
     "physical_windows_tested": false,
     "mt5_wine_used": false,

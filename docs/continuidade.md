@@ -92,8 +92,8 @@ conferência de CI e reconciliação das branches locais dependentes.
 ## Inicialização da GUI — corretivo local em revisão — 03/11/2026
 
 Branch `codex/gui-dependencias-inicializacao`, rebatida sobre App
-`0993ae7`/PR279; código local `bf38e4a`. O recibo do launcher pertence à
-fonte equivalente anterior `baa24c4`; após o rebase, cinco testes da GUI
+`0993ae7`/PR279; código local `bf38e4a`. O recibo inicial do launcher pertence
+à fonte equivalente anterior `baa24c4`; após o rebase, cinco testes da GUI
 e um de monitor passaram na composição dependente.
 `app.py` testava a tupla `(sucesso, faltantes)` como booleana e ainda tentava
 instalar `psutil` durante a abertura. O script agora confere os módulos
@@ -109,6 +109,11 @@ O launcher `./run.sh --offline --config` abriu a janela em Xvfb próprio e
 criou só o SQLite de QA (`quick_check` OK). Na simulação de `pandas` ausente,
 o mesmo launcher mostrou o diálogo com `./install.sh`, não criou banco e não
 instalou. Recibo em `docs/evidencias/GUI_DEPENDENCY_STARTUP_20261103.json`.
+O percurso pelo launcher foi repetido na fonte rebatida `13f6b975`: janela
+aberta, SQLite isolado com `quick_check` OK e, ao simular ausência de `pandas`,
+diálogo com orientação ao instalador, sem banco ou instalação. Cinco testes
+diretos passaram; doctor offline 16 OK/2 avisos/0 falhas. O diretório de QA
+temporário foi removido. O recibo público distingue as duas fontes.
 Percurso funcional completo da GUI, Windows físico e CI de SHA publicado
 permanecem pendentes. Esta branch ainda não tem PR por causa da guarda central
 de criação de branches remotas; não a apresentar como instalada.
