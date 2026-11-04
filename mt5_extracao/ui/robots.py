@@ -52,6 +52,7 @@ class RobotsPanel:
         self.theme.style_menu(menu)
         menu.add_command(label="Arquivo do robô (.mq5 ou .ex5)...", command=self.import_file)
         menu.add_command(label="Pasta de robôs...", command=self.import_folder)
+        menu.add_command(label="Gerar Super ATR de pesquisa…", command=self.open_super_atr_research)
         menu.add_separator()
         menu.add_command(label="Reler o catálogo", command=self.reload)
         self.import_button["menu"] = menu
@@ -133,6 +134,11 @@ class RobotsPanel:
         self._body_stacked = None
         body.bind("<Configure>", self._responsive_body, add="+")
         self.theme.on_change(self._theme_changed)
+
+    def open_super_atr_research(self):
+        if getattr(self,'super_atr_research',None) is not None and self.super_atr_research.alive():self.super_atr_research.window.lift();return
+        from .super_atr_research import SuperAtrResearch
+        self.super_atr_research=SuperAtrResearch(self)
 
     def _wrap_summary(self, event):
         if event.width > 1:
