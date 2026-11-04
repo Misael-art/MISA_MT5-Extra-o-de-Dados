@@ -1203,3 +1203,39 @@ fonte real e classificador qualificado continuam MEN-03/04, não certificados
 por fixtures. Não há migração necessária das chaves; versões/colunas anteriores
 permanecem. MEN-02 deve provar elegibilidade/deduplicação/corpus/manifestos e
 qualificar a lacuna de recibos antes de publicar capturas de documentos.
+
+
+### 18.12. Adaptador de lote e ingestão canônica MEN-02
+
+`mention_ingestion` recebe lote limitado de documentos ou agregado; não abre
+rede. `source_capabilities` rastreia F01–F09 como DOCUMENTED_ONLY, sem afirmar
+conectores integrados. A busca pública Bluesky devolveu403 no host; a API oficial
+Hacker News/newstories devolveu200/JSON. Recibos de sondas são privados, sem
+corpus retido. F05/Hacker News é candidato por acesso demonstrado, não conector
+qualificado por essa sonda. [API oficial](https://github.com/HackerNews/API).
+
+Não foi necessária tabela de entradas: texto é efêmero e as contagens/recibos
+mínimos cabem em `feature_store.metadata_json`; hashes de publicações/revisões
+sustentam população/deduplicação, sem catálogo de autores ou cópia de corpus.
+Cursor/estado/run ficam em `producer_jobs`, no escopo MEN-01. O guard do store
+confere namespace e recursos; três valores e checkpoint confirmam juntos.
+Tentativa incompleta tem três ausências/motivo e preserva o cursor completo.
+Falha/cancelamento não confirma prefixo parcial de uma janela.
+
+Filtros de objeto/consulta são literais NFKC/casefold, com aliases, inclusões,
+exclusões e metadados declarados. Não inventa resolução de entidades geral.
+A fixture separa ouro/medalha, Vale/verbo, índice/ETF/futuro e avaliações opostas
+por objeto. Palavra repetida e duplicação de transporte não multiplicam Q.
+Limites1000 documentos/64KiB por texto/4MiB por entrada. Revisões conflitantes no
+mesmo lote são recusadas; exclusão/edição recebida gera outra população.
+
+Anotações por objeto só têm aceite de fixture (`qa.`), nunca de classificador
+real. Total1000 e amostra100/P30/N20 usam escopos diferentes; P/N do total ficam
+indisponíveis. Nenhum percentual/score é multiplicado por Q. Q mantém seu
+relógio/metadata ao chegar classificação posterior; repetir mantém primeiro
+recebimento. As consultas e o catálogo não chamam rede nem classificador.
+[SDK/CLI e formato do lote](../sdk/api.md#ingestão-limitada-de-menções-men-02).
+
+Fonte real/reconexão/limites de rede/retomada são MEN-03; qualificação textual é
+MEN-04; snapshots/consumo visual completo e segunda fonte continuam MEN-05…08.
+Não concluir captura real pela ingestão determinística de documentos próprios.

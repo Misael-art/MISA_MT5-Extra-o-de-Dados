@@ -961,3 +961,54 @@ MEN-01 fecha identidade/validação e prova isolamento no catálogo/store/journa
 Ingestão de documentos, adaptadores reais, qualificação do classificador,
 publicação de capturas e integração de tela são MEN-02…08; não estão implícitos
 na existência deste contrato. [Plano e inventário](../dados/PLANO_ESTRUTURA_DADOS.md#1811-inventário-e-contrato-executável-men-01).
+
+
+### Ingestão limitada de menções (MEN-02)
+
+`sdk.mention_source_capabilities()` devolve F01…F09 e condições de acesso; é um
+cadastro documental passivo, sem sonda de rede ou conector declarado integrado.
+`sdk.ingest_mention_batch(db, *, selection, batch, synthetic_fixture=False,
+write_guard=None, cancel_check=None, timeout_seconds=120, max_memory_mb=1024)`
+publica explicitamente uma janela pelo feature_store/journal existentes.
+`selection` é o contrato de `describe_mention_series`; `batch` tem
+`capture_schema_version=1`, `scope_hash`, `start`, `end`, `captured_at`,
+`coverage` e `documents`. Opcionais: `reason`, `cursor`, `aggregate`,
+`annotations`, `classified_at`. Recebimento real usa o relógio local da ingestão;
+fixture declarada pode reproduzir seus relógios controlados e exige fonte `qa.`.
+
+Documentos têm `id`, `revision`, `published_at`, `text`, `kind`; opcionais
+`language`, `author`, `channel`, `community`, `deleted`. Duplicação de transporte
+é deduplicada pelo ID; revisões conflitantes no mesmo lote são recusadas.
+Conta uma publicação por objeto, nunca ocorrências da palavra. Elegibilidade
+usa aliases e expressão **literal** normalizados NFKC/casefold, termos de inclusão
+(qualquer), exclusão (qualquer), janela `[start,end)` e filtros declarados.
+Ausência de metadado necessário a um filtro é erro, não zero. Repostagens simples,
+removidos e publicações fora da seleção têm motivos/contagens de exclusão.
+
+Limites:1000 documentos,64KiB por texto e4MiB por entrada; excesso é recusado.
+Textos não são persistidos. Metadata conserva hashes do roster, revisão de
+população, janela, exclusões e universo. Relógio e cursor de transporte não
+mudam o hash semântico de contagens idênticas; repetir conserva o primeiro
+recebimento. Q/P/N e checkpoint são publicados na mesma transação, com guarda
+final de recursos/cancelamento/namespace. Cursor de última captura completa é
+preservado quando uma tentativa incompleta publica três ausências e motivo.
+
+Anotações `{publicação: {objeto: rótulo}}` só são aceitas em fixture e
+classificador `qa.`; rótulos:positive/negative/neutral/mixed/abstained. Completude
+exige rótulo por objeto de cada publicação elegível. Contagens de rótulos ficam
+na metadata de P/N, sem selo de classificador qualificado e sem contaminar Q
+com informação recebida depois. Em entrada real, P/N aguardam MEN-04.
+`aggregate.quantity` aceita total declarado em escopo agregado; total e amostra
+não são combinados, e scores/percentuais não são contagens P/N.
+
+CLI existente, sem rede implícita na leitura:
+
+```text
+analytics features mention-sources
+analytics features mentions-describe --selection selecao.json
+analytics features mentions-ingest --selection selecao.json --batch lote.json --synthetic-fixture
+```
+
+A ingestão informa COMPLETE/INCOMPLETE e contagens inseridas/revisadas/iguais;
+INCOMPLETE devolve código1. Acesso a fonte real, classificação qualificada e
+consumo completo permanecem nos incrementos MEN-03…08.

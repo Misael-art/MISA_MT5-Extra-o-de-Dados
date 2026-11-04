@@ -558,3 +558,12 @@ qualificação financeira ou integração MT5 implícita no teste da interface.
 
 CI Windows não equivale a esse percurso físico; fonte/classificador reais
 permanecem nos incrementos MEN-03/04.
+
+
+## MEN-02 — ingestão de lotes (2026-10-29)
+
+- [ ] Windows físico: JSON UTF-8/BOM e paths com espaços/acentos, ingestão repetida,
+  cancelamento por Ctrl-C e retorno sem duplicar Q/P/N/cursor; ler pelo SDK/CLI.
+
+Os testes multiplataforma do CI e o launcher Linux não substituem esse aceite.
+Nenhuma alteração de instalador ou dependência neste incremento.
