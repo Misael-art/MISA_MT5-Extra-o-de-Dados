@@ -138,8 +138,19 @@ class LaboratoryPanel:
         self.found = []            # insights da última procura
         self.evaluation = None
         self._build_execution_tab()
+        for key,title in [('items','Ativos e timeframes'),('correlation','Correlação'),('preset','Mesma revisão')]:
+            self._analysis_view('Comparativo',key,title)
+        financial=self._analysis_view('Comparativo','runs','Execuções gravadas')
+        ttk.Label(financial,text='Compare estratégias no mesmo ativo ou a mesma revisão entre ativos. Escolha execuções existentes; esta consulta não dispara backtest.',wraplength=600,style='Muted.TLabel').pack(anchor='w',pady=8)
+        ttk.Button(financial,text='Comparar execuções gravadas…',command=self.open_financial_comparison).pack(anchor='w')
         self._build_insights_tab()
         self.theme.on_change(self._theme_changed)
+
+    def open_financial_comparison(self):
+        if getattr(self,'financial_comparison',None) is not None and self.financial_comparison.alive():
+            self.financial_comparison.window.lift();return
+        from .financial_comparison import FinancialComparison
+        self.financial_comparison=FinancialComparison(self)
 
     # --- montagem ----------------------------------------------------------------------
 

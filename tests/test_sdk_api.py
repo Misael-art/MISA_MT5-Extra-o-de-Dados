@@ -13,7 +13,14 @@ SURFACE = {
     "mention_source_capabilities": [],
     "ingest_mention_batch": ["db", "selection", "batch", "synthetic_fixture", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "collect_mentions": ["db", "selection", "start", "end", "resume", "classify", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
-    "mention_classifier_capabilities": [],
+    "mention_classifier_capabilities": ["classifier_id"],
+    "evaluate_mention_classifier": ["cases","classifier_id","protocol"],
+    "macro_source_capabilities": [],
+    "collect_macro_observations": ["db","source_id","start","end","kwargs"],
+    "register_laboratory_protocol": ["db","report","definition"],
+    "evaluate_laboratory_protocol": ["db","report","protocol_id","kwargs"],
+    "compare_laboratory_runs": ["db","run_ids","mode","kwargs"],
+    "export_laboratory_runs": ["comparison","destination"],
     "capture_feature_snapshot": ["db", "symbol", "timeframe", "start", "end", "stored_features", "feature_only", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "export_feature_snapshot": ["db", "manifest_id", "destination"],
     "import_feature_snapshot": ["db", "source"],
@@ -91,6 +98,12 @@ def test_query_catalog_database_is_optional_for_existing_offline_callers():
     bound.apply_defaults()
     assert bound.arguments["db"] is None
     assert sdk.query_catalog()["status"] == "ok"
+
+
+def test_classifier_selection_is_optional_for_existing_english_callers():
+    signature=inspect.signature(sdk.mention_classifier_capabilities)
+    bound=signature.bind();bound.apply_defaults()
+    assert bound.arguments['classifier_id'] is None
 
 
 def test_cashflow_options_are_optional_and_old_positional_calls_still_bind():

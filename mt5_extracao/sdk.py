@@ -251,6 +251,16 @@ def evaluate_laboratory_protocol(db, report, protocol_id, **kwargs):
     return relations.evaluate(db,report,protocol_id,**kwargs)
 
 
+def compare_laboratory_runs(db, run_ids, *, mode, **kwargs):
+    from .laboratory import preset_assets
+    return preset_assets.compare_runs(db,run_ids,mode=mode,**kwargs)
+
+
+def export_laboratory_runs(comparison,destination):
+    from .laboratory.report import export_runs
+    return export_runs(comparison,destination)
+
+
 def export_laboratory_report(report, destination, **kwargs):
     from mt5_extracao.laboratory import report as renderer
     return renderer.export(report, destination, **kwargs)
@@ -325,6 +335,7 @@ def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
 
 
 __all__ = [
+    "compare_laboratory_runs", "export_laboratory_runs",
     "register_laboratory_protocol", "evaluate_laboratory_protocol",
     "API_VERSION", "CONTRACT_VERSION",
     "open_workflow",

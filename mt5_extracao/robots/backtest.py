@@ -174,6 +174,9 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     if not data_quality["eligibility"]["eligible"]:
         raise ValueError("Dados incompatíveis com a estratégia: " + " ".join(data_quality["eligibility"]["reasons"]))
     settings = research.backtest_config(config)
+    account_currency=(config.get('STRATEGY','account_currency',fallback='') if config is not None else '').strip().upper()
+    if account_currency and not re.fullmatch(r'[A-Z]{3,12}',account_currency):
+        raise ValueError('Moeda da conta declarada exige3 a12 letras; vazio conserva moeda desconhecida.')
     if adapter is not None:
         settings = adapter.backtest_config(settings)
     if not real_spread:
@@ -211,6 +214,13 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     if composition is not None:
         metrics.update(composition=composition.to_dict(), composition_hash=composition.config_hash,
                        composition_executor="composition_v1", compound=bool(settings.compound))
+    from dataclasses import asdict
+    metrics['comparison_context']=dict(schema_version=1,engine='python_ohlcv_stop_first',settings=asdict(settings),
+        trade_from=str(trade_from) if trade_from is not None else None,
+        source=snapshot.manifest['source'],clock=snapshot.manifest['time'],instrument_spec=asdict(spec),
+        currency=account_currency or None,currency_source='user_declared_account_currency' if account_currency else 'unknown',
+        external_cashflows=bool(cashflows is not None),code_sha256=metrics['execution_identity'].get('code_sha256'))
+    if account_currency:metrics['currency']=account_currency
     run = {"run_id": control.run_id if control is not None else uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,

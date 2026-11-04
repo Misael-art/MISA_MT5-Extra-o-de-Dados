@@ -35,6 +35,40 @@ def export(report, destination, **kwargs):
                 network_required=False, operational_acceptance=False)
 
 
+def render_runs(comparison):
+    from .preset_assets import validate_comparison
+    value=validate_comparison(comparison)
+    raw=json.dumps(value,ensure_ascii=False,allow_nan=False).replace('<','\\u003c').replace('>','\\u003e').replace('&','\\u0026')
+    if len(raw.encode())>MAX_BYTES:raise ValueError('Comparação excede16MiB.')
+    return FINANCIAL_TEMPLATE.replace('__CSS__',TEMPLATE.split('<style>',1)[1].split('</style>',1)[0]).replace('__DATA__',raw)
+
+
+def export_runs(comparison,destination):
+    content=render_runs(comparison);path=Path(destination).expanduser()
+    try:
+        with path.open('x',encoding='utf-8') as out:out.write(content)
+    except OSError as exc:raise ValueError('Escolha um arquivo novo em pasta gravável: '+str(exc)) from exc
+    return dict(path=str(path),comparison_sha256=comparison['comparison_sha256'],network_required=False,opened_backtest=False)
+
+
+FINANCIAL_TEMPLATE=r'''<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'">
+<title>Comparação de execuções gravadas</title><style>__CSS__</style><main>
+<h1>Comparação de execuções gravadas</h1><p id="status" class="notice"></p><p id="reasons"></p>
+<section><h2>Operações e capital</h2><p>Valores nas moedas declaradas de cada execução, sem conversão. — indica informação ausente. Drawdown de encerradas e patrimônio por fechamento têm bases distintas.</p><div class="scroll"><table id="results"></table></div></section>
+<section><h2>Curvas em fração do capital inicial</h2><label>Curva<select id="kind"><option value="floating_equity">Patrimônio a mercado</option><option value="account_balance">Saldo</option><option value="equity">Encerradas</option><option value="performance_equity">Patrimônio em cotas</option></select></label><svg id="curves" viewBox="0 0 1000 300" role="img" aria-label="Curvas gravadas normalizadas pelo capital inicial"></svg><p id="legend"></p><p class="muted">Eixo temporal no relógio gravado. Redução gráfica conserva extremos; métricas usam a série completa. Linhas entre amostras não descrevem o percurso intrabar.</p></section>
+<section><h2>Período, revisão e custos</h2><div class="scroll"><table id="contexts"></table></div><details><summary>Recibos completos da seleção</summary><pre id="receipts"></pre></details></section><section id="limits"></section>
+</main><script id="data" type="application/json">__DATA__</script><script>
+'use strict';const R=JSON.parse(document.getElementById('data').textContent),$=id=>document.getElementById(id),fmt=v=>v===null||v===undefined?'—':typeof v==='number'?v.toLocaleString('pt-BR',{maximumFractionDigits:4}):String(v),pct=v=>v===null||v===undefined?'—':fmt(v*100)+'%';
+function table(id,heads,rows){const t=$(id),h=document.createElement('tr');heads.forEach(x=>{const e=document.createElement('th');e.textContent=x;h.append(e)});t.append(h);rows.forEach(values=>{const tr=document.createElement('tr');values.forEach(v=>{const e=document.createElement('td');e.textContent=fmt(v);if(typeof v==='number'||typeof v==='string'&&v.endsWith('%'))e.className='number';tr.append(e)});t.append(tr)})}
+$('status').textContent=R.compatible?'Recibos compatíveis para esta comparação. Estratégia e desempenho futuro continuam sem qualificação.':'Comparação com diferenças ou informações ausentes. Os resultados permanecem separados.';$('reasons').textContent=R.reasons.join(' · ');
+table('results',['Run / ativo / TF','Moeda','Operações','Lucro líquido','Capital inicial','Saldo final','Patrimônio final','Retorno de encerradas','DD encerradas','DD patrimônio'],R.rows.map(r=>{const s=r.summary;return [r.run_id+' · '+r.symbol+' · '+r.timeframe,r.currency||'não declarada',s.trades,s.net_profit,s.initial_equity,s.final_balance,s.final_equity,pct(s.return_pct),pct(s.max_drawdown_pct),pct(s.max_floating_drawdown_pct)]}));
+table('contexts',['Run','Período','Revisão','Modelo / custos declarados'],R.rows.map(r=>[r.run_id,r.interval.start+' → '+r.interval.end,r.composition_hash,JSON.stringify(r.context?.settings||null)]));$('receipts').textContent=JSON.stringify(R,null,2);R.limitations.forEach(x=>{const p=document.createElement('p');p.textContent=x;$('limits').append(p)});
+function chart(){const svg=$('curves');svg.replaceChildren();const kind=$('kind').value,palette=['#2465ad','#c35a32','#14857c','#8454a2','#827400','#a63868','#405760','#4b6920'];const data=R.rows.map(r=>({row:r,points:(r.curves[kind]||[]).filter(p=>r.summary.initial_equity>0).map(p=>[Date.parse(p[0].replace(' ','T')+(/(?:Z|[+-]\d\d:\d\d)$/.test(p[0])?'':'Z')),p[1]/r.summary.initial_equity]).filter(p=>p.every(Number.isFinite))}));const all=data.flatMap(r=>r.points);if(!all.length){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',30);t.setAttribute('y',50);t.textContent='Sem curva/capital inicial válido nesta seleção.';svg.append(t);return}const xs=all.map(p=>p[0]),ys=all.map(p=>p[1]),a=Math.min(...xs),b=Math.max(...xs),lo=Math.min(1,...ys),hi=Math.max(1,...ys),x=v=>55+(v-a)/(b-a||1)*900,y=v=>260-(v-lo)/(hi-lo||1)*230;
+function node(tag,attrs){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));svg.append(n);return n}for(const v of [lo,1,hi]){node('line',{x1:55,x2:955,y1:y(v),y2:y(v),stroke:'#d4dce8'});node('text',{x:5,y:y(v)-3,fill:'#405760','font-size':14}).textContent=fmt(v)}data.forEach((r,i)=>node('polyline',{points:r.points.map(p=>x(p[0])+','+y(p[1])).join(' '),fill:'none',stroke:palette[i], 'stroke-width':2}));$('legend').replaceChildren();data.forEach((r,i)=>{const p=document.createElement('p');p.style.color=palette[i];p.textContent=r.row.symbol+' · '+r.row.run_id+' · '+r.points.length+' pontos';$('legend').append(p)})}
+$('kind').onchange=chart;chart();</script></html>'''
+
+
 TEMPLATE = r'''<!doctype html>
 <html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'">

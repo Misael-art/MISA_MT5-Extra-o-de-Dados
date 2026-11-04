@@ -86,6 +86,11 @@ def add_parser(sub):
     preset_assets = actions.add_parser("preset-assets", help="mesma revisão de preset já gravada, em ativos diferentes")
     preset_assets.add_argument("--robot", required=True, help="chave do robô; não executa backtest")
     preset_assets.set_defaults(func=run)
+    runs=actions.add_parser('runs',help='índice paginado de execuções gravadas, sem curvas/backtest')
+    runs.add_argument('--offset',type=int,default=0);runs.add_argument('--limit',type=int,default=50);runs.set_defaults(func=run)
+    comparison=actions.add_parser('compare-runs',help='mesmo ativo ou preset entre ativos; somente recibos gravados')
+    comparison.add_argument('--run',action='append',required=True);comparison.add_argument('--mode',choices=['same_asset','same_preset'],required=True)
+    comparison.add_argument('--out');comparison.add_argument('--html');comparison.set_defaults(func=run)
     for action in ('protocol-register','protocol-evaluate'):
         q=actions.add_parser(action,help='protocolo estatístico explícito; usa ledger/inferência existentes')
         q.add_argument('--analysis',required=True)
@@ -99,7 +104,18 @@ def add_parser(sub):
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action in ('protocol-register','protocol-evaluate'):
+    if args.laboratory_action=='runs':
+        from mt5_extracao.robots import store
+        result=dict(runs=store.run_index(ctx.db,limit=args.limit,offset=args.offset),opened_backtest=False)
+    elif args.laboratory_action=='compare-runs':
+        from mt5_extracao import sdk
+        for path in (args.out,args.html):
+            if path and Path(path).expanduser().exists():raise ValueError('Escolha arquivos novos para a comparação.')
+        result=sdk.compare_laboratory_runs(ctx.db,args.run,mode=args.mode)
+        if args.html:sdk.export_laboratory_runs(result,args.html)
+        if args.out:
+            with Path(args.out).expanduser().open('x',encoding='utf-8') as out:json.dump(result,out,ensure_ascii=False,allow_nan=False)
+    elif args.laboratory_action in ('protocol-register','protocol-evaluate'):
         from mt5_extracao import sdk
         def read(path):
             p=Path(path).expanduser()
