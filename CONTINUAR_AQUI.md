@@ -18,6 +18,22 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P01 — catálogo e elegibilidade em revisão — 03/11/2026
+
+Branch `codex/t134-p01-catalogo-elegibilidade`, baseada no P00 reconciliado.
+`analytics.pattern_catalog` usa `data_inventory`, namespace de `datasets`,
+qualidade/capacidades existentes e evidências de coleta/sessão do snapshot.
+SDK e CLI `laboratory pattern-sources`, `pattern-qualify` e `pattern-freeze`
+expõem a mesma seleção; captura limitada a 20.000 barras pelo store atual.
+Duas bases sintéticas com o mesmo símbolo mantêm namespaces e snapshots
+distintos. O leitor de Dados também aceita horário escalar em base com zona;
+o snapshot dessa base continua bloqueado pelo contrato de offset fixo.
+Passaram 57 testes de Dados/qualificação e 17 de relógio/P01 no Linux local.
+Pesquisa, eventos,
+simulação, dados reais, CI e launcher de GUI ainda não foram aceitos. O push
+da branch documental e das branches de revisão aguarda resolução explícita
+do guarda central compartilhado; não contornar o hook.
+
 ## E14 — auditoria pós-fill 2.13 e resgate privado — 03/11/2026
 
 App `codex/e14-protecao-comum`, base `codex/f04-vinculo-presets`, PR279
