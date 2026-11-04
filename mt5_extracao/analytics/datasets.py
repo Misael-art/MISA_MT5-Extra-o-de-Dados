@@ -710,22 +710,28 @@ def _persist(db, bundle):
     _validated(bundle)
     _schema(db)
     with _LOCK, db.engine.begin() as conn:
-        for digest, payload in bundle["blocks"].items():
-            conn.execute(text("INSERT INTO _dataset_blocks (block_id,payload_json) VALUES (:id,:payload) "
-                              "ON CONFLICT(block_id) DO NOTHING"), {"id": digest, "payload": payload})
-            actual = conn.execute(text("SELECT payload_json FROM _dataset_blocks WHERE block_id=:id"),
-                                  {"id": digest}).scalar_one()
-            if actual != payload:
-                raise ValueError("Bloco existente sem integridade; restaure uma cópia íntegra em destino isolado.")
-        payload = _json(bundle["manifest"])
-        conn.execute(text("INSERT INTO _dataset_manifests (manifest_id,payload_json,captured_at) "
-                          "VALUES (:id,:payload,:stamp) ON CONFLICT(manifest_id) DO NOTHING"),
-                     {"id": bundle["manifest_id"], "payload": payload,
-                      "stamp": datetime.now(timezone.utc).isoformat()})
-        actual = conn.execute(text("SELECT payload_json FROM _dataset_manifests WHERE manifest_id=:id"),
-                              {"id": bundle["manifest_id"]}).scalar_one()
+        _persist_validated(conn, bundle)
+
+
+def _persist_validated(conn, bundle, *, guard=None):
+    """Publica bytes já validados, também na transação de um consumidor composto."""
+    for digest, payload in bundle["blocks"].items():
+        if guard is not None:guard()
+        conn.execute(text("INSERT INTO _dataset_blocks (block_id,payload_json) VALUES (:id,:payload) "
+                          "ON CONFLICT(block_id) DO NOTHING"), {"id": digest, "payload": payload})
+        actual = conn.execute(text("SELECT payload_json FROM _dataset_blocks WHERE block_id=:id"),
+                              {"id": digest}).scalar_one()
         if actual != payload:
-            raise ValueError("Manifesto existente sem integridade; restaure uma cópia íntegra.")
+            raise ValueError("Bloco existente sem integridade; restaure uma cópia íntegra em destino isolado.")
+    payload = _json(bundle["manifest"])
+    conn.execute(text("INSERT INTO _dataset_manifests (manifest_id,payload_json,captured_at) "
+                      "VALUES (:id,:payload,:stamp) ON CONFLICT(manifest_id) DO NOTHING"),
+                 {"id": bundle["manifest_id"], "payload": payload,
+                  "stamp": datetime.now(timezone.utc).isoformat()})
+    actual = conn.execute(text("SELECT payload_json FROM _dataset_manifests WHERE manifest_id=:id"),
+                          {"id": bundle["manifest_id"]}).scalar_one()
+    if actual != payload:
+        raise ValueError("Manifesto existente sem integridade; restaure uma cópia íntegra.")
 
 
 def _bundle(db, manifest_id):

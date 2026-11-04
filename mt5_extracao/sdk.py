@@ -148,6 +148,20 @@ def load_feature_relation(db, analysis_id):
     return feature_store.load_pair_relation(db, analysis_id)
 
 
+def export_feature_relation(db, analysis_id, destination, *, cancel_check=None, timeout_seconds=120, max_memory_mb=2048):
+    """Pacote íntegro do recibo original e de todas as origens congeladas."""
+    from mt5_extracao.analytics import relation_transfer
+    return relation_transfer.export_relation(db, analysis_id, destination, cancel_check=cancel_check,
+        timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+
+
+def import_feature_relation(db, source, *, cancel_check=None, write_guard=None, timeout_seconds=120, max_memory_mb=2048):
+    """Importação atômica nos mesmos stores, sem recalcular ou substituir versões."""
+    from mt5_extracao.analytics import relation_transfer
+    return relation_transfer.import_relation(db, source, cancel_check=cancel_check, write_guard=write_guard,
+        timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+
+
 def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
     """Reconcilia apenas runs de proprietários locais encerrados; fatos e checkpoint são preservados."""
     from mt5_extracao.analytics import producer_jobs
@@ -161,6 +175,7 @@ __all__ = [
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot",
+    "export_feature_relation", "import_feature_relation",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida

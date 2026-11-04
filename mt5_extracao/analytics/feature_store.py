@@ -825,61 +825,73 @@ def _relation_row(row):
     return dto
 
 
-def _relation_sources(db, dto):
+def _relation_sources(db, dto, *, snapshots=None):
     from mt5_extracao.analytics import datasets
     provenance = dto["provenance"]
-    root = datasets.load(db, provenance["snapshot_manifest_id"])
+    def image(ident):return datasets.load(db, ident) if snapshots is None else snapshots[ident]
+    root = image(provenance["snapshot_manifest_id"])
     if (root.manifest["source"]["namespace"] != provenance["base_namespace"]
             or any(root.manifest[key] != dto["scope"][key] for key in ("symbol", "timeframe"))):
         raise ValueError("Relação e snapshot pertencem a contextos diferentes.")
     for ident in provenance["lineage_manifests"]:
         if ident == root.manifest_id:
             continue
-        origin = datasets.load(db, ident)
+        origin = image(ident)
         if any(origin.manifest[key] != root.manifest[key] for key in ("source", "symbol", "timeframe", "time")):
             raise ValueError("Origem da relação pertence a outro contexto.")
 
 
 def save_pair_relation(db, dto, *, transaction_guard=None, transaction_hook=None):
     """Publica resultado e referências juntos; repetição devolve o primeiro recibo."""
-    from mt5_extracao.analytics import datasets
     _require_db(db)
     dto, raw, digest, semantic = _relation_payload(dto)
     if transaction_guard is not None:
         transaction_guard(None)
     _relation_sources(db, dto)
     _relation_schema(db)
-    provenance, scope = dto["provenance"], dto["scope"]
-    ident = provenance["analysis_id"]
     with db.engine.begin() as conn:
         if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
             conn.exec_driver_sql("BEGIN IMMEDIATE")
-        if transaction_guard is not None:
-            transaction_guard(conn)
-        inserted = conn.execute(text(f"INSERT INTO {RELATIONS_TABLE} "
+        return _save_pair_relation(conn, dto, raw, digest, semantic,
+            created_at_utc=datetime.now(timezone.utc).isoformat(), transaction_guard=transaction_guard,
+            transaction_hook=transaction_hook, db=db)
+
+
+def _save_pair_relation(conn, dto, raw, digest, semantic, *, created_at_utc, db,
+                        transaction_guard=None, transaction_hook=None):
+    """Mesmo publicador, com conexão do pacote para incluir as origens no commit."""
+    from mt5_extracao.analytics import datasets
+    provenance, scope = dto["provenance"], dto["scope"]
+    ident = provenance["analysis_id"]
+    if transaction_guard is not None:
+        transaction_guard(conn)
+    inserted = conn.execute(text(f"INSERT INTO {RELATIONS_TABLE} "
             "(analysis_id,base_namespace,manifest_id,symbol,tf,as_of_utc,payload_json,payload_sha256,semantic_sha256,created_at_utc) "
             "VALUES (:id,:base,:manifest,:symbol,:tf,:asof,:payload,:digest,:semantic,:created) "
             "ON CONFLICT(analysis_id) DO NOTHING"), dict(id=ident,base=provenance["base_namespace"],
                 manifest=provenance["snapshot_manifest_id"],symbol=scope["symbol"],tf=scope["timeframe"],
                 asof=provenance["as_of_utc"],payload=raw,digest=digest,semantic=semantic,
-                created=datetime.now(timezone.utc).isoformat())).rowcount
-        stored = conn.execute(text(f"SELECT * FROM {RELATIONS_TABLE} WHERE analysis_id=:id"), {"id":ident}).mappings().one()
-        original = _relation_row(stored)
-        if stored["semantic_sha256"] != semantic:
-            raise ValueError("Identidade de relação já contém outro resultado; preserve o original e revise a implementação.")
-        for manifest_id in provenance["lineage_manifests"]:
-            datasets.bind(db, "relation:"+ident+":"+manifest_id, manifest_id, connection=conn)
-        if transaction_hook is not None:
-            transaction_hook(conn)
-        if transaction_guard is not None:
-            transaction_guard(conn)
-        result = dict(status="INSERTED" if inserted else "UNCHANGED", analysis_id=ident,
-            payload_sha256=stored["payload_sha256"], created_at_utc=stored["created_at_utc"], relation=original)
-    return result
+                created=created_at_utc)).rowcount
+    stored = conn.execute(text(f"SELECT * FROM {RELATIONS_TABLE} WHERE analysis_id=:id"), {"id":ident}).mappings().one()
+    original = _relation_row(stored)
+    if stored["semantic_sha256"] != semantic:
+        raise ValueError("Identidade de relação já contém outro resultado; preserve o original e revise a implementação.")
+    for manifest_id in provenance["lineage_manifests"]:
+        datasets.bind(db, "relation:"+ident+":"+manifest_id, manifest_id, connection=conn)
+    if transaction_hook is not None:
+        transaction_hook(conn)
+    if transaction_guard is not None:
+        transaction_guard(conn)
+    return dict(status="INSERTED" if inserted else "UNCHANGED", analysis_id=ident,
+        payload_sha256=stored["payload_sha256"], created_at_utc=stored["created_at_utc"], relation=original)
 
 
 def load_pair_relation(db, analysis_id):
     """Consulta pelo ID sem recalcular, criar schema ou completar com dados ativos."""
+    return _load_pair_relation_receipt(db, analysis_id)["relation"]
+
+
+def _load_pair_relation_receipt(db, analysis_id):
     import re
     _require_db(db)
     if not isinstance(analysis_id, str) or not re.fullmatch(r"[a-f0-9]{64}", analysis_id):
@@ -899,4 +911,5 @@ def load_pair_relation(db, analysis_id):
             if reference != ident:
                 raise ValueError("Referência de origem da relação sem integridade; recupere o registro original.")
     _relation_sources(db, dto)
-    return dto
+    return dict(analysis_id=analysis_id, payload_sha256=row["payload_sha256"],
+        created_at_utc=row["created_at_utc"], relation=dto)
