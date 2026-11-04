@@ -5,11 +5,12 @@ e a presença de fatos já materializados. Não calcula, não grava e não cria 
 definição nova aparece aqui sem editar seletores.
 """
 import base64
+import hashlib
 import json
 
 from sqlalchemy import inspect, text
 
-from mt5_extracao.analytics import feature_store, indicator_contracts
+from mt5_extracao.analytics import feature_store, query_service
 
 INVENTORY_VERSION = 1
 MAX_PAGE_SIZE = 200
@@ -48,23 +49,18 @@ def _facts(db):
 def entries(db=None):
     """Uma linha por (feature_id, versão): registry, definições de Dados e fatos."""
     facts = _facts(db) if db is not None else {}
-    stored = {(row["feature_id"], row["algorithm_version"]): row
-              for row in (feature_store.list_definitions(db) if db is not None else [])}
     result = {}
-    for spec in indicator_contracts.contracts():
+    for spec in query_service.definition_catalog(db):
         key = (spec["feature_id"], spec["algorithm_version"])
-        result[key] = dict(feature_id=key[0], algorithm_version=key[1], name=spec["name"], family=spec["family"],
+        registry = spec.get("registry_contract")
+        name = (registry["name"] if registry and spec["computable"] and
+                spec["name_status"] == "UNVERIFIED_LEGACY_NAME" else spec["name"])
+        result[key] = dict(feature_id=key[0], algorithm_version=key[1], name=name,
+            family=spec["family"] or key[0].split(".")[0],
             unit=spec["unit"], parameters=spec["parameters"], outputs=spec["buffers"], warmup=spec["warmup_count"],
-            output_kind=spec["output_kind"], origin="registry", computable=True)
-    for key, row in stored.items():
-        if key not in result:
-            result[key] = dict(feature_id=key[0], algorithm_version=key[1], name=row.get("name") or key[0],
-                family=row.get("family") or key[0].split(".")[0], unit=row.get("unit"), parameters=row["parameters"],
-                outputs=[dict(name=key[0], kind=row.get("value_type") or "unknown", unit=row.get("unit"))],
-                warmup=row.get("warmup_count"), output_kind=row.get("value_type"), origin="data_store",
-                computable=False)
-        else:
-            result[key]["origin"] = "registry+data_store"
+            output_kind=spec["output_kind"], origin=spec["origin"], computable=spec["computable"],
+            stored_name_status=spec["name_status"] if spec["registered_definition"] is not None else None,
+            metadata_state=spec["metadata_state"], metadata_conflicts=spec["metadata_conflicts"])
     for key in facts:
         if key not in result:
             # Fatos sem definição só existem por corrupção/limpeza parcial; mostrar, nunca esconder.
@@ -79,9 +75,13 @@ def entries(db=None):
         if state == "STORED" and not row["computable"]:
             state = "STORED_ONLY"
         row.update(state=state, reason=STATES[state], action=ACTIONS[state])
-        row["stored_name_status"] = stored.get(key, {}).get("name_status")
-        if row["stored_name_status"] == "UNVERIFIED_LEGACY_NAME":
+        if row.get("stored_name_status") == "UNVERIFIED_LEGACY_NAME":
             row["reason"] += " Nome legado não verificável; identifique a série pelo ID e versão, sem inferir o nome."
+        if row.get("metadata_conflicts"):
+            row["reason"] += " Definição da base difere da fórmula local: " + ", ".join(row["metadata_conflicts"]) + "."
+        if row["origin"] == "facts_only":
+            row.update(state="UNAVAILABLE", reason="Há fatos sem definição registrada; contrato ausente, não elegível para análise.",
+                       action="Confira o catálogo no produtor; não infira a fórmula nem remova os fatos.")
         rows.append(row)
     return sorted(rows, key=lambda row: (row["family"], row["feature_id"], row["algorithm_version"]))
 
@@ -103,20 +103,31 @@ def search(db=None, *, query="", family=None, state=None, symbol=None, timeframe
     families = sorted({row["family"] for row in rows})
     selected = [row for row in rows if _matches(row, filters["query"])
                 and (family is None or row["family"] == family) and (state is None or row["state"] == state)
-                and (symbol is None or any(item["symbol"] == symbol for item in row["series"]))
-                and (timeframe is None or any(item["timeframe"] == timeframe for item in row["series"]))]
+                and ((symbol is None and timeframe is None) or any(
+                    (symbol is None or item["symbol"] == symbol) and
+                    (timeframe is None or item["timeframe"] == timeframe) for item in row["series"]))]
+    generation = hashlib.sha256(json.dumps(rows, sort_keys=True, ensure_ascii=False,
+                                          allow_nan=False).encode()).hexdigest()
     offset = 0
     if cursor:
         try:
             payload = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-            offset = int(payload["o"])
-        except (ValueError, TypeError, KeyError) as error:
+            if (not isinstance(payload, dict) or not isinstance(payload.get("o"), int) or
+                    isinstance(payload["o"], bool) or payload["o"] < 0 or
+                    "f" not in payload or not isinstance(payload.get("g"), str)):
+                raise ValueError
+            offset = payload["o"]
+        except (ValueError, TypeError, KeyError, AttributeError) as error:
             raise ValueError("Cursor inválido; recomece sem cursor.") from error
         if payload.get("f") != filters:
             raise ValueError("Cursor pertence a outros filtros; recomece sem cursor.")
+        if payload["g"] != generation:
+            raise ValueError("O inventário mudou durante a paginação; recomece sem cursor.")
+        if offset > len(selected):
+            raise ValueError("Cursor inválido; recomece sem cursor.")
     page = selected[offset:offset + page_size]
     following = offset + page_size
-    next_cursor = base64.urlsafe_b64encode(json.dumps(dict(o=following, f=filters)).encode()).decode() \
+    next_cursor = base64.urlsafe_b64encode(json.dumps(dict(o=following, f=filters, g=generation)).encode()).decode() \
         if following < len(selected) else None
     reason = None
     if not selected:

@@ -15,7 +15,7 @@ SURFACE = {
     "CheckResult": None, "ParityReport": None, "SignalSpec": None, "DeclaredStrategy": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
     "load_catalog": ["config", "db"],
     "query_series": ["db", "selection"],
-    "query_catalog": [],
+    "query_catalog": ["db"],
     "get_robot": ["robots", "key"],
     "robot_from_file": ["path"],
     "import_library": ["db", "folder"],
@@ -53,6 +53,14 @@ def test_signatures_did_not_change():
     for name, expected in SURFACE.items():
         if expected is not None:
             assert list(inspect.signature(getattr(sdk, name)).parameters) == expected, name
+
+
+def test_query_catalog_database_is_optional_for_existing_offline_callers():
+    signature = inspect.signature(sdk.query_catalog)
+    bound = signature.bind()
+    bound.apply_defaults()
+    assert bound.arguments["db"] is None
+    assert sdk.query_catalog()["status"] == "ok"
 
 
 def test_cashflow_options_are_optional_and_old_positional_calls_still_bind():

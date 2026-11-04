@@ -443,6 +443,7 @@ def test_inventory_view_lists_whole_registry_with_pages_search_and_reason(relati
     panel.load_inventory()
     assert "limpe a busca" in panel.inventory_status.cget("text")
     assert not panel.inventory_table.tree.get_children()
+    assert "Nenhuma definição" in panel._details["inventory"].get("1.0", "end-1c")
 
 
 def test_inventory_drops_stale_response_and_reports_error(relations_panel):
@@ -451,6 +452,10 @@ def test_inventory_drops_stale_response_and_reports_error(relations_panel):
     panel._run_bg = lambda work, done: pending.append((work, done))
     panel.inventory_query.set("rsi")
     panel.load_inventory()
+    assert "Carregando" in panel.inventory_status.cget("text")
+    assert "Aguarde" in panel._details["inventory"].get("1.0", "end-1c")
+    assert not panel.inventory_table.tree.get_children()
+    assert panel.inventory_next.instate(["disabled"])
     panel.inventory_query.set("atr")
     panel.load_inventory()
     old, new = pending
@@ -464,6 +469,10 @@ def test_inventory_drops_stale_response_and_reports_error(relations_panel):
     panel.load_inventory()
     pending[-1][1](None, RuntimeError("base bloqueada"))
     assert "Inventário indisponível: base bloqueada" in panel.inventory_status.cget("text")
+    assert not panel.inventory_table.tree.get_children()
+    assert not panel._inventory_rows
+    assert panel._inventory_next_cursor is None
+    assert "Consulta indisponível" in panel._details["inventory"].get("1.0", "end-1c")
 
 
 def test_inventory_distinguishes_declared_name_from_legacy_placeholder(relations_panel, tmp_path):

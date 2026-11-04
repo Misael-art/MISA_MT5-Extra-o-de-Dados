@@ -73,10 +73,10 @@ def query_series(db, **selection):
     return query_service.series(db, **selection)
 
 
-def query_catalog():
-    """Contratos das características consultáveis (BD06/BD18a)."""
+def query_catalog(db=None):
+    """Contratos do registry e, com db, todas as versões registradas (BD06/BD18a)."""
     from mt5_extracao.analytics import query_service
-    return query_service.catalog()
+    return query_service.catalog(db)
 
 
 __all__ = [
