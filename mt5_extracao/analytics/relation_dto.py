@@ -1,4 +1,4 @@
-"""Contrato JSON v1 das relações; preserva proveniência e estados separados."""
+"""Contratos JSON de relações: alvo v1, par integral v2 e recorte v3."""
 import json
 import math
 from datetime import date, datetime, timezone
@@ -8,6 +8,7 @@ from mt5_extracao.analytics.indicator_registry import ALGORITHM_VERSION
 
 RELATION_SCHEMA_VERSION = 1
 PAIR_RELATION_SCHEMA_VERSION = 2
+PAIR_WINDOW_RELATION_SCHEMA_VERSION = 3
 _INDICATOR_FIELDS = (
     "feature_id", "algorithm_version", "formula", "parameters", "unit", "warmup_count", "warmup_unit",
     "source_id", "timeframe", "availability_rule", "value_type", "value", "state", "reason",
@@ -173,7 +174,7 @@ def build_relation_dto(*, indicator, target, relation, scope, provenance, genera
 
 def dumps(dto):
     """Serializa o DTO rejeitando NaN/Infinity em vez de emitir JSON não padrão."""
-    if not isinstance(dto, dict) or dto.get("relation_schema_version") not in (RELATION_SCHEMA_VERSION, PAIR_RELATION_SCHEMA_VERSION):
+    if not isinstance(dto, dict) or dto.get("relation_schema_version") not in (RELATION_SCHEMA_VERSION, PAIR_RELATION_SCHEMA_VERSION, PAIR_WINDOW_RELATION_SCHEMA_VERSION):
         raise ValueError("relation_schema_version não suportado.")
     return json.dumps(_json_ready(dto), ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
@@ -197,9 +198,42 @@ def pair_contract_reason(descriptors):
     return None
 
 
+def pair_qualification():
+    return dict(descriptive=True, causal_evidence=False, operational_acceptance=False,
+                historical_source_certification=False, financial_utility_certified=False)
+
+
+def _validate_pair_window(scope, provenance):
+    settings = scope.get("settings", {})
+    window = scope.get("decision_window")
+    if not isinstance(settings, dict):
+        if window is None:return  # contrato legado sem janela continua aceito
+        raise ValueError("scope.settings da janela precisa ser objeto.")
+    keys = {"decision_start", "decision_end"}
+    supplied = keys & set(settings)
+    if not supplied and window is None:return
+    if (supplied != keys or not isinstance(window, dict) or
+            set(window) != {"start_inclusive_utc", "end_inclusive_utc", "reference_rule"} or
+            window["reference_rule"] != "both_closes_inside_window"):
+        raise ValueError("Janela precisa declarar ambos os fechamentos e a regra de referência.")
+    start = _utc_timestamp(settings["decision_start"], "decision_start")
+    end = _utc_timestamp(settings["decision_end"], "decision_end")
+    try:
+        declared_cut = datetime.fromisoformat(settings["as_of"].replace("Z", "+00:00"))
+        if declared_cut.tzinfo is None:raise ValueError("corte sem fuso")
+        declared_cut = declared_cut.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    except (KeyError, ValueError, TypeError, AttributeError) as exc:
+        raise ValueError("Janela sem corte declarado com fuso válido.") from exc
+    if (settings["decision_start"] != start or settings["decision_end"] != end or
+            window["start_inclusive_utc"] != start or window["end_inclusive_utc"] != end or
+            start > end or end > _utc_timestamp(provenance["as_of_utc"], "as_of_utc") or
+            declared_cut != _utc_timestamp(provenance["as_of_utc"], "as_of_utc")):
+        raise ValueError("Janela, parâmetros e corte da relação divergem.")
+
+
 def build_pair_relation_dto(*, left, right, relation, scope, population, provenance, generated_at_utc,
                             synthetic_fixture=False):
-    """DTO2 de séries pareadas; DTO1 de indicador/alvo futuro permanece inalterado."""
+    """DTO2 integral ou DTO3 com recorte; DTO1 de alvo futuro permanece inalterado."""
     if not all(isinstance(item, dict) for item in (left, right, relation, scope, population, provenance)):
         raise ValueError("Descritores, relação, escopo, população e proveniência precisam ser objetos.")
     if not isinstance(synthetic_fixture, bool):
@@ -243,15 +277,17 @@ def build_pair_relation_dto(*, left, right, relation, scope, population, provena
             for key in ("effect_ci_low", "effect_ci_high", "p_raw", "p_adjusted")):
         raise ValueError("Relação sem efeito não pode apresentar inferência numérica.")
     if relation["utility_state"] != "INCONCLUSIVE" or relation["evidence_state"] not in ("EXPLORATORY", "INSUFFICIENT"):
-        raise ValueError("DTO2 referencial não certifica evidência confirmatória nem utilidade financeira.")
+        raise ValueError("Relação referencial não certifica evidência confirmatória nem utilidade financeira.")
     _required_text(provenance, ("base_namespace", "snapshot_manifest_id", "as_of_utc", "analysis_id",
                                 "sample_hash", "implementation_sha256"), "provenance")
     _utc_timestamp(provenance["as_of_utc"], "provenance.as_of_utc")
-    safe = _json_ready(dict(relation_schema_version=PAIR_RELATION_SCHEMA_VERSION, kind="FEATURE_PAIR_RELATION",
+    _validate_pair_window(scope, provenance)
+    windowed = scope.get("decision_window") is not None
+    safe = _json_ready(dict(relation_schema_version=PAIR_WINDOW_RELATION_SCHEMA_VERSION if windowed else PAIR_RELATION_SCHEMA_VERSION,
+        kind="FEATURE_PAIR_WINDOW_RELATION" if windowed else "FEATURE_PAIR_RELATION",
         generated_at_utc=_utc_timestamp(generated_at_utc, "generated_at_utc"), synthetic_fixture=synthetic_fixture,
         left=left, right=right, relation=relation, scope=scope, population=population, provenance=provenance,
-        qualification=dict(descriptive=True, causal_evidence=False, operational_acceptance=False,
-                           historical_source_certification=False, financial_utility_certified=False)))
+        qualification=pair_qualification()))
     json.dumps(safe, ensure_ascii=False, allow_nan=False)
     return safe
 

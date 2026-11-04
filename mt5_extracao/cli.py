@@ -1780,24 +1780,32 @@ def build_parser():
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
-    q = features_sub.add_parser("relation", help="associação descritiva entre duas versões de um snapshot")
-    q.add_argument("--manifest", required=True)
-    q.add_argument("--left", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
-    q.add_argument("--right", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
-    q.add_argument("--as-of", required=True, help="corte já ocorrido com fuso explícito")
-    q.add_argument("--persist", action="store_true", help="publica resultado imutável e referências na base selecionada")
-    q.add_argument("--lag-bars", type=int, default=0, help="esquerda antecede a direita em N períodos nominais; sem comprimir lacunas")
-    q.add_argument("--method", choices=("pearson", "spearman"), default="pearson")
-    q.add_argument("--minimum-pairs", type=int, default=30)
-    q.add_argument("--minimum-sessions", type=int, default=10)
-    q.add_argument("--bootstrap-replicates", type=int, default=999)
-    q.add_argument("--seed", type=int, default=7)
-    q.add_argument("--block-length-sessions", type=int)
-    q.add_argument("--tests-counted", type=int, help="tamanho declarado da família para Bonferroni; sem registro de busca implícito")
-    q.add_argument("--synthetic-fixture", action="store_true", help="identifica dados referenciais sintéticos")
-    q.add_argument("--timeout-seconds", type=float, default=120)
-    q.add_argument("--max-memory-mb", type=float, default=2048)
-    q.set_defaults(func=cmd_analytics)
+    for action in ("relation", "relation-windows"):
+        q = features_sub.add_parser(action, help="associa versões congeladas; opcionalmente por janelas móveis")
+        q.add_argument("--manifest", required=True)
+        q.add_argument("--left", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
+        q.add_argument("--right", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
+        q.add_argument("--as-of", required=True, help="corte já ocorrido com fuso explícito")
+        q.add_argument("--lag-bars", type=int, default=0, help="esquerda antecede a direita em N períodos nominais; sem comprimir lacunas")
+        q.add_argument("--method", choices=("pearson", "spearman"), default="pearson")
+        q.add_argument("--minimum-pairs", type=int, default=30)
+        q.add_argument("--minimum-sessions", type=int, default=10)
+        q.add_argument("--bootstrap-replicates", type=int, default=999)
+        q.add_argument("--seed", type=int, default=7)
+        q.add_argument("--block-length-sessions", type=int)
+        q.add_argument("--tests-counted", type=int, help="tamanho declarado da família para Bonferroni; sem registro de busca implícito")
+        q.add_argument("--synthetic-fixture", action="store_true", help="identifica dados referenciais sintéticos")
+        q.add_argument("--timeout-seconds", type=float, default=120)
+        q.add_argument("--max-memory-mb", type=float, default=2048)
+        q.add_argument("--decision-start", help="primeiro fechamento incluído, com fuso; usar com decision-end")
+        q.add_argument("--decision-end", help="último fechamento incluído, até as-of; ambos os lados ficam na janela")
+        if action == "relation":
+            q.add_argument("--persist", action="store_true", help="publica resultado imutável e referências na base selecionada")
+        else:
+            q.add_argument("--window-bars", type=int, default=100, help="fechamentos observados por janela")
+            q.add_argument("--stride-bars", type=int, default=20, help="avanço em fechamentos observados")
+            q.add_argument("--max-windows", type=int, default=64, help="limite explícito; excesso é recusado, sem truncamento")
+        q.set_defaults(func=cmd_analytics)
 
     q = features_sub.add_parser("relation-list", help="lista resultados persistidos com filtros e paginação")
     q.add_argument("--analysis-id")
@@ -2145,6 +2153,28 @@ def cmd_analytics(args, ctx):
         _print("Transferir o resultado referencial não certifica causalidade, ganho ou operação financeira.")
         return EXIT_OK
 
+    if args.features_action == "relation-windows":
+        from mt5_extracao import sdk
+        result = sdk.query_feature_relation_windows(ctx.db, args.manifest, left=args.left, right=args.right,
+            as_of=args.as_of, window_bars=args.window_bars, stride_bars=args.stride_bars, max_windows=args.max_windows,
+            lag_bars=args.lag_bars, method=args.method, minimum_pairs=args.minimum_pairs,
+            minimum_sessions=args.minimum_sessions, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed,
+            block_length_sessions=args.block_length_sessions, tests_counted=args.tests_counted,
+            synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb,
+            decision_start=args.decision_start, decision_end=args.decision_end)
+        _data(windows=result)
+        for window in result["windows"]:
+            relation = window["result"]["relation"]
+            value = "indisponível" if relation["effect"] is None else format(relation["effect"], ".6g")
+            _print(f"{window['decision_start_utc']} a {window['decision_end_utc']}: "
+                   f"{value}; pares={relation['n_pairs']}; sessões={relation['n_sessions']}; "
+                   f"excluídos={sum(window['result']['population']['exclusions'].values())}.")
+        _print(f"{len(result['windows'])} janelas completas; família Bonferroni={result['correction']['tests_counted']}; "
+               f"{result['population']['decisions_not_in_any_window']} decisões fora de todas as janelas.")
+        for reason in result["reasons"]:_print(reason)
+        _print("Corte fixo retrospectivo; janelas/autocorrelação não são observações independentes. Sem qualificação financeira.")
+        return EXIT_OK
+
     if args.features_action in ("relation", "relation-result"):
         from mt5_extracao import sdk
         persistence = None
@@ -2160,7 +2190,8 @@ def cmd_analytics(args, ctx):
                 lag_bars=args.lag_bars, method=args.method, minimum_pairs=args.minimum_pairs,
                 minimum_sessions=args.minimum_sessions, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed,
                 block_length_sessions=args.block_length_sessions, tests_counted=args.tests_counted,
-                synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb, **options)
+                synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb,
+                decision_start=args.decision_start, decision_end=args.decision_end, **options)
             result = answer["relation"] if args.persist else answer
             if args.persist:
                 persistence = {key: value for key, value in answer.items() if key != "relation"}
@@ -2171,6 +2202,9 @@ def cmd_analytics(args, ctx):
         value = "indisponível" if row["effect"] is None else format(row["effect"], ".6g")
         _print(" × ".join(f"{result[side]['feature_id']}@{result[side]['algorithm_version']} [{result[side]['unit'] or 'unidade não declarada'}]"
                           for side in ("left", "right")) + f"; defasagem nominal={result['scope']['lag_bars']}.")
+        if result['scope'].get('decision_window'):
+            window=result['scope']['decision_window']
+            _print(f"Janela UTC inclusiva: {window['start_inclusive_utc']} a {window['end_inclusive_utc']}; ambos os fechamentos dentro.")
         _print(f"{row['method']}: {value}; pares={row['n_pairs']}; sessões={row['n_sessions']}; estado={row['state']}.")
         population = result["population"]
         _print(f"População={population['n_total']}; excluídos={sum(population['exclusions'].values())}; fontes distintas={population['n_distinct_source_pairs']}.")

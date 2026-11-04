@@ -465,15 +465,18 @@ def _pair_signature():
     from mt5_extracao.analytics import data_eligibility, datasets, feature_store, indicator_context, indicator_materializer, instruments, relation_dto
     source = indicator_materializer._source_components
     components = dict(scheme="frozen_pair_v1", relation_schema=relation_dto.PAIR_RELATION_SCHEMA_VERSION,
+        window_schema=relation_dto.PAIR_WINDOW_RELATION_SCHEMA_VERSION,
         engine=source(__file__, ("_pair_signature", "_pair_grid", "_pair_sessions", "_pair_context", "_pair_lineage",
-            "_pair_sample_hash", "query_frozen_pair", "analyze_association", "_result_base", "_numeric_column",
+            "_pair_sample_hash", "query_frozen_pair", "_query_frozen_pair", "_pair_request", "_pair_guard",
+            "_prepare_frozen_pair", "_pair_bounds", "_select_pair_window", "_pair_scope", "analyze_association", "_result_base", "_numeric_column",
             "_ranked_standardized", "_moving_block_indices", "_correlation", "_positive_int", "_scope",
             "_utc_timestamp", "_utc_series", "adjust_bonferroni")),
         context=source(indicator_context.__file__, ("from_snapshot", "_snapshot_context", "_snapshot_scope",
             "_snapshot_observations", "_context_rows", "_state", "_value", "_ids", "_version", "records")),
         store=source(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
         dto=source(relation_dto.__file__, ("build_pair_relation_dto", "_validate_relation", "_required_text",
-            "_finite_optional_number", "_utc_timestamp", "_json_ready", "pair_analysis_id", "pair_contract_reason")),
+            "_finite_optional_number", "_utc_timestamp", "_json_ready", "pair_analysis_id", "pair_contract_reason",
+            "_validate_pair_window", "pair_qualification")),
         snapshot=indicator_materializer._object_source_component(datasets.Snapshot),
         snapshot_reader=hashlib.sha256(Path(datasets.__file__).read_bytes()).hexdigest(),
         eligibility=hashlib.sha256(Path(data_eligibility.__file__).read_bytes()).hexdigest(),
@@ -619,15 +622,10 @@ def _pair_sample_hash(frame, guard):
     return digest.hexdigest()
 
 
-def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
+def _pair_request(*, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
                       minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
-                      tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
-                      cancel_check=None):
-    """Associação referencial entre duas versões congeladas, sem persistência ou ordem."""
-    import time
-    from datetime import datetime, timezone
-    from mt5_extracao import timeframes
-    from mt5_extracao.analytics import data_eligibility, datasets, feature_store, indicator_materializer, producers, query_service, relation_dto
+                      tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048):
+    from mt5_extracao.analytics import datasets, producers
     pairs = [datasets._feature_selection([pair])[0] for pair in (left, right)]
     cutoff = _utc_timestamp(as_of, "as_of")
     if cutoff > pd.Timestamp.now(tz="UTC"):
@@ -651,11 +649,23 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
     method = str(method).lower()
     if method not in ("pearson", "spearman"):
         raise ValueError("Use pearson ou spearman para pares numéricos.")
+    return pairs, cutoff, method
+
+
+def _pair_guard(timeout_seconds, max_memory_mb, cancel_check):
+    import time
+    from mt5_extracao.analytics import indicator_materializer, producers
     run = dict(started_monotonic=time.monotonic())
     def guard():
         if cancel_check is not None and cancel_check():
             raise indicator_materializer.Cancelled("Consulta de relações cancelada; nenhum resultado parcial publicado.")
         producers._check_limits(run, timeout_seconds, max_memory_mb)
+    return guard
+
+
+def _prepare_frozen_pair(db, manifest_id, pairs, cutoff, lag_bars, guard):
+    from mt5_extracao import timeframes
+    from mt5_extracao.analytics import datasets, query_service
     guard();snapshot = datasets.load(db, manifest_id);guard()
     manifest = snapshot.manifest
     definitions = {(item["feature_id"], item["algorithm_version"]): item for item in snapshot.feature_definitions}
@@ -682,6 +692,79 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
     for prefix, context in (("x", x), ("y", y)):
         for field in ("observation_time", "revision", "source_revision", "state", "reason"):
             sample[prefix+"_"+field] = context[field]
+    return dict(snapshot=snapshot, manifest=manifest, descriptors=descriptors, bars=bars,
+        times=times, reference=reference, present=present, x=x, y=y, sessions=sessions,
+        previous_sessions=previous_sessions, calendar_proof=calendar_proof, sample=sample)
+
+
+def _pair_bounds(decision_start, decision_end, cutoff):
+    if decision_start is None and decision_end is None:return None, None
+    if decision_start is None or decision_end is None:
+        raise ValueError("Informe decision_start e decision_end juntos, com fuso explícito.")
+    first, last = (_utc_timestamp(v, key) for v, key in
+        ((decision_start, "decision_start"), (decision_end, "decision_end")))
+    if any(v.nanosecond for v in (first,last,cutoff)):
+        raise ValueError("Janela e corte precisam de precisão de microssegundos; não há arredondamento implícito.")
+    if first > last or last > cutoff:
+        raise ValueError("Janela precisa começar antes do fim e terminar até as_of.")
+    return first, last
+
+
+def _select_pair_window(inputs, first, last):
+    positions = np.arange(len(inputs["times"])) if first is None else np.flatnonzero(
+        inputs["times"].between(first, last, inclusive="both").to_numpy())
+    selected = dict(inputs)
+    for key in ("times", "reference", "present", "x", "y", "sessions", "previous_sessions", "sample"):
+        selected[key] = inputs[key].iloc[positions].reset_index(drop=True).copy()
+    selected["bars"] = inputs["bars"].iloc[positions]
+    if first is not None:
+        used = set(selected["sessions"].dropna()) | set(selected["previous_sessions"].dropna())
+        selected["calendar_proof"] = [r for r in inputs["calendar_proof"] if r["session_id"] in used]
+    return selected
+
+
+def _pair_scope(manifest, lag_bars, settings, first, last):
+    scope = dict(symbol=manifest["symbol"], timeframe=manifest["timeframe"], lag_bars=lag_bars,
+        lag_rule="left at right_close minus nominal lag; missing reference bars and cross-session pairs excluded",
+        settings=settings)
+    if first is not None:
+        scope["decision_window"] = dict(start_inclusive_utc=settings["decision_start"],
+            end_inclusive_utc=settings["decision_end"], reference_rule="both_closes_inside_window")
+    return scope
+
+
+def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
+                      minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                      tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                      cancel_check=None, decision_start=None, decision_end=None):
+    """Associação referencial congelada, opcionalmente com ambos os closes na janela."""
+    return _query_frozen_pair(db, manifest_id, left=left, right=right, as_of=as_of, lag_bars=lag_bars, method=method, minimum_pairs=minimum_pairs,
+        minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates, seed=seed,
+        block_length_sessions=block_length_sessions, tests_counted=tests_counted, synthetic_fixture=synthetic_fixture,
+        timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb, cancel_check=cancel_check,
+        decision_start=decision_start, decision_end=decision_end)
+
+
+def _query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
+                      minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                      tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                      cancel_check=None, decision_start=None, decision_end=None,
+                      _inputs=None, _guard=None, _implementation=None):
+    from datetime import datetime, timezone
+    from mt5_extracao import timeframes
+    from mt5_extracao.analytics import data_eligibility, query_service, relation_dto
+    pairs, cutoff, method = _pair_request(left=left, right=right, as_of=as_of, lag_bars=lag_bars, method=method, minimum_pairs=minimum_pairs,
+        minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates, seed=seed,
+        block_length_sessions=block_length_sessions, tests_counted=tests_counted, synthetic_fixture=synthetic_fixture,
+        timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+    first, last = _pair_bounds(decision_start, decision_end, cutoff)
+    guard = _guard if _guard is not None else _pair_guard(timeout_seconds, max_memory_mb, cancel_check)
+    guard()
+    inputs = _inputs if _inputs is not None else _prepare_frozen_pair(db, manifest_id, pairs, cutoff, lag_bars, guard)
+    selected = _select_pair_window(inputs, first, last)
+    snapshot, manifest, descriptors = (selected[k] for k in ("snapshot", "manifest", "descriptors"))
+    bars, times, reference, present, x, y, sessions, previous_sessions, calendar_proof, sample = (
+        selected[k] for k in ("bars", "times", "reference", "present", "x", "y", "sessions", "previous_sessions", "calendar_proof", "sample"))
     eligible = pd.Series(True, index=sample.index)
     exclusions = {}
     sample["exclusion"] = None
@@ -692,7 +775,8 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
     check = data_eligibility.evaluate(snapshot.quality, ("ohlcv",))
     prefix_quality = data_eligibility.evaluate(data_eligibility.assess(bars, bar_minutes=timeframes.parse(manifest["timeframe"]).minutes or 1440), ("ohlcv",))
     blocked = None
-    if not check["eligible"] or not prefix_quality["eligible"]:blocked = "INELIGIBLE_DATA"
+    if first is not None and sample.empty:blocked = "NO_DECISIONS_IN_WINDOW"
+    elif not check["eligible"] or not prefix_quality["eligible"]:blocked = "INELIGIBLE_DATA"
     elif (contract_reason := relation_dto.pair_contract_reason(descriptors)) is not None:blocked = contract_reason
     elif pairs[0] == pairs[1] and lag_bars == 0:blocked = "SAME_SERIES"
     lineage = {snapshot.manifest_id}
@@ -708,6 +792,7 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
                 break
     if blocked is not None:reject(blocked, pd.Series(True,index=sample.index))
     reject("NO_REFERENCE_BAR", ~present)
+    if first is not None:reject("REFERENCE_OUTSIDE_WINDOW", ~reference.between(first, last, inclusive="both"))
     reject("SESSION_UNAVAILABLE_AS_OF", sessions.isna() | previous_sessions.isna())
     reject("CROSS_SESSION_LAG", sessions.ne(previous_sessions))
     reject("LEFT_UNAVAILABLE", x.state.ne("AVAILABLE") | x.value.isna())
@@ -725,10 +810,12 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
                          ["MINIMUM_DISTINCT_SOURCE_PAIRS_NOT_MET"])
     if tests_counted is not None:result = adjust_bonferroni([result],tests_counted=tests_counted)[0]
     sample_hash = _pair_sample_hash(sample, guard)
-    implementation = _pair_signature();guard()
+    implementation = _implementation or _pair_signature();guard()
     settings = dict(left=list(pairs[0]), right=list(pairs[1]), as_of=cutoff.isoformat(), lag_bars=lag_bars, method=method,
         minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates,
         seed=seed, block_length_sessions=block_length_sessions, tests_counted=tests_counted, synthetic_fixture=synthetic_fixture)
+    if first is not None:
+        settings.update(decision_start=first.strftime("%Y-%m-%dT%H:%M:%S.%fZ"), decision_end=last.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
     analysis_id = relation_dto.pair_analysis_id(manifest_id, settings, sample_hash, implementation, lineage)
     population = dict(n_total=len(sample), n_eligible=int(eligible.sum()), n_distinct_source_pairs=distinct, exclusions=exclusions,
         n_left_sources=int(sample.loc[eligible,["x_"+f for f in ("observation_time","revision","source_revision")]].drop_duplicates().shape[0]),
@@ -739,9 +826,7 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
         evidence_state="EXPLORATORY" if result["status"]=="OK" else "INSUFFICIENT", utility_state="INCONCLUSIVE",
         freshness_state="FROZEN_AS_OF",state=result["status"],reason="; ".join(result["reason_codes"]) or None)
     return relation_dto.build_pair_relation_dto(left=descriptors[0],right=descriptors[1],relation=relation,
-        scope=dict(symbol=manifest["symbol"],timeframe=manifest["timeframe"],lag_bars=lag_bars,
-            lag_rule="left at right_close minus nominal lag; missing reference bars and cross-session pairs excluded",
-            settings=settings),population=population,
+        scope=_pair_scope(manifest, lag_bars, settings, first, last),population=population,
         provenance=dict(base_namespace=manifest["source"]["namespace"],source=manifest["source"],snapshot_manifest_id=manifest_id,
             lineage_manifests=sorted(lineage),lineage_diagnostics=lineage_diagnostics,
             calendar=calendar_proof,as_of_utc=cutoff.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
@@ -756,10 +841,107 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
 
 
 
+def _rolling_signature(pair_implementation):
+    from mt5_extracao.analytics import feature_store, indicator_materializer
+    code = indicator_materializer._source_components(__file__, ("_rolling_signature", "query_frozen_pair_windows"))
+    return hashlib.sha256(feature_store._canonical_json(dict(scheme="frozen_pair_windows_v1",
+        code=code, pair_implementation=pair_implementation), "rolling implementation").encode()).hexdigest()
+
+
+def query_frozen_pair_windows(db, manifest_id, *, left, right, as_of, window_bars=100, stride_bars=20,
+                             max_windows=64, lag_bars=0, method="pearson", minimum_pairs=30,
+                             minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                             tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                             cancel_check=None, decision_start=None, decision_end=None):
+    """Janelas de fechamentos observados, com preparação/corte/orçamento compartilhados."""
+    from datetime import datetime, timezone
+    from mt5_extracao.analytics import feature_store, query_service, relation_dto
+    for value, name in ((window_bars, "window_bars"), (stride_bars, "stride_bars"), (max_windows, "max_windows")):
+        _positive_int(value, name)
+    if window_bars < 3 or max_windows > 64:
+        raise ValueError("Use window_bars pelo menos3 e max_windows até64.")
+    options = dict(left=left, right=right, as_of=as_of, lag_bars=lag_bars, method=method, minimum_pairs=minimum_pairs,
+        minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates, seed=seed,
+        block_length_sessions=block_length_sessions, tests_counted=tests_counted, synthetic_fixture=synthetic_fixture,
+        timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+    pairs, cutoff, method = _pair_request(**options)
+    if cutoff.nanosecond:
+        raise ValueError("Corte de janelas precisa de precisão de microssegundos; não há arredondamento implícito.")
+    first, last = _pair_bounds(decision_start, decision_end, cutoff)
+    guard = _pair_guard(timeout_seconds, max_memory_mb, cancel_check)
+    guard();inputs = _prepare_frozen_pair(db, manifest_id, pairs, cutoff, lag_bars, guard);guard()
+    times = inputs["times"]
+    if first is not None:times = times.loc[times.between(first, last, inclusive="both")]
+    times = times.reset_index(drop=True)
+    starts = list(range(0, len(times)-window_bars+1, stride_bars))
+    if len(starts) > max_windows:
+        raise ValueError("Seleção excede max_windows; aumente o avanço ou reduza o recorte. Nenhuma janela foi truncada.")
+    if len(starts)*window_bars > query_service.MAX_SELECTION_ROWS//2:
+        raise ValueError("Janelas excedem o orçamento compartilhado de pares; aumente o avanço ou reduza o recorte.")
+    if tests_counted is not None and tests_counted < len(starts):
+        raise ValueError("tests_counted não pode ser menor que o total de janelas solicitadas, inclusive insuficientes.")
+    family = len(starts) if tests_counted is None else tests_counted
+    options["tests_counted"] = family
+    pair_implementation = _pair_signature();implementation = _rolling_signature(pair_implementation)
+    windows, lineage, covered = [], {manifest_id}, np.zeros(len(times), dtype=bool)
+    output_bytes = 0
+    for index, start in enumerate(starts):
+        guard()
+        begin, end = times.iloc[start], times.iloc[start+window_bars-1]
+        result = _query_frozen_pair(db, manifest_id, **options, decision_start=begin, decision_end=end,
+            _inputs=inputs, _guard=guard, _implementation=pair_implementation)
+        output_bytes += len(relation_dto.dumps(result).encode("utf-8"))
+        if output_bytes > 16*1024*1024:
+            raise ValueError("Relatório de janelas excede16MiB; reduza o recorte ou a quantidade de janelas.")
+        lineage.update(result["provenance"]["lineage_manifests"])
+        windows.append(dict(index=index, decision_start_utc=begin.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            decision_end_utc=end.strftime("%Y-%m-%dT%H:%M:%S.%fZ"), analysis_id=result["provenance"]["analysis_id"], result=result))
+        covered[start:start+window_bars] = True
+    selection = dict(options, left=list(pairs[0]), right=list(pairs[1]), as_of=cutoff.isoformat(), method=method,
+        tests_counted=tests_counted,
+        window_bars=window_bars, stride_bars=stride_bars,
+        decision_start=first.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if first is not None else None,
+        decision_end=last.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if last is not None else None)
+    # Orçamentos não mudam a identidade estatística de uma campanha concluída.
+    selection.pop("timeout_seconds");selection.pop("max_memory_mb")
+    material = dict(selection=selection, implementation_sha256=implementation,
+                    snapshot_manifest_id=manifest_id, windows=[w["analysis_id"] for w in windows])
+    ident = hashlib.sha256(feature_store._canonical_json(material, "rolling identity").encode()).hexdigest()
+    guard()
+    report = dict(rolling_schema_version=1, kind="FEATURE_PAIR_WINDOWS", status="ok" if windows else "insufficient",
+        generated_at_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        synthetic_fixture=synthetic_fixture, left=inputs["descriptors"][0], right=inputs["descriptors"][1],
+        selection=selection, windows=windows,
+        population=dict(closed_decisions=len(times), windows=len(windows), pair_evaluations=len(starts)*window_bars,
+            warmup_decisions=min(window_bars-1,len(times)), decisions_not_in_any_window=int((~covered).sum()),
+            uncovered_tail_decisions=len(times)-(starts[-1]+window_bars) if starts else len(times),
+            overlapping_windows=bool(len(starts)>1 and stride_bars<window_bars)),
+        correction=dict(method="bonferroni", tests_counted=family, scope="requested_windows_or_explicit_larger_family",
+            other_research_trials_accounted=False),
+        provenance=dict(analysis_id=ident, base_namespace=inputs["manifest"]["source"]["namespace"],
+            source=inputs["manifest"]["source"], symbol=inputs["manifest"]["symbol"], timeframe=inputs["manifest"]["timeframe"],
+            snapshot_manifest_id=manifest_id, lineage_manifests=sorted(lineage), implementation_sha256=implementation,
+            as_of_utc=cutoff.strftime("%Y-%m-%dT%H:%M:%S.%fZ")),
+        limits=dict(max_windows=max_windows,max_pair_evaluations=query_service.MAX_SELECTION_ROWS//2,
+            timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb,max_output_bytes=16*1024*1024),
+        qualification=relation_dto.pair_qualification(),
+        reasons=[] if windows else ["NOT_ENOUGH_CLOSED_DECISIONS_FOR_WINDOW"],
+        limitations=["Janelas de barras observadas; intervalos reais e lacunas permanecem explícitos.",
+            "Ambos os fechamentos do par estão na janela; aquecimento e valores retidos seguem o contrato congelado.",
+            "Corte fixo retrospectivo; não certifica uma campanha walk-forward ou informação disponível no fim de cada janela.",
+            "Janelas sobrepostas e autocorrelação não são observações independentes; Bonferroni não registra tentativas externas.",
+            "A captura inteira precisa ser elegível; recaptura muda a origem/identidade, sem invalidar somente trechos automaticamente.",
+            "Sem persistência automática da campanha ou cruzamento de fontes/bases."])
+    if len(feature_store._canonical_json(report, "rolling report").encode()) > 16*1024*1024:
+        raise ValueError("Relatório de janelas excede16MiB; reduza o recorte ou a quantidade de janelas.")
+    guard()
+    return report
+
+
 def persist_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
                         minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
                         tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
-                        cancel_check=None, write_guard=None):
+                        cancel_check=None, write_guard=None, decision_start=None, decision_end=None):
     """Calcula pelo serviço canônico e publica um único artefato imutável."""
     import time
     from mt5_extracao.analytics import feature_store, indicator_materializer, producers
@@ -777,5 +959,5 @@ def persist_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, meth
         method=method, minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions,
         bootstrap_replicates=bootstrap_replicates, seed=seed, block_length_sessions=block_length_sessions,
         tests_counted=tests_counted, synthetic_fixture=synthetic_fixture, timeout_seconds=timeout_seconds,
-        max_memory_mb=max_memory_mb, cancel_check=cancel_check)
+        max_memory_mb=max_memory_mb, cancel_check=cancel_check, decision_start=decision_start, decision_end=decision_end)
     return feature_store.save_pair_relation(db, dto, transaction_guard=guard)

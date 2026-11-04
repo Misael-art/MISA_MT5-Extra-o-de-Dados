@@ -534,3 +534,17 @@ a reinstalar o SO nem a rodar o instalador num Windows físico.
 
 Compilação, pacotes instalados ou clone restaurado não qualificam perfis bloqueados,
 operação REAL, fonte histórica ou as pendências funcionais do Laboratório.
+
+
+## BD16-WINDOWS — janelas referenciais (2026-10-29)
+
+O recorte foi exercitado pelo launcher Linux em QA sintética isolada. Não altera
+instaladores, pins ou dependências. [Contrato](sdk/api.md#janelas-móveis-de-pares-congelados-bd16-windows).
+
+- [ ] Windows físico: abrir Janelas móveis por uma relação salva, conferir gráfico,
+  tabela, teclado e rolagem em janela menor e nas escalas de DPI utilizadas.
+- [ ] Windows físico: aguardar/cancelar cálculo, alterar parâmetros, salvar a seleção
+  e exportar/importar DTO3 em caminho com espaços/acentos; preservar DTO1/2.
+
+CI Windows e simulações não substituem esse percurso no host físico; não há
+qualificação financeira ou integração MT5 implícita no teste da interface.

@@ -440,6 +440,7 @@ class RelationsPanel:
         self.write_guard, self.open_series = write_guard, open_series
         self.write_guard_factory = write_guard_factory
         self._creator = None
+        self._windows = None
         # Sem run_bg (testes/SDK), a leitura somente agregada roda na própria thread.
         self._run_bg = run_bg or (lambda work, done: done(*self._call(work)))
         self._inventory_request = 0
@@ -848,6 +849,8 @@ class RelationsPanel:
         self.saved_import.pack(side=tk.LEFT)
         self.saved_export = ttk.Button(transfers, text="Exportar selecionado…", command=self.export_saved_relation)
         self.saved_export.pack(side=tk.LEFT, padx=SPACING["xs"])
+        self.saved_windows = ttk.Button(transfers, text="Janelas móveis…", command=self.open_relation_windows)
+        self.saved_windows.pack(side=tk.LEFT, padx=SPACING["xs"])
         self.saved_cancel = ttk.Button(transfers, text="Cancelar transferência", command=self.cancel_saved_transfer)
         self.saved_cancel.pack(side=tk.LEFT)
         self.saved_table = TablePanel(parent, "Resultados armazenados · origem conferida ao selecionar",
@@ -977,8 +980,11 @@ class RelationsPanel:
         def label(side):
             item=dto[side]
             return f"{item['definition'].get('name') or item['feature_id']} · versão {item['algorithm_version']} [{item['unit'] or 'unidade não declarada'}]"
-        self.saved_scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {label('left')} × {label('right')}\n"
-            f"Corte UTC {provenance['as_of_utc']} · esquerda antecede a direita em {scope['lag_bars']} períodos nominais.")
+        window = scope.get("decision_window")
+        interval = (f"Janela UTC {window['start_inclusive_utc']} → {window['end_inclusive_utc']} · "
+                    f"defasagem {scope['lag_bars']} nominal." if window else
+                    f"Corte UTC {provenance['as_of_utc']} · esquerda antecede a direita em {scope['lag_bars']} períodos nominais.")
+        self.saved_scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {label('left')} × {label('right')}\n"+interval)
         self.saved_sample.configure(text=f"Pares: {relation['n_pairs']} · fontes distintas: {population['n_distinct_source_pairs']} · "
             f"sessões: {relation['n_sessions']} · excluídos: {sum(population['exclusions'].values())} de {population['n_total']}.")
         self.saved_qualification.configure(text=("Referência sintética · " if dto['synthetic_fixture'] else "")+
@@ -987,16 +993,19 @@ class RelationsPanel:
         def number(value):return "não estimado" if value is None else format(value, ".6g").replace(".", ",")
         lines=[f"ID: {ident}",f"Snapshot: {provenance['snapshot_manifest_id']}",f"Esquerda: {dto['left']['feature_id']}",
             f"Direita: {dto['right']['feature_id']}",f"Motivo: {relation['reason'] or 'amostra numérica disponível'}",
+            f"Corte UTC: {provenance['as_of_utc']}",
             "Exclusões: "+json.dumps(population['exclusions'],ensure_ascii=False),
             f"Intervalo do efeito: {number(relation['effect_ci_low'])} a {number(relation['effect_ci_high'])}",
             f"p bruto: {number(relation['p_raw'])}; p ajustado: {number(relation['p_adjusted'])}",
             "Origens conferidas: "+", ".join(provenance['lineage_manifests']),
             "Gerado em UTC: "+dto['generated_at_utc'],
             "Contagem de fontes não é amostra independente certificada; resultado original, sem recalcular."]
+        if window:lines.append("Janela: "+json.dumps(window,ensure_ascii=False))
         self._write_saved_detail("\n".join(lines))
 
     def open_relation_creator(self):
         if self._transfer_pending:return
+        if self._windows is not None and self._windows.alive():self._windows.window.lift();return
         from mt5_extracao.ui.relation_creator import RelationCreator
         if self._creator is not None and self._creator.alive():
             self._creator.window.lift()
@@ -1041,6 +1050,7 @@ class RelationsPanel:
         unavailable = pending or self._saved_loading or self._saved_reading or self.db is None
         self.saved_import.state(["disabled"] if unavailable else ["!disabled"])
         self.saved_export.state(["disabled"] if unavailable or self._saved_dto is None else ["!disabled"])
+        self.saved_windows.state(["disabled"] if unavailable or self._saved_dto is None else ["!disabled"])
         self.saved_cancel.state(["!disabled"] if pending and not self._transfer_cancel.is_set() else ["disabled"])
         self.saved_new.state(["disabled"] if pending else ["!disabled"])
         self.saved_refresh.state(["disabled"] if pending or self._saved_loading else ["!disabled"])
@@ -1055,7 +1065,25 @@ class RelationsPanel:
         if self._creator is not None and self._creator.alive():
             self._creator.window.lift()
             return False
+        if self._windows is not None and self._windows.alive():self._windows.window.lift();return False
         return self.db is not None
+
+    def open_relation_windows(self):
+        if self._transfer_pending or self._saved_loading or self._saved_reading or self._saved_dto is None:return
+        if self._creator is not None and self._creator.alive():self._creator.window.lift();return
+        if self._windows is not None and self._windows.alive():self._windows.window.lift();return
+        from mt5_extracao.ui.relation_windows import RelationWindows
+        db,request,original=self.db,self._saved_request,self._saved_dto
+        def guard_factory():
+            if self.db is not db:raise ValueError("Base alterada; feche e reabra o relatório antes de salvar a janela.")
+            return self.write_guard_factory() if self.write_guard_factory is not None else self.write_guard
+        def saved(receipt):
+            if self.db is db and self._saved_request==request:self._relation_created(receipt)
+            else:
+                if self.db is not db and self._saved_dto is original:self._saved_filters_changed()
+                self.saved_status.configure(text="Janela salva no contexto original; consulte-o para selecionar o resultado.")
+        self._windows=RelationWindows(self.frame,self.theme,db=db,relation=self._saved_dto,run_bg=self._run_bg,
+            write_guard_factory=guard_factory,on_saved=saved)
 
     def import_saved_relation(self, path=None):
         if not self._can_transfer():return
