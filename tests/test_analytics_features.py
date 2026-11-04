@@ -343,3 +343,25 @@ def test_scoped_definitions_keep_topological_order_without_changing_default_sele
     features.recalculate_affected(db, ["bars_derived:M15"], handlers, definition_filter=selected)
     assert calls == ["z_parent", "a_child"]
     assert features.affected_by(db, ["unrelated"], definition_filter=selected) == []
+
+
+@pytest.mark.parametrize("rival_name,outcome", [("Nome QA", False), ("Outro autor", ValueError)])
+def test_concurrent_author_between_read_and_insert_is_compared_not_crashed(db, rival_name, outcome):
+    definition = dict(feature_id="qa.race", name="Nome QA", algorithm_version="1",
+                      parameters={"period": 3}, dependencies=["bars:M5"])
+    rival = DatabaseManager(db_path=db.db_path)
+    raced = []
+
+    def rival_writes_first(conn, cursor, statement, *args):
+        if not raced and statement.startswith("INSERT INTO _feature_definitions"):
+            raced.append(True)
+            assert feature_store.register_definition(rival, **{**definition, "name": rival_name})
+
+    event.listen(db.engine, "before_cursor_execute", rival_writes_first)
+    if outcome is ValueError:
+        with pytest.raises(ValueError, match="nova versão"):
+            feature_store.register_definition(db, **definition)
+    else:
+        assert feature_store.register_definition(db, **definition) is outcome
+    assert raced and [d["name"] for d in feature_store.list_definitions(db)] == [rival_name]
+    rival.close()

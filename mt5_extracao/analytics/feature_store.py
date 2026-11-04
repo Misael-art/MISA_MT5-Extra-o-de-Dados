@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 from sqlalchemy import bindparam, inspect, text
+from sqlalchemy.exc import IntegrityError
 
 DEFINITIONS_TABLE = "_feature_definitions"
 VALUES_TABLE = "_feature_values"
@@ -179,42 +180,51 @@ def register_definition(db, feature_id, name, algorithm_version, parameters, dep
         raise ValueError("value_type precisa ser NUMBER, CATEGORY ou BOOLEAN.")
     registered_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
     ensure_schema(db)
-    with db.engine.begin() as conn:
-        if conn.dialect.name == "postgresql":
-            # Uma chave ausente ainda não pode receber FOR UPDATE. Serializa
-            # cadastro/leitura da mesma definição até o commit do primeiro autor.
-            identity = json.dumps(["feature_definition", feature_id, algorithm_version], ensure_ascii=False)
-            lock_key = int.from_bytes(hashlib.sha256(identity.encode()).digest()[:8], "big", signed=True)
-            conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
-        existing = conn.execute(text(
-            f"SELECT name, parameters_json, dependencies_json, family, formula, unit, warmup_count, warmup_unit, source_id, "
-            f"timeframe, availability_rule, value_type, definition_schema_version FROM {DEFINITIONS_TABLE} "
-            "WHERE feature_id = :feature_id AND algorithm_version = :version"),
-            {"feature_id": feature_id, "version": algorithm_version}).mappings().first()
-        if existing:
-            existing_metadata = {key: existing[key] for key in metadata}
-            same = (existing["parameters_json"], existing["dependencies_json"], existing_metadata) == (
-                parameters_json, dependencies_json, metadata)
-            if same:
-                if existing["name"] == name:
-                    return False
-                if _legacy_name(existing):
-                    log.warning("Definição %s@%s mantém nome legado não verificável; repetição dos demais campos "
-                                "aceita sem renomear ou modificar valores.", feature_id, algorithm_version)
-                    return False
-            raise ValueError("A definição já existe com este algoritmo; use uma nova versão do algoritmo.")
-        conn.execute(text(
-            f"INSERT INTO {DEFINITIONS_TABLE} "
-            "(feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, family, "
-            "formula, unit, warmup_count, warmup_unit, source_id, timeframe, availability_rule, value_type, "
-            "definition_schema_version) "
-            "VALUES (:feature_id, :version, :name, :parameters, :dependencies, :registered_at, :family, :formula, "
-            ":unit, :warmup_count, :warmup_unit, :source_id, :timeframe, :availability_rule, :value_type, "
-            ":definition_schema_version)"),
-            {"feature_id": feature_id, "version": algorithm_version, "name": name,
-             "parameters": parameters_json, "dependencies": dependencies_json, "registered_at": registered_at,
-             "definition_schema_version": DEFINITION_SCHEMA_VERSION, **metadata})
-    return True
+    # No SQLite a leitura e o INSERT não ficam serializados: um autor concorrente
+    # pode gravar a mesma chave entre eles. A nova leitura compara a definição
+    # vencedora e só aceita a repetição idêntica.
+    for attempt in (0, 1):
+        try:
+            with db.engine.begin() as conn:
+                if conn.dialect.name == "postgresql":
+                    # Uma chave ausente ainda não pode receber FOR UPDATE. Serializa
+                    # cadastro/leitura da mesma definição até o commit do primeiro autor.
+                    identity = json.dumps(["feature_definition", feature_id, algorithm_version], ensure_ascii=False)
+                    lock_key = int.from_bytes(hashlib.sha256(identity.encode()).digest()[:8], "big", signed=True)
+                    conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+                existing = conn.execute(text(
+                    f"SELECT name, parameters_json, dependencies_json, family, formula, unit, warmup_count, warmup_unit, source_id, "
+                    f"timeframe, availability_rule, value_type, definition_schema_version FROM {DEFINITIONS_TABLE} "
+                    "WHERE feature_id = :feature_id AND algorithm_version = :version"),
+                    {"feature_id": feature_id, "version": algorithm_version}).mappings().first()
+                if existing:
+                    existing_metadata = {key: existing[key] for key in metadata}
+                    same = (existing["parameters_json"], existing["dependencies_json"], existing_metadata) == (
+                        parameters_json, dependencies_json, metadata)
+                    if same:
+                        if existing["name"] == name:
+                            return False
+                        if _legacy_name(existing):
+                            log.warning("Definição %s@%s mantém nome legado não verificável; repetição dos demais campos "
+                                        "aceita sem renomear ou modificar valores.", feature_id, algorithm_version)
+                            return False
+                    raise ValueError("A definição já existe com este algoritmo; use uma nova versão do algoritmo.")
+                conn.execute(text(
+                    f"INSERT INTO {DEFINITIONS_TABLE} "
+                    "(feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, family, "
+                    "formula, unit, warmup_count, warmup_unit, source_id, timeframe, availability_rule, value_type, "
+                    "definition_schema_version) "
+                    "VALUES (:feature_id, :version, :name, :parameters, :dependencies, :registered_at, :family, :formula, "
+                    ":unit, :warmup_count, :warmup_unit, :source_id, :timeframe, :availability_rule, :value_type, "
+                    ":definition_schema_version)"),
+                    {"feature_id": feature_id, "version": algorithm_version, "name": name,
+                     "parameters": parameters_json, "dependencies": dependencies_json, "registered_at": registered_at,
+                     "definition_schema_version": DEFINITION_SCHEMA_VERSION, **metadata})
+        except IntegrityError:
+            if attempt:
+                raise
+            continue
+        return True
 
 
 def list_definitions(db, *, connection=None):
