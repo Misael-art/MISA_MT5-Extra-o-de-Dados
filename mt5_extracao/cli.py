@@ -1782,6 +1782,12 @@ def build_parser():
 
     q=features_sub.add_parser("macro-sources",help="fontes econômicas, atribuição e convenções; sem rede")
     q.set_defaults(func=cmd_analytics)
+    q=features_sub.add_parser('super-atr-capabilities',help='inspeção passiva da fonte matemática fixada e compilador existente')
+    q.add_argument('--framework',required=True);q.add_argument('--composition-manifest');q.set_defaults(func=cmd_analytics)
+    q=features_sub.add_parser('super-atr-materialize',help='executa o header Super ATR fixado sobre snapshot e grava no store atual')
+    q.add_argument('--manifest',required=True);q.add_argument('--framework',required=True);q.add_argument('--composition-manifest')
+    q.add_argument('--period',type=int,default=20);q.add_argument('--mean',type=int,choices=[0,1],default=0);q.add_argument('--deviation',type=float,default=1.)
+    q.add_argument('--as-of');q.add_argument('--timeout-seconds',type=float,default=120);q.add_argument('--max-memory-mb',type=float,default=1024);q.set_defaults(func=cmd_analytics)
     q=features_sub.add_parser("macro-collect",help="coleta econômica explícita, disponibilidade no recebimento local")
     q.add_argument("--source",required=True,help="id de macro-sources, por exemplo bcb.sgs.11 ou fred.usrec")
     q.add_argument("--start",required=True,help="data YYYY-MM-DD inclusiva")
@@ -2180,6 +2186,19 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action in ('super-atr-capabilities','super-atr-materialize'):
+        from mt5_extracao import sdk
+        if args.features_action=='super-atr-capabilities':
+            result=sdk.super_atr_capabilities(args.framework,args.composition_manifest);_data(capabilities=result)
+            _print('Header fixado conferido; adaptador C++ disponível.' if result['available'] else 'Compilador C++ ausente; consulta de fatos gravados continua disponível.')
+        else:
+            from mt5_extracao.resources import guard
+            result=sdk.materialize_super_atr_snapshot(ctx.db,args.manifest,framework_root=args.framework,manifest_path=args.composition_manifest,
+                period=args.period,mean=args.mean,deviation=args.deviation,as_of=args.as_of,timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb,
+                write_guard=guard.make(ctx.db,ctx.config))
+            _data(materialization=result);_print(f"Super ATR: {result['bars']} barras; disponibilidade local {result['available_from']}. Reconstrução histórica não prova recebimento ou operação MT5.")
+        return 0
 
     if args.features_action in ("macro-sources","macro-collect"):
         from mt5_extracao import sdk

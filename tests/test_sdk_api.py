@@ -9,6 +9,8 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "super_atr_capabilities": ["framework_root","manifest_path"],
+    "materialize_super_atr_snapshot": ["db","manifest_id","framework_root","kwargs"],
     "link_laboratory_execution": ["db","report","run_id","kwargs"],
     "describe_mention_series": ["db", "symbol", "timeframe", "subject", "source", "query", "classifier", "universe"],
     "mention_source_capabilities": [],

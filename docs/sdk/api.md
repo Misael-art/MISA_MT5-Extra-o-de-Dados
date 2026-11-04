@@ -31,6 +31,15 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 ## Consulta de dados analíticos (BD18a)
 
+SA-02 acrescenta `sdk.super_atr_capabilities(framework_root, manifest_path=None)`
+para inspecionar a composição fixada e
+`sdk.materialize_super_atr_snapshot(db, manifest_id, *, framework_root, **kwargs)`
+para gravar linha/ATR/lado/virada no store existente. Os argumentos opcionais são
+`manifest_path`, `period=20`, `mean=0`, `deviation=1.0`, `as_of=None`,
+`write_guard=None`, `cancel_check=None`, `timeout_seconds=120`, `max_memory_mb=1024`.
+Exige snapshot OHLCV com fuso declarado, primeira barra como semente e compilador
+C++ existente. [Contrato, disponibilidade e uso](super_atr.md#persistência-sa-02).
+
 Leitura sem UI e sem MT5 dos fatos já materializados no store; não calcula nem altera fatos ou
 definições. A identidade pública pode inicializar o namespace da base (`datasets.identity`, R04).
 
