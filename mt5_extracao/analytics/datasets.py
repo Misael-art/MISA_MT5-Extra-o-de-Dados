@@ -124,15 +124,20 @@ def _slots(conn):
     return {row.slot: row.origin_id for row in conn.execute(text("SELECT slot, origin_id FROM _dataset_origin"))}
 
 
-def identity(db):
+def identity(db, *, connection=None):
     """Identidade lógica da base: vive no conteúdo do banco/schema, nunca no nome do arquivo.
 
     Backup/restauração e movimentação conservam o namespace; derivação independente usa ``fork``.
     ``provider``/``server`` são a fonte declarada da base (``None`` = não declarada, sem feed inventado).
     """
-    namespace = _schema(db)
-    with db.engine.connect() as conn:
-        slots = _slots(conn)
+    if connection is None:
+        namespace = _schema(db)
+        with db.engine.connect() as conn:
+            slots = _slots(conn)
+    else:
+        # Leitura de uma imagem já inicializada pelo chamador; nunca DDL neste caminho.
+        slots = _slots(connection)
+        namespace = slots["default"]
     return {"namespace": namespace, "parent_namespace": slots.get("parent"),
             "lineage": "fork" if slots.get("parent") else "original",
             "provider": slots.get("provider"), "server": slots.get("server"),

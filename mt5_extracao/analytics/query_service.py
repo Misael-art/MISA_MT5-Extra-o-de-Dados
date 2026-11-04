@@ -12,6 +12,7 @@ import json
 import math
 
 import pandas as pd
+from sqlalchemy import inspect
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.analytics import datasets, feature_store, indicator_contracts
@@ -67,14 +68,14 @@ def _selection_hash(selection):
 
 
 def _encode_cursor(selection_hash, key, generation):
-    return base64.urlsafe_b64encode(json.dumps({"v": 2, "s": selection_hash, "k": key,
+    return base64.urlsafe_b64encode(json.dumps({"v": 3, "s": selection_hash, "k": key,
                                               "g": generation}).encode()).decode()
 
 
 def _decode_cursor(cursor, selection_hash):
     try:
         payload = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-        if (not isinstance(payload, dict) or payload.get("v") != 2 or
+        if (not isinstance(payload, dict) or payload.get("v") != 3 or
                 not isinstance(payload.get("s"), str) or not isinstance(payload.get("g"), str) or
                 len(payload["g"]) != 64 or not isinstance(payload.get("k"), list) or len(payload["k"]) != 3 or
                 not all(isinstance(v, str) and v for v in payload["k"])):
@@ -154,11 +155,11 @@ def catalog(db=None):
     return envelope
 
 
-def _definitions_for_selection(frame, feature_ids, algorithm_version, entries):
+def _definitions_for_selection(versions_by_feature, feature_ids, algorithm_version, entries):
     by_key = {(e["feature_id"], e["algorithm_version"]):e for e in entries}
     definitions = {}
     for ident in feature_ids:
-        versions = sorted(set(frame.loc[frame.feature_id == ident, "algorithm_version"])) if not frame.empty else []
+        versions = sorted(versions_by_feature.get(ident, ()))
         known = {version:entry for (feature, version), entry in by_key.items() if feature == ident
                  and (algorithm_version is None or version == algorithm_version)}
         for version in versions:
@@ -179,19 +180,68 @@ def _definitions_for_selection(frame, feature_ids, algorithm_version, entries):
     return definitions
 
 
-def _generation(frame, base, context, definitions):
+def _generation(facts_digest, base, context, definitions):
     digest = hashlib.sha256(json.dumps(dict(base=base, context=context, definitions=definitions),
                                       sort_keys=True, ensure_ascii=False, allow_nan=False).encode())
-    if not frame.empty:
-        digest.update(pd.util.hash_pandas_object(frame[list(feature_store.VALUE_COLUMNS)], index=False).values.tobytes())
+    digest.update(facts_digest)
     return digest.hexdigest()
 
 
-def _base(db):
-    identity = datasets.identity(db)
+def _base(db, *, connection=None):
+    identity = datasets.identity(db) if connection is None else datasets.identity(db, connection=connection)
     context = db.time_context() if hasattr(db, "time_context") else {"offset_state": "unknown"}
     return {key: identity[key] for key in ("namespace", "parent_namespace", "lineage", "provider", "server",
                                            "backend")}, context
+
+
+def _scan_selection(conn, statement, params):
+    """Fingerprint do conteúdo selecionado em lotes; não retém um DataFrame de todos os fatos."""
+    digest, versions, count = hashlib.sha256(), {}, 0
+    with conn.execution_options(stream_results=True, max_row_buffer=256).execute(statement, params) as result:
+        for row in result.yield_per(256).mappings():
+            count += 1
+            if count > MAX_SELECTION_ROWS:
+                raise QueryError("SELECTION_TOO_LARGE", f"A seleção excede {MAX_SELECTION_ROWS} fatos. "
+                                 "Reduza o intervalo com start/end.")
+            versions.setdefault(row["feature_id"], set()).add(row["algorithm_version"])
+            values = [row[field] for field in feature_store.VALUE_COLUMNS]
+            # Mantém até corrupção não finita distinguível na geração, sem expô-la como número JSON.
+            values = [dict(non_finite=str(value)) if isinstance(value, float) and not math.isfinite(value)
+                      else value for value in values]
+            digest.update(json.dumps(values, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode())
+            digest.update(b"\n")
+    return count, versions, digest.digest()
+
+
+def _paged_selection(db, selection, feature_ids, cut, after, expected_generation, page_size):
+    # R04 pode inicializar a identidade, antes da transação estritamente de leitura.
+    _base(db)
+    query = dict(symbol=selection["symbol"], timeframe=selection["timeframe"], feature_ids=feature_ids,
+                 algorithm_version=selection["algorithm_version"], start=selection["start"], end=selection["end"],
+                 ordered_for=db.engine.dialect.name)
+    with db.consistent_read() as conn:
+        base, context = _base(db, connection=conn)
+        entries = definition_catalog(db, connection=conn)
+        count, versions, facts_digest = 0, {}, hashlib.sha256().digest()
+        present = inspect(conn).has_table(feature_store.VALUES_TABLE)
+        if present:
+            statement, params = feature_store._asof_statement(cut, **query)
+            count, versions, facts_digest = _scan_selection(conn, statement, params)
+        definitions = _definitions_for_selection(versions, feature_ids, selection["algorithm_version"], entries)
+        generation = _generation(facts_digest, base, context, definitions)
+        if expected_generation is not None and generation != expected_generation:
+            raise QueryError("STALE_CURSOR", "Base, fatos, metadados ou relógio mudaram durante a paginação. "
+                             "Recomece sem cursor para não misturar páginas de revisões diferentes.")
+        rows = []
+        if count:
+            statement, params = feature_store._asof_statement(cut, **query, after=after, limit=page_size + 1)
+            with conn.execute(statement, params) as result:
+                for item in result.mappings():
+                    rows.append(dict(feature_id=item["feature_id"], algorithm_version=item["algorithm_version"],
+                        observation_time=_iso(item["observation_time"]), available_at=_iso(item["available_at_utc"]),
+                        value=_number(item["numeric_value"]), category=item["categorical_value"] or None,
+                        quality=item["quality"], revision=int(item["revision"]), source_revision=item["source_revision"]))
+    return rows, definitions, generation, base, context
 
 
 def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, algorithm_version=None,
@@ -236,36 +286,8 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
         unknown = [ident for ident in feature_ids if ident not in {d["feature_id"] for d in entries}]
         if unknown:
             raise QueryError("UNKNOWN_FEATURE", "Características desconhecidas no catálogo: " + ", ".join(unknown))
-        base, context = _base(db)
-        frames = [feature_store.query_as_of(db, cut, symbol=symbol, timeframe=timeframe, feature_id=ident,
-                                            algorithm_version=algorithm_version, start=start, end=end)
-                  for ident in feature_ids]
-        frame = pd.concat([f for f in frames if not f.empty], ignore_index=True) if any(
-            not f.empty for f in frames) else pd.DataFrame()
-        if len(frame) > MAX_SELECTION_ROWS:
-            raise QueryError("SELECTION_TOO_LARGE", f"A seleção tem {len(frame)} fatos; limite "
-                             f"{MAX_SELECTION_ROWS}. Reduza o intervalo com start/end.")
-        if not frame.empty:
-            frame = frame.assign(_obs=frame["observation_time"].map(_iso)).sort_values(
-                ["feature_id", "_obs", "algorithm_version"], kind="stable")
-        definitions = _definitions_for_selection(frame, feature_ids, algorithm_version, entries)
-        generation = _generation(frame, base, context, definitions)
-        if expected_generation is not None and generation != expected_generation:
-            raise QueryError("STALE_CURSOR", "Base, fatos, metadados ou relógio mudaram durante a paginação. "
-                             "Recomece sem cursor para não misturar páginas de revisões diferentes.")
-        rows = []
-        if not frame.empty:
-            for item in frame.to_dict("records"):
-                key = (item["feature_id"], item["_obs"], item["algorithm_version"])
-                if after is not None and key <= after:
-                    continue
-                rows.append({"feature_id": item["feature_id"], "algorithm_version": item["algorithm_version"],
-                             "observation_time": item["_obs"], "available_at": _iso(item["available_at_utc"]),
-                             "value": _number(item.get("numeric_value")),
-                             "category": item.get("categorical_value") or None, "quality": item["quality"],
-                             "revision": int(item["revision"]), "source_revision": item["source_revision"]})
-                if len(rows) > page_size:
-                    break
+        rows, definitions, generation, base, context = _paged_selection(
+            db, selection, feature_ids, cut, after, expected_generation, page_size)
         more = len(rows) > page_size
         rows = rows[:page_size]
         reasons = []
