@@ -124,10 +124,11 @@ def _pending(db,contract,identity,run,request,guard,*,resume,ids=None):
     return selected['ids']
 
 
-def collect(db, *, selection, start, end, resume=True, write_guard=None, cancel_check=None,
+def collect(db, *, selection, start, end, resume=True, classify=False, write_guard=None, cancel_check=None,
             timeout_seconds=120,max_memory_mb=1024):
     """Um painel explicitamente selecionado, uma janela fechada; não é censo do HN."""
     if type(resume) is not bool:raise ValueError('resume precisa ser booleano.')
+    if type(classify) is not bool:raise ValueError('classify precisa ser booleano.')
     for value,name,maximum in [(timeout_seconds,'timeout_seconds',3600),(max_memory_mb,'max_memory_mb',8192)]:
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<value<=maximum:
             raise ValueError(f'{name} precisa ser positivo e até{maximum}.')
@@ -175,6 +176,12 @@ def collect(db, *, selection, start, end, resume=True, write_guard=None, cancel_
         result=mention_ingestion.ingest(db,selection=selection,batch=batch,write_guard=write_guard,cancel_check=cancel_check,
             timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb,_run=run,_acquisition=acquisition)
         result['acquisition']=dict(metrics,resumed_panel=resumed)
+        if classify:
+            from mt5_extracao.analytics import mention_classification
+            guard()
+            remaining=timeout_seconds-(time.monotonic()-started['started_monotonic'])
+            result['classification']=mention_classification.classify(db,selection=selection,batch=batch,
+                write_guard=write_guard,cancel_check=cancel_check,timeout_seconds=remaining,max_memory_mb=max_memory_mb)
         return result
     except BaseException as exc:
         if not run.get('_closed'):

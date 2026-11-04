@@ -124,11 +124,25 @@ def ingest_mention_batch(db, *, selection, batch, synthetic_fixture=False, write
         write_guard=write_guard, cancel_check=cancel_check, timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
 
 
-def collect_mentions(db, *, selection, start, end, resume=True, write_guard=None, cancel_check=None,
+def collect_mentions(db, *, selection, start, end, resume=True, classify=False, write_guard=None, cancel_check=None,
                      timeout_seconds=120, max_memory_mb=1024):
     """Captura explícita de painel público pelo adaptador disponível, com limites e retomada."""
     from mt5_extracao.analytics import mention_sources
-    return mention_sources.collect(db,selection=selection,start=start,end=end,resume=resume,
+    return mention_sources.collect(db,selection=selection,start=start,end=end,resume=resume,classify=classify,
+        write_guard=write_guard,cancel_check=cancel_check,timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb)
+
+
+def mention_classifier_capabilities():
+    """Disponibilidade local e recibo de avaliação restrita; sem rede/classificação."""
+    from mt5_extracao.analytics import mention_classification
+    return mention_classification.capabilities()
+
+
+def classify_mention_batch(db, *, selection, batch, synthetic_fixture=False, write_guard=None, cancel_check=None,
+                           timeout_seconds=120,max_memory_mb=1024):
+    """Classifica explicitamente a população já recebida; Q permanece no corte original."""
+    from mt5_extracao.analytics import mention_classification
+    return mention_classification.classify(db,selection=selection,batch=batch,synthetic_fixture=synthetic_fixture,
         write_guard=write_guard,cancel_check=cancel_check,timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb)
 
 
@@ -221,7 +235,7 @@ __all__ = [
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot",
     "export_feature_relation", "import_feature_relation",
-    "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "ingest_mention_batch", "collect_mentions",
+    "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "ingest_mention_batch", "collect_mentions", "mention_classifier_capabilities", "classify_mention_batch",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida

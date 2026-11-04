@@ -186,6 +186,17 @@ def ingest(db, *, selection, batch, synthetic_fixture=False, write_guard=None, c
         receipt.update(acquisition=_acquisition,source_verified=True)
         for record in prepared['records']:
             record['metadata']['capture']={k:v for k,v in receipt.items() if k!='cursor_sha256'}
+    classification_before=None
+    if scope['classifier']['id']=='object-vader-en':
+        from mt5_extracao.analytics import mention_classification
+        classification_before=mention_classification.current(db,contract,batch['start'])
+        # Repetir a mesma captura não apaga P/N calculados posteriormente.
+        # Uma população nova continua invalidando os rótulos anteriores.
+        prepared['records']=[record for record in prepared['records'] if not (
+            record['feature_id']!='mentions.quantity' and
+            (old:=classification_before.get(record['feature_id'])) is not None and
+            old['source_revision']==receipt['capture_id'] and
+            json.loads(old['metadata_json']).get('classification_qualified') is True)]
     for definition in contract['definitions']:guard();features.register(db,**definition)
     previous=producer_jobs.get_checkpoint(db,scope['symbol'],scope['timeframe'],contract['job_family'])
     start_sequence=previous['source_sequence'] if previous else 0
@@ -200,6 +211,11 @@ def ingest(db, *, selection, batch, synthetic_fixture=False, write_guard=None, c
             if conn.dialect.name=='postgresql':conn.execute(text('LOCK TABLE _dataset_origin IN SHARE MODE'))
             if datasets.identity(db,connection=conn)!=identity:
                 raise indicator_materializer.SourceChanged('Base alterada durante ingestão MEN; nenhuma contagem parcial publicada.')
+            if classification_before is not None:
+                if conn.dialect.name=='postgresql':
+                    conn.execute(text('SELECT feature_id FROM _feature_definitions WHERE algorithm_version=:version ORDER BY feature_id FOR UPDATE'),{'version':contract['algorithm_version']}).all()
+                if mention_classification.generation(mention_classification.current(db,contract,batch['start'],connection=conn))!=mention_classification.generation(classification_before):
+                    raise indicator_materializer.SourceChanged('Geração MEN mudou durante a preparação; retome sem apagar classificação tardia.')
         def checkpoint(conn,counts):
             nonlocal end_sequence
             guard()

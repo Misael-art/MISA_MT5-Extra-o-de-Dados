@@ -4327,3 +4327,28 @@ Source/preview e CI do SHA publicado têm recibos na composição. Próxima fren
 MEN-04, qualificar classificação por objeto e idiomas realmente suportados,
 com desenvolvimento/avaliação separados e critérios fixados antes da medição.
 P/N não são habilitados por simples declaração do nome do modelo.
+
+
+### MEN-04 — classificação tardia por objeto, 29/10/2026
+
+Frente sobre MEN-03/PR239 (`1fe75114e1f155f99264b00dd324bbfbc0552478`), na
+branch `codex/mencoes-classificacao`. VADER3.3.2/MIT e langdetect1.0.9/Apache-2.0
+no único ambiente, <2MB transferidos, sem GPU/serviço pago. Artefato/código/
+idioma versionados na seleção antes de Q. Qualificação restrita ao benchmark
+controlado inglês de44 casos, sem anotação humana independente; precisão
+P90,9%/N100%, recall P100%/N90%. Matriz, dois erros e12 abstenções preservados;
+nenhum ajuste no teste ou seleção por lucro. Auditados8 títulos públicos de64
+itens: todos abstidos por idioma/sintaxe/contexto, sem amostra de polaridade
+para medir precisão HN. Alias literal AI também pode casar nomes de empresa.
+
+Q completo e a mesma revisão são pré-condição para P/N; disponibilidade da
+classificação é atual. Mesmo lote recapturado preserva P/N e primeiros relógios;
+população nova invalida rótulos; geração concorrente rejeita saída antiga.
+Saídas por item/hashes/idioma/motivos ficam no store existente, sem texto.
+Família de classificação no journal atual preserva o cursor de rede. Leitura e
+exportação não executam modelo. CLI `mention-classifiers`, `mentions-classify`
+e coleta com `--classify` são explícitos. Prova controlada pelo launcher:10/3/2,
+SIGINT durante avaliação real, retomada, consulta SDK=CLI e corte antigo intacto.
+As anotações de teste são autorais, não corpus de terceiros publicado no Git.
+MEN-05…08 continuam: snapshots, Laboratório, segunda fonte e proteção independente.
+Windows físico/MT5/Wine/contas não certificados por esta validação.

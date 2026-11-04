@@ -1276,3 +1276,42 @@ P/N reais continuamUNAVAILABLE/PENDING:MEN-04 qualificará o classificador.
 Bluesky/searchPosts403 continua acesso pendente; fornecedores opcionais não são
 chamados de integrados. Consumidores/segunda fonte/instalação final seguem
 MEN-04…08. [API oficial HN](https://github.com/HackerNews/API).
+
+
+### 18.14 Classificação MEN-04 — domínio controlado em inglês
+
+O serviço `mention_classification` anexa P/N somente a Q completo da mesma
+população já recebida. `mention_classifier` usa VADER3.3.2/MIT e
+langdetect1.0.9/Apache-2.0 locais, sem GPU/rede/serviço pago. Código, léxicos e
+perfis têm fingerprint; sua identidade é declarada no contrato antes da captura.
+Não é FinBERT, não qualifica português nem todo o corpus Hacker News. Apenas
+avaliações explícitas do objeto em inglês têm domínio certificado pelo benchmark
+controlado; sintaxe/idioma/contexto ambíguos abstêm. Não confundir polaridade com
+preço. Corpus todo fora do idioma deixa P/N indisponíveis; abstenções conhecidas
+no domínio ficam explicitadas em `label_counts`, jamais convertidas em neutro.
+
+Protocolo fixado antes do teste:44 casos autorais separados dos exemplos de
+desenvolvimento;≥8 exemplos de cada polaridade, precisão P/N≥90%, recall≥70%,
+zero polaridades nos12 casos de abstenção esperada. Fingerprint do protocolo:
+`d1262870f76392b2c6a84bf0bf60bea87b6818e5b43e309f75a6d35ded8d512d`.
+Anotação semântica por Codex, sem revisão humana independente ou inferência de
+representatividade. Não houve ajuste após o teste nem uso de resultado financeiro.
+Matriz e rótulos esperados autorais reproduzíveis em
+`tests/test_mention_classifier_evaluation.py`; recibo runtime em
+`mention_qualification.REPORT`. Precisão/recall: P90,9%/100%; N100%/90%;
+neutro100%/100%; misto75%/75%; abstenção100%/100%,12/44 abstenções.
+Os dois erros são preservados: um negativo como misto e um misto como positivo.
+Esse limite permanece visível nos serviços/recibos, sem selo de precisão geral.
+
+As saídas persistidas por item têm hash da publicação/revisão, objeto, idioma,
+rótulo e motivo; nenhum texto bruto. Consulta/replay usa os valores versionados
+sem executar um modelo atual. Q conserva primeiro recebimento e metadados sem
+rótulos futuros; P/N têm disponibilidade da classificação efetiva. Recaptura
+idêntica não rebaixa P/N para pendente. Edição muda população e invalida P/N;
+modificação concorrente de geração durante CPU rejeita publicação antiga.
+Classificação usa família distinta no mesmo journal, sem apagar o painel/cursor
+de captura. Falha/cancelamento preserva Q e os rótulos anteriores confirmados.
+
+[SDK/CLI e limites](../sdk/api.md#classificação-explícita-de-menções-por-objeto-men-04).
+Acesso/conversa geral/idiomas adicionais exigem nova avaliação; MEN-05…08 mantêm
+aceites próprios de catálogo/snapshot, Laboratório, segunda fonte e proteção.
