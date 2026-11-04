@@ -89,7 +89,7 @@ const text=(id,v)=>$(id).textContent=v,cell=(parent,tag,value,cls)=>{const e=doc
 function table(id,heads,rows){const t=$(id);t.replaceChildren();const h=document.createElement('tr');heads.forEach(v=>cell(h,'th',v));t.append(h);for(const values of rows){const row=document.createElement('tr');values.forEach(v=>cell(row,'td',fmt(v)));t.append(row)}}
 text('scope',R.symbol+' · grade '+R.grid_timeframe+' · corte '+R.selection.as_of+' · '+R.analysis_id);
 text('perspective',R.selection.timeline_basis==='publication'?'Publicação retrospectiva no corte':R.selection.timeline_basis==='received'?'Recebimento · primeiro fechamento que conhece o fato':'Fechamentos nominais · recibo histórico não certificado');
-text('qual','Correlação descritiva. Preços e fórmulas locais não comprovam recebimento histórico. Classificação de menções mantém o domínio do produtor; object-vader-en é restrito ao inglês controlado, sem validação representativa nas fontes.');
+text('qual','Correlação descritiva. Preços e fórmulas locais não comprovam recebimento histórico. Classificação de menções mantém a versão e o domínio controlado declarados pelo produtor; estes artefatos não certificam precisão representativa nas fontes.');
 const EV=R.channels.flatMap(c=>(c.receipt_events||[]).map(e=>({...e,channel:c.name,channel_id:c.id}))).sort((a,b)=>a.available_at.localeCompare(b.available_at));
 $('synthetic').hidden=!EV.some(e=>e.metadata&&e.metadata.synthetic_fixture);
 for(const [label,value] of [['Candles',R.times.length],['Canais',R.channels.length],['Vínculos',(R.selection.linked_sources||[]).length],['Recibos',EV.length]]){const c=document.createElement('div');c.className='card';cell(c,'span',label);cell(c,'b',fmt(value));$('cards').append(c)}

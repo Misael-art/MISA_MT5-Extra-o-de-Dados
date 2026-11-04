@@ -1623,3 +1623,43 @@ Referências conferidas30/10/2026: [Reddit API](https://www.reddit.com/dev/api/)
 e [acesso/termos](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data);
 [X recent search](https://docs.x.com/x-api/posts/search-recent-posts);
 [YouTube commentThreads](https://developers.google.com/youtube/data/reference/rest/v3/commentThreads/list).
+
+
+### 18.21 Português e avaliação reproduzível — MEN-PT
+
+`object-evaluation-pt` é um classificador próprio, opt-in e versionado de
+avaliação explícita de objeto em português. Usa aliases obrigatórios, detector
+já instalado e regras/léxico próprios para elogio/crítica e gírias declaradas
+(top/show/brabo/curto/lixo/bugado). Preço/direção, ironia, pergunta, autoria
+indireta, negação ambígua e sujeito não resolvido abstêm. Não traduz VADER nem
+altera o ID/artefato inglês. Os resultados antigos permanecem na própria versão.
+
+36 exemplos próprios de desenvolvimento e30 de avaliação separados. Na
+avaliação: P e N com8 casos cada, precisão100% e recall87,5%; um falso neutro
+positivo e um negativo preservados. Critério controlado: suportePN≥8,
+precisão≥85%, recall≥75%. Este recibo não é revisão humana independente,
+amostra representativa de fonte, validação de português amplo ou utilidade
+financeira. Nunca usar a métrica pequena como precisão geral nas redes.
+
+`mention-classifiers --classifier object-evaluation-pt` inspeciona o artefato
+e seu recibo congelado. A seleção MEN usa exatamente o descriptor retornado.
+`mentions-classify`/`mentions-collect --classify` selecionam essa versão pelo
+contrato existente; Q continua com relógio próprio, P/N chegam depois. A
+interface mostra “português restrito”, sem executar modelo na consulta.
+
+`mention-evaluate --input cases.json --classifier object-evaluation-pt --out
+metrics.json` recebe `cases` e `protocol`. Casos têm id/text/aliases/language/
+expected; protocolo declara annotation_origin e development_ids. IDs de teste
+duplicados, documento/objeto repetido e sobreposição com desenvolvimento são
+recusados. Saída: métricas/confusão/erros com índices/hashes, identidades do
+modelo/protocolo/avaliação, sem texto. Declarar revisão independente mantém
+`DECLARED_NOT_VERIFIED`: o programa não inventa quem revisou ou representatividade.
+Revisão humana e amostra real elegível continuam necessárias para outro domínio.
+
+API: `sdk.mention_classifier_capabilities(classifier_id)` e
+`sdk.evaluate_mention_classifier(cases,classifier_id=...,protocol=...)`.
+A avaliação não faz rede/grava corpus e recusa sobrescrever recibo CLI.
+Regressão28 casos aprovados no host e1 PG isolado; launcher oficial confirmou
+Q10/P3/N2 em documentos próprios, classificação tardia e os2 erros da avaliação.
+Doctor offline16 OK/2 avisos/0 falhas. English object-vader-en e versões dos
+retornos permanecem preservados. Nenhuma qualificação de captura/conta/Expert.
