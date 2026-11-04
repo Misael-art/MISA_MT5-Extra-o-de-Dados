@@ -8,14 +8,17 @@ from . import service
 MAX_BYTES = 16*1024*1024
 
 
-def render(report, *, cancel_check=None, timeout_seconds=120, max_memory_mb=1024, evaluation=None):
+def render(report, *, cancel_check=None, timeout_seconds=120, max_memory_mb=1024, evaluation=None, execution=None):
     validated = service.load_report(json.dumps(report, allow_nan=False))
     if evaluation is not None:
         from mt5_extracao.experiments.relations import validate_receipt
         evaluation=validate_receipt(validated,evaluation)
+    if execution is not None:
+        from .execution import validate
+        execution=validate(validated,execution)
     comparisons = service.crossings(validated, cancel_check=cancel_check,
         timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
-    payload = json.dumps(dict(analysis=validated, crossings=comparisons,evaluation=evaluation), ensure_ascii=False, allow_nan=False,
+    payload = json.dumps(dict(analysis=validated, crossings=comparisons,evaluation=evaluation,execution=execution), ensure_ascii=False, allow_nan=False,
                          separators=(",", ":")).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     if len(payload.encode()) > MAX_BYTES:
         raise ValueError("Relatório excede16MiB; reduza canais/recorte antes de compartilhar.")
@@ -97,11 +100,12 @@ details{margin:12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:
 <div class="controls"><span id="perspective" class="tag"></span><span id="synthetic" class="tag synthetic" hidden>Dados próprios de QA sintética</span><button id="download">Baixar análise JSON</button><button onclick="window.print()">Imprimir</button></div>
 <section><div class="cards" id="cards"></div></section>
 <section><h2>Candle, preço e informação disponível</h2>
-<div class="controls"><button id="previous" aria-label="Candle anterior">←</button><input id="cursor" type="range" min="0" aria-label="Candle selecionado"><button id="next" aria-label="Próximo candle">→</button><b id="stamp"></b></div>
+<div class="controls"><button id="previous" aria-label="Candle anterior">←</button><input id="cursor" type="range" min="0" aria-label="Candle selecionado"><button id="next" aria-label="Próximo candle">→</button><label>Candle<input id="candleindex" type="number" min="0" step="1" aria-label="Índice do candle" style="width:100px"></label><button id="jump">Ir</button><b id="stamp"></b></div>
 <p id="ohlc" class="muted"></p><svg id="price" viewBox="0 0 1000 300" role="img" aria-label="Candles do recorte congelado, seleção por clique"></svg>
 <div class="controls"><label>Série vinculada ou indicador<select id="series"></select></label><span id="seriesvalue"></span></div>
 <svg id="seriesplot" viewBox="0 0 1000 180" role="img" aria-label="Valores originais por candle; lacunas preservadas"></svg>
 <div class="scroll"><table id="candle"></table></div><div class="scroll"><table id="periods"></table></div>
+<h3>Execução vinculada à mesma revisão</h3><p id="execution-summary" class="muted"></p><div class="scroll"><table id="execution-events"></table></div>
 <h3>Recebimentos neste candle</h3><div class="scroll"><table id="receipts"></table></div>
 <h3>Janelas de publicação encerradas neste candle</h3><div class="scroll"><table id="publications"></table></div>
 <p class="muted">Datas de publicação, captura e disponibilidade são distintas. Nas fontes macro, início/fim são referências do período e não certificam hora de publicação. O co-movimento não identifica o motivo do preço.</p></section>
@@ -155,10 +159,12 @@ function chart(){const svg=$('price');svg.replaceChildren();first=Math.max(0,ind
 }
 const eventHeads=['Série','Janela início','Janela fim','Captura','Disponibilidade','Revisão','Valor','Abstenções','Estado'];
 const eventRows=events=>events.map(e=>[e.channel,e.observation_time,e.window_end,e.captured_at,e.available_at,e.revision,e.value,e.label_counts?e.label_counts.abstained:null,e.state]);
-function candle(){index=Math.max(0,Math.min(R.times.length-1,index));const stamp=Date.parse(R.times[index]);const periodRows=R.channels.flatMap(c=>((R.source_periods||{})[c.id]||[]).filter(p=>Date.parse(p.start)<=stamp&&stamp<Date.parse(p.end)).map(p=>[c.name,({recession:'Recessão',expansion:'Expansão'})[p.value]||p.value,p.start,p.end,p.available_at,p.retrospective?'Referência retrospectiva':'Conhecida no recebimento']));$('periods').hidden=!periodRows.length;table('periods',['Série','Categoria da fonte','Início do período','Fim exclusivo','Disponibilidade local','Perspectiva'],periodRows);$('cursor').value=index;text('stamp',R.times[index]);text('ohlc',['Abertura','Máxima','Mínima','Fechamento'].map((s,k)=>s+': '+fmt(R.prices[index][k])).join(' · ')+' · sessão: '+((R.session_ids||[])[index]||'sem calendário congelado'));
+function candle(){index=Math.max(0,Math.min(R.times.length-1,index));const stamp=Date.parse(R.times[index]);const periodRows=R.channels.flatMap(c=>((R.source_periods||{})[c.id]||[]).filter(p=>Date.parse(p.start)<=stamp&&stamp<Date.parse(p.end)).map(p=>[c.name,({recession:'Recessão',expansion:'Expansão'})[p.value]||p.value,p.start,p.end,p.available_at,p.retrospective?'Referência retrospectiva':'Conhecida no recebimento']));$('periods').hidden=!periodRows.length;table('periods',['Série','Categoria da fonte','Início do período','Fim exclusivo','Disponibilidade local','Perspectiva'],periodRows);$('cursor').value=index;$('candleindex').value=index;$('candleindex').max=R.times.length-1;text('stamp',R.times[index]);text('ohlc',['Abertura','Máxima','Mínima','Fechamento'].map((s,k)=>s+': '+fmt(R.prices[index][k])).join(' · ')+' · sessão: '+((R.session_ids||[])[index]||'sem calendário congelado'));
  table('candle',['Série / TF','Valor','Unidade','Observação','Disponibilidade / fechamento nominal','Estado'],R.channels.map(c=>[c.name+' · '+c.timeframe,c.raw_values?c.raw_values[index]:c.values[index],c.unit,(c.observation_times||[])[index],(c.source_ends||[])[index],c.per_bar_states?c.per_bar_states[index]:(c.diagnosis||{}).message]));
- table('receipts',eventHeads,eventRows(EV.filter(e=>e.receipt_bar_index===index)));table('publications',eventHeads,eventRows(EV.filter(e=>e.publication_bar_index===index)));chart();}
+ table('receipts',eventHeads,eventRows(EV.filter(e=>e.receipt_bar_index===index)));table('publications',eventHeads,eventRows(EV.filter(e=>e.publication_bar_index===index)));
+ const e=D.execution;const observed=e?(e.events_by_index[index]||[]):[];text('execution-summary',e?e.run_id+' · '+e.source+' · '+(e.observation_basis==='modeled_execution_order'?'sequência do modelo':e.observation_basis)+' · '+Object.entries(e.capital_by_index[index]||{}).map(([k,v])=>({account_balance:'Saldo',floating_equity:'Patrimônio',performance_equity:'Patrimônio em cotas'}[k]||k)+': '+fmt(v)).join(' · ')+' · disponibilidade do produtor; recebimento histórico/aceite operacional não comprovados.':'Nenhuma execução vinculada à mesma revisão. Intenções não são fills.');table('execution-events',['Evento','Fase','Preço fill','Volume fill','SL inicial gravado','TP inicial gravado','Resultado acumulado','Disponibilidade do produtor'],observed.map(p=>[({entry:'Entrada',exit:'Saída',mark:'Marcação',partial:'Parcial'})[p.kind]||p.kind,({open:'Abertura',intrabar:'Intrabar',close:'Fechamento'})[p.phase]||p.phase,p.fill_price,p.fill_volume,p.initial_stop_price,p.initial_target_price,p.net_pnl,p.available_at_utc]));chart();}
 $('previous').onclick=()=>{index--;candle()};$('next').onclick=()=>{index++;candle()};$('cursor').oninput=()=>{index=Number($('cursor').value);candle()};$('series').onchange=chart;
+function jump(){const selected=Number($('candleindex').value);index=Number.isFinite(selected)?Math.floor(selected):0;candle()}$('jump').onclick=jump;$('candleindex').onkeydown=e=>{if(e.key==='Enter')jump()};
 $('price').onclick=e=>{const b=$('price').getBoundingClientRect(),x=(e.clientX-b.left)*1000/b.width;index=first+Math.max(0,Math.min(last-first-1,Math.floor((x-55)*(last-first)/900)));candle()};
 function matrices(){const m=X.matrices.find(m=>m.lag_bars===Number($('lag').value)),query=$('query').value.toLocaleLowerCase(),tf=$('tf').value;
  const ids=m.channels.map((c,i)=>({c,i})).filter(({c})=>(!tf||c.timeframe===tf)&&(!query||(c.name+' '+c.timeframe).toLocaleLowerCase().includes(query))),t=$('matrix');t.replaceChildren();const h=document.createElement('tr');cell(h,'th','Preditor ↓ / resposta →');ids.forEach(({c})=>cell(h,'th',c.name+' · '+c.timeframe));t.append(h);
@@ -169,7 +175,7 @@ function stability(){const t=(X.timelines||[]).find(t=>t.left===$('left').value&
  const w=t?t.windows:[];w.forEach((p,i)=>{const x=90+i*270;if(p.value!==null){node(svg,'circle',{cx:x,cy:100-p.value*70,r:5,fill:'#2465ad'});if(i&&w[i-1].value!==null)node(svg,'line',{x1:x-270,x2:x,y1:100-w[i-1].value*70,y2:100-p.value*70,stroke:'#2465ad'})}const n=node(svg,'text',{x:x-55,y:200,fill:'#53667e','font-size':11});n.textContent=p.start.slice(5)+' · n='+p.n_pairs});
  table('windows',['Início UTC','Fim UTC','Spearman','Pares','Motivo'],w.map(p=>[p.start,p.end,p.value,p.n_pairs,p.reason||'Exploratória']));if(!w.length){const n=node(svg,'text',{x:170,y:115,fill:'#53667e','font-size':15});n.textContent='Sem janela elegível para este par/defasagem; veja o motivo na matriz.'}}
 ['lag','tf'].forEach(id=>$(id).onchange=()=>{matrices();stability()});['left','right'].forEach(id=>$(id).onchange=stability);$('query').oninput=matrices;
-function events(){const q=$('eventquery').value.toLocaleLowerCase(),rows=EV.filter(e=>!q||(e.channel+' '+e.available_at+' '+e.state).toLocaleLowerCase().includes(q));eventPage=Math.max(0,Math.min(eventPage,Math.max(0,Math.ceil(rows.length/50)-1)));table('events',eventHeads,eventRows(rows.slice(eventPage*50,(eventPage+1)*50)));text('eventpage',(eventPage+1)+' / '+Math.max(1,Math.ceil(rows.length/50))+' · '+rows.length+' recibos');}
+function events(){const q=$('eventquery').value.toLocaleLowerCase(),rows=EV.filter(e=>!q||(e.channel+' '+e.available_at+' '+e.state).toLocaleLowerCase().includes(q));eventPage=Math.max(0,Math.min(eventPage,Math.max(0,Math.ceil(rows.length/50)-1)));const shown=rows.slice(eventPage*50,(eventPage+1)*50);table('events',eventHeads,eventRows(shown));shown.forEach((e,i)=>{const at=R.selection.timeline_basis==='publication'?e.publication_bar_index:e.receipt_bar_index;if(at===null||at===undefined)return;const tr=$('events').rows[i+1];tr.tabIndex=0;tr.dataset.candleIndex=at;tr.title='Selecionar candle '+at;tr.style.cursor='pointer';tr.onclick=()=>{index=at;candle();$('stamp').scrollIntoView({block:'center'})};tr.onkeydown=k=>{if(k.key==='Enter'||k.key===' '){k.preventDefault();tr.click()}}});text('eventpage',(eventPage+1)+' / '+Math.max(1,Math.ceil(rows.length/50))+' · '+rows.length+' recibos');}
 $('eventquery').oninput=()=>{eventPage=0;events()};$('eventprev').onclick=()=>{eventPage--;events()};$('eventnext').onclick=()=>{eventPage++;events()};
 $('download').onclick=()=>{const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(R)],{type:'application/json'}));a.href=url;a.download='laboratorio-'+R.analysis_id.slice(0,12)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 candle();matrices();stability();events();

@@ -294,39 +294,133 @@ class LaboratoryLinks:
             self._busy(False);self.status.configure(text=f"Relatório não exportado: {error}" if error else f"Relatório salvo em {result['path']}. Abra no navegador; nenhuma conexão externa é necessária.")
         evaluation=getattr(self,'evaluation',None)
         if evaluation and evaluation['analysis_id']!=report['analysis_id']:evaluation=None
-        self.ui.run_bg(lambda:sdk.export_laboratory_report(report,path,cancel_check=self.cancel_event.is_set,evaluation=evaluation),done)
+        execution=getattr(self,'execution',None)
+        if execution and execution['analysis_id']!=report['analysis_id']:execution=None
+        self.ui.run_bg(lambda:sdk.export_laboratory_report(report,path,cancel_check=self.cancel_event.is_set,evaluation=evaluation,execution=execution),done)
 
     def _candle(self):
-        row=ttk.Frame(self.candle_tab);row.pack(fill=tk.X)
+        from .components import ScrollableContent
+        viewport=ScrollableContent(self.candle_tab,self.ui.theme);viewport.pack(fill=tk.BOTH,expand=True);body=viewport.content
+        row=ttk.Frame(body);row.pack(fill=tk.X)
         self.candle_index=tk.StringVar(value='0');ttk.Label(row,text="Índice do candle (desde0)").pack(side=tk.LEFT)
         ttk.Entry(row,textvariable=self.candle_index,width=8).pack(side=tk.LEFT,padx=4)
         ttk.Button(row,text="Inspecionar",command=self.show_candle).pack(side=tk.LEFT)
-        ttk.Label(self.candle_tab,text="O duplo clique no gráfico seleciona o candle. Captura e disponibilidade são mostradas separadamente.",wraplength=950).pack(anchor='w',pady=6)
-        box=ttk.Frame(self.candle_tab);box.pack(fill=tk.BOTH,expand=True);box.rowconfigure(0,weight=1);box.columnconfigure(0,weight=1)
-        self.candle_text=tk.Text(box,wrap='word',font=('TkDefaultFont',10),background=self.ui.theme.colors['field'],foreground=self.ui.theme.colors['ink'])
+        ttk.Label(body,text="Duplo clique no gráfico ou seleção de recibo leva ao candle. Valores, recebimentos e execução são informações separadas.",wraplength=600).pack(anchor='w',pady=6)
+        box=ttk.Frame(body);box.pack(fill=tk.BOTH,expand=True);box.rowconfigure(0,weight=1);box.columnconfigure(0,weight=1)
+        self.candle_text=tk.Text(box,height=8,wrap='word',font=('TkDefaultFont',10),background=self.ui.theme.colors['field'],foreground=self.ui.theme.colors['ink'])
         self.candle_text.grid(row=0,column=0,sticky='nsew')
         scroll=ttk.Scrollbar(box,orient=tk.VERTICAL,command=self.candle_text.yview);scroll.grid(row=0,column=1,sticky='ns')
         self.candle_text.configure(yscrollcommand=scroll.set)
+        self.candle_values=self._table(body,[('name','Série / TF',320),('value','Valor',120),('unit','Unidade',100),('available','Disponível / fechamento',210),('state','Estado',180)],height=5)
+        execution_row=ttk.Frame(body);execution_row.pack(fill=tk.X,pady=6)
+        self.execution_choice=tk.StringVar();self.execution_options={}
+        ttk.Button(execution_row,text='Listar execuções',command=self.list_executions).grid(row=0,column=0,sticky='w')
+        self.execution_box=ttk.Combobox(execution_row,textvariable=self.execution_choice,state='readonly');self.execution_box.grid(row=1,column=0,sticky='ew')
+        ttk.Button(execution_row,text='Vincular execução selecionada',command=self.link_execution).grid(row=2,column=0,sticky='w')
+        execution_row.columnconfigure(0,weight=1)
+        self.execution_events=self._table(body,[('kind','Evento observado / modelo',180),('phase','Fase',90),('fill','Preço fill',110),('volume','Volume fill',110),('sl','SL inicial gravado',130),('tp','TP inicial gravado',130),('net','Resultado acumulado',140),('time','Disponibilidade do produtor',230)],height=4)
+        ttk.Label(body,text='Cronologia das fontes · selecione uma linha para ir ao candle representado',wraplength=600).pack(anchor='w')
+        self.events_page=0;self.events_analysis=None;self.event_rows=[]
+        event_nav=ttk.Frame(body);event_nav.pack(fill=tk.X)
+        ttk.Button(event_nav,text='← Recibos',command=lambda:self.page_events(-1)).pack(side=tk.LEFT)
+        ttk.Button(event_nav,text='Recibos →',command=lambda:self.page_events(1)).pack(side=tk.LEFT)
+        self.events_count=ttk.Label(event_nav);self.events_count.pack(side=tk.LEFT,padx=6)
+        self.events_tree=self._table(body,[('name','Série',260),('time','Disponibilidade',210),('value','Valor',110),('revision','Revisão',80),('candle','Candle',80),('state','Estado',180)],height=6)
+        self.events_tree.bind('<<TreeviewSelect>>',self.event_selected)
+        from .components import DetailsPanel
+        details=DetailsPanel(body,title='Recibo completo do candle',expanded=False);details.pack(fill=tk.BOTH,expand=True,pady=6)
+        self.candle_receipt=tk.Text(details.body,height=7,wrap='word',font=('TkDefaultFont',9));self.candle_receipt.pack(fill=tk.BOTH,expand=True)
+
+    def page_events(self,step):
+        self.events_page=max(0,self.events_page+step);self.show_events()
+
+    def show_events(self):
+        report=self.panel.report
+        if self.events_analysis is not report:
+            self.events_analysis=report;self.events_page=0
+            self.event_rows=[(c,e) for c in report['channels'] for e in c.get('receipt_events',[])]
+        self.events_page=min(self.events_page,max(0,(len(self.event_rows)-1)//50))
+        key=(id(report),self.events_page)
+        if getattr(self,'_shown_event_page',None)==key:return
+        self._shown_event_page=key;self.events_tree.delete(*self.events_tree.get_children())
+        for i,(c,e) in enumerate(self.event_rows[self.events_page*50:(self.events_page+1)*50],self.events_page*50):
+            key='publication_bar_index' if report['selection'].get('timeline_basis')=='publication' else 'receipt_bar_index'
+            self.events_tree.insert('',tk.END,iid=str(i),values=(c['name'],e['available_at'],value_text(e['value']),e['revision'],e.get(key) if e.get(key) is not None else 'fora',e['state']))
+        self.events_count.configure(text=f'{len(self.event_rows)} recibos · página{self.events_page+1}')
+
+    def event_selected(self,*_):
+        selected=self.events_tree.selection()
+        if not selected:return
+        _c,e=self.event_rows[int(selected[0])];key='publication_bar_index' if self.panel.report['selection'].get('timeline_basis')=='publication' else 'receipt_bar_index'
+        index=e.get(key)
+        if index is None:self.status.configure(text='Recibo fora do recorte ou sem candle alinhado; não foi projetado em outra barra.');return
+        self.show_candle(index)
+
+    def list_executions(self):
+        if self.pending:return
+        from mt5_extracao.robots import store
+        self._busy(True,'Lendo metadados de execuções — aguarde…')
+        def done(rows,error):
+            if not self.alive():return
+            self._busy(False)
+            if error:self.status.configure(text=str(error));return
+            self.execution_options={f"{r['robot_key']} · {r['symbol']} · {r['timeframe']} · {r['created_at']} · {r['run_id'][:8]}":r['run_id'] for r in rows}
+            self.execution_box.configure(values=list(self.execution_options));self.execution_choice.set('')
+            self.status.configure(text='Até50 execuções recentes. Escolha a mesma grade/revisão; vínculo incompatível será recusado.')
+        self.ui.run_bg(lambda:store.run_index(self.db,limit=50),done)
+
+    def link_execution(self):
+        if self.pending or self.panel.report is None:return
+        ident=self.execution_options.get(self.execution_choice.get())
+        if not ident:self.status.configure(text='Liste e escolha uma execução gravada.');return
+        report=self.panel.report;self._busy(True,'Conciliando recibo de execução — aguarde…')
+        import time
+        from mt5_extracao.analytics import producer_jobs,indicator_materializer
+        self.cancel_event.clear();started=dict(started_monotonic=time.monotonic());memory=min(8192,max(1024,int(producer_jobs.current_rss_bytes()/1024**2)+256))
+        def guard():
+            if self.ui.app.db_manager is not self.db:raise ValueError('Base alterada durante a consulta de execução.')
+            indicator_materializer._guard(started,None,self.cancel_event.is_set,120,memory)
+        def done(result,error):
+            if not self.alive():return
+            self._busy(False)
+            if error:self.status.configure(text=str(error));return
+            if report is not self.panel.report:self.status.configure(text='Análise mudou; vínculo não aplicado.');return
+            self.execution=result;self.show_candle();self.status.configure(text='Observações vinculadas à mesma revisão. Base do produtor declarada; sem aceite operacional.')
+        self.ui.run_bg(lambda:sdk.link_laboratory_execution(self.db,report,ident,guard=guard),done)
 
     def show_candle(self,index=None):
         if self.panel.report is None:self.status.configure(text="Congele ou abra uma análise.");return
         try:
             if index is not None:self.candle_index.set(str(index))
-            context=sdk.laboratory_candle(self.panel.report,int(self.candle_index.get()))
+            execution=getattr(self,'execution',None)
+            if execution and execution['analysis_id']!=self.panel.report['analysis_id']:execution=None
+            index=int(self.candle_index.get());context=sdk.laboratory_candle(self.panel.report,index,execution=execution)
+            self.panel.select_candle(index)
             lines=[f"{context['symbol']} · {context['timeframe']} · fechamento {context['close_utc']}",
                    ' · '.join(f"{k}: {value_text(v)}" for k,v in context['price'].items()),
                    'Perspectiva: '+context['timeline_basis'],
                    'Sessão: '+str(context['market_session'] or 'sem calendário congelado')+' · '+context['calendar_basis'],
                    'Motivo do preço: não inferido de correlação.','']
-            for c in context['channels']:
-                lines.extend([f"{c['name']} · {c['timeframe']}: {value_text(c['raw_value'])} {c['unit'] or ''}",
-                              f"Observação {c['observation_time'] or '—'} · disponibilidade/fechamento {c['source_end'] or '—'} · {c['state'] or 'nominal'}"])
+            self.candle_values.delete(*self.candle_values.get_children())
+            for c in context['channels']:self.candle_values.insert('',tk.END,values=(c['name']+' · '+c['timeframe'],value_text(c['raw_value']),c['unit'] or '—',c['source_end'] or '—',c['state'] or 'fechamento nominal'))
             lines.append('\nPeríodos econômicos de referência (não são causa do preço):')
-            lines.extend(json.dumps(p,ensure_ascii=False,indent=2) for p in context.get('source_periods',[]))
-            lines.append('\nRecebimentos neste candle:')
-            lines.extend(json.dumps(e,ensure_ascii=False,indent=2) for e in context['received_events'])
-            lines.append('\nJanelas de publicação encerradas neste candle:')
-            lines.extend(json.dumps(e,ensure_ascii=False,indent=2) for e in context['publication_windows'])
+            lines.extend(f"{p['value']} · {p['start']} → {p['end']} · recebido {p['available_at']}" for p in context.get('source_periods',[]))
+            lines.append(f"Recebimentos neste candle: {len(context['received_events'])}")
+            lines.append(f"Janelas de publicação encerradas neste candle: {len(context['publication_windows'])}")
+            self.execution_events.delete(*self.execution_events.get_children())
+            observed=context.get('execution')
+            if observed:
+                basis={'modeled_execution_order':'sequência do modelo'}.get(observed['observation_basis'],observed['observation_basis'])
+                lines.append('Execução: '+observed['run_id']+' · '+str(basis))
+                labels={'account_balance':'Saldo','floating_equity':'Patrimônio','performance_equity':'Patrimônio em cotas'}
+                lines.append('Capital gravado: '+' · '.join(f'{labels.get(k,k)}: {value_text(v)}' for k,v in observed['capital'].items()))
+                for event in observed['events']:
+                    kind={'entry':'Entrada','exit':'Saída','mark':'Marcação','partial':'Parcial'}.get(event['kind'],event['kind'])
+                    phase={'open':'Abertura','intrabar':'Intrabar','close':'Fechamento'}.get(event['phase'],event['phase'])
+                    self.execution_events.insert('',tk.END,values=(kind,phase,value_text(event.get('fill_price')),value_text(event.get('fill_volume')),value_text(event.get('initial_stop_price')),value_text(event.get('initial_target_price')),value_text(event.get('net_pnl')),event['available_at_utc']))
+            else:lines.append('Nenhuma execução vinculada à mesma revisão; intenções não são fills.')
+            self.candle_receipt.configure(state='normal');self.candle_receipt.delete('1.0',tk.END);self.candle_receipt.insert('1.0',json.dumps(context,ensure_ascii=False,indent=2));self.candle_receipt.configure(state='disabled')
+            self.show_events()
             self.candle_text.configure(state='normal');self.candle_text.delete('1.0',tk.END);self.candle_text.insert('1.0','\n'.join(lines));self.candle_text.configure(state='disabled')
         except (ValueError,KeyError) as exc:self.status.configure(text=f"Candle indisponível: {exc}")
 

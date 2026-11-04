@@ -1274,3 +1274,14 @@ motor, fonte, relógio e especificação. `[STRATEGY] account_currency` é decla
 explícita opcional, sem inferência a partir da moeda de lucro do símbolo.
 Ausência em runs antigos não é preenchida retroativamente. Nenhuma destas APIs
 envia ordens, aprova modelo financeiro, reserva final, humano ou conta/MT5.
+
+`sdk.link_laboratory_execution(db, report, run_id, **kwargs)` liga somente a
+execução da mesma revisão, ativo e grade principal. kwargs aceita guard
+cooperativo; padrão120s/1024MiB. Exige trajetória conciliada com ledger/snapshot
+pelos serviços existentes; ausência de recibo recusa o vínculo. O resultado é
+um recibo portátil de observações/capital, com fonte, relógio, identidade e
+integridade. Disponibilidade do produtor/modelo não prova recebimento histórico
+de execução real. SL/TP são níveis iniciais registrados; não certificam stop
+modificado/aceito no broker. `sdk.laboratory_candle(report,index,execution=...)`
+e `sdk.export_laboratory_report(report,path,execution=...)` leem esse recibo
+congelado sem refazer indicadores, trades, preços ou custos. [Inspetor](laboratorio_series.md#inspetor-temporal-e-execução-vinculada).
