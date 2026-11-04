@@ -137,8 +137,10 @@ parametrizada de SuperATR inclui os slots das onze declarações input group do
 asset1.02, além dos31 valores; isto não altera o contrato/serialização de inputs de EAs.
 A ordem foi investigada a partir de [reprodução no fórum MQL5](https://www.mql5.com/en/forum/461183)
 e deve ser conferida no readback nativo, sem inferir que compilar prova binding.
-Indicadores de terceiros e outros indicadores do catálogo de Estudo ainda não estão
-expostos neste protocolo; são extensão posterior, não fallback por mouse.
+[AIA-02a](sdk/study_cli.md) expõe o catálogo nativo de Estudo por `study.catalog` e
+`study.indicator.add`, com defaults da própria closure (38 entradas em HPR75),
+metadados/readback e remoção pelo mesmo ownership. Indicadores de terceiros e a
+projeção gráfica das séries Python continuam extensões próprias, sem fallback por mouse.
 
 `panel.set`: `theme` inteiro0..15; `timer`, `probability`, `gradient`, `watermark`,
 `clean`, `bars` booleanos reais. Tema15 é Cinza Claro;7 Porcelana;0 escuro. Atribuição

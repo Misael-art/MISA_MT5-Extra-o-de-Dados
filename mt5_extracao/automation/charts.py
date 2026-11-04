@@ -8,12 +8,12 @@ import uuid
 from .protocol import boolean, fields, number, text
 
 OPERATIONS = ("chart.list", "chart.open", "chart.close", "chart.select", "chart.style", "chart.snapshot",
-              "indicator.add", "indicator.remove", "panel.set", "panel.get")
+              "indicator.add", "indicator.remove", "study.catalog", "study.indicator.add", "panel.set", "panel.get")
 
 
 def validate(method, params):
     fields(params, (), ("chart", "symbol", "timeframe", "style", "width", "height", "kind", "period",
-                            "mean", "deviation", "indicator", "field", "value"))
+                            "mean", "deviation", "indicator", "field", "value", "catalog_id"))
     if method not in OPERATIONS:
         raise ValueError("Operação gráfica desconhecida.")
     values = [method, "0", "", "", "", "", "", ""]
@@ -22,7 +22,16 @@ def validate(method, params):
     if not isinstance(chart, str) or not chart.isascii() or not chart.isdecimal() or len(chart) > 19 or int(chart) > 9223372036854775807:
         raise ValueError("chart deve ser ID decimal textual (64 bits), ou0 para o principal.")
     values[1] = chart
-    if method == "chart.open":
+    if method == "study.catalog":
+        allowed = set()
+    elif method == "study.indicator.add":
+        import re
+        allowed.add("catalog_id")
+        ident = params.get("catalog_id")
+        if not isinstance(ident, str) or not re.fullmatch(r"native:(0|[1-9][0-9]{0,2})", ident):
+            raise ValueError("catalog_id exige ID native:N retornado por study.catalog.")
+        values[2] = ident
+    elif method == "chart.open":
         from .. import timeframes
         allowed = {"symbol", "timeframe"}
         values[2] = text(params.get("symbol"), "symbol", 64)
@@ -194,9 +203,14 @@ class Channel:
         return dict(state="unconfirmed" if self.unconfirmed else "pending", request_id=self.last_id, progress=progress)
 
 
-def source(session_id, *, super_atr=False):
+def source(session_id, *, super_atr=False, study_catalog_sha256=None):
     import re
     if not re.fullmatch(r"[0-9a-f]{32}", session_id):
         raise ValueError("ID da sessão gráfica inválido.")
+    if study_catalog_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", study_catalog_sha256):
+        raise ValueError("Hash do catálogo de estudo inválido.")
     body = Path(__file__).with_name("native_charts.mqh").read_text(encoding="utf-8")
-    return ("#define MT5X_AGENT_SUPER_ATR\n" if super_atr else "") + body.replace("@SESSION@", session_id)
+    helpers = Path(__file__).with_name("native_studies.mqh").read_text(encoding="utf-8")
+    defines = "#define MT5X_AGENT_SUPER_ATR\n" if super_atr else ""
+    defines += '#define MT5X_AGENT_STUDY_HASH "' + (study_catalog_sha256 or "") + '"\n'
+    return defines + body.replace("// @STUDY_HELPERS@", helpers).replace("@SESSION@", session_id)

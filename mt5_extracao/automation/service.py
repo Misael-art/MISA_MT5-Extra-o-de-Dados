@@ -82,6 +82,8 @@ class Workflow:
                 dict(method="chart.snapshot", required=["session"], optional=["chart", "width", "height", "backend"], backends=["native", "owned_window"], description="PLAY: native; REPLAY: janela própria pela API do SO, com resolução real"),
                 dict(method="indicator.add", required=["session", "kind"], optional=["chart", "period", "mean", "deviation"], kinds=["sma", "ema", "atr", "rsi", "adx", "super_atr_10"]),
                 dict(method="indicator.remove", required=["session", "indicator"], optional=["chart"]),
+                dict(method="study.catalog", required=["session"], description="catálogo nativo da closure do Expert; não cria handles"),
+                dict(method="study.indicator.add", required=["session", "catalog_id"], optional=["chart"], description="mesma fábrica/defaults do catálogo de Estudo; remover por indicator.remove"),
                 dict(method="panel.set", required=["session", "field", "value"], fields=["theme", "timer", "probability", "gradient", "watermark", "clean", "bars"]),
                 dict(method="panel.get", required=["session"]),
                 dict(method="presets.default", required=["robot", "symbol", "timeframe"]),
