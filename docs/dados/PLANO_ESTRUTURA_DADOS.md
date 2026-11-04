@@ -391,6 +391,21 @@ reusar relation_dto. Etapas estatísticas adicionais mantêm seus donos. A corre
 reproduzidas; sinais de coeficiente não viram ganho financeiro; operações
 sem informação suficiente retornam inconclusão e motivo.
 
+**Adendo BD15a (29/10/2026):** o módulo canônico `associations.py` da branch
+T18.2 (`76404a1`) foi integrado, sem trazer a infraestrutura de pesquisa inteira.
+Pearson/Spearman, diagnósticos, bootstrap temporal e correção de família são
+reutilizados. A consulta `sdk.query_feature_relation`/CLI lê versões explícitas
+do snapshot4, calendário conhecido no corte e, para compostos, manifests de
+origem imutáveis. Não há fallback para fatos/contratos live ou calendário civil
+inferido. Defasagem nominal não comprime lacunas nem atravessa sessões.
+DTO2 distingue séries pareadas de alvos futuros; DTO1 continua compatível.
+Tipos, ausência/constância, população, exclusões e fontes distintas são explícitos.
+Textos numéricos/booleanos misturados e identidades incompletas não entram como
+números contínuos. O resultado é exploratório, sem utilidade financeira ou
+causalidade certificada. [API e limites](../sdk/api.md#relações-referenciais-congeladas-bd15a).
+Não persiste relações nem substitui tentativas/OOS, BD15b, cruzamento entre bases
+ou adaptação completa da UI. O mecanismo referencial não depende de negociação.
+
 #### BD16 — expansão das relações e bases cruzadas
 
 **Vinculação:** T18.5/6, isolamento T20.25. **Depende de:** BD03/05/13/BD15b.

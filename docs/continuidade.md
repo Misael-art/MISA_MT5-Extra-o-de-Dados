@@ -3858,3 +3858,46 @@ existente com dados referenciais, unidades, versões, defasagens e amostra
 explícitas. O plano permite esse mecanismo antes de campanha financeira OOS;
 nenhum coeficiente vira ganho/sinal operacional. Demais famílias/operadores,
 propriedade não verificável e gates nativos/financeiros continuam abertos.
+
+
+## Continuidade do roadmap — BD15a, 29/10/2026
+
+Branch `codex/relacoes-referenciais`, sobre `f1a615dd0dc9f1991ab63cac9274edbdb1e230e5`/
+[PR228](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/228), cujos seis
+checks de produto concluíram com sucesso, incluindo Linux/Windows completos.
+Baseline39 testes aprovados. O módulo canônico de associações da T18.2,
+`76404a16bc879cab05eb7cb6db6483d49d49b04b`, foi integrado sem trazer a
+infraestrutura de pesquisa; checkpoint local `cd51ee4` preserva essa integração.
+
+A consulta SDK/CLI lê duas versões explícitas do snapshot4, calendário conhecido
+no corte e origens imutáveis dos compostos. Pearson/Spearman, bootstrap temporal
+e Bonferroni explícito reutilizam o cálculo existente. Não se convertem textos
+numéricos/booleanos em números nem se aceitam identidades/sessões incompletas.
+Defasagens usam períodos nominais: lacunas e mudança de sessão são exclusões,
+sem comprimir linhas. Fontes distintas, população e exclusões são reconciliadas;
+valores retidos não certificam observações independentes. Ausência, constância,
+origem materializada não verificável e pivôs sem confirmação qualificada têm
+motivo explícito. DTO2 descreve pares sem fabricar horizonte futuro; DTO1 e seu
+consumidor atual permanecem compatíveis. Sem novo executor/store ou gravação de
+relações/fatos/jobs. [API e limites](sdk/api.md#relações-referenciais-congeladas-bd15a).
+
+Regressão final162 aprovados/1 PostgreSQL pendente no host e18 Tk aprovados,
+com timeout60s original, uma thread numérica e uma suíte pesada por vez.
+Doctor offline16OK/2avisos/0falhas. Os nove casos pelo launcher oficial incluem
+Pearson/Spearman, coeficientes +1/−1/zero, constância, ausência, categoria,
+defasagem e descendente materializado. CLI=SDK,1.900 fatos preservados pelas
+consultas; correção live999 visível no contexto ativo não muda a identidade da
+análise congelada. Cada consulta medida levou2,43–2,99s com29 réplicas, em entrada
+sintética pequena; não é medição de escala nem promessa para999 réplicas.
+O caso PostgreSQL específico segue na CI existente; ausência de servidor no host
+não permite qualificá-lo por inferência.
+
+Recibos de fonte, pacote instalado, CI e GUI ficam em
+`state/qa-tmp/reference-associations/`; SHA remoto, PR e aceite da prévia são
+reconciliados no registro central. Esta frente é referencial/exploratória:
+nenhuma causalidade, utilidade financeira, conta, MT5 ou Windows físico foi
+qualificado. Sem negociação, base privada como fixture, pins alterados,
+merge/release. Próxima frente BD15b: persistência imutável de identidades e
+resultados no armazenamento existente, seguida do consumo completo. Demais
+tipos, alvos futuros, tentativas/OOS e integração completa da UI continuam
+nas suas frentes; T18.2/F18 e o roadmap inteiro permanecem parciais.

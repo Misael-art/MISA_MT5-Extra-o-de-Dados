@@ -397,6 +397,44 @@ ou significado. Fonte, parâmetros e binário devem corresponder ao mesmo Expert
 | `CheckResult` | `steps`, `ok`, `report` (a bateria), `to_dict()` |
 | `write_junit(result, path)` | Grava o `CheckResult` em JUnit XML |
 
+## Relações referenciais congeladas (BD15a)
+
+`sdk.query_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0,
+method="pearson", minimum_pairs=30, minimum_sessions=10, bootstrap_replicates=999,
+seed=7, block_length_sessions=None, tests_counted=None, synthetic_fixture=False,
+timeout_seconds=120, max_memory_mb=2048, cancel_check=None)` consulta dois pares
+`(feature_id, algorithm_version)` presentes no mesmo snapshot4. CLI equivalente:
+
+```bash
+./run.sh --cli --json analytics features relation --manifest MANIFEST_ID \
+  --left example.x v1 --right example.y v1 --as-of 2026-01-01T00:00:00Z \
+  --method spearman --lag-bars 0 --seed 7
+```
+
+Usa somente fatos/contratos congelados e o contexto causal existente. Composto
+materializado precisa de seus manifests de origem imutáveis; ausência ou
+proveniência não verificável produz inconclusão, sem completar com tabelas live.
+Pivôs armazenados sem qualificação de eventos ficam fora das relações. Categorias,
+booleanos e tipos não declarados não recebem coeficiente contínuo por conversão.
+
+Defasagem positiva liga a esquerda ao fechamento nominal anterior indicado,
+exigindo barra de referência e mesma sessão; não comprime lacunas. Sessões vêm
+somente do calendário congelado conhecido no corte, nunca da data civil inferida.
+População, exclusões exclusivas e fontes distintas são informadas; contagem de
+fontes distintas não certifica amostras independentes. As-of exige fuso e corte
+já ocorrido. Limites:100.000 decisões,32 snapshots de linhagem, até5.000 réplicas,
+com os guardas existentes de tempo/memória e cancelamento, sem resultado parcial.
+
+O DTO2 `FEATURE_PAIR_RELATION` conserva descritores esquerdo/direito, unidade,
+versão, método, defasagem, população, hashes e proveniência. Não inventa horizonte
+de alvo futuro; o DTO1 e sua fixture continuam compatíveis. Pearson/Spearman e
+inferência temporal reaproveitam o módulo canônico de associações T18.2. P-valores
+não são promoção de evidência: o resultado permanece exploratório, utilidade
+inconclusiva e sem causalidade/aceite operacional. Bonferroni só é aplicado quando
+`tests_counted` declara a família; não substitui o registro de tentativas/OOS.
+Não persiste relações, executa estratégias ou envia ordens; BD15b e consumidores
+completos continuam nas frentes próprias.
+
 ## Recuperação de jobs órfãos (BD14-ORPHAN)
 
 `sdk.recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None)`
