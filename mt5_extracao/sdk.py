@@ -369,6 +369,12 @@ def inspect_backtest_scope(db, batch_id):
     return inspect_plan(db, batch_id)
 
 
+def compare_backtest_scope(db, batch_id, **kwargs):
+    """Compara apenas tentativas do lote revisado; não executa nem seleciona outros runs."""
+    from mt5_extracao.robots.matrix import compare_scope
+    return compare_scope(db, batch_id, **kwargs)
+
+
 def create_backtest_scope_runner(db, config, robot, batch_id, **kwargs):
     """Confere o plano e devolve BatchRunner; start/cancel/join mantêm o contrato atual."""
     from mt5_extracao.robots.backtest_scope import create_runner
@@ -376,7 +382,7 @@ def create_backtest_scope_runner(db, config, robot, batch_id, **kwargs):
 
 
 __all__ = [
-    "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner",
+    "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner", "compare_backtest_scope",
     "create_super_atr_research_robot",
     "super_atr_capabilities", "materialize_super_atr_snapshot",
     "link_laboratory_execution",

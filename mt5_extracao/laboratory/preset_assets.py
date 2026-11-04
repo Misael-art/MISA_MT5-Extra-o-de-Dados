@@ -10,6 +10,7 @@ import time
 import pandas as pd
 
 from mt5_extracao.robots import store
+from mt5_extracao import profit_factor
 
 
 def _canonical(value):
@@ -195,21 +196,53 @@ def _financial_row(run):
             curves[key]=downsample([[str(p[0]),v] for p,v in zip(raw,values)])
         except (ValueError,TypeError,IndexError):curves[key]=[];issues.append(key+': curva inválida')
     def last(key):return curves[key][-1][1] if curves[key] else None
-    summary={key:_number(metrics.get(key)) for key in ('trades','net_profit','initial_equity','return_pct','max_drawdown_pct',
+    summary={key:_number(metrics.get(key)) for key in ('trades','net_profit','initial_equity','return_pct','max_drawdown_pct','win_rate','profit_factor',
         'max_floating_drawdown_pct','max_floating_drawdown_money','time_weighted_return_pct')}
     summary.update(final_balance=last('account_balance'),final_equity=last('floating_equity'))
     return dict(run_id=run['run_id'],robot_key=run['robot_key'],symbol=run['symbol'],timeframe=run['timeframe'],source=run['source'],
         interval=dict(start=run['data_start'],end=run['data_end'],bars=run['bars']),body_hash=body,revision_reason=reason,
         composition_hash=metrics.get('composition_hash'),composition=metrics.get('composition'),data_manifest_id=run.get('data_manifest_id'),
+        effective_params=run.get('params'),
+        profit_factor_status=metrics.get('profit_factor_status'),profit_factor_note=profit_factor.reason(metrics),
         context=metrics.get('comparison_context'),summary=summary,curves=curves,curve_issues=issues,
         currency=metrics.get('currency'),costs=_costs(metrics),valuation=run.get('valuation'),
         data_quality=metrics.get('data_quality'),instrument_context=_spec(metrics))
 
 
+def scope_run(db, run, checkpoint=None):
+    """Prova de pertencimento: tentativa publicada do journal, nunca o último/melhor run."""
+    from mt5_extracao.robots import budget, backtest_scope
+    receipt = run.get('metrics', {}).get('backtest_scope')
+    if not isinstance(receipt, dict) or not receipt.get('batch_id'):
+        raise ValueError('Execução sem vínculo comprovado ao plano revisado.')
+    saved = checkpoint if checkpoint is not None else budget.checkpoint(db, receipt['batch_id'])
+    if saved is None or saved['batch_id'] != receipt['batch_id']:
+        raise ValueError('Journal da execução não encontrado nesta base.')
+    review = saved['plan'].get('context', {}).get('review', {})
+    if review.get('version') != backtest_scope.VERSION:
+        raise ValueError('Revisão do plano ausente ou incompatível.')
+    entry = next((e for e in saved['plan']['jobs'] if e['key'] == receipt.get('job_key')), None)
+    head = next((h for h in saved['jobs'] if h['job_key'] == receipt.get('job_key')), None)
+    if entry is None or head is None or head['run_id'] != run['run_id'] or head['status'] != 'completed':
+        raise ValueError('Run não corresponde à tentativa concluída registrada no lote.')
+    expected = dict(saved['plan']['context']['provenance'], batch_id=saved['batch_id'],
+        plan_signature=saved['plan']['signature'], job_key=entry['key'], symbol=entry['symbol'],
+        timeframe=entry['timeframe'], data_manifest_id=entry.get('data_manifest_id'))
+    if _canonical(receipt) != _canonical(expected) or (run['robot_key'], run['symbol'], run['timeframe'], run.get('data_manifest_id')) != (
+            entry['robot'], entry['symbol'], entry['timeframe'], entry.get('data_manifest_id')):
+        raise ValueError('Preset, contexto ou dados do resultado divergem do plano revisado.')
+    if entry.get('execution', {}).get('mode') == 'python' and _canonical(run.get('params')) != _canonical(entry['execution']['params']):
+        raise ValueError('Parâmetros do resultado divergem do preset congelado.')
+    if entry.get('execution', {}).get('mode') == 'python' and run['metrics'].get('composition') is not None:
+        raise ValueError('Composição adicional não foi revisada neste plano de parâmetros Python.')
+    return saved
+
+
 def compare_runs(db,run_ids,*,mode,guard=None):
     """Seleção explícita de runs; compara recibos, não gera uma execução nova."""
-    if mode not in ('same_asset','same_preset'):raise ValueError('Modo exige same_asset ou same_preset.')
-    if not isinstance(run_ids,(list,tuple)) or not 2<=len(run_ids)<=8 or any(not isinstance(i,str) or not i.strip() for i in run_ids) or len(set(run_ids))!=len(run_ids):raise ValueError('Selecione2 a8 run_ids distintos.')
+    if mode not in ('same_asset','same_preset','same_scope'):raise ValueError('Modo exige same_asset, same_preset ou same_scope.')
+    low, high = (1, 512) if mode == 'same_scope' else (2, 8)
+    if not isinstance(run_ids,(list,tuple)) or not low<=len(run_ids)<=high or any(not isinstance(i,str) or not i.strip() for i in run_ids) or len(set(run_ids))!=len(run_ids):raise ValueError(f'Selecione{low} a{high} run_ids distintos.')
     if guard is None:
         from mt5_extracao.analytics import indicator_materializer
         started=dict(started_monotonic=time.monotonic())
@@ -218,16 +251,30 @@ def compare_runs(db,run_ids,*,mode,guard=None):
     from mt5_extracao.composition import Composition
     from dataclasses import asdict
     from mt5_extracao.strategies.backtester import BacktestConfig
-    rows=[];problems=[];snapshots={}
+    rows=[];problems=[];snapshots={};scope_checkpoint=None
     for ident in run_ids:
         guard();found=store.load_runs(db,run_id=ident)
         if len(found)!=1:raise ValueError('Execução não encontrada: '+ident)
         run=found[0];row=_financial_row(run);rows.append(row);ctx=row['context']
-        try:
-            comp=Composition(row['composition'])
-            if comp.config_hash!=row['composition_hash']:raise ValueError('hash da composição diverge')
-            if comp.to_dict()['context']!=dict(symbol=row['symbol'],timeframe=row['timeframe']):raise ValueError('contexto da composição diverge')
-        except (ValueError,TypeError):problems.append(ident+': revisão de composição não comprovada')
+        if mode == 'same_scope':
+            scope_checkpoint = scope_run(db, run, scope_checkpoint)
+            row['body_hash'] = run['metrics']['backtest_scope']['preset_identity']['content_hash']
+            row['revision_reason'] = None
+            row['observed_interval'] = None
+            try:
+                from mt5_extracao.trade_analytics.trajectories.clocks import bar_end_in_source
+                if not isinstance(ctx,dict) or ctx.get('engine')!='python_ohlcv_stop_first':raise ValueError()
+                begin=pd.Timestamp(row['interval']['start'])
+                finish=pd.Timestamp(bar_end_in_source(row['interval']['end'],row['timeframe']))
+                if pd.isna(begin) or pd.isna(finish) or begin>=finish:raise ValueError()
+                row['observed_interval']=dict(start=begin.isoformat(),end=finish.isoformat())
+            except (ValueError,TypeError,OverflowError):pass
+        else:
+            try:
+                comp=Composition(row['composition'])
+                if comp.config_hash!=row['composition_hash']:raise ValueError('hash da composição diverge')
+                if comp.to_dict()['context']!=dict(symbol=row['symbol'],timeframe=row['timeframe']):raise ValueError('contexto da composição diverge')
+            except (ValueError,TypeError):problems.append(ident+': revisão de composição não comprovada')
         if not isinstance(ctx,dict) or ctx.get('schema_version')!=1 or not ctx.get('code_sha256'):
             problems.append(ident+': recibo de motor/configuração completo ausente');continue
         required={'engine','settings','trade_from','source','clock','instrument_spec','currency','currency_source','external_cashflows'}
@@ -241,20 +288,39 @@ def compare_runs(db,run_ids,*,mode,guard=None):
         if any(row['summary'][k] is None for k in ('trades','net_profit','initial_equity','max_drawdown_pct','final_balance','final_equity','max_floating_drawdown_pct')):problems.append(ident+': métricas/patrimônio completo ausentes')
         if not (row['summary']['initial_equity'] or 0)>0:problems.append(ident+': capital inicial inválido')
         try:
-            snapshot=datasets.load(db,row['data_manifest_id']);manifest=snapshot.manifest;snapshots[ident]=manifest
+            snapshot=datasets.for_run(db,ident) if mode=='same_scope' else datasets.load(db,row['data_manifest_id'])
+            if snapshot is None:raise ValueError('Snapshot indisponível')
+            manifest=snapshot.manifest;snapshots[ident]=manifest
             if (manifest['symbol'],manifest['timeframe'])!=(row['symbol'],row['timeframe']) or manifest['source']!=ctx['source'] or manifest['time']!=ctx['clock']:raise ValueError()
             if not (row['data_quality'] or {}).get('eligibility',{}).get('eligible'):raise ValueError()
         except (ValueError,TypeError,KeyError):problems.append(ident+': referência congelada/qualidade não comprovada')
     first=rows[0]
     for row in rows[1:]:
-        if row['timeframe']!=first['timeframe'] or row['interval']!=first['interval']:problems.append('Períodos, quantidade de barras ou timeframes diferentes')
+        if mode != 'same_scope' and (row['timeframe']!=first['timeframe'] or row['interval']!=first['interval']):problems.append('Períodos, quantidade de barras ou timeframes diferentes')
         if mode=='same_asset' and (row['symbol']!=first['symbol'] or row['data_manifest_id']!=first['data_manifest_id']):problems.append('Mesmo ativo exige o mesmo snapshot de dados')
         if mode=='same_preset' and (row['body_hash'] is None or row['body_hash']!=first['body_hash']):problems.append('Presets diferem além do ativo')
+        if mode=='same_scope' and (row['body_hash'] is None or row['body_hash']!=first['body_hash']):problems.append('Composições diferem além do ativo/TF do mesmo plano')
         a,b=first['context'] or {},row['context'] or {}
         for key,label in [('engine','Motor'),('code_sha256','Código do motor'),('settings','Configuração de capital/risco/custos'),('trade_from','Início efetivo'),('source','Origem'),('clock','Relógio'),('currency','Moeda da conta')]:
             if a.get(key)!=b.get(key):problems.append(label+' diferente')
         if mode=='same_asset' and a.get('instrument_spec')!=b.get('instrument_spec'):problems.append('Especificação do instrumento diferente')
     if mode=='same_preset' and len({r['symbol'] for r in rows})<2:problems.append('Mesmo preset entre ativos exige ao menos dois ativos')
+    configuration_compatible=not problems
+    if mode=='same_scope':
+        specs={}
+        for row in rows:
+            spec=(row['context'] or {}).get('instrument_spec')
+            if isinstance(spec,dict):
+                spec=dict(spec)
+                provenance=dict(spec.get('provenance') or {})
+                # É contagem por barra da auditoria, não revisão/valor do contrato.
+                provenance.pop('missing_specification_bars',None)
+                spec['provenance']=provenance
+            if row['symbol'] in specs and specs[row['symbol']]!=spec:problems.append('Especificação do instrumento difere entre TFs do mesmo ativo')
+            specs.setdefault(row['symbol'],spec)
+        configuration_compatible=not problems
+        if any(r['observed_interval'] is None for r in rows):problems.append('Cobertura temporal gravada não comprovada')
+        elif any(r['observed_interval']!=first['observed_interval'] for r in rows[1:]):problems.append('Coberturas temporais diferentes; métricas permanecem nas janelas integrais de cada TF')
     guard();result=dict(schema_version=1,mode=mode,run_ids=list(run_ids),rows=rows,compatible=not problems,reasons=list(dict.fromkeys(problems)),
         opened_backtest=False,financial_qualification=False,ranked=False,
         limitations=['Resultados já gravados; nenhuma ordem, backtest ou conversão cambial nesta consulta.',
@@ -262,6 +328,7 @@ def compare_runs(db,run_ids,*,mode,guard=None):
             'Métricas vêm do motor canônico sobre a série completa. Curvas exibidas usam redução gráfica existente até240 pontos.',
             'Saldo de encerradas e patrimônio a mercado são separados; marcação por fechamento não mede drawdown intrabar.',
             'Compatibilidade de recibos não aprova estratégia, qualidade financeira ou desempenho futuro.'])
+    if mode=='same_scope':result['configuration_compatible']=configuration_compatible
     result['comparison_sha256']=hashlib.sha256(_canonical(result).encode()).hexdigest()
     return result
 

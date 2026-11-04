@@ -519,6 +519,21 @@ acessos no ledger; retomar tentativa admitida sem resultado exige nova chave.
 
 ### Comparação financeira de execuções gravadas
 
+Para a mesma revisão **entre tempos gráficos**, use **Robôs → plano Todos →
+Comparar resultados**, ou **Comparar lote desta revisão** no detalhe de um run
+gravado. O lote identifica suas próprias tentativas e parâmetros; nenhuma
+execução de outro lote é escolhida pelo resultado ou pela data. Resultados,
+Ativos × TF, Capital e Detalhe mantêm amostra, estados e números completos.
+Capital mostra até seis TFs por página, com base1 declarada e eixo vertical
+comum entre os painéis. A matriz tem filtro de retorno, DD, operações e PF;
+clicar numa célula ou selecionar uma linha revela o run e as operações gravadas.
+
+Configuração consistente e cobertura temporal comum são verificações distintas.
+Janelas efetivas diferentes permanecem identificadas, sem recalcular resultados
+na sua interseção. PF indefinido/zero operações não são ausência. SDK usa
+`compare_backtest_scope`; CLI usa `robots backtest-plan-compare --batch-id <id>
+--report <novo.html>`. [Contrato completo](api.md#comparação-do-lote-por-revisão-e-timeframe).
+
 Laboratório → Comparativo → Execuções gravadas → “Comparar execuções gravadas…”.
 Escolha2 a8 runs, adicione-os à seleção e declare “Estratégias/presets no mesmo
 ativo” ou “Mesmo preset entre ativos”. Abertura lê somente uma página de50

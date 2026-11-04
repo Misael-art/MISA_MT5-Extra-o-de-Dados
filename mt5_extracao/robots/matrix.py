@@ -148,3 +148,82 @@ def positives(matrix: dict, robot_key: str) -> List[dict]:
     """
     rows = [c for c in matrix["cells"] if c["robot"] == robot_key and c["status"] in (APPROVED, PROMISING)]
     return sorted(rows, key=lambda c: (c["status"] != APPROVED, profit_factor.sort_key(c["profit_factor"]), -c["return_pct"]))
+
+
+def compare_scope(db, batch_id, *, guard=None):
+    """Matriz do plano escolhido e métricas gravadas; nenhum executor é chamado."""
+    import hashlib
+    import time
+    import pandas as pd
+    from . import budget, backtest_scope
+    from mt5_extracao.laboratory import preset_assets
+    if guard is None:
+        from mt5_extracao.analytics import indicator_materializer
+        started = dict(started_monotonic=time.monotonic())
+        guard = lambda: indicator_materializer._guard(started, None, None, 120, 1024)
+    guard()
+    plan = backtest_scope.inspect_plan(db, batch_id)
+    saved = budget.checkpoint(db, batch_id)
+    if len(plan['rows']) > 512:
+        raise ValueError('Comparação excede512 células; escolha um lote menor explicitamente.')
+    heads = {(e['symbol'], e['timeframe']): e for e in plan['executions']}
+    cells, records = [], []
+    for item in plan['rows']:
+        guard()
+        head = heads.get((item['symbol'], item['timeframe']), {})
+        state = head.get('status', 'pending') if item['eligible'] else 'excluded'
+        reason = item['reason'] or (head.get('history') or [{}])[-1].get('reason', '')
+        cell = dict(symbol=item['symbol'], timeframe=item['timeframe'], state=state,
+                    reason=reason, limitations=item['limitations'], bars=item['bars'],
+                    data_manifest_id=item.get('data_manifest_id'), run_id=head.get('run_id'), result=None,
+                    history=head.get('history', []))
+        if state == 'completed':
+            found = store.load_runs(db, run_id=head['run_id'])
+            if not found:
+                cell.update(state='missing_result', reason='Run registrado no journal não está disponível nesta base.')
+            else:
+                try:
+                    preset_assets.scope_run(db, found[0], saved)
+                    records.append(found[0]['run_id'])
+                except ValueError as error:
+                    cell.update(state='inconsistent', reason=str(error))
+        cells.append(cell)
+    order = _timeframe_order()
+    cells.sort(key=lambda c: (c['symbol'], order.get(c['timeframe'], 10**9)))
+    comparison = preset_assets.compare_runs(db, records, mode='same_scope', guard=guard) if records else dict(
+        rows=[], compatible=False, reasons=['Sem resultados concluídos e comprovados neste lote.'], limitations=[])
+    by_id = {r['run_id']: r for r in comparison['rows']}
+    for cell in cells:
+        if cell['run_id'] in by_id:
+            cell['result'] = by_id[cell['run_id']]
+    intervals = [r['observed_interval'] for r in comparison['rows'] if r.get('observed_interval')]
+    coverage = None
+    if intervals:
+        try:
+            begin = max(pd.Timestamp(i['start']) for i in intervals)
+            end = min(pd.Timestamp(i['end']) for i in intervals)
+            if pd.isna(begin) or pd.isna(end):raise ValueError('Janela ausente')
+            coverage = dict(start=str(begin), end=str(end), overlaps=begin <= end,
+                            basis='Interseção da cobertura das barras (fim de barra pelo calendário do TF); métricas NÃO recalculadas nesta janela.',
+                            covers_requested_window=begin<=pd.Timestamp(plan['start']) and end>=pd.Timestamp(plan['end']))
+            if not coverage['overlaps']:
+                comparison['compatible']=False;comparison['reasons'].append('Janelas gravadas sem interseção comum')
+        except (ValueError,TypeError):
+            comparison['compatible']=False;comparison['reasons'].append('Janelas gravadas ausentes ou relógios incompatíveis')
+    counts = {state: sum(c['state'] == state for c in cells) for state in sorted({c['state'] for c in cells})}
+    if counts.get('inconsistent') or counts.get('missing_result'):
+        comparison['compatible']=False;comparison['reasons'].append('Células sem resultado ou vínculo comprovado permanecem separadas')
+    result = dict(schema_version=1, mode='same_scope', batch_id=batch_id, plan_signature=plan['signature'],
+        plan_status=plan['status'], preset_identity=plan['preset_identity'], robot=plan['robot'], robot_name=plan['robot_name'],
+        symbols=sorted(plan['symbols']), timeframes=sorted({c['timeframe'] for c in cells}, key=lambda t: order.get(t, 10**9)),
+        interval=dict(start=plan['start'], end=plan['end']), settings=plan['settings'], model=plan['model'],
+        cost_basis=plan['cost_basis'], cells=cells, counts=counts, coverage=coverage,
+        rows=comparison['rows'], run_ids=records, compatible=comparison['compatible'], reasons=comparison['reasons'],
+        configuration_compatible=comparison.get('configuration_compatible',False),
+        opened_backtest=False, ranked=False, financial_qualification=False,
+        limitations=comparison['limitations'] + ['Tentativas identificadas pelo journal do lote; sem escolher o último/melhor run de cada TF.',
+            'Cada métrica usa a janela integral gravada do seu TF; a interseção é informativa, sem simular uma janela comum.',
+            'Pendente, excluído, interrompido, falha, resultado ausente e zero operações são estados distintos.'])
+    result['comparison_sha256'] = hashlib.sha256(preset_assets._canonical(result).encode()).hexdigest()
+    guard()
+    return result

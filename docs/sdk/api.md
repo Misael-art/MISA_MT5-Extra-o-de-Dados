@@ -1310,7 +1310,10 @@ com a família inteira. Relatório já exposto, reserva inédita e desempenho fu
 continuam sem qualificação. [Contrato estatístico](laboratorio_series.md#avaliação-estatística-registrada).
 
 `sdk.compare_laboratory_runs(db, run_ids, *, mode, **kwargs)` consulta2…8 runs
-existentes; mode é same_asset ou same_preset. kwargs aceita guard cooperativo;
+existentes nos modos same_asset ou same_preset. O modo same_scope admite1…512
+tentativas publicadas do mesmo lote revisado, com vínculo exato ao journal;
+para incluir também estados/exclusões/cobertura, prefira `sdk.compare_backtest_scope`.
+kwargs aceita guard cooperativo;
 sem guard, usa120s/1024MiB. Retorna métricas/capital/curvas gravados e motivos de
 incompatibilidade; não executa estratégia. `sdk.export_laboratory_runs(comparison,
 destination)` verifica integridade e grava HTML local em arquivo novo, sem
@@ -1375,3 +1378,36 @@ workers Python; um valor explícito usa o limite existente. O governor regula
 admissão por CPU/RAM e Budget interrompe por limites duros, tempo ou disco.
 MQL5 continua serial. Quantidade de ativos não promete igual concorrência.
 Retenção/limpeza dos artefatos referenciados é frente própria T20.25b.
+
+### Comparação do lote por revisão e timeframe
+
+`sdk.compare_backtest_scope(db, batch_id, guard=None)` consulta as tentativas
+publicadas do journal do plano escolhido. Não executa estratégias, não retoma
+a fila e não busca o último/melhor run de outro lote. O resultado inclui
+`cells` ativo × TF, estados/motivos/histórico, `rows` financeiras, identidade do
+preset, janela/configuração/modelo, `counts`, interseção informativa `coverage`
+e recibo `comparison_sha256`. Os TFs seguem duração crescente. O limite de512
+células e os guardas existentes de tempo/RAM/cancelamento evitam uma consulta
+sem limite; escolher um lote menor é explícito.
+
+CLI: `robots backtest-plan-compare --batch-id <id> --report <novo.html>`;
+`--json` retorna a mesma comparação do SDK. HTML usa o exportador existente
+`sdk.export_laboratory_runs` e preserva estados e recibos. Na UI, “Comparar
+resultados” do plano e “Comparar lote desta revisão” de um run gravado abrem a
+mesma consulta, com retorno/DD/operações/PF, matriz, capital por TF e detalhe.
+
+No Python sem composição, a prova é o preset/parâmetros congelados no journal,
+com IDs, assinatura e snapshot por job. Uma composição adicional não revisada,
+parâmetros/referências divergentes e resultado ausente ficam separados. Não
+fabricar uma composição a partir de parâmetros nem retargetar Default/Manual.
+Períodos, custos, código, fonte, relógio, moeda e qualidade são conferidos pelos
+serviços financeiros existentes. Métricas permanecem as da janela integral de
+cada TF, mesmo quando as quantidades de barras diferem. `configuration_compatible`
+distingue configuração consistente de cobertura temporal comum. Fim da última
+barra segue o calendário canônico do TF; diferenças de cobertura tornam
+`compatible=false`, mesmo com o mesmo preset. `covers_requested_window` distingue
+o recorte efetivo da janela solicitada. Interseção não recalcula
+retorno em uma janela comum; curvas usam capital inicial declarado (base1),
+sem conversão de moeda. Zero operações/PF indefinido não equivalem a ausência.
+Nativo sem recibo financeiro/cobertura suficiente continua incompatível, com
+seus números identificados; comparação não concede aceite financeiro/preditivo.

@@ -221,6 +221,8 @@ class RobotDetail:
         self.execution_status.pack(anchor="w", fill=tk.X)
         self.run_status = ttk.Label(self.run_box, text="", style="Muted.TLabel", wraplength=400, justify=tk.LEFT)
         self.run_status.pack(anchor="w", pady=(6, 4))
+        self.scope_compare_button = ttk.Button(self.run_box, text="Comparar lote desta revisão", command=self.compare_scope)
+        self.scope_compare_button.pack(anchor="w", pady=(0, 6)); self.scope_compare_button.state(['disabled'])
         tiles = ttk.Frame(self.run_box, style="Surface.TFrame")
         tiles.pack(fill=tk.X)
         self.run_tiles = {}
@@ -479,6 +481,8 @@ class RobotDetail:
         elif not run or not previous or run.get("run_id") != previous.get("run_id"):
             self._shown_request = None
         self.shown_run = run
+        receipt=(run or {}).get('metrics',{}).get('backtest_scope')
+        self.scope_compare_button.state(['!disabled'] if isinstance(receipt,dict) and receipt.get('batch_id') else ['disabled'])
         self._update_result_context()
         for _label, key, kind, _tip in RUN_TILES:
             self.run_tiles[key].config(text=format_metric(run["metrics"].get(key), kind) if run else "—")
@@ -505,6 +509,17 @@ class RobotDetail:
         else:
             self.run_status.config(text=empty_text)
         self._draw_run()
+
+    def compare_scope(self):
+        receipt = (self.shown_run or {}).get('metrics', {}).get('backtest_scope')
+        if isinstance(receipt,dict) and receipt.get('batch_id'):
+            from .scope_comparison import ScopeComparisonDialog
+            previous=getattr(self,'scope_comparison',None)
+            if previous and previous.alive():
+                if previous.batch_id==receipt['batch_id']:
+                    previous.window.lift();return
+                previous.close()
+            self.scope_comparison = ScopeComparisonDialog(self.ui, receipt['batch_id'])
 
     def _draw_run(self):
         self.equity_readout.config(text="")

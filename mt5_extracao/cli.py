@@ -1510,6 +1510,16 @@ def cmd_robots(args, ctx):
     from mt5_extracao.robots import catalog
     if args.all_symbols and args.action != "backtest-plan":
         raise ValueError("--all-symbols exige backtest-plan e revisão antes da execução.")
+    if args.action == 'backtest-plan-compare':
+        from mt5_extracao import sdk
+        if not args.batch_id:
+            raise ValueError('Informe --batch-id do plano revisado.')
+        comparison = sdk.compare_backtest_scope(ctx.db, args.batch_id)
+        if args.report:
+            sdk.export_laboratory_runs(comparison, args.report)
+        _data(comparison=comparison)
+        _print(f"Lote {args.batch_id}: {comparison['counts']}. Compatibilidade: {comparison['compatible']}")
+        return EXIT_OK
     if args.action == "import":
         if not args.path:
             raise ValueError("informe o arquivo ou a pasta: mt5x robots import <arquivo.mq5, .ex5 ou pasta>")
@@ -2118,7 +2128,7 @@ def build_parser():
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
     p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity", "market",
-                                                    "generate", "backtest-plan", "backtest-plan-show", "backtest-plan-run",
+                                                    "generate", "backtest-plan", "backtest-plan-show", "backtest-plan-run", "backtest-plan-compare",
                                                     "new",
                                                     "start",
                                                     "monitor",
@@ -2147,7 +2157,7 @@ def build_parser():
                    help="market: inclui .mq5/.mqh no pacote (por padrão só vai o .ex5)")
     p.add_argument("--deep", action="store_true",
                    help="battery (robô MQL5): repete o Strategy Tester para medir fora da amostra e robustez ±20%%")
-    p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")
+    p.add_argument("--report", help="check: relatório JUnit XML; backtest-plan-compare: novo HTML local")
     p.add_argument("--name", help="generate: nome do robô a criar")
     p.add_argument("--dir", help="new/generate: pasta de robôs onde criar (layout Experts/ Presets/)")
     p.add_argument('--template',choices=['skeleton','super-atr-research'],default='skeleton',help='new: modelo padrão ou candidato Super ATR Tester+DEMO')
