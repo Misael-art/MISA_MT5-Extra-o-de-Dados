@@ -31,6 +31,13 @@ def trades_text(rows):
     return "\n".join([HEADER] + [f"2026-11-03;WINZ26;{act};{price};{qty};{clock};{tid};1;2026-11-03;3;88"
                                  for act, price, qty, clock, tid in rows]) + "\n"
 
+@pytest.fixture
+def cfg(tmp_path_factory):
+    """config.ini temporário fora de tmp_path: o CI não tem config/config.ini."""
+    path = tmp_path_factory.mktemp("cfg") / "config.ini"
+    path.write_text("[DATABASE]\ntype = sqlite\n", encoding="utf-8")
+    return ["--config", str(path)]
+
 
 def test_cotahist_reads_spot_lot_bars_and_ignores_other_markets():
     text = "\n".join(["00COTAHIST.2026BOVESPA 20261103".ljust(245),
@@ -72,14 +79,14 @@ def test_download_refuses_files_above_manual_limit(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_cli_imports_local_files_into_dedicated_b3_database(tmp_path):
+def test_cli_imports_local_files_into_dedicated_b3_database(tmp_path, cfg):
     db = tmp_path / "b3.db"
     trades = tmp_path / "WINZ26.zip"
     trades.write_bytes(zipped("x.txt", trades_text([("0", "100,0", 1, "090000100", 10)]).encode()))
     daily = tmp_path / "COTAHIST_D03112026.ZIP"
     daily.write_bytes(zipped("d.txt", cotahist_line("PETR4", "20261103", 1, 2, 0.5, 1.5, 3, 4).encode()))
-    assert cli.main(["--db", str(db), "b3", "trades", "--file", str(trades)]) == cli.EXIT_OK
-    assert cli.main(["--db", str(db), "b3", "daily", "--file", str(daily)]) == cli.EXIT_OK
+    assert cli.main(cfg + ["--db", str(db), "b3", "trades", "--file", str(trades)]) == cli.EXIT_OK
+    assert cli.main(cfg + ["--db", str(db), "b3", "daily", "--file", str(daily)]) == cli.EXIT_OK
     with sqlite3.connect(db) as conn:
         assert conn.execute("SELECT close, real_volume FROM winz26_1_minuto").fetchall() == [(100.0, 1)]
         assert conn.execute("SELECT close FROM petr4_1_dia").fetchall() == [(1.5,)]
@@ -87,8 +94,8 @@ def test_cli_imports_local_files_into_dedicated_b3_database(tmp_path):
     assert origin.get("server") == "B3"
 
 
-def test_cli_trades_from_b3_requires_symbols(tmp_path):
-    assert cli.main(["--db", str(tmp_path / "b3.db"), "b3", "trades", "--from", "2026-11-03"]) != cli.EXIT_OK
+def test_cli_trades_from_b3_requires_symbols(tmp_path, cfg):
+    assert cli.main(cfg + ["--db", str(tmp_path / "b3.db"), "b3", "trades", "--from", "2026-11-03"]) != cli.EXIT_OK
 
 
 def test_contract_specs_for_futures_and_stocks():
@@ -99,7 +106,7 @@ def test_contract_specs_for_futures_and_stocks():
     assert b3_public.spec_for("WIN$N") is None and b3_public.spec_for("PETRA1") is None
 
 
-def test_empty_trades_file_saves_nothing(tmp_path):
+def test_empty_trades_file_saves_nothing(tmp_path, cfg):
     empty = tmp_path / "WINZ26.zip"
     empty.write_bytes(zipped("x.txt", (HEADER + "\n").encode()))
-    assert cli.main(["--db", str(tmp_path / "b3.db"), "b3", "trades", "--file", str(empty)]) != cli.EXIT_OK
+    assert cli.main(cfg + ["--db", str(tmp_path / "b3.db"), "b3", "trades", "--file", str(empty)]) != cli.EXIT_OK

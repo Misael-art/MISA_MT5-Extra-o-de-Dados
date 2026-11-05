@@ -47,6 +47,13 @@ class Response:
     def json(self):
         return self.payload
 
+@pytest.fixture
+def cfg(tmp_path_factory):
+    """config.ini temporário fora de tmp_path: o CI não tem config/config.ini."""
+    path = tmp_path_factory.mktemp("cfg") / "config.ini"
+    path.write_text("[DATABASE]\ntype = sqlite\n", encoding="utf-8")
+    return ["--config", str(path)]
+
 
 def test_klines_page_through_limit_and_drop_open_candle(monkeypatch):
     monkeypatch.setattr(crypto_public, "LIMIT", 3)
@@ -71,14 +78,14 @@ def test_pair_spec_comes_from_public_filters():
         0.01, 2, 0.00001, 1.0, "USDT")
 
 
-def test_cli_extracts_into_dedicated_database_and_resumes(tmp_path, monkeypatch):
+def test_cli_extracts_into_dedicated_database_and_resumes(tmp_path, monkeypatch, cfg):
     fake = FakeBinance(5)
     monkeypatch.setattr(crypto_public, "requests", fake)
     db = tmp_path / "cripto.db"
     args = ["--db", str(db), "crypto", "extract", "--symbols", "BTCUSDT", "--tf", "M1"]
-    assert cli.main(args + ["--from", "2026-11-03", "--to", "2026-11-03"]) == cli.EXIT_OK
+    assert cli.main(cfg + args + ["--from", "2026-11-03", "--to", "2026-11-03"]) == cli.EXIT_OK
     fake.rows += [kline(i, 100.0 + i) for i in range(5, 8)]
-    assert cli.main(args + ["--to", "2026-11-03"]) == cli.EXIT_OK
+    assert cli.main(cfg + args + ["--to", "2026-11-03"]) == cli.EXIT_OK
     with sqlite3.connect(db) as conn:
         assert conn.execute("SELECT COUNT(*), MAX(close) FROM btcusdt_1_minuto").fetchone() == (8, 107.0)
         assert conn.execute("SELECT volume_min, currency_profit FROM _symbol_specs").fetchall() == [(0.00001, "USDT")]
@@ -88,5 +95,5 @@ def test_cli_extracts_into_dedicated_database_and_resumes(tmp_path, monkeypatch)
     assert resumed == T0 + 5 * MINUTE
 
 
-def test_cli_resume_without_history_asks_for_start(tmp_path):
-    assert cli.main(["--db", str(tmp_path / "c.db"), "crypto", "extract", "--symbols", "BTCUSDT"]) != cli.EXIT_OK
+def test_cli_resume_without_history_asks_for_start(tmp_path, cfg):
+    assert cli.main(cfg + ["--db", str(tmp_path / "c.db"), "crypto", "extract", "--symbols", "BTCUSDT"]) != cli.EXIT_OK
