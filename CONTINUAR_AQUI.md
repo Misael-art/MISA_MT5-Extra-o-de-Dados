@@ -1,5 +1,25 @@
 # Retomar MT5X em um host limpo
 
+## Lote de lacunas — 06/11/2026
+
+Um incremento por PR, todos sobre `master` `06b78eb`; nenhum merge feito.
+
+| Passo | PR | Estado |
+|---|---|---|
+| 1 Composição e retorno | [295](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/295) | Docs/registro; retorno `57d13ee` conferido por hash, arranque não exercitado |
+| 2 B3/Binance | [293](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/293) `35ad88c` | Recusa sem gravar, relógio por fonte, MN1 por calendário, filtro e erro estruturado; amostra pública real conferida; CI verde |
+| 3 LAB-08 | [294](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/294) | Selo de conteúdo v1, leitura legada declarada, envelope do estudo; CI verde. LAB-01…10 pelo atalho, tema/DPI/monitor físico pendentes |
+| 4 Launcher, Python, BD18a | [296](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/296) | Consultas locais sem ponte, Python ≥3.11, bancada BD18a (linear na seleção; sem otimização) |
+| 5 T13.4-M1 | [297](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/297) | Cadeia real EURUSD H1 em SQLite/PostgreSQL, zero aprovados; simulação econômica bloqueada pelo contrato de custo |
+| 6 E14 painel | [298](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/298) | Compila 0/0; bateria estática aprovada; backtest real 0 operações (painel só manual) |
+| Achado | [299](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/299) | `config.ini` sem interpolação na CLI/conector |
+
+Pendentes com dono: passo 7 (Drive) aguarda cliente OAuth do proprietário; DEMO ao vivo
+exige autorização vigente e janela; netting exige conta netting; Windows físico exige host;
+recuperação/capacidade/pendentes/risco agregado exigem escopo nos pins HADOUKEN/Safety;
+M1 econômico exige custo conhecido antes de janela prospectiva e plano P04. Teste Windows
+`test_backtest_scope_assets[ram]` expirou em CI na PR 299 (passa local 12/12): reexecutar.
+
 ## Composição conferida — 06/11/2026
 
 Conferência local deste host, sem instalar, trocar nem limpar releases.
