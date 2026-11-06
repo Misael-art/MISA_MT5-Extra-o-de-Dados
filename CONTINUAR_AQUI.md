@@ -1,5 +1,36 @@
 # Retomar MT5X em um host limpo
 
+## Composição conferida — 06/11/2026
+
+Conferência local deste host, sem instalar, trocar nem limpar releases.
+
+| Elemento | Estado verificado |
+|---|---|
+| `master` remoto | `06b78eb` (merge da PR292 sobre `784a252`; acréscimo só no handoff) |
+| Prévia do atalho | `~/.local/share/mt5x/app-development` → `releases/development-784a25210b04`, App `784a252`; 350 arquivos conferidos pelo `mt5x-release.json`, sem divergência |
+| Atalhos | `~/.local/share/applications/` e área de trabalho: mesmo `mt5-extracao.desktop` (SHA-256 `bf617cb5…`), executável, `Exec` no `run.sh` da prévia |
+| Retorno | `releases/development-57d13ee91620`, App `57d13ee` (ancestral do master); 341 arquivos conferidos, sem divergência; links de dados resolvem |
+| PR293 dados públicos | `35ad88c` (correções B3/Binance sobre `e5fa91e`/`7bb510f`) |
+| PR294 LAB-08 | `46cfc2e` (selo de conteúdo v1 e envelope do estudo) |
+| Pins | HADOUKEN `d4d389ee`, Safety `27b8599`, detached |
+
+Correções de registros anteriores: o recibo `state/development-preview.json`
+citado abaixo não existe neste host; o recibo efetivo é o `mt5x-release.json`
+de cada release. O alias `app-current` não existe; o destino de retorno é a
+release `57d13ee` acima.
+
+Retorno (troca atômica do link, com a janela do App fechada):
+
+```bash
+cd ~/.local/share/mt5x && ln -sfn releases/development-57d13ee91620 app-development.next && mv -T app-development.next app-development
+```
+
+Antes de usar, conferir de novo os hashes do manifesto da release. Limitação:
+a release de retorno reutiliza `.venv`, base, configuração e logs atuais por
+links; o arranque de `57d13ee` sobre esse estado não foi exercitado nesta
+conferência. Para voltar à prévia, repetir o comando com
+`releases/development-784a25210b04`.
+
 ## Integração no master e prévia — 04/11/2026
 
 Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs

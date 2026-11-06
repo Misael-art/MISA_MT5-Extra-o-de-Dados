@@ -45,8 +45,8 @@ Os dois atalhos `mt5-extracao.desktop` usam o mesmo destino estável
 uma release criada do commit publicado. `mt5x-release.json` nessa release registra
 SHA, composição, hashes dos arquivos e modalidade `development_preview`.
 
-A referência aceita `app-current` e sua release permanecem disponíveis para
-retorno. Só a prévia é usada pelo atalho habitual solicitado. A configuração,
+A release anterior da prévia permanece disponível para retorno (o alias
+`app-current` não existe neste host; ver [CONTINUAR_AQUI](../CONTINUAR_AQUI.md)). Só a prévia é usada pelo atalho habitual solicitado. A configuração,
 base, preferências, logs, exportações e `.venv` existentes são reutilizados por
 links; não se copia banco nem instalação Wine/MT5 para publicar uma interface.
 Não publicar configuração, credenciais ou conteúdo da base no GitHub.
