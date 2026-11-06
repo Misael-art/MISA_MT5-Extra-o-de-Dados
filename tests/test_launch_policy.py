@@ -3,6 +3,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -43,8 +44,13 @@ def test_official_launcher_starts_bridge_only_for_mt5_commands(tmp_path, argv, b
     (app / "scripts").mkdir(parents=True)
     (app / "config").mkdir()
     shutil.copy(ROOT / "run.sh", app / "run.sh")
-    for name in ("mt5_extracao", ".venv", "app.py"):
+    for name in ("mt5_extracao", "app.py"):
         (app / name).symlink_to(ROOT / name)
+    # O CI não tem .venv: o interpretador do launcher é o mesmo que roda os testes.
+    (app / ".venv" / "bin").mkdir(parents=True)
+    wrapper = app / ".venv" / "bin" / "python"
+    wrapper.write_text(f"#!/bin/sh\nexec '{sys.executable}' \"$@\"\n")   # link perderia o venv real
+    wrapper.chmod(0o755)
     (app / "config" / "config.ini").write_text(f"[DATABASE]\ntype = sqlite\npath = {tmp_path / 'qa.db'}\n")
     marker = tmp_path / "bridge-started"
     stub = app / "scripts" / "mt5-bridge.sh"
