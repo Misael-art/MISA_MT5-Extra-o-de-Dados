@@ -24,10 +24,19 @@ def _finite(value, name):
 
 
 def _validate(item):
+    if not isinstance(item, dict):
+        raise ValueError("Anotação inválida: cada item do estudo é um objeto JSON.")
     kind = item.get("kind")
     if kind not in KINDS:
         raise ValueError("Anotação desconhecida; use " + ", ".join(KINDS) + ".")
-    clean = dict(id=int(item["id"]), kind=kind, text=str(item.get("text", ""))[:500])
+    raw = item.get("id")
+    try:
+        ident = int(raw)
+    except (TypeError, ValueError):
+        ident = None
+    if isinstance(raw, bool) or ident is None or ident < 1 or (isinstance(raw, float) and raw != ident):
+        raise ValueError("Anotação sem id inteiro positivo; exporte o estudo novamente pelo Laboratório.")
+    clean = dict(id=ident, kind=kind, text=str(item.get("text", ""))[:500])
     if kind == "hline":
         clean["y"] = _finite(item.get("y"), "y")
     elif kind == "vline":

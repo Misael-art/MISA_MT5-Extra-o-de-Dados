@@ -789,7 +789,7 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         report["crossing_result"] = crossings(report, cancel_check=cancel_check,
             timeout_seconds=max(.001, timeout_seconds-(time.monotonic()-started["started_monotonic"])),
             max_memory_mb=max_memory_mb)
-        report["integrity_sha256"] = _hash(report)
+    report["integrity_sha256"] = _hash(report)      # v1 e v2: conteúdo congelado verificável na reabertura
     guard()
     return report
 
@@ -812,13 +812,24 @@ def load_report(text):
     expected = _hash(dict(version=report["laboratory_version"], source_hash=report["formula_source_sha256"], **report["selection"]))
     if expected != report["analysis_id"]:
         raise ValueError("analysis_id não corresponde à seleção e às fórmulas declaradas; arquivo alterado.")
+    payload = {k: v for k, v in report.items() if k != "integrity_sha256"}
     if report["laboratory_version"] == 2:
-        payload = {k: v for k, v in report.items() if k != "integrity_sha256"}
         cached = report.get("crossing_result")
         if (report.get("integrity_sha256") != _hash(payload) or not report["selection"].get("linked_sources")
                 or not isinstance(cached, dict) or cached.get("analysis_id") != report["analysis_id"]):
             raise ValueError("Relatório vinculado alterado ou sem vínculos congelados verificáveis.")
+    elif "integrity_sha256" in report and report["integrity_sha256"] != _hash(payload):
+        raise ValueError("Conteúdo da análise alterado após a exportação (integrity_sha256 não confere).")
     return report
+
+
+def integrity_state(report):
+    """``verified`` quando o conteúdo tem selo; ``legacy_unverified`` para v1 anterior ao selo.
+
+    Na exportação v1 legada só a identidade (seleção e fórmulas) é conferida, não os valores.
+    O relatório não é alterado: recibos derivados assinam o conteúdo exatamente como foi exportado.
+    """
+    return "verified" if "integrity_sha256" in report else "legacy_unverified"
 
 
 def capture_linked_sources(db, *, target_symbol, selections, cancel_check=None,
