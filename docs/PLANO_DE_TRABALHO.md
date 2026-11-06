@@ -4629,3 +4629,11 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+Painel em 06/11/2026 (App `550b6d5`, HADOUKEN `d4d389ee`, Safety `27b8599`, Wine 11.17/MT5 6296):
+`robots compile hdk_hadouken_painel` compilou 0 erros/0 avisos. A bateria `HDK_Conservador`
+aprovou o grupo estático com dois avisos (sem contrato `robot.json`; tetos de risco no código).
+O grupo estatístico reprovou por falta de backtest: o Tester recusou EURUSD M5 porque o terminal
+não sincronizou com MetaQuotes-Demo ("no connection"). Base de QA separada; nada ao vivo.
+[Recibo](evidencias/E14_PAINEL_COMPILE_BATTERY_20261106.json). Recuperação, capacidade,
+pendentes e risco agregado exigem escopo nos pins; DEMO, netting e Windows físico seguem pendentes.

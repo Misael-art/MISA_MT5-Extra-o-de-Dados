@@ -1,0 +1,110 @@
+{
+  "schema": "mt5x-e14-gate/v1",
+  "date": "2026-11-06",
+  "scope": "E14 panel compile and safety battery (hdk_hadouken_painel)",
+  "app_sha": "550b6d5fd1f094876532e2d5756eae75cb073706",
+  "hadouken_pin": "d4d389ee0800d209bdba48ab36e392e6907949a4",
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "platform": "Linux/Wine 11.17, MetaTrader 5 build 6296",
+  "entrypoint": "run.sh --cli robots compile|backtest|battery --db <QA sqlite>",
+  "compile": {
+    "ok": true,
+    "errors": 0,
+    "warnings": 0,
+    "source_sha256": "21246e27a50a4b624b0c1359c1e4317344482e91bc21800b2843500abe002634",
+    "ex5_sha256": "d68453a578e8e82f5390a12bd41b0e4e8d15dc9d6527feb654174612f4c2baf7",
+    "files_synced": {
+      "copied": 11,
+      "identical": 28
+    }
+  },
+  "battery": {
+    "check_id": "d8485ede712d4110a705017234273f96",
+    "preset": "HDK_Conservador",
+    "fingerprint": "9474441f92e7e34f",
+    "static_status": "aprovada",
+    "statistical_status": "reprovada",
+    "approved": false,
+    "allows_real": false,
+    "items": [
+      {
+        "group": "estática",
+        "id": "contract",
+        "status": "aviso",
+        "detail": "o robô não declara contrato: risco e limites são lidos por nomes prováveis de parâmetros"
+      },
+      {
+        "group": "estática",
+        "id": "compile",
+        "status": "ok",
+        "detail": "compilado no MetaEditor"
+      },
+      {
+        "group": "estática",
+        "id": "encoding",
+        "status": "ok",
+        "detail": "36 arquivo(s) conferido(s)"
+      },
+      {
+        "group": "estática",
+        "id": "stop",
+        "status": "ok",
+        "detail": "o stop é sempre definido"
+      },
+      {
+        "group": "estática",
+        "id": "averaging",
+        "status": "ok",
+        "detail": "preço médio bloqueado"
+      },
+      {
+        "group": "estática",
+        "id": "orders",
+        "status": "ok",
+        "detail": "nenhum envio de ordem fora de Safety/"
+      },
+      {
+        "group": "estática",
+        "id": "dll",
+        "status": "ok",
+        "detail": "nenhum #import de DLL"
+      },
+      {
+        "group": "estática",
+        "id": "magic",
+        "status": "ok",
+        "detail": "magic 20251210"
+      },
+      {
+        "group": "estática",
+        "id": "limits",
+        "status": "aviso",
+        "detail": "perfil HDK_PROFILE_CONSERVATIVE: os valores ficam dentro do código; não foi possível conferir: risco por operação, limite diário, drawdown máximo"
+      },
+      {
+        "group": "estatística",
+        "id": "run",
+        "status": "falha",
+        "detail": "nenhum backtest deste robô"
+      }
+    ]
+  },
+  "backtest_attempt": {
+    "symbol": "EURUSD",
+    "timeframe": "M5",
+    "window": [
+      "2026-07-23",
+      "2026-10-23"
+    ],
+    "preset": "HDK_Conservador",
+    "result": "refused: tester not synchronized with trade server; terminal log 'no connection to MetaQuotes-Demo' (network otherwise reachable)"
+  },
+  "verdict": "Compile gate passed; static battery approved with 2 warnings; statistical battery not evaluable without a current every-tick backtest, blocked by the DEMO server connection.",
+  "pending": {
+    "statistical_battery": "restore DEMO login in the terminal (owner, official flow), then backtest + battery",
+    "recovery_capacity_pending_orders_aggregate_risk": "not exercised: need scoped work on HADOUKEN/Safety pins",
+    "live_demo": "needs current owner authorization, terminal ownership and window",
+    "netting": "needs a netting DEMO account or proof of refusal",
+    "windows_physical": "needs a physical Windows host"
+  }
+}
