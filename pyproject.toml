@@ -7,7 +7,7 @@ name = "mt5-extracao"
 version = "0.3.0"
 description = "Construtor de bases de dados do MetaTrader 5 (Windows e Linux)"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 keywords = ["metatrader5", "mt5", "trading", "b3", "dados", "ohlcv"]
 # Mantenha igual a requirements.txt (tests/test_packaging.py verifica)
