@@ -18,6 +18,9 @@ mt5x --db database/b3_publico.db backtest --symbol WINZ26 --tf M1 --strategy <ch
 
 - **Banco próprio.** Os dados vão para `database/b3_publico.db` (ou o `--db` informado), com fonte
   `b3_publico@B3`. Uma base aceita uma única fonte, então a B3 nunca se mistura com a MetaQuotes.
+  Base de outra fonte é recusada antes de qualquer gravação (barras, origem e especificações
+  ficam intactas). O relógio é o de Brasília (UTC-3), independente do `config.ini`. `--symbols`
+  também filtra arquivos locais; arquivo com cabeçalho inválido é ignorado com motivo no JSON.
   Para consultar ou testar, passe o mesmo `--db` aos outros comandos.
 - **Horário.** É o de Brasília, como a B3 publica, na base `broker`.
 - **Arquivos originais.** Ficam em `database/b3_arquivos/` para reimportar sem baixar de novo.

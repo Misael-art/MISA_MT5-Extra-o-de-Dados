@@ -21,6 +21,10 @@ import requests
 DEFAULT_DB = os.path.join("database", "b3_publico.db")
 DOWNLOAD_DIR = os.path.join("database", "b3_arquivos")    # arquivos originais, para reimportar
 SOURCE = {"provider": "b3_publico", "server": "B3"}
+# Relógio da fonte: horário de Brasília (UTC-3, sem horário de verão desde 2019), gravado como publicado.
+CLOCK = {"time_basis": "broker", "broker_utc_offset": -3}
+TRADES_FIELDS = ("DataNegocio", "CodigoInstrumento", "AcaoAtualizacao", "PrecoNegocio", "QuantidadeNegociada",
+                 "HoraFechamento", "CodigoIdentificadorNegocio")
 COTAHIST_URL = "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/{name}.ZIP"
 TRADES_URL = "https://arquivos.b3.com.br/rapinegocios/tickercsv/{ticker}/{day}"
 MAX_DOWNLOAD = 70_000_000                      # acima disso o download é manual (política do projeto)
@@ -66,6 +70,9 @@ def parse_cotahist(source, symbols=None, market="vista"):
 def parse_trades(source):
     """Negócios válidos de um arquivo ``NEGOCIOSAVISTA``: time, price, quantity, trade_id (+ attrs symbol)."""
     frame = pd.read_csv(io.BytesIO(_read_member(source)), sep=";", dtype=str)
+    missing = [c for c in TRADES_FIELDS if c not in frame.columns]
+    if missing:
+        raise ValueError(f"Arquivo de negócios da B3 sem as colunas {', '.join(missing)} (cabeçalho inválido).")
     cancelled = set(frame.loc[frame["AcaoAtualizacao"] != "0", "CodigoIdentificadorNegocio"])
     frame = frame[(frame["AcaoAtualizacao"] == "0") & ~frame["CodigoIdentificadorNegocio"].isin(cancelled)]
     clock = frame["HoraFechamento"].str.zfill(9)

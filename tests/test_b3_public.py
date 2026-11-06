@@ -110,3 +110,52 @@ def test_empty_trades_file_saves_nothing(tmp_path, cfg):
     empty = tmp_path / "WINZ26.zip"
     empty.write_bytes(zipped("x.txt", (HEADER + "\n").encode()))
     assert cli.main(cfg + ["--db", str(tmp_path / "b3.db"), "b3", "trades", "--file", str(empty)]) != cli.EXIT_OK
+
+
+def _counts(db):
+    with sqlite3.connect(db) as conn:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        specs = conn.execute("SELECT COUNT(*) FROM _symbol_specs").fetchone()[0] if "_symbol_specs" in tables else 0
+        origin = dict(conn.execute("SELECT slot, origin_id FROM _dataset_origin").fetchall()) \
+            if "_dataset_origin" in tables else {}
+    return sorted(t for t in tables if not t.startswith("_") and t != "sqlite_sequence"), specs, origin
+
+
+def test_base_of_another_source_refuses_without_writing_bars_specs_or_origin(tmp_path, cfg, capsys):
+    from mt5_extracao.analytics import datasets
+    from mt5_extracao.database_manager import DatabaseManager
+    db = tmp_path / "outra.db"
+    datasets.declare_source(DatabaseManager(db_path=str(db)), {"provider": "binance", "server": "api.binance.com"})
+    before = _counts(db)
+    daily = tmp_path / "COTAHIST_D03112026.ZIP"
+    daily.write_bytes(zipped("d.txt", cotahist_line("PETR4", "20261103", 1, 2, 0.5, 1.5, 3, 4).encode()))
+    assert cli.main(cfg + ["--json", "--db", str(db), "b3", "daily", "--file", str(daily)]) != cli.EXIT_OK
+    assert _counts(db) == before
+    assert '"source_mismatch"' in capsys.readouterr().out
+
+
+def test_symbols_filter_applies_to_local_trades_files(tmp_path, cfg):
+    db = tmp_path / "b3.db"
+    trades = tmp_path / "WINZ26.zip"
+    trades.write_bytes(zipped("x.txt", trades_text([("0", "100,0", 1, "090000100", 10)]).encode()))
+    assert cli.main(cfg + ["--db", str(db), "b3", "trades", "--symbols", "PETR4", "--file", str(trades)]) != cli.EXIT_OK
+    assert _counts(db)[:2] == ([], 0)
+
+
+def test_invalid_trades_header_is_a_structured_refusal(tmp_path, cfg, capsys):
+    bad = tmp_path / "WINZ26.zip"
+    bad.write_bytes(zipped("x.txt", b"Coluna;Outra\n1;2\n"))
+    assert cli.main(cfg + ["--json", "--db", str(tmp_path / "b3.db"), "b3", "trades", "--file", str(bad)]) != cli.EXIT_OK
+    out = capsys.readouterr().out
+    assert "cabeçalho inválido" in out and "KeyError" not in out
+
+
+def test_retry_of_same_file_is_idempotent(tmp_path, cfg):
+    db = tmp_path / "b3.db"
+    trades = tmp_path / "WINZ26.zip"
+    trades.write_bytes(zipped("x.txt", trades_text([("0", "100,0", 1, "090000100", 10)]).encode()))
+    for _ in range(2):
+        assert cli.main(cfg + ["--db", str(db), "b3", "trades", "--file", str(trades)]) == cli.EXIT_OK
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM winz26_1_minuto").fetchone() == (1,)
+        assert conn.execute("SELECT COUNT(*) FROM _symbol_specs").fetchone() == (1,)

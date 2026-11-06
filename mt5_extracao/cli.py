@@ -579,6 +579,33 @@ def cmd_ticks(args, ctx):
     return EXIT_OK if failed == 0 else EXIT_FAIL
 
 
+def _source_db(ctx, path, clock):
+    """Base própria de uma fonte pública, com o relógio da fonte (não o da corretora do config.ini)."""
+    from mt5_extracao.database_manager import DatabaseManager
+    db = DatabaseManager(db_type="sqlite", db_path=path, **clock)
+    if not db.is_connected():
+        raise RuntimeError(f"Não foi possível abrir o banco {path} (veja logs/).")
+    ctx._db = db
+    return db
+
+
+def _bind_source(db, source, database):
+    """Vincula a base à fonte antes de qualquer gravação; recusa sem alterar nada (erro estruturado)."""
+    from mt5_extracao.analytics import datasets
+    try:
+        datasets.declare_source(db, dict(source))
+    except ValueError as exc:
+        _data(database=database, error="source_mismatch", detail=str(exc), saved={}, failed=[])
+        _print(f"Recusado: {exc}")
+        return False
+    if not db._check_time_basis():
+        _data(database=database, error="time_basis_mismatch", saved={}, failed=[],
+              detail="a base grava horários em outra base de tempo; nada foi gravado")
+        _print("Recusado: a base usa outra base de tempo; nada foi gravado (veja logs/).")
+        return False
+    return True
+
+
 def cmd_b3(args, ctx):
     """Importa dados públicos da B3 (sem corretora) para um banco próprio da fonte B3."""
     import pandas as pd
@@ -587,6 +614,8 @@ def cmd_b3(args, ctx):
     if not args.db:
         args.db = str(PROJECT_ROOT / b3_public.DEFAULT_DB)
     downloads = str(PROJECT_ROOT / b3_public.DOWNLOAD_DIR)
+    import zipfile
+    db = _source_db(ctx, args.db, b3_public.CLOCK)
     symbols = [s.upper() for s in _parse_symbols(args.symbols)] if args.symbols else None
     files = []
     if args.file:
@@ -623,23 +652,34 @@ def cmd_b3(args, ctx):
                 continue
         else:
             path = item[1]
-        if args.action == "daily":
-            parsed = b3_public.parse_cotahist(path, symbols)
-        else:
-            trades = b3_public.parse_trades(path)
-            parsed = {trades.attrs["symbol"]: b3_public.trades_to_bars(trades, tf.minutes)} if len(trades) else {}
+        try:
+            if args.action == "daily":
+                parsed = b3_public.parse_cotahist(path, symbols)
+            else:
+                trades = b3_public.parse_trades(path)
+                parsed = {trades.attrs["symbol"]: b3_public.trades_to_bars(trades, tf.minutes)} if len(trades) else {}
+        except (ValueError, zipfile.BadZipFile, UnicodeDecodeError, OSError) as exc:
+            skipped.append(f"{os.path.basename(str(path))}: {exc}")
+            _print(f"  ignorado {os.path.basename(str(path))}: {exc}")
+            continue
         for code, frame in parsed.items():
+            if symbols and code not in symbols:
+                skipped.append(f"{os.path.basename(str(path))}: {code} fora de --symbols")
+                _print(f"  ignorado {code}: fora de --symbols")
+                continue
             bars.setdefault(code, []).append(frame)
+    if bars and not _bind_source(db, b3_public.SOURCE, args.db):
+        return EXIT_FAIL
     saved, failed = {}, []
     for code, frames in sorted(bars.items()):
         frame = pd.concat(frames, ignore_index=True).drop_duplicates("time", keep="last").sort_values("time")
-        spec = b3_public.spec_for(code)
-        if spec and not ctx.db.get_symbol_spec(code):
-            ctx.db.save_symbol_spec(code, spec, source="b3_contract_rules")
-        if b3_public.save(ctx.db, code, tf.label, frame):
-            saved[code] = len(frame)
-        else:
+        if not b3_public.save(db, code, tf.label, frame):
             failed.append(code)
+            continue
+        saved[code] = len(frame)
+        spec = b3_public.spec_for(code)                # especificação só acompanha barras gravadas
+        if spec and not db.get_symbol_spec(code):
+            db.save_symbol_spec(code, spec, source="b3_contract_rules")
     _data(database=args.db, timeframe=tf.name, saved=saved, failed=failed, skipped=skipped)
     _print(f"B3 → {args.db}: {len(saved)} ativo(s) {tf.name}, {sum(saved.values())} barra(s); "
            f"{len(failed)} recusado(s), {len(skipped)} arquivo(s) ignorado(s).")
@@ -669,6 +709,9 @@ def cmd_crypto(args, ctx):
         raise ValueError("extract precisa de --symbols (ex.: BTCUSDT,ETHBRL; veja 'mt5x crypto list --quote BRL')")
     if not args.db:
         args.db = str(PROJECT_ROOT / crypto_public.DEFAULT_DB)
+    db = _source_db(ctx, args.db, crypto_public.CLOCK)
+    if not _bind_source(db, crypto_public.SOURCE, args.db):
+        return EXIT_FAIL
     tf = _parse_tf(args.tf)
     end = _parse_date(args.date_to, end_of_day=True) if args.date_to else datetime.now(timezone.utc).replace(tzinfo=None)
     saved, failed = {}, []
@@ -676,10 +719,12 @@ def cmd_crypto(args, ctx):
         if args.date_from:
             start = _parse_date(args.date_from)
         else:
-            last = ctx.db.get_last_timestamp(ctx.db.get_table_name_for_symbol(symbol, tf.label))
+            last = db.get_last_timestamp(db.get_table_name_for_symbol(symbol, tf.label))
             if last is None:
                 raise ValueError(f"{symbol} {tf.name} ainda não existe na base: informe --from AAAA-MM-DD")
-            start = pd.Timestamp(last).to_pydatetime() + timedelta(minutes=tf.minutes)
+            # A Binance devolve velas com abertura >= startTime: 1 s após a última retoma a próxima
+            # vela pelo calendário da corretora (W1/MN1 não têm duração fixa em minutos).
+            start = pd.Timestamp(last).to_pydatetime() + timedelta(seconds=1)
         _print(f"Binance {symbol} {tf.name} de {start:%Y-%m-%d %H:%M} a {end:%Y-%m-%d %H:%M} UTC...")
         try:
             bars = crypto_public.klines(symbol, tf.name, start, end)
@@ -687,13 +732,16 @@ def cmd_crypto(args, ctx):
             _print(f"  falhou: {exc}")
             failed.append(symbol)
             continue
-        if not bars.empty and not ctx.db.get_symbol_spec(symbol):
-            ctx.db.save_symbol_spec(symbol, crypto_public.pair_spec(symbol), source="binance_exchange_info")
-        if bars.empty or crypto_public.save(ctx.db, symbol, tf.label, bars):
-            saved[symbol] = len(bars)
-            _print(f"  {len(bars)} vela(s) gravada(s)")
-        else:
+        if not (bars.empty or crypto_public.save(db, symbol, tf.label, bars)):
             failed.append(symbol)
+            continue
+        saved[symbol] = len(bars)
+        _print(f"  {len(bars)} vela(s) gravada(s)")
+        if not bars.empty and not db.get_symbol_spec(symbol):   # especificação só acompanha velas gravadas
+            try:
+                db.save_symbol_spec(symbol, crypto_public.pair_spec(symbol), source="binance_exchange_info")
+            except (ValueError, KeyError, IndexError, requests.RequestException) as exc:
+                _print(f"  especificação de {symbol} não obtida: {exc} (rode de novo para completar)")
     _data(database=args.db, timeframe=tf.name, saved=saved, failed=failed)
     _print(f"Concluído: {len(saved)} ok, {len(failed)} com falha. Base: {args.db}")
     _print(f"  Para usar: mt5x --db \"{args.db}\" backtest --symbol {next(iter(saved), 'BTCUSDT')} --tf {tf.name} ...")

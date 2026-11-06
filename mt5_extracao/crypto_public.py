@@ -14,6 +14,7 @@ import requests
 
 DEFAULT_DB = os.path.join("database", "cripto_binance.db")
 SOURCE = {"provider": "binance", "server": "api.binance.com"}
+CLOCK = {"time_basis": "utc", "broker_utc_offset": 0}    # velas em UTC: nenhum deslocamento de corretora
 BASE_URL = "https://api.binance.com"
 LIMIT = 1000                                   # velas por requisição (máximo da API)
 INTERVALS = {"M1": "1m", "M3": "3m", "M5": "5m", "M15": "15m", "M30": "30m", "H1": "1h", "H2": "2h",

@@ -16,7 +16,9 @@ mt5x --db database/cripto_binance.db backtest --symbol BTCUSDT --tf M1 --strateg
 - **Banco próprio.** Os dados vão para `database/cripto_binance.db` (ou o `--db` informado), com
   fonte `binance@api.binance.com`. Uma base aceita uma única fonte, então a Binance não se mistura
   com MT5 nem com a B3.
-- **Velas.** São as do mercado à vista, de M1 a MN1, desde a listagem do par, com horário em UTC.
+- **Velas.** São as do mercado à vista, de M1 a MN1, desde a listagem do par, com horário em UTC. A base
+  é gravada no relógio UTC da fonte, sem o deslocamento de corretora do `config.ini`. A retomada sem
+  `--from` pede velas a partir de 1 s após a última gravada, então W1 e MN1 seguem o calendário.
   Só velas fechadas são gravadas.
 - **Volumes.** `tick_volume` é o número de negócios. `real_volume` é o volume financeiro na moeda de
   cotação (USDT, BRL…), arredondado, porque a coluna do banco é inteira.

@@ -92,7 +92,38 @@ def test_cli_extracts_into_dedicated_database_and_resumes(tmp_path, monkeypatch,
         origin = dict(conn.execute("SELECT slot, origin_id FROM _dataset_origin").fetchall())
     assert origin.get("server") == "api.binance.com"
     resumed = [c[1]["startTime"] for c in fake.calls if c[0].endswith("/klines")][-1]
-    assert resumed == T0 + 5 * MINUTE
+    assert resumed == T0 + 4 * MINUTE + 1000      # 1 s após a última vela gravada
+
+
+def test_cli_keeps_utc_candles_when_config_declares_broker_offset(tmp_path, monkeypatch, tmp_path_factory):
+    path = tmp_path_factory.mktemp("cfgutc") / "config.ini"
+    path.write_text("[DATABASE]\ntype = sqlite\n[APP]\ntime_basis = utc\nbroker_utc_offset = 3\n", encoding="utf-8")
+    monkeypatch.setattr(crypto_public, "requests", FakeBinance(1))
+    db = tmp_path / "cripto.db"
+    assert cli.main(["--config", str(path), "--db", str(db), "crypto", "extract", "--symbols", "BTCUSDT",
+                     "--tf", "M1", "--from", "2026-11-03", "--to", "2026-11-03"]) == cli.EXIT_OK
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT time FROM btcusdt_1_minuto").fetchone()[0].startswith("2026-11-03 00:00")
+
+
+def test_cli_monthly_resume_follows_calendar(tmp_path, monkeypatch, cfg):
+    months = [calendar.timegm((2026, m, 1, 0, 0, 0)) * 1000 for m in (1, 2, 3)]
+
+    class Monthly(FakeBinance):
+        def __init__(self, count):
+            super().__init__(0)
+            self.rows = [[t, "1", "2", "0.5", "1.5", "1", t + 1, "10", 3, "0", "0", "0"] for t in months[:count]]
+
+    fake = Monthly(2)
+    monkeypatch.setattr(crypto_public, "requests", fake)
+    db = tmp_path / "cripto.db"
+    args = ["--db", str(db), "crypto", "extract", "--symbols", "BTCUSDT", "--tf", "MN1"]
+    assert cli.main(cfg + args + ["--from", "2026-01-01", "--to", "2026-02-28"]) == cli.EXIT_OK
+    fake.rows = Monthly(3).rows
+    assert cli.main(cfg + args + ["--to", "2026-03-31"]) == cli.EXIT_OK
+    with sqlite3.connect(db) as conn:
+        times = [r[0][:10] for r in conn.execute("SELECT time FROM btcusdt_1_mês ORDER BY time")]
+    assert times == ["2026-01-01", "2026-02-01", "2026-03-01"]
 
 
 def test_cli_resume_without_history_asks_for_start(tmp_path, cfg):
