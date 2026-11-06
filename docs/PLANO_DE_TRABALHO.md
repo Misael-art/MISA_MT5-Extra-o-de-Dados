@@ -3605,6 +3605,12 @@ adicionais, hipóteses legadas e observação têm seus aceites P08–P11. O exe
 
 ### T13.6 — Tela de pesquisa no mt5x e aba no painel do HADOUKEN (A6)
 
+**Biblioteca do MT5X.** O Dashboard local inclui índice pedagógico separado,
+busca, fichas dos cinco Experts de referência e exemplos gráficos. A
+[implementação e o plano de manutenção](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md#biblioteca-do-mt5x)
+separam hipótese, sinal, composição e evidência. Os cinco estudos pertencem à
+T19.47. Implementar e qualificar seus sinais segue as dependências de cada ficha.
+
 **Detalhamento aditivo do App — 30/10/2026:** o
 [Dashboard Contínuo de Ativos e Robôs](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md)
 registra seleção de ativo ou robô, faixas contínuas, leitura canônica point-in-time,

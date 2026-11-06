@@ -28,6 +28,12 @@ temporais, HTML offline e entregas DASH-00…14. DASH-00 é somente documentaç�
 implementação e aceites do Dashboard permanecem pendentes, sem promover as
 dependências T13.4/T13.5/T13.8 a concluídas.
 
+**Biblioteca do MT5X — T13.6.** O Dashboard dá acesso a um índice separado com
+fichas dos indicadores, catálogo de Experts, composição operacional, carteira,
+Laboratório e leitura de gráficos. A [Biblioteca](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md#biblioteca-do-mt5x)
+registra os cinco estudos em T19.47, suas dependências e a revisão didática no
+mesmo incremento dos contratos. Sinais de pesquisa têm aceite próprio.
+
 **Fechamento em 2026-10-19:** cadeia #108–#117 integrada em master; EXTR-01
 concluída no Linux/Wine com DEMO CLI/UI, recuperação e Cancelar conferidos em
 master. [Evidência e limites](extrator/EXTR-01_VALIDACAO_NATIVA.md). Persistência
