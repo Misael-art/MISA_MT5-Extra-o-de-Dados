@@ -1,5 +1,59 @@
 # Retomar MT5X em um host limpo
 
+## Lote de lacunas — 06/11/2026
+
+Um incremento por PR, todos sobre `master` `06b78eb`; nenhum merge feito.
+
+| Passo | PR | Estado |
+|---|---|---|
+| 1 Composição e retorno | [295](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/295) | Docs/registro; retorno `57d13ee` conferido por hash, arranque não exercitado |
+| 2 B3/Binance | [293](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/293) `35ad88c` | Recusa sem gravar, relógio por fonte, MN1 por calendário, filtro e erro estruturado; amostra pública real conferida; CI verde |
+| 3 LAB-08 | [294](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/294) | Selo de conteúdo v1, leitura legada declarada, envelope do estudo; CI verde. LAB-01…10 pelo atalho, tema/DPI/monitor físico pendentes |
+| 4 Launcher, Python, BD18a | [296](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/296) | Consultas locais sem ponte, Python ≥3.11, bancada BD18a (linear na seleção; sem otimização) |
+| 5 T13.4-M1 | [297](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/297) | Cadeia real EURUSD H1 em SQLite/PostgreSQL, zero aprovados; simulação econômica bloqueada pelo contrato de custo |
+| 6 E14 painel | [298](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/298) | Compila 0/0; bateria estática aprovada; backtest real 0 operações (painel só manual) |
+| Achado | [299](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/299) | `config.ini` sem interpolação na CLI/conector |
+
+Pendentes com dono: passo 7 (Drive) aguarda cliente OAuth do proprietário; DEMO ao vivo
+exige autorização vigente e janela; netting exige conta netting; Windows físico exige host;
+recuperação/capacidade/pendentes/risco agregado exigem escopo nos pins HADOUKEN/Safety;
+M1 econômico exige custo conhecido antes de janela prospectiva e plano P04. Teste Windows
+`test_backtest_scope_assets` expira de forma intermitente só no Windows CI (PR 299 `[ram]`, PR 298
+`[3]`, esta só de docs): o worker espera o lock SQLite em `ledger.ensure_table` sem outra thread
+ativa, indicando conexão ociosa com lock (journal rollback, timeout 30 s). Defeito do `master`, não
+das PRs; corrigir exige reprodução no Windows e decisão sobre WAL/vida das conexões em ficha própria.
+
+## Composição conferida — 06/11/2026
+
+Conferência local deste host, sem instalar, trocar nem limpar releases.
+
+| Elemento | Estado verificado |
+|---|---|
+| `master` remoto | `06b78eb` (merge da PR292 sobre `784a252`; acréscimo só no handoff) |
+| Prévia do atalho | `~/.local/share/mt5x/app-development` → `releases/development-784a25210b04`, App `784a252`; 350 arquivos conferidos pelo `mt5x-release.json`, sem divergência |
+| Atalhos | `~/.local/share/applications/` e área de trabalho: mesmo `mt5-extracao.desktop` (SHA-256 `bf617cb5…`), executável, `Exec` no `run.sh` da prévia |
+| Retorno | `releases/development-57d13ee91620`, App `57d13ee` (ancestral do master); 341 arquivos conferidos, sem divergência; links de dados resolvem |
+| PR293 dados públicos | `35ad88c` (correções B3/Binance sobre `e5fa91e`/`7bb510f`) |
+| PR294 LAB-08 | `46cfc2e` (selo de conteúdo v1 e envelope do estudo) |
+| Pins | HADOUKEN `d4d389ee`, Safety `27b8599`, detached |
+
+Correções de registros anteriores: o recibo `state/development-preview.json`
+citado abaixo não existe neste host; o recibo efetivo é o `mt5x-release.json`
+de cada release. O alias `app-current` não existe; o destino de retorno é a
+release `57d13ee` acima.
+
+Retorno (troca atômica do link, com a janela do App fechada):
+
+```bash
+cd ~/.local/share/mt5x && ln -sfn releases/development-57d13ee91620 app-development.next && mv -T app-development.next app-development
+```
+
+Antes de usar, conferir de novo os hashes do manifesto da release. Limitação:
+a release de retorno reutiliza `.venv`, base, configuração e logs atuais por
+links; o arranque de `57d13ee` sobre esse estado não foi exercitado nesta
+conferência. Para voltar à prévia, repetir o comando com
+`releases/development-784a25210b04`.
+
 ## Integração no master e prévia — 04/11/2026
 
 Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs

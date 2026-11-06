@@ -10,12 +10,13 @@ com HADOUKEN na [PR84](https://github.com/Misael-art/projeto-indicadores-mt5/pul
 e Safety na [PR11](https://github.com/Misael-art/mt5x-safety/pull/11). São
 revisões abertas; não equivalem a merge ou aceite operacional.
 
-O atalho de desenvolvimento instalado ainda executa a prévia `57d13ee`. No
+O atalho de desenvolvimento instalado executa a prévia `784a252`; o retorno
+conferido é `57d13ee` ([composição e retorno](CONTINUAR_AQUI.md)). No
 checkout, `./run.sh` abre a GUI e `./run.sh --cli` abre a CLI. A branch local
 separada de correção da GUI permite `./run.sh --offline --config <arquivo-de-QA>`
 para uma configuração/base isolada; ela ainda não está nesta fonte.
-O estudo documental T13.4-P00 e os incrementos P01–P07 estão em branches locais
-encadeadas, com implementação e ensaios sintéticos até os consumidores. A GUI
+O estudo documental T13.4-P00 e os incrementos P01–P07 estão integrados no
+master, com implementação e ensaios sintéticos até os consumidores. A GUI
 da composição local de QA anterior exibiu um recibo sintético persistido em
 Padrões pelo launcher; essa composição não está instalada;
 nenhum candidato ou dado real foi aprovado por isso. A branch LAB-03 acrescenta
