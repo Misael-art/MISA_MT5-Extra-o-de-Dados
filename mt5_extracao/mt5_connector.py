@@ -105,7 +105,7 @@ class MT5Connector:
 
     def _load_config(self):
         """Carrega o caminho do MT5 do arquivo de configuração."""
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         if not os.path.exists(self.config_path):
             log.error(f"Arquivo de configuração não encontrado em: {self.config_path}")
             # Idealmente, lançar uma exceção aqui ou retornar um estado de erro
