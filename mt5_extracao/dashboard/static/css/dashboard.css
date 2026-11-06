@@ -27,3 +27,6 @@ button { font:inherit; color:var(--ink); border:1px solid var(--line); border-ra
 .hidden-row { border-top:1px solid var(--line); }.hidden-toggle { width:100%; display:flex; justify-content:space-between; gap:1rem; text-align:left; border:0; border-radius:0; background:transparent; padding:.8rem 0; }.hidden-toggle::before { content:'▸'; color:var(--muted); }.hidden-toggle[aria-expanded=true]::before { content:'▾'; }.hidden-reason { flex:1; }.hidden-count { color:var(--muted); font-size:.8rem; white-space:nowrap; font-variant-numeric:tabular-nums; }.is-hidden-view { opacity:.92; }@media(max-width:650px){ .hidden-toggle { flex-wrap:wrap; } .hidden-count { white-space:normal; } }
 .priority-note { font-size:.75rem; color:var(--muted); }
 .theme-toggle { margin-left:1rem; font-size:.7rem; padding:.3rem .6rem; }.theme-toggle[hidden] { display:none; }@media(prefers-reduced-motion:reduce){ *{ scroll-behavior:auto; transition:none !important; animation:none !important; } }
+
+.library-link { color:var(--accent); font-size:.85rem; font-weight:650; text-underline-offset:.24em; }
+@media(max-width:650px) { .masthead { flex-wrap:wrap; } }

@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Biblioteca do MT5X — T13.6
+
+O atalho **Biblioteca** no cabeçalho do Dashboard abre o índice pedagógico
+local. O [registro da frente](mt5_extracao/dashboard/PROMPT_DASHBOARD.md#biblioteca-do-mt5x)
+contém a divisão entre premissa, sinal e composição, o plano dos cinco Experts
+em T19.47 e a revisão dos materiais junto aos contratos. O índice analítico
+vem do registro de indicadores. As fichas nativas são ligadas ao fonte lido
+nas bibliotecas configuradas. Os gráficos de ensino usam dados sintéticos.
+
 ## Integração no master e prévia — 04/11/2026
 
 Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs
