@@ -1,0 +1,182 @@
+{
+  "schema": "mt5x-t134-m1-qa/v1",
+  "date": "2026-11-06",
+  "app_sha": "550b6d5fd1f094876532e2d5756eae75cb073706",
+  "app_pattern_code_sha": "06b78eb (master; P01–P07 sem alteração)",
+  "entrypoint": "run.sh --cli (laboratory/experiments, classe local sem ponte)",
+  "evidence_level": "real DEMO history in disposable QA bases; SQLite + PostgreSQL 16 local container; no orders, no live terminal",
+  "source": {
+    "provider": "mt5",
+    "server": "MetaQuotes-Demo",
+    "symbol": "EURUSD",
+    "timeframe": "H1",
+    "clock": "broker UTC+3 declared",
+    "calendar": "m1_observed",
+    "qa_base": "slice copied read-only from the active base: eurusd_1_hora + receipts/versions + calendar; owner base unchanged"
+  },
+  "qualification_full_series": {
+    "rows": 1611,
+    "reversal": "limited",
+    "breakout_failure": "limited",
+    "continuation_time": "blocked: no derived revision matching bars",
+    "gap": "blocked: no derived revision matching bars"
+  },
+  "first_campaign": {
+    "window": "full series",
+    "result": "evaluate refused: 6 H1 bars without a unique observed session (first bar 2026-07-22 18:00Z before M1 start; 2026-10-15/18/19/20/22 21:00Z where the M1 session opens 21:01Z)"
+  },
+  "campaign": {
+    "name": "t134_m1_eurusd_h1_real_calendar_covered",
+    "window_broker": [
+      "2026-07-23 00:00",
+      "2026-10-15 23:00"
+    ],
+    "rows": 1464,
+    "roles": {
+      "train": {
+        "start_utc": "2026-07-23T00:00:00Z",
+        "end_utc": "2026-09-07T00:00:00Z"
+      },
+      "validation": {
+        "start_utc": "2026-09-07T00:00:00Z",
+        "end_utc": "2026-10-01T00:00:00Z"
+      },
+      "holdout": {
+        "start_utc": "2026-10-01T00:00:00Z",
+        "end_utc": "2026-10-15T21:00:00Z"
+      }
+    },
+    "parameters": {
+      "reversal": {
+        "drop_fraction": "0.004"
+      },
+      "breakout_failure": {
+        "breakout_fraction": "0.001",
+        "lookback_bars": 24
+      }
+    },
+    "horizon_bars": 4,
+    "economic_plan": {
+      "spec_source": "snapshot",
+      "costs": "hypothetical, bar spread, zero commission/slippage/swap; calibrated_at = execution time"
+    }
+  },
+  "sqlite": {
+    "protocol_id": "dc68a28c26b93ae0be12e7ee0568eec2dea07c563072eba2b0ad1c004869960a",
+    "data_manifest_id": "092c00314940910c65ab3e470c68d7919995d04957f01ccd051ea71c061fe195",
+    "receipts": {
+      "reversal": {
+        "request_id": "8002159966a9070ec3290d9b70049388845d7222ddf96459b42526a19ecadc3a",
+        "definition_hash": "4373345f8cef5edeabe4a178f74516e008fd1dde9a116d1be8b8340e9dcb544e",
+        "event_count": 0,
+        "opportunity_count": 768,
+        "complete_count": 0,
+        "censored_count": 0,
+        "negative_count": 768,
+        "clock_basis": "historical_bar_close_assumption",
+        "session_basis": "observed",
+        "statistical_approval": false,
+        "economic_approval": false,
+        "qualified_final_holdout": false,
+        "results_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "economic": {
+          "status": "blocked",
+          "reason": "Modelo de custo precisa ser conhecido antes do período de validade."
+        },
+        "validation": {
+          "status": "not_validation_role",
+          "reason": "P04 exige plano temporal e suporte pareado congelados."
+        }
+      },
+      "breakout_failure": {
+        "request_id": "d01e08eed7c14d7f3563727337763e3111beb93bb75714bbc1cbbb096a0190bd",
+        "definition_hash": "161acf52ca74265de8ee25403719b9610ff544c9a05d7112056d793c93c891e2",
+        "event_count": 2,
+        "opportunity_count": 768,
+        "complete_count": 2,
+        "censored_count": 0,
+        "negative_count": 766,
+        "clock_basis": "historical_bar_close_assumption",
+        "session_basis": "observed",
+        "statistical_approval": false,
+        "economic_approval": false,
+        "qualified_final_holdout": false,
+        "results_sha256": "3dfd2ce4f30149c29d9d2f714ab70e995fbf5f69841d289820ebc0127441dfd7",
+        "economic": {
+          "status": "blocked",
+          "reason": "Modelo de custo precisa ser conhecido antes do período de validade."
+        },
+        "validation": {
+          "status": "not_validation_role",
+          "reason": "P04 exige plano temporal e suporte pareado congelados."
+        }
+      }
+    }
+  },
+  "postgresql": {
+    "protocol_id": "4f9637f2ffc382aee5199e73b1e7cd67b7e8e06f12d067c1d8a5641ff4724720",
+    "data_manifest_id": "9f996b188374819d337d53101705f763087f4d376908faa70a5ac893b050812a",
+    "receipts": {
+      "reversal": {
+        "request_id": "70d86b02b66b5ebb8bb1ef04a40dd50e576568c8e5afb0c6a5b5514eb369fdbf",
+        "definition_hash": "4373345f8cef5edeabe4a178f74516e008fd1dde9a116d1be8b8340e9dcb544e",
+        "event_count": 0,
+        "opportunity_count": 768,
+        "complete_count": 0,
+        "censored_count": 0,
+        "negative_count": 768,
+        "clock_basis": "historical_bar_close_assumption",
+        "session_basis": "observed",
+        "statistical_approval": false,
+        "economic_approval": false,
+        "qualified_final_holdout": false,
+        "results_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "economic": {
+          "status": "blocked",
+          "reason": "Modelo de custo precisa ser conhecido antes do período de validade."
+        },
+        "validation": {
+          "status": "not_validation_role",
+          "reason": "P04 exige plano temporal e suporte pareado congelados."
+        }
+      },
+      "breakout_failure": {
+        "request_id": "d5ae9196846784123936f1776e6cb0ffa7f74afe5004fec400e1447ee4c129c8",
+        "definition_hash": "161acf52ca74265de8ee25403719b9610ff544c9a05d7112056d793c93c891e2",
+        "event_count": 2,
+        "opportunity_count": 768,
+        "complete_count": 2,
+        "censored_count": 0,
+        "negative_count": 766,
+        "clock_basis": "historical_bar_close_assumption",
+        "session_basis": "observed",
+        "statistical_approval": false,
+        "economic_approval": false,
+        "qualified_final_holdout": false,
+        "results_sha256": "d7c41db5058d5e311dff446c0faf3ecd86c362308deff53f326a5cf3447f3499",
+        "economic": {
+          "status": "blocked",
+          "reason": "Modelo de custo precisa ser conhecido antes do período de validade."
+        },
+        "validation": {
+          "status": "not_validation_role",
+          "reason": "P04 exige plano temporal e suporte pareado congelados."
+        }
+      }
+    }
+  },
+  "consumers": {
+    "cli_vs_sdk_evaluations": "identical (2 rows)",
+    "laboratory_pattern_evaluation": "receipt identical to evaluate output (both families)",
+    "dashboard": "hypotheses AVAILABLE; sections reversal 0 events/768 negatives, breakout_failure 2/766, same request_ids",
+    "postgresql_sdk": "2 rows, events [0, 2]"
+  },
+  "verdict": "Technical chain exercised on real data with zero approved patterns; economic simulation blocked by the cost-model contract (no model known before the period). M1 integrated acceptance with real economic simulation remains pending.",
+  "pending": [
+    "cost model declared before a future data window (prospective) or observed costs known before the period",
+    "validation/holdout roles require frozen P04 plan",
+    "continuation_time/gap need derived session revisions",
+    "H1 bars at 21:00Z vs M1 session open 21:01Z: decide contract (overlap) or complete M1 data",
+    "Windows physical, native MT5"
+  ]
+}
