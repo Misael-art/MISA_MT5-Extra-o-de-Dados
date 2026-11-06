@@ -18,7 +18,10 @@ Pendentes com dono: passo 7 (Drive) aguarda cliente OAuth do proprietário; DEMO
 exige autorização vigente e janela; netting exige conta netting; Windows físico exige host;
 recuperação/capacidade/pendentes/risco agregado exigem escopo nos pins HADOUKEN/Safety;
 M1 econômico exige custo conhecido antes de janela prospectiva e plano P04. Teste Windows
-`test_backtest_scope_assets[ram]` expirou em CI na PR 299 (passa local 12/12): reexecutar.
+`test_backtest_scope_assets` expira de forma intermitente só no Windows CI (PR 299 `[ram]`, PR 298
+`[3]`, esta só de docs): o worker espera o lock SQLite em `ledger.ensure_table` sem outra thread
+ativa, indicando conexão ociosa com lock (journal rollback, timeout 30 s). Defeito do `master`, não
+das PRs; corrigir exige reprodução no Windows e decisão sobre WAL/vida das conexões em ficha própria.
 
 ## Composição conferida — 06/11/2026
 
