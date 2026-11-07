@@ -126,10 +126,12 @@ class KeyringStore:
 
     def delete(self, key: str) -> None:
         kr = self._kr()
-        try:
-            self._call(kr.delete_password, self.service, key)
-        except kr.errors.PasswordDeleteError:
-            pass
+        def remove():
+            try:
+                kr.delete_password(self.service, key)
+            except kr.errors.PasswordDeleteError:
+                pass
+        self._call(remove)
 
 
 # --- cliente OAuth -------------------------------------------------------------------------------------------------

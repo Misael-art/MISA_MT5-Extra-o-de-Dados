@@ -201,3 +201,14 @@ def test_malformed_ciphertext_lengths_are_bounded(tmp_path, tail):
     with pytest.raises(cd.DriveError) as caught:
         drive_backup.decrypt_file(source, output, bytes(32))
     assert caught.value.code == "corrupt"
+
+
+def test_missing_vault_key_can_be_deleted_without_leaking_backend_errors(monkeypatch):
+    class MissingPassword(Exception):
+        pass
+    def missing(*args):
+        raise MissingPassword("private-sentinel")
+    fake = SimpleNamespace(delete_password=missing, errors=SimpleNamespace(PasswordDeleteError=MissingPassword))
+    store = cd.KeyringStore()
+    monkeypatch.setattr(store, "_kr", lambda: fake)
+    store.delete("unset")

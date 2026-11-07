@@ -1,3 +1,7 @@
+## Drive — remoção idempotente no cofre, 07/11/2026
+
+O adaptador trata a ausência de uma senha dentro da operação do backend, antes da sanitização genérica de erros. Assim criar a primeira chave ou desconectar sem chave anterior continua idempotente, sem expor mensagens do cofre. Dois testes dirigidos aprovados com backend simulado; sem acesso a credenciais reais. Correção do mesmo objetivo na PR302, separada do incremento de múltiplas contas.
+
 ## Drive — estabilização sintética de 07/11/2026
 
 A [PR302](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/302) recebe somente correções do objetivo original de SQLite/uma conta: recuperação fora de argv/JSON/logs, entrada oculta, snapshot de Recursos reutilizado, estados separados de envio/checksum/restauração, identidade remota estável e retomada após interrupção. Falha conserva a última cópia boa e o preparo cifrado. Downloads acima de 70 MB são manuais e têm plano/conferência local; restauração confere SHA-256, contagens e integridade.
