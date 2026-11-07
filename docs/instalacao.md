@@ -139,6 +139,24 @@ O padrão é SQLite (um arquivo, nada a instalar). Para bases grandes ou acesso 
 Se a extensão TimescaleDB existir no banco (`CREATE EXTENSION timescaledb;`), as tabelas de barras
 novas são criadas como hypertables automaticamente.
 
+## Google Drive (cópia na nuvem, opcional)
+
+Na aba **Recursos → Google Drive**, clique em **Conectar Google Drive**. O App procura sozinho uma credencial
+OAuth do tipo "App para computador" (cofre do sistema, pasta de configuração `~/.config/mt5x` ou `%APPDATA%\mt5x`,
+e arquivos `client_secret*.json` dos últimos 30 dias em Downloads, Área de Trabalho e Documentos), abre o
+navegador no consentimento do Google e recebe a resposta em `127.0.0.1` (PKCE). Sem credencial, o botão
+**Criar credencial no Google** abre o Console: crie o projeto, ative a Google Drive API, crie um "ID do cliente
+OAuth" do tipo "App para computador" e baixe o JSON; não é preciso mover o arquivo.
+
+- Escopo único `drive.file`: o App só vê a pasta **MT5X Backup** que ele cria.
+- Credencial, token de renovação e vínculo ficam no cofre de senhas do sistema (pacote `keyring`, em
+  `requirements-optional.txt`); sem cofre disponível o App recusa e explica, nunca grava o token em arquivo.
+- **Verificar destino** confere, só lendo, conta, pasta, lixeira, compartilhamento, permissão de gravação e espaço.
+- **Desconectar** revoga no Google e apaga o token do cofre.
+- Linha de comando: `mt5x resources drive status|connect|verify|disconnect [--client-file ARQ]`.
+
+O envio das cópias para o Drive é a etapa seguinte de T20.30-HOST1-DRIVE e continua desligado.
+
 ## Diagnóstico
 
 ```bash

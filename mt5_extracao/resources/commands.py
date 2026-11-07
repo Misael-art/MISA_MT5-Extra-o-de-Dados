@@ -45,6 +45,9 @@ def add_parser(sub) -> None:
     move.add_argument("--quarantine", metavar="ID", help="mover uma sessão própria encerrada e sem referências")
     move.add_argument("--restore", metavar="ID", help="restaurar uma sessão da quarentena")
     q.add_argument("--yes", action="store_true")
+    q = rs.add_parser("drive", help="vínculo com o Google Drive: status, connect (abre o navegador), verify, disconnect")
+    q.add_argument("action", choices=("status", "connect", "verify", "disconnect"), nargs="?", default="status")
+    q.add_argument("--client-file", help="credencial OAuth \"App para computador\" a usar (sem ela, o App procura)")
     q = rs.add_parser("history", help="medições gravadas e ações executadas")
     q.add_argument("--limit", type=int, default=30)
     p.set_defaults(func=run)
@@ -58,6 +61,37 @@ def _rules(raw: str):
     return rules or None
 
 
+def _drive(args, cli) -> int:
+    from mt5_extracao.resources import cloud_drive
+    out, data, err = cli._print, cli._data, cli._err
+    link = cloud_drive.DriveLink()
+    try:
+        if args.client_file:
+            link.use_client_file(args.client_file)
+        if args.action == "connect":
+            out("Abrindo o navegador para o consentimento do Google (até 5 min)...")
+            result = link.connect()
+        elif args.action == "verify":
+            result = link.verify()
+        elif args.action == "disconnect":
+            result = link.disconnect()
+        else:
+            result = link.status()
+    except cloud_drive.DriveError as exc:
+        err(exc.message)
+        data(state="error", code=exc.code, message=exc.message)
+        return cli.EXIT_FAIL
+    out(result.get("message") or f"Google Drive: {result['state']}")
+    if result.get("state") == "connected" and "ok" in result:
+        out("Destino conferido: " + ("OK" if result["ok"] else "; ".join(result["problems"])))
+    if result.get("warning"):
+        err(result["warning"])
+    for cand in result.get("candidates", []):
+        out("  credencial encontrada: " + cand["path"])
+    data(**result)
+    return cli.EXIT_OK if result.get("ok", True) else cli.EXIT_FAIL
+
+
 def run(args: argparse.Namespace, ctx) -> int:
     from mt5_extracao import cli
     out, data, err = cli._print, cli._data, cli._err
@@ -67,6 +101,9 @@ def run(args: argparse.Namespace, ctx) -> int:
         out("Aviso: " + message)
     hb = storage.human_bytes
     command = args.resources_command
+
+    if command == "drive":
+        return _drive(args, cli)
 
     if command == "sessions":
         session_id = args.quarantine or args.restore
