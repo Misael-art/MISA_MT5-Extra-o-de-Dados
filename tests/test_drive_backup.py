@@ -25,11 +25,15 @@ class UploadingGoogle(FakeGoogle):
     def __init__(self, drop_after_chunks=1):
         super().__init__()
         self.sessions, self.blobs, self.drop = {}, {}, drop_after_chunks
+        self.generated = 0
         self.quota = 10**12
 
     def __call__(self, req):
         url = urllib.parse.urlparse(req.full_url)
         q = urllib.parse.parse_qs(url.query)
+        if url.path.endswith("/files/generateIds"):
+            self.generated += 1
+            return Resp(json.dumps({"ids": [f"b{self.generated}"]}).encode())
         if url.path.startswith("/upload/") and req.get_method() == "POST":
             sid = f"s{len(self.sessions)}"
             self.sessions[sid] = {"meta": json.loads(req.data), "data": b""}
@@ -49,17 +53,21 @@ class UploadingGoogle(FakeGoogle):
             if len(s["data"]) < total:
                 hdr = {"Range": f"bytes=0-{len(s['data']) - 1}"} if s["data"] else {}
                 raise urllib.error.HTTPError(req.full_url, 308, "resume", hdr, io.BytesIO(b""))
-            fid = f"b{len(self.blobs)}"
+            fid = s["meta"]["id"]
             meta = s["meta"]
             self.blobs[fid] = {"id": fid, "name": meta["name"], "size": str(len(s["data"])),
                                "md5Checksum": hashlib.md5(s["data"]).hexdigest(), "createdTime": "t",
                                "appProperties": meta["appProperties"], "data": s["data"]}
+            self.blobs[fid].update(parents=meta["parents"], trashed=False)
             return Resp(json.dumps({k: v for k, v in self.blobs[fid].items() if k != "data"}).encode())
         if url.path.endswith("/files") and req.get_method() == "GET":
             files = [{k: v for k, v in b.items() if k != "data"} for b in reversed(list(self.blobs.values()))]
             return Resp(json.dumps({"files": files}).encode())
         if "/files/" in url.path and q.get("alt") == ["media"]:
             return Resp(self.blobs[url.path.rsplit("/", 1)[1]]["data"])
+        if "/files/" in url.path and url.path.rsplit("/", 1)[1] in self.blobs:
+            blob = self.blobs[url.path.rsplit("/", 1)[1]]
+            return Resp(json.dumps({k: v for k, v in blob.items() if k != "data"}).encode())
         return super().__call__(req)
 
 

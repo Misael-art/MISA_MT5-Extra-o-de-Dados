@@ -53,7 +53,7 @@ Códigos de saída: 0 sucesso, 1 falha, 2 uso incorreto.
 
 Com --json (antes do comando), a saída padrão traz um único objeto JSON:
     {"ok": bool, "command": str, "exit_code": int, "data": {...}, "messages": [...], "errors": [...]}
-Nenhum comando pede entrada pelo teclado.
+Somente os comandos de chave do Drive pedem entrada oculta em terminal interativo.
 """
 import argparse
 import logging
@@ -2680,6 +2680,13 @@ def _tolerant_streams():
 
 
 def main(argv=None):
+    from .resources.commands import reject_drive_secret_arguments
+    argv = list(sys.argv[1:] if argv is None else argv)
+    try:
+        reject_drive_secret_arguments(argv)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return EXIT_USAGE
     _tolerant_streams()
     parser = build_parser()
     args = parser.parse_args(argv)

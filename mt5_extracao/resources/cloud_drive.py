@@ -9,7 +9,7 @@ senhas do sistema (``keyring``: Secret Service no Linux, Gerenciador de Credenci
 
 Escopo único ``drive.file``: o App só enxerga os arquivos e a pasta que ele mesmo cria ("MT5X Backup").
 A validação (``verify``) é somente leitura e bloqueia o envio quando a conta muda, a pasta some, vai para a lixeira,
-fica compartilhada ou não aceita gravação. Envio de cópias é a etapa seguinte e continua desligado.
+fica compartilhada ou não aceita gravação. O envio manual cifrado fica em ``drive_backup``; envio automático desativado.
 
 Sem Tkinter; a UI (ui/resources.py) e a CLI (``mt5x resources drive``) chamam estas funções em segundo plano.
 """
@@ -112,7 +112,8 @@ class KeyringStore:
             raise DriveError("keyring_locked", "O cofre de senhas do sistema não respondeu. Desbloqueie a carteira "
                                                "(KWallet/Chaveiro) na janela que abriu e tente de novo.")
         if "error" in box:
-            raise box["error"]
+            raise DriveError("keyring_error", "O cofre não concluiu a operação. Confira o chaveiro do sistema "
+                             "e tente novamente.") from None
         return box.get("value")
 
     def get(self, key: str) -> Optional[str]:
@@ -228,7 +229,6 @@ def _http(method: str, url: str, data=None, headers=None, json_body=None, opener
         body = urllib.parse.urlencode(data).encode()
         hdrs["Content-Type"] = "application/x-www-form-urlencoded"
     send = opener or (lambda req: urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S))
-    last = None
     for attempt in range(RETRIES):
         req = urllib.request.Request(url, data=body, headers=hdrs, method=method)
         try:
@@ -245,11 +245,10 @@ def _http(method: str, url: str, data=None, headers=None, json_body=None, opener
                 continue
             raise _http_error(exc.code, payload) from exc
         except (urllib.error.URLError, socket.timeout, ConnectionError) as exc:
-            last = exc
             if attempt < RETRIES - 1:
                 time.sleep(2 ** attempt)
                 continue
-    raise DriveError("network", f"Sem conexão com o Google ({last}). Confira a internet e tente de novo.")
+    raise DriveError("network", "Sem conexão com o Google. Confira a internet e tente de novo.")
 
 
 def _http_error(status: int, payload: dict) -> DriveError:
@@ -268,7 +267,9 @@ def _http_error(status: int, payload: dict) -> DriveError:
         return DriveError("forbidden", "O Google negou o acesso à pasta. Conecte de novo para recriá-la.")
     if status == 404:
         return DriveError("not_found", "A pasta do App no Drive não foi encontrada.")
-    return DriveError("http", f"O Google respondeu {status}: {payload.get('error_description') or err}")
+    if status == 410:
+        return DriveError("upload_expired", "A sessão de envio expirou. Retome a cópia para abrir outra sessão.")
+    return DriveError("http", f"O Google respondeu HTTP {status}. Confira a autorização e tente de novo.")
 
 
 # --- consentimento no navegador ------------------------------------------------------------------------------------
@@ -327,7 +328,7 @@ def authorize(client: dict, open_browser: Callable[[str], bool] = webbrowser.ope
         "access_type": "offline", "prompt": "consent select_account"})
     try:
         if not open_browser(url):
-            raise DriveError("browser", "Não foi possível abrir o navegador. Abra este endereço manualmente: " + url)
+            raise DriveError("browser", "Não foi possível abrir o navegador. Configure o navegador padrão e conecte de novo.")
         deadline = time.monotonic() + timeout
         while not got.is_set():
             if cancel is not None and cancel.is_set():
@@ -338,7 +339,7 @@ def authorize(client: dict, open_browser: Callable[[str], bool] = webbrowser.ope
     finally:
         server.server_close()
     if result.get("error"):
-        raise DriveError("denied", "Você não autorizou o acesso no Google (" + result["error"] + ").")
+        raise DriveError("denied", "Você não autorizou o acesso no Google.")
     if not result.get("code"):
         raise DriveError("denied", "O Google não devolveu a autorização.")
     return _http("POST", TOKEN_URL, data={
@@ -454,12 +455,12 @@ class DriveLink:
         return self._api("GET", "/files/" + folder_id, token,
                          params={"fields": "id,name,mimeType,trashed,shared,capabilities(canAddChildren)"})
 
-    def verify(self) -> dict:
+    def verify(self, *, token=None) -> dict:
         """Validação somente leitura do destino. ``ok`` falso bloqueia envio; ``problems`` explica o que corrigir."""
         link = self.link()
         if not link:
             raise DriveError("disconnected", "O Google Drive não está conectado.")
-        token = self.access_token()
+        token = token or self.access_token()
         about = self._api("GET", "/about", token, params={"fields": "user(emailAddress),storageQuota(limit,usage)"})
         problems = []
         account = about.get("user", {}).get("emailAddress")
@@ -477,8 +478,8 @@ class DriveLink:
                 problems.append("O destino não é uma pasta.")
             if folder.get("trashed"):
                 problems.append("A pasta do App está na lixeira do Drive. Restaure-a ou conecte de novo.")
-            if folder.get("shared"):
-                problems.append("A pasta do App está compartilhada. Remova o compartilhamento: as cópias são privadas.")
+            if folder.get("shared") is not False:
+                problems.append("A privacidade da pasta não foi comprovada. Remova o compartilhamento e verifique de novo.")
             if not folder.get("capabilities", {}).get("canAddChildren"):
                 problems.append("O App não tem permissão de gravar na pasta.")
         quota = about.get("storageQuota", {})

@@ -163,7 +163,30 @@ OAuth" do tipo "App para computador" e baixe o JSON; não é preciso mover o arq
 - **Ensaiar restauração**: baixa a cópia mais nova para uma pasta temporária, confere MD5, decifra, compara o
   SHA-256 e roda `PRAGMA integrity_check`; a base em uso não é tocada.
 - Cofre bloqueado (KWallet/Chaveiro): a guia avisa sem abrir janela; Conectar pede o desbloqueio.
-- CLI: `mt5x resources drive key|confirm-key|restore-key --code ...|send [--scope ativa|pesquisa|qa] [--source]|list|drill [--file-id]`.
+- CLI: `mt5x resources drive key|confirm-key|restore-key` exige terminal interativo; o código é exibido
+  explicitamente no terminal e digitado com entrada oculta. Nunca passe o código em argumentos, scripts ou logs.
+  Na interface, a confirmação e a recuperação usam campos ocultos.
+- `mt5x resources drive send [--scope ativa|pesquisa|qa] [--source ARQ]`, `list` e `drill [--file-id ID]`
+  mantêm a saída estruturada sem códigos de recuperação. No Linux, `./run.sh --offline --cli ...` executa
+  operações locais sem Wine/ponte; no Windows, use `run.bat --cli ...`.
+- A mesma cópia tem ID remoto pré-gerado persistido no cofre; retry e retomada após reiniciar o processo
+  reutilizam esse ID. Em falha, o arquivo cifrado fica no preparo local e a URL de sessão fica só no cofre.
+  Preserve ambos para retomar. Nada apaga a última cópia boa.
+- `download-plan [--file-id ID]` informa origem, bytes, MD5 e argumentos de conferência sem transferir.
+  Downloads acima de 70 MB são manuais, incluindo o total de partes; depois use
+  `drill --file-id ID --downloaded-file ARQ`. O ensaio confere também as contagens de tabelas da cópia nova.
+- O recibo separa `snapshot_state`, `upload_state`, `remote_verification_state` e `restore_state`. Um envio com
+  MD5 remoto conferido ainda tem restauração `not_tested`; checksum ausente fica `pending`, com `ok=false`.
+  A restauração só muda para `verified` depois do ensaio. MD5 remoto não é uma prova de SHA-256 remoto.
+- A capacidade vem de `storageQuota` quando conhecida e dos erros da API, sem quota fixa no App.
+  Limites por projeto da API continuam válidos, inclusive com várias contas selecionadas pelo usuário.
+- Referências oficiais: [OAuth desktop](https://developers.google.com/identity/protocols/oauth2/native-app),
+  [drive.file](https://developers.google.com/workspace/drive/api/guides/api-specific-auth),
+  [limites](https://developers.google.com/workspace/drive/api/guides/limits),
+  [upload retomável](https://developers.google.com/workspace/drive/api/guides/manage-uploads) e
+  [download parcial](https://developers.google.com/workspace/drive/api/guides/manage-downloads).
+- Consentimento e transferência com conta real aguardam a qualificação sintética da composição completa.
+  PostgreSQL continua com aceite separado por `pg_dump`/`pg_restore`.
 
 ## Diagnóstico
 

@@ -86,8 +86,8 @@ class DrivePanel:
                 box["result"] = work(self.link_factory())
             except cloud_drive.DriveError as exc:
                 box["error"] = exc
-            except Exception as exc:                    # mostrado ao usuário; nunca some em silêncio
-                box["error"] = cloud_drive.DriveError("unexpected", f"Falha inesperada: {exc}")
+            except Exception:
+                box["error"] = cloud_drive.DriveError("unexpected", "Falha inesperada na operação do Drive. Tente novamente.")
 
         thread = threading.Thread(target=target, name="mt5x-drive", daemon=True)
         thread.start()
@@ -216,7 +216,7 @@ class DrivePanel:
                                 "Sem ele ninguém decifra as cópias, nem você em outro computador.\n\n" + state["code"],
                                 parent=self.frame)
             typed = simpledialog.askstring("Confirmar código", "Digite o código para confirmar que o guardou:",
-                                           parent=self.frame)
+                                           parent=self.frame, show="*")
             if typed:
                 self._run(lambda link: drive_backup.Keys(link.store).confirm(typed) or {"ok": True},
                           lambda r, e: self._show_line(r, e, lambda _: "Código confirmado; envio liberado."))
@@ -224,7 +224,7 @@ class DrivePanel:
         self._run(lambda link: drive_backup.Keys(link.store).ensure(), done)
 
     def restore_key(self):
-        typed = simpledialog.askstring("Código de recuperação", "Digite o código guardado:", parent=self.frame)
+        typed = simpledialog.askstring("Código de recuperação", "Digite o código guardado:", parent=self.frame, show="*")
         if typed:
             self._run(lambda link: drive_backup.Keys(link.store).restore(typed) or {"ok": True},
                       lambda r, e: self._show_line(r, e, lambda _: "Chave restaurada a partir do código."))
@@ -242,7 +242,7 @@ class DrivePanel:
                 self._show(None, error)
                 self.show_code()
                 return
-            self._show_line(result, error, lambda r: f"Cópia enviada e conferida: {r['name']}.")
+            self._show_line(result, error, drive_backup.receipt_message)
 
         self.state_label.config(text="Preparando, cifrando e enviando a cópia...", style="Surface.TLabel")
         self._run(lambda link: drive_backup.DriveBackup(link).send(path, scope="ativa"), done)

@@ -9,11 +9,13 @@ Fluxo de ``send``:
      último bloco, de modo que troca de ordem, corte ou adulteração falham na leitura.
   4. Envio retomável da Drive API (blocos de 8 MiB; após falha de rede pergunta ao Google até onde chegou).
   5. Confere o MD5 informado pelo Drive contra o arquivo cifrado local e grava o manifesto em ``appProperties``
-     (escopo ativa/pesquisa/qa, SHA-256 do conteúdo original, tamanhos, origem).
+     (escopo ativa/pesquisa/qa, SHA-256 do conteúdo original, contagens, tamanhos, identidade da origem).
 
 A chave fica no cofre do sistema e tem um código de recuperação que o usuário guarda fora do Drive e do OAuth;
 sem confirmar que guardou o código, nada é enviado. ``drill`` baixa a cópia para uma pasta temporária, confere MD5,
-decifra, compara o SHA-256 e roda ``PRAGMA integrity_check``; a base ativa nunca é tocada. Nada é apagado no Drive.
+decifra, compara SHA-256/contagens e roda ``PRAGMA integrity_check``; a base ativa nunca é tocada. Nada é apagado no Drive.
+ID remoto pré-gerado, recibo e sessão no cofre permitem retomar a mesma cópia após reiniciar o processo.
+Em falha, só o preparo cifrado persiste. Acima de 70 MB o download é manual, inclusive o total de partes.
 """
 from __future__ import annotations
 
@@ -43,6 +45,7 @@ UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
 KEY_ENC, KEY_ENC_CONFIRMED = "backup_key", "backup_key_confirmed"
 SCOPES = ("ativa", "pesquisa", "qa")
 KIND = "mt5x-backup"
+MANUAL_DOWNLOAD_BYTES = 70_000_000
 
 
 # --- chave ---------------------------------------------------------------------------------------------------------
@@ -126,7 +129,7 @@ def decrypt_file(src: Path, dst: Path, key: bytes) -> dict:
     aes, sha, size = AESGCM(key), hashlib.sha256(), 0
     with open(src, "rb") as fin, open(dst, "wb") as fout:
         header = fin.read(len(MAGIC) + 8)
-        if header[:len(MAGIC)] != MAGIC:
+        if len(header) != len(MAGIC) + 8 or header[:len(MAGIC)] != MAGIC:
             raise cd.DriveError("format", "O arquivo baixado não é uma cópia cifrada do MT5X.")
         prefix, index, finished = header[len(MAGIC):], 0, False
         while True:
@@ -135,7 +138,14 @@ def decrypt_file(src: Path, dst: Path, key: bytes) -> dict:
                 break
             if finished:
                 raise cd.DriveError("corrupt", "Há dados depois do último bloco da cópia.")
-            sealed = fin.read(struct.unpack(">I", head)[0])
+            if len(head) != 4:
+                raise cd.DriveError("corrupt", "Cabeçalho de bloco incompleto.")
+            length = struct.unpack(">I", head)[0]
+            if not 16 <= length <= 4 * 1024 * 1024 + 16:
+                raise cd.DriveError("corrupt", "Tamanho de bloco inválido.")
+            sealed = fin.read(length)
+            if len(sealed) != length:
+                raise cd.DriveError("corrupt", "Bloco incompleto.")
             plain = None
             for last in (False, True):
                 try:
@@ -163,6 +173,26 @@ def _md5(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _table_counts(path):
+    con = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        names = [row[0] for row in con.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        return {name: con.execute('SELECT count(*) FROM "' + name.replace('"', '""') + '"').fetchone()[0]
+                for name in names}
+    finally:
+        con.close()
+
+
+def _counts_hash(counts):
+    return hashlib.sha256(json.dumps(counts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def receipt_message(receipt):
+    checksum = "conferido (MD5)" if receipt["remote_verification_state"] == "verified_md5" else "pendente"
+    restored = "restauração conferida" if receipt["restore_state"] == "verified" else "restauração ainda não ensaiada"
+    return f"Cópia enviada: {receipt['name']}; checksum remoto {checksum}; {restored}."
 
 
 # --- HTTP de envio retomável ---------------------------------------------------------------------------------------
@@ -193,25 +223,35 @@ def _committed(headers) -> int:
 
 
 def upload(path: Path, token: str, metadata: dict, opener=None, progress: Optional[Callable] = None,
-           retries: int = 5) -> dict:
+           retries: int = 5, session=None, checkpoint=None) -> dict:
     total = path.stat().st_size
-    status, headers, _ = _raw("POST", UPLOAD_URL + "?uploadType=resumable&fields=id,name,size,md5Checksum",
+    resumed = bool(session)
+    if not session:
+        status, headers, _ = _raw("POST", UPLOAD_URL + "?uploadType=resumable&fields=id,name,size,md5Checksum",
                               json.dumps(metadata).encode(),
                               {"Authorization": "Bearer " + token, "Content-Type": "application/json; charset=UTF-8",
                                "X-Upload-Content-Type": "application/octet-stream",
                                "X-Upload-Content-Length": str(total)}, opener)
-    session = {k.lower(): v for k, v in headers.items()}.get("location")
+        session = {k.lower(): v for k, v in headers.items()}.get("location")
     if not session:
         raise cd.DriveError("upload", "O Google não abriu a sessão de envio.")
-    offset, failures = 0, 0
+    endpoint = urllib.parse.urlparse(session)
+    if endpoint.scheme != "https" or endpoint.hostname != "www.googleapis.com" or not endpoint.path.startswith("/upload/"):
+        raise cd.DriveError("upload", "O Google devolveu um destino de envio não reconhecido.")
+    if checkpoint:
+        checkpoint(session)
+    offset, failures, stalls = 0, 0, 0
     with open(path, "rb") as f:
         while True:
             try:
-                if failures:
+                if failures or resumed:
+                    resumed = False
                     st, hd, body = _raw("PUT", session, b"", {"Content-Range": f"bytes */{total}"}, opener)
                     if st in (200, 201):
                         return json.loads(body)
                     offset = _committed(hd)
+                    if not 0 <= offset <= total:
+                        raise cd.DriveError("upload", "O Drive devolveu uma posição de envio inválida.")
                 f.seek(offset)
                 chunk = f.read(UPLOAD_CHUNK)
                 end = offset + len(chunk) - 1
@@ -222,13 +262,19 @@ def upload(path: Path, token: str, metadata: dict, opener=None, progress: Option
                     if progress:
                         progress(total, total)
                     return json.loads(body)
-                offset = _committed(hd)
+                next_offset = _committed(hd)
+                if not offset <= next_offset <= offset + len(chunk):
+                    raise cd.DriveError("upload", "O Drive devolveu uma posição de envio inválida.")
+                stalls = stalls + 1 if next_offset == offset else 0
+                if stalls > retries:
+                    raise cd.DriveError("network", "O envio não avançou. A cópia preparada foi preservada para retomar.")
+                offset = next_offset
                 if progress:
                     progress(offset, total)
             except (urllib.error.URLError, socket.timeout, ConnectionError) as exc:
                 failures += 1
                 if failures > retries:
-                    raise cd.DriveError("network", f"Envio interrompido ({exc}). Tente de novo; o Drive não "
+                    raise cd.DriveError("network", "Envio interrompido. Tente de novo; o Drive não "
                                                    "guarda cópia parcial como válida.") from exc
                 time.sleep(min(30, 2 ** failures))
 
@@ -242,16 +288,8 @@ def _staging(base: Path) -> Path:
 
 
 def snapshot(source: Path, target: Path) -> None:
-    src = sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30)
-    dst = sqlite3.connect(str(target))
-    try:
-        src.backup(dst, pages=4096)
-        check = dst.execute("PRAGMA quick_check").fetchone()[0]
-    finally:
-        dst.close()
-        src.close()
-    if check != "ok":
-        raise cd.DriveError("snapshot", f"A cópia local não passou na conferência ({check}); nada foi enviado.")
+    from mt5_extracao.resources.files import consistent_snapshot
+    consistent_snapshot(source, target)
 
 
 class DriveBackup:
@@ -265,46 +303,131 @@ class DriveBackup:
         if not state["confirmed"]:
             raise cd.DriveError("key_unconfirmed", "Guarde o código de recuperação e confirme-o antes do primeiro "
                                                    "envio (sem ele, ninguém decifra as cópias).")
-        verified = self.link.verify()
+        token = self.link.access_token()
+        verified = self.link.verify(token=token)
         if not verified.get("ok"):
             raise cd.DriveError("destination", "Envio bloqueado: " + "; ".join(verified.get("problems") or []))
-        return verified, self.link.access_token()
+        return verified, token
 
     def send(self, source, scope: str = "ativa", staging_dir=None, progress=None) -> dict:
+        from mt5_extracao.resources.actions import exclusive
         source = Path(source).resolve()
         if scope not in SCOPES:
-            raise cd.DriveError("scope_invalid", f"Escopo desconhecido: {scope} (use {', '.join(SCOPES)}).")
+            raise cd.DriveError("scope_invalid", "Escopo desconhecido; use ativa, pesquisa ou qa.")
         if not source.is_file():
-            raise cd.DriveError("source", f"Base não encontrada: {source}")
-        verified, token = self._ready()
+            raise cd.DriveError("source", "Base não encontrada.")
         stage = _staging(Path(staging_dir) if staging_dir else source.parent / "copias")
-        need = source.stat().st_size * 2.2
-        free = shutil.disk_usage(stage).free
-        if free < need:
-            raise cd.DriveError("disk", f"Disco livre insuficiente para preparar o envio ({free // 2**20} MiB; "
-                                        f"precisa ~{int(need) // 2**20} MiB).")
-        if verified.get("free_bytes") is not None and verified["free_bytes"] < source.stat().st_size * 1.1:
-            raise cd.DriveError("quota", "Espaço insuficiente no Google Drive para esta cópia.")
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        plain, sealed = stage / f"{source.stem}.{stamp}.db", stage / f"{source.stem}.{stamp}.db.mt5xenc"
-        try:
+        with exclusive(stage.parent, "envio Drive"):
+            return self._send_locked(source, scope, stage, progress)
+
+    def _send_locked(self, source, scope, stage, progress):
+        verified, token = self._ready()
+        size = source.stat().st_size
+        if shutil.disk_usage(stage).free < size * 2.2:
+            raise cd.DriveError("disk", "Disco livre insuficiente para preparar o envio.")
+        # O plaintext é temporário; só o ciphertext necessário à retomada persiste em falha.
+        with tempfile.TemporaryDirectory(prefix="snapshot-", dir=stage) as tmp:
+            plain = Path(tmp) / "snapshot.db"
             snapshot(source, plain)
-            info = encrypt_file(plain, sealed, self.keys.get())
-            md5 = _md5(sealed)
-            props = {"kind": KIND, "scope": scope, "source": source.name[:60], "format": "MT5XENC1",
-                     "plain_sha256": info["plain_sha256"], "plain_bytes": str(info["plain_bytes"]),
-                     "created_at": stamp}
-            meta = {"name": sealed.name, "parents": [verified["folder_id"]], "appProperties": props,
-                    "mimeType": "application/octet-stream"}
-            remote = upload(sealed, token, meta, opener=self.opener, progress=progress)
-            if remote.get("md5Checksum") != md5 or int(remote.get("size", -1)) != sealed.stat().st_size:
-                raise cd.DriveError("mismatch", "O Drive recebeu um arquivo diferente do enviado (MD5/tamanho). "
-                                                f"Arquivo remoto {remote.get('id')} não deve ser usado.")
-            return {"ok": True, "file_id": remote["id"], "name": remote["name"], "bytes": int(remote["size"]),
-                    "md5": md5, "scope": scope, **info, "account": verified["account"]}
-        finally:
-            plain.unlink(missing_ok=True)
+            with plain.open("rb") as handle:
+                plain_hash = hashlib.file_digest(handle, "sha256").hexdigest()
+            counts_hash = _counts_hash(_table_counts(plain))
+            key = self.keys.get()
+            source_id = hashlib.sha256(str(source).encode()).hexdigest()
+            copy_id = hashlib.sha256(json.dumps(["sqlite-backup/v1", source_id, scope, plain_hash,
+                                               hashlib.sha256(key).hexdigest()]).encode()).hexdigest()
+            journal_key = "backup_upload/" + copy_id
+            raw = self.link.store.get(journal_key)
+            journal = json.loads(raw) if raw else None
+            sealed = stage / (copy_id + ".mt5xenc")
+
+            def save():
+                self.link.store.set(journal_key, json.dumps(journal))
+
+            if journal:
+                if journal["folder_id"] != verified["folder_id"] or journal["account"] != verified["account"]:
+                    raise cd.DriveError("destination", "O destino da cópia mudou. Retome na conta e pasta originais.")
+                try:
+                    remote = self._remote(journal["file_id"], token)
+                except cd.DriveError as exc:
+                    if exc.code != "not_found":
+                        raise
+                else:
+                    return self._finish_upload(remote, journal, journal_key, sealed)
+            else:
+                if verified.get("free_bytes") is not None and verified["free_bytes"] < plain.stat().st_size * 1.1:
+                    raise cd.DriveError("quota", "Espaço insuficiente no Google Drive para esta cópia.")
+                ids = self.link._api("GET", "/files/generateIds", token, params={"count": 1, "space": "drive"})
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                journal = {"copy_id": copy_id, "file_id": ids["ids"][0], "folder_id": verified["folder_id"],
+                           "account": verified["account"], "name": source.stem + "." + stamp + ".db.mt5xenc",
+                           "scope": scope, "plain_sha256": plain_hash, "plain_bytes": plain.stat().st_size,
+                           "table_counts_sha256": counts_hash,
+                           "created_at": stamp, "session": None, "upload_state": "prepared"}
+                save()
+            if not sealed.exists():
+                if journal.get("session") or journal.get("md5"):
+                    raise cd.DriveError("staging_missing", "A cópia cifrada da tentativa está ausente. Preserve o recibo "
+                                        "e recupere o preparo original antes de retomar.")
+                candidate = Path(tmp) / "sealed"
+                encrypt_file(plain, candidate, key)
+                candidate.replace(sealed)
+                journal.update(md5=_md5(sealed), bytes=sealed.stat().st_size)
+                save()
+            elif _md5(sealed) != journal.get("md5"):
+                raise cd.DriveError("corrupt", "O preparo cifrado não confere com o recibo; nenhum envio foi feito.")
+            if verified.get("free_bytes") is not None and verified["free_bytes"] < journal["bytes"]:
+                raise cd.DriveError("quota", "Espaço insuficiente no Google Drive para esta cópia.")
+            props = {"kind": KIND, "copy_id": copy_id, "scope": scope, "source_id": source_id, "format": "MT5XENC1",
+                     "plain_sha256": plain_hash, "plain_bytes": str(journal["plain_bytes"]),
+                     "table_counts_sha256": counts_hash,
+                     "created_at": journal["created_at"]}
+            metadata = {"id": journal["file_id"], "name": journal["name"], "parents": [verified["folder_id"]],
+                        "appProperties": props, "mimeType": "application/octet-stream"}
+
+            def checkpoint(session):
+                journal.update(session=session, upload_state="uploading")
+                save()  # URL de sessão é um segredo: fica somente no cofre.
+
+            try:
+                remote = upload(sealed, token, metadata, opener=self.opener, progress=progress,
+                                session=journal.get("session"), checkpoint=checkpoint)
+            except cd.DriveError as exc:
+                if exc.code in ("not_found", "upload_expired"):
+                    journal["session"] = None
+                    save()
+                raise
+            return self._finish_upload(remote, journal, journal_key, sealed)
+
+    def _remote(self, file_id, token):
+        return self.link._api("GET", "/files/" + file_id, token,
+                              params={"fields": "id,name,size,md5Checksum,appProperties,parents,trashed"})
+
+    def _finish_upload(self, remote, journal, journal_key, sealed):
+        checksum = remote.get("md5Checksum")
+        if (remote.get("id") != journal["file_id"] or
+                (checksum and checksum != journal["md5"]) or int(remote.get("size", -1)) != journal["bytes"]):
+            raise cd.DriveError("mismatch", "O Drive recebeu um arquivo diferente do preparo. Preserve o recibo; "
+                                "a cópia remota não deve ser usada.")
+        # A resposta final de upload pode omitir propriedades; a releitura deve vinculá-las.
+        if "appProperties" in remote and (remote["appProperties"].get("copy_id") != journal["copy_id"] or
+                                          remote.get("parents") != [journal["folder_id"]] or
+                                          remote.get("trashed") is not False):
+            raise cd.DriveError("mismatch", "A identidade ou a pasta da cópia remota não confere.")
+        result = {"ok": bool(checksum), "snapshot_state": "verified", "upload_state": "sent",
+                  "remote_verification_state": "verified_md5" if checksum else "pending", "restore_state": "not_tested",
+                  **{k: journal[k] for k in ("copy_id", "file_id", "name", "bytes", "md5", "scope", "plain_sha256",
+                                            "plain_bytes", "account")}}
+        journal.update(upload_state="sent", remote_verification_state=result["remote_verification_state"], session=None)
+        self.link.store.set(journal_key, json.dumps(journal))
+        if checksum:
             sealed.unlink(missing_ok=True)
+        restored = self.link.store.get("backup_restore/" + journal["copy_id"])
+        if restored:
+            receipt = json.loads(restored)
+            if receipt.get("file_id") == journal["file_id"] and receipt.get("md5") == checksum:
+                result["restore_state"] = receipt["restore_state"]
+        return result
 
     def list(self) -> list:
         link = self.link.link()
@@ -325,7 +448,19 @@ class DriveBackup:
             if not page:
                 return out
 
-    def drill(self, file_id: Optional[str] = None, work_dir=None) -> dict:
+    def download_plan(self, file_id=None, destination=None):
+        files = self.list()
+        target = next((f for f in files if f["id"] == file_id), None) if file_id else (files[0] if files else None)
+        if target is None:
+            raise cd.DriveError("not_found", "Cópia não encontrada na conta selecionada.")
+        return {"state": "manual_download_plan", "file_id": target["id"], "name": target["name"],
+                "bytes": int(target.get("size", -1)), "md5": target.get("md5Checksum"),
+                "url": "https://drive.google.com/file/d/" + urllib.parse.quote(target["id"], safe="") + "/view",
+                "destination": str(destination or target["name"]), "automatic_download": False,
+                "validate_argv": ["resources", "drive", "drill", "--file-id", target["id"],
+                                  "--downloaded-file", str(destination or target["name"])]}
+
+    def drill(self, file_id: Optional[str] = None, work_dir=None, downloaded_file=None) -> dict:
         """Ensaio de restauração isolado: baixa, confere, decifra e testa a integridade numa pasta temporária."""
         key = self.keys.get()
         if key is None:
@@ -334,6 +469,14 @@ class DriveBackup:
         target = next((f for f in files if f["id"] == file_id), None) if file_id else (files[0] if files else None)
         if target is None:
             raise cd.DriveError("not_found", "Nenhuma cópia do MT5X encontrada na pasta do Drive.")
+        size = int(target.get("size", -1))
+        if size < 0:
+            raise cd.DriveError("download_budget", "O tamanho da cópia não foi informado pelo Drive; confira antes de baixar.")
+        if size > MANUAL_DOWNLOAD_BYTES and downloaded_file is None:
+            raise cd.DriveError("manual_download", "Download acima de 70 MB: baixe a cópia cifrada pelo navegador "
+                                "e retome o ensaio com --downloaded-file ARQ (sem dividir para contornar o limite).")
+        if shutil.disk_usage(work_dir or tempfile.gettempdir()).free < size * (1.1 if downloaded_file else 2.2):
+            raise cd.DriveError("disk", "Disco livre insuficiente para o ensaio de restauração.")
         token = self.link.access_token()
         props = target.get("appProperties", {})
         with tempfile.TemporaryDirectory(prefix="mt5x-ensaio-", dir=work_dir) as tmp:
@@ -342,21 +485,46 @@ class DriveBackup:
                                          headers={"Authorization": "Bearer " + token})
             send = self.opener or (lambda r: urllib.request.urlopen(r, timeout=cd.HTTP_TIMEOUT_S * 4))
             try:
-                with send(req) as resp, open(sealed, "wb") as out:
-                    shutil.copyfileobj(resp, out, 1 << 20)
+                if downloaded_file is not None:
+                    sealed = Path(downloaded_file).resolve()
+                    if not sealed.is_file() or sealed.stat().st_size != size:
+                        raise cd.DriveError("mismatch", "O arquivo baixado manualmente tem tamanho diferente do manifesto.")
+                else:
+                    with send(req) as resp, open(sealed, "wb") as out:
+                        count = 0
+                        while True:
+                            chunk = resp.read(min(1 << 20, size - count + 1))
+                            if not chunk:
+                                break
+                            count += len(chunk)
+                            if count > size:
+                                raise cd.DriveError("mismatch", "O download excedeu o tamanho informado pelo Drive.")
+                            out.write(chunk)
+                    if count != size:
+                        raise cd.DriveError("mismatch", "Download incompleto; tente novamente.")
             except urllib.error.URLError as exc:
-                raise cd.DriveError("network", f"Download interrompido ({exc}).") from exc
+                raise cd.DriveError("network", "Download interrompido. Confira a conexão e tente novamente.") from exc
             md5 = _md5(sealed)
             if md5 != target.get("md5Checksum"):
                 raise cd.DriveError("mismatch", "O arquivo baixado não confere com o MD5 do Drive.")
             info = decrypt_file(sealed, plain, key)
-            if info["plain_sha256"] != props.get("plain_sha256"):
+            if (info["plain_sha256"] != props.get("plain_sha256") or
+                    info["plain_bytes"] != int(props.get("plain_bytes", -1))):
                 raise cd.DriveError("mismatch", "O conteúdo decifrado não confere com o manifesto da cópia.")
+            counts = _table_counts(plain)
+            if props.get("table_counts_sha256") and _counts_hash(counts) != props["table_counts_sha256"]:
+                raise cd.DriveError("mismatch", "As contagens não conferem com o manifesto da cópia.")
             con = sqlite3.connect(f"file:{plain}?mode=ro", uri=True)
             try:
                 integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
                 tables = con.execute("SELECT count(*) FROM sqlite_master WHERE type='table'").fetchone()[0]
             finally:
                 con.close()
-        return {"ok": integrity == "ok", "file_id": target["id"], "name": target["name"], "scope": props.get("scope"),
-                "created_at": props.get("created_at"), "md5": md5, "integrity": integrity, "tables": tables, **info}
+        result = {"ok": integrity == "ok", "restore_state": "verified" if integrity == "ok" else "failed",
+                "remote_verification_state": "verified_md5", "file_id": target["id"], "name": target["name"], "scope": props.get("scope"),
+                "created_at": props.get("created_at"), "md5": md5, "integrity": integrity, "tables": tables,
+                "table_counts": counts, "counts_state": "verified" if props.get("table_counts_sha256") else "legacy_no_manifest",
+                **info}
+        if props.get("copy_id"):
+            self.link.store.set("backup_restore/" + props["copy_id"], json.dumps(result))
+        return result
