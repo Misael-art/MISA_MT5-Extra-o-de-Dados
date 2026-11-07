@@ -1,5 +1,9 @@
 # Roadmap: construtor de bases MT5 completo (Windows + Linux)
 
+## Drive — revisão sintética de 07/11/2026
+
+SQLite/uma conta: PR302 com entrada privada de recuperação, retry sem duplicata e restauração isolada. 99 testes integrados e 28 focados no ajuste final do cofre (sobrepostos), launcher Linux/Xvfb e doctor offline aprovados. Múltiplas contas, pacotes por ativo e reunião serão PRs próprias dependentes, ainda pendentes. Teste real do proprietário só depois da composição sintética completa. [Contrato e aceites](PLANO_DE_TRABALHO.md#t2030-host1-drive--estado-de-revisão-em-07112026).
+
 **Atualização de 03/11/2026:** P00 foi reconciliado com App E14 `0993ae7`,
 HADOUKEN `d4d389e` e Safety `27b8599`. P01–P07 estão implementados em branches
 locais encadeadas até o consumo de recibos persistidos em SDK, CLI, Laboratório,

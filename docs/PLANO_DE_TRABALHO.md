@@ -1,5 +1,15 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — estado de revisão em 07/11/2026
+
+Recursos/Dados é o dono no App; recuperação apoia a verificação. SQLite/uma conta está em revisão na PR302, com código de recuperação somente pela interface/terminal privado, snapshot consistente compartilhado com `resources.files.backup`, AES-GCM, ID remoto pré-gerado persistido e retomada após interrupção. O recibo separa snapshot, envio, checksum remoto e restauração; checksum ausente permanece pendente. Nenhuma versão remota é apagada. Download acima de 70 MB exige plano e transferência manual, mesmo em partes; ensaio valida bytes/MD5, decifração, SHA-256, contagens e `integrity_check` em QA.
+
+Baseline 63 testes; regressão 99 aprovados, mais 28 focados no último ajuste do cofre (sobrepostos); launcher oficial Linux/Xvfb sintético aprovado, doctor 16 OK/2 avisos/0 falhas. CI do novo SHA e alvos reais têm aceites próprios.
+
+Ordem autorizada, uma PR por incremento: estabilizar PR302 → múltiplas contas (credenciais por cliente/identidade estável, escolha explícita, verificação antes de enviar) → pacotes por ativo (inventário de todas as tabelas e dependências, namespace/relógio/revisão/hashes, catálogo protegido) → reunião (plano só leitura, QA nova, idempotência e conflitos explícitos, vínculos preservados, transação e consumidores existentes). As três últimas frentes continuam pendentes neste registro. `drive.file` permanece o único escopo. Capacidade segue observação/API, sem quota fixa.
+
+O proprietário fará login e testes reais depois da composição sintética aprovada; até lá somente contas simuladas e dados sintéticos. PostgreSQL exige `pg_dump`/`pg_restore` e aceite separado. A recuperação privada existente permanece independente do Drive; a cópia atual do WIP neste host ainda não tem proteção externa verificada. [Continuidade](../CONTINUAR_AQUI.md) · [operação e fontes oficiais](instalacao.md#google-drive-cópia-na-nuvem-opcional).
+
 Documento operacional para agentes (humanos ou IA, inclusive de menor capacidade)
 implementarem o [ROADMAP](ROADMAP.md) **sem ambiguidade**. Antes de qualquer
 tarefa, leia [AGENTS.md](../AGENTS.md) (regras obrigatórias).

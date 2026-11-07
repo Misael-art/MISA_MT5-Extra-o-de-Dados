@@ -1,5 +1,11 @@
 # MT5 Extração de Dados
 
+## Estado conferido — 07/11/2026
+
+Prévia efetiva conferida em 07/11: `650656fac67d` (PR300), 354 hashes sem divergência; retorno `57d13ee` preservado. O atalho não foi atualizado neste lote. HADOUKEN `d4d389e` preservado em branch; Safety `27b8599` detached.
+
+Drive: [PR302](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/302), SQLite cifrado com código em entrada privada, retry sem duplicata e restauração sintética conferida. 99 testes integrados e 28 focados no ajuste final do cofre, com sobreposição; doctor offline sem falhas. Contas múltiplas, pacotes por ativo e reunião seguem em PRs próprias, antes do teste real. Drive ainda não está no atalho. [Fontes e limites](CONTINUAR_AQUI.md). As seções datadas abaixo são fotografias históricas.
+
 ## Estado de desenvolvimento neste host — 03/11/2026
 
 A raiz canônica é `/home/misael/Projects/MT5X`: este App fica em `repos/app`,

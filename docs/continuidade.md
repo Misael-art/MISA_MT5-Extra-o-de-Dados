@@ -1,3 +1,19 @@
+## Drive — remoção idempotente no cofre, 07/11/2026
+
+O adaptador trata a ausência de uma senha dentro da operação do backend, antes da sanitização genérica de erros. Assim criar a primeira chave ou desconectar sem chave anterior continua idempotente, sem expor mensagens do cofre. Dois testes dirigidos aprovados com backend simulado; sem acesso a credenciais reais. Correção do mesmo objetivo na PR302, separada do incremento de múltiplas contas.
+
+## Drive — estabilização sintética de 07/11/2026
+
+A [PR302](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/302) recebe somente correções do objetivo original de SQLite/uma conta: recuperação fora de argv/JSON/logs, entrada oculta, snapshot de Recursos reutilizado, estados separados de envio/checksum/restauração, identidade remota estável e retomada após interrupção. Falha conserva a última cópia boa e o preparo cifrado. Downloads acima de 70 MB são manuais e têm plano/conferência local; restauração confere SHA-256, contagens e integridade.
+
+Baseline: 63 testes. Regressão integrada: 99 aprovados em 42,8 s; pico observado da árvore de processos 315,4 MiB; CPU 29,6 s usuário/3,2 s sistema. I/O informado pelo SO: 2.008 blocos de entrada/1.034.576 de saída (512 B). Ajuste final de erro do cofre: 28 testes focados aprovados, com sobreposição. ShellCheck passou; doctor offline: 16 OK/2 avisos/0 falhas. Launcher oficial Linux/Xvfb com série sintética: verificar → enviar → ensaiar restauração, zero erros de callback. Não é aceite OAuth/Drive real, CI do novo SHA, Windows físico, MT5/DEMO ou PostgreSQL.
+
+Prévia efetiva conferida em 07/11: `650656fac67d` (PR300), 354 hashes sem divergência; retorno `57d13ee` preservado. O atalho não foi atualizado neste lote. HADOUKEN `d4d389e` preservado em branch; Safety `27b8599` detached.
+
+Checkout do App continua em `codex/launcher-classes`/`550b6d5`, com WIP alheio preservado. A publicação Drive usa índice separado sobre o SHA remoto da PR302, sem transportar as outras frentes ou trocar a branch do checkout. A cópia local do WIP tem manifesto e hashes verificados; proteção independente pendente, pois a página privada registrada não está acessível nesta sessão. Btrfs permaneceu em 6.741 corrupções acumuladas; isso não diagnostica a causa dos reinícios. Nenhum scrub/reparo/limpeza foi executado.
+
+Próximos incrementos, em PRs distintas e dependentes: contas múltiplas com identidade estável e cofre isolado; pacotes por ativo com inventário/dependências; reunião em QA com conflitos explícitos e consumidores existentes. O proprietário fará consentimento e testes reais só depois da aprovação sintética conjunta. Nenhum dado privado enviado.
+
 ## Revalidação da composição e dos incrementos locais — 04/11/2026
 
 E14 App `0993ae7`/PR279 draft, HADOUKEN `d4d389e`/PR84 draft e Safety
