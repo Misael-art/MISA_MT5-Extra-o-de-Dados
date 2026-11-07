@@ -48,6 +48,7 @@ SEARCH_MAX_BYTES = 64 * 1024
 CONNECT_TIMEOUT_S = 300
 HTTP_TIMEOUT_S = 30
 RETRIES = 3
+KEYRING_TIMEOUT_S = 120
 
 
 class DriveError(Exception):
@@ -80,16 +81,52 @@ class KeyringStore:
                                                     "(no Linux, abra a sessão do KDE/GNOME com o chaveiro ativo).")
         return keyring
 
+    def locked(self) -> bool:
+        """True se o cofre do Linux está bloqueado (consultar não abre a janela de desbloqueio)."""
+        if not sys.platform.startswith("linux"):
+            return False
+        try:
+            import secretstorage
+            conn = secretstorage.dbus_init()
+            try:
+                return secretstorage.get_default_collection(conn).is_locked()
+            finally:
+                conn.close()
+        except Exception:
+            return False
+
+    def _call(self, fn, *args):
+        """Chamada ao cofre com limite: um cofre bloqueado espera o usuário desbloquear, mas não para sempre."""
+        box = {}
+
+        def run():
+            try:
+                box["value"] = fn(*args)
+            except Exception as exc:                 # devolvido à thread chamadora
+                box["error"] = exc
+
+        worker = threading.Thread(target=run, name="mt5x-keyring", daemon=True)
+        worker.start()
+        worker.join(KEYRING_TIMEOUT_S)
+        if worker.is_alive():
+            raise DriveError("keyring_locked", "O cofre de senhas do sistema não respondeu. Desbloqueie a carteira "
+                                               "(KWallet/Chaveiro) na janela que abriu e tente de novo.")
+        if "error" in box:
+            raise box["error"]
+        return box.get("value")
+
     def get(self, key: str) -> Optional[str]:
-        return self._kr().get_password(self.service, key)
+        kr = self._kr()
+        return self._call(kr.get_password, self.service, key)
 
     def set(self, key: str, value: str) -> None:
-        self._kr().set_password(self.service, key, value)
+        kr = self._kr()
+        self._call(kr.set_password, self.service, key, value)
 
     def delete(self, key: str) -> None:
         kr = self._kr()
         try:
-            kr.delete_password(self.service, key)
+            self._call(kr.delete_password, self.service, key)
         except kr.errors.PasswordDeleteError:
             pass
 
@@ -332,7 +369,10 @@ class DriveLink:
         return json.loads(raw) if raw else None
 
     def status(self) -> dict:
-        """Estado sem rede: o que a UI mostra ao abrir a aba."""
+        """Estado sem rede: o que a UI mostra ao abrir a aba. Cofre bloqueado não abre janela aqui."""
+        if getattr(self.store, "locked", lambda: False)():
+            return {"state": "locked", "message": "O cofre de senhas do sistema está bloqueado. Clique em Conectar "
+                                                  "e desbloqueie a carteira quando ela pedir."}
         try:
             client, link, token = self.client(), self.link(), self.store.get(KEY_TOKEN)
         except DriveError as exc:

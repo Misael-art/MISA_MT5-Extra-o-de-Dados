@@ -155,7 +155,15 @@ OAuth" do tipo "App para computador" e baixe o JSON; não é preciso mover o arq
 - **Desconectar** revoga no Google e apaga o token do cofre.
 - Linha de comando: `mt5x resources drive status|connect|verify|disconnect [--client-file ARQ]`.
 
-O envio das cópias para o Drive é a etapa seguinte de T20.30-HOST1-DRIVE e continua desligado.
+- **Enviar cópia agora**: copia a base ativa com ela em uso (`quick_check`), cifra com AES-256-GCM neste
+  computador, envia de forma retomável e confere o MD5 recebido pelo Google. Envio bloqueado se a verificação do
+  destino acusar problema. Nada é apagado no Drive e não há envio automático.
+- **Código de recuperação**: criado no primeiro envio; o App só envia depois que você o redigita. Guarde-o fora do
+  Drive. Num computador novo, **Já tenho um código...** recria a chave.
+- **Ensaiar restauração**: baixa a cópia mais nova para uma pasta temporária, confere MD5, decifra, compara o
+  SHA-256 e roda `PRAGMA integrity_check`; a base em uso não é tocada.
+- Cofre bloqueado (KWallet/Chaveiro): a guia avisa sem abrir janela; Conectar pede o desbloqueio.
+- CLI: `mt5x resources drive key|confirm-key|restore-key --code ...|send [--scope ativa|pesquisa|qa] [--source]|list|drill [--file-id]`.
 
 ## Diagnóstico
 

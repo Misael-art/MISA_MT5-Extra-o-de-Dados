@@ -46,6 +46,7 @@ class FakeGoogle:
         self.folders = {}
         self.calls = []
         self.refresh_error = None
+        self.quota = 1000
 
     def __call__(self, req):
         url = urllib.parse.urlparse(req.full_url)
@@ -60,7 +61,7 @@ class FakeGoogle:
             return FakeResp(b"")
         if url.path.endswith("/about"):
             return FakeResp(json.dumps({"user": {"emailAddress": self.account, "displayName": "Dono"},
-                                        "storageQuota": {"limit": "1000", "usage": "400"}}).encode())
+                                        "storageQuota": {"limit": str(self.quota), "usage": "400"}}).encode())
         if url.path.endswith("/files") and req.get_method() == "POST":
             fid = f"f{len(self.folders) + 1}"
             self.folders[fid] = {"id": fid, "name": json.loads(body)["name"], "mimeType": cd.FOLDER_MIME,
@@ -200,3 +201,15 @@ def _write(folder, data):
     path = folder / "client_secret_x.json"
     path.write_text(json.dumps(data))
     return path
+
+
+def test_locked_keyring_is_reported_without_prompt_and_calls_time_out(monkeypatch):
+    store = MemoryStore()
+    store.locked = lambda: True
+    assert cd.DriveLink(store=store).status()["state"] == "locked"
+    monkeypatch.setattr(cd, "KEYRING_TIMEOUT_S", 0.2)
+    gate = threading.Event()
+    with pytest.raises(cd.DriveError) as exc:
+        cd.KeyringStore()._call(gate.wait, 5)
+    gate.set()
+    assert exc.value.code == "keyring_locked"

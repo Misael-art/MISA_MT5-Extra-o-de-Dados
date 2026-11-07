@@ -8,17 +8,18 @@ fila de trabalho da UI); o resultado volta à thread do Tk por ``root.after``. A
 import threading
 import tkinter as tk
 import webbrowser
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
-from mt5_extracao.resources import cloud_drive
+from mt5_extracao.resources import cloud_drive, drive_backup
 from mt5_extracao.ui.theme import Tooltip
 
 POLL_MS = 100
 
 
 class DrivePanel:
-    def __init__(self, notebook, ui, link_factory=cloud_drive.DriveLink):
+    def __init__(self, notebook, ui, link_factory=cloud_drive.DriveLink, db_getter=lambda: None):
         self.ui = ui
+        self.db_getter = db_getter
         self.link_factory = link_factory
         self.cancel = None
         self.busy = False
@@ -30,7 +31,8 @@ class DrivePanel:
         ttk.Label(tab, style="Muted.TLabel", wraplength=760, justify=tk.LEFT, text=(
             "Clique em Conectar: o navegador abre na sua conta Google e você autoriza. O App só enxerga a pasta "
             "\"MT5X Backup\" que ele mesmo cria. O acesso fica no cofre de senhas do sistema; nada é gravado em "
-            "arquivo. O envio de cópias continua desligado até você ativá-lo.")).pack(anchor="w", pady=(4, 10))
+            "arquivo. As cópias são cifradas neste computador antes de sair; guarde o código de recuperação "
+            "fora do Drive.")).pack(anchor="w", pady=(4, 10))
         self.state_label = ttk.Label(tab, text="Verificando...", style="Surface.TLabel", wraplength=760,
                                      justify=tk.LEFT)
         self.state_label.pack(anchor="w")
@@ -55,6 +57,22 @@ class DrivePanel:
         Tooltip(self.console_button, "Abre o Console do Google. Crie um \"ID do cliente OAuth\" do tipo \"App para "
                                      "computador\" com a Google Drive API ativa e baixe o JSON; o App o encontra "
                                      "sozinho na pasta Downloads.", ui.theme)
+        row2 = ttk.Frame(tab, style="Surface.TFrame")
+        row2.pack(anchor="w", pady=(8, 0))
+        self.send_button = ttk.Button(row2, text="Enviar cópia agora", command=self.send)
+        self.send_button.pack(side=tk.LEFT)
+        Tooltip(self.send_button, "Copia a base ativa com ela em uso, cifra, envia ao Drive e confere o MD5 que o "
+                                  "Google recebeu.", ui.theme)
+        self.drill_button = ttk.Button(row2, text="Ensaiar restauração", command=self.drill)
+        self.drill_button.pack(side=tk.LEFT, padx=(8, 0))
+        Tooltip(self.drill_button, "Baixa a cópia mais nova para uma pasta temporária, decifra e confere a "
+                                   "integridade. A base em uso não é tocada.", ui.theme)
+        self.code_button = ttk.Button(row2, text="Código de recuperação...", command=self.show_code)
+        self.code_button.pack(side=tk.LEFT, padx=(8, 0))
+        self.restore_key_button = ttk.Button(row2, text="Já tenho um código...", command=self.restore_key)
+        self.restore_key_button.pack(side=tk.LEFT, padx=(8, 0))
+        Tooltip(self.restore_key_button, "Num computador novo: digite o código guardado para decifrar as cópias "
+                                         "já enviadas.", ui.theme)
         self.refresh()
 
     # --- execução fora da thread do Tk -----------------------------------------------------------------------------
@@ -85,7 +103,8 @@ class DrivePanel:
 
     def _set_busy(self, busy):
         self.busy = busy
-        for b in (self.connect_button, self.verify_button, self.disconnect_button, self.client_button):
+        for b in (self.connect_button, self.verify_button, self.disconnect_button, self.client_button,
+                  self.send_button, self.drill_button, self.code_button, self.restore_key_button):
             b.state(["disabled"] if busy else ["!disabled"])
 
     def _show(self, result, error):
@@ -120,6 +139,8 @@ class DrivePanel:
         self.connect_button.config(text="Conectar de novo" if connected else "Conectar Google Drive")
         self.verify_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
         self.disconnect_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
+        self.send_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
+        self.drill_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
 
     # --- ações -----------------------------------------------------------------------------------------------------
 
@@ -171,3 +192,63 @@ class DrivePanel:
 
     def open_console(self):
         webbrowser.open(cloud_drive.CONSOLE_URL)
+
+    # --- cópias ----------------------------------------------------------------------------------------------------
+
+    def _show_line(self, result, error, ok_text):
+        if error is not None:
+            self._show(None, error)
+            return
+        self.state_label.config(text=ok_text(result), style="Surface.TLabel" if result.get("ok", True)
+                                else "Warn.TLabel")
+        self.ui.log("Google Drive: " + ok_text(result))
+
+    def show_code(self):
+        def done(state, error):
+            if error is not None:
+                self._show(None, error)
+                return
+            if state["confirmed"]:
+                messagebox.showinfo("Código de recuperação", "Seu código (já confirmado):\n\n" + state["code"],
+                                    parent=self.frame)
+                return
+            messagebox.showinfo("Guarde este código", "Anote ou imprima este código e guarde FORA do Google Drive. "
+                                "Sem ele ninguém decifra as cópias, nem você em outro computador.\n\n" + state["code"],
+                                parent=self.frame)
+            typed = simpledialog.askstring("Confirmar código", "Digite o código para confirmar que o guardou:",
+                                           parent=self.frame)
+            if typed:
+                self._run(lambda link: drive_backup.Keys(link.store).confirm(typed) or {"ok": True},
+                          lambda r, e: self._show_line(r, e, lambda _: "Código confirmado; envio liberado."))
+
+        self._run(lambda link: drive_backup.Keys(link.store).ensure(), done)
+
+    def restore_key(self):
+        typed = simpledialog.askstring("Código de recuperação", "Digite o código guardado:", parent=self.frame)
+        if typed:
+            self._run(lambda link: drive_backup.Keys(link.store).restore(typed) or {"ok": True},
+                      lambda r, e: self._show_line(r, e, lambda _: "Chave restaurada a partir do código."))
+
+    def send(self):
+        db = self.db_getter()
+        path = getattr(db, "db_path", None) if getattr(db, "db_type", None) == "sqlite" else None
+        if not path:
+            messagebox.showwarning("Enviar cópia", "A base em uso não é SQLite; use pg_dump para PostgreSQL.",
+                                   parent=self.frame)
+            return
+
+        def done(result, error):
+            if error is not None and error.code == "key_unconfirmed":
+                self._show(None, error)
+                self.show_code()
+                return
+            self._show_line(result, error, lambda r: f"Cópia enviada e conferida: {r['name']}.")
+
+        self.state_label.config(text="Preparando, cifrando e enviando a cópia...", style="Surface.TLabel")
+        self._run(lambda link: drive_backup.DriveBackup(link).send(path, scope="ativa"), done)
+
+    def drill(self):
+        self.state_label.config(text="Baixando e conferindo a cópia mais nova...", style="Surface.TLabel")
+        self._run(lambda link: drive_backup.DriveBackup(link).drill(), lambda r, e: self._show_line(
+            r, e, lambda x: ("Ensaio de restauração OK: " if x["ok"] else "Ensaio FALHOU: ") +
+            f"{x['name']} ({x['tables']} tabelas, integridade {x['integrity']})."))
