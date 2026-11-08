@@ -1,5 +1,9 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — correção CI de 08/11/2026
+
+Owner **Recursos/Dados**. CI anterior da PR302 (`9d55fb5`, run `42400089570`): testes Ubuntu e Windows falharam por ambiente/launcher e nome SQLite incompatível com Windows; PostgreSQL, lint e instaladores passaram. O corretivo prepara `.venv` e configuração no job de testes, usa o launcher oficial de cada plataforma e um nome SQLite portátil com conferência do conteúdo. No Linux, as duas regressões diretamente alteradas passaram em 08/11; a regressão anterior de sete módulos (`104 passed`), ShellCheck e doctor offline permanece como evidência histórica. O CI do commit corretivo e o transporte de parâmetros pelo `cmd.exe` dependem de execução no Windows CI; não inferir aceite. Preservar os demais WIPs e pins. Próxima PR após estabilização: múltiplas contas com identidade/cofre isolados e escolha explícita, somente com fixtures sintéticas.
+
 ## T20.30-HOST1-DRIVE — estado de revisão em 07/11/2026
 
 Recursos/Dados é o dono no App; recuperação apoia a verificação. SQLite/uma conta está em revisão na PR302, com código de recuperação somente pela interface/terminal privado, snapshot consistente compartilhado com `resources.files.backup`, AES-GCM, ID remoto pré-gerado persistido e retomada após interrupção. O recibo separa snapshot, envio, checksum remoto e restauração; checksum ausente permanece pendente. Nenhuma versão remota é apagada. Download acima de 70 MB exige plano e transferência manual, mesmo em partes; ensaio valida bytes/MD5, decifração, SHA-256, contagens e `integrity_check` em QA.

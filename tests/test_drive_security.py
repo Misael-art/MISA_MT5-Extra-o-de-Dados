@@ -1,6 +1,7 @@
 """Segredos não passam por argv, JSON ou mensagens de falhas do transporte."""
 import io
 import json
+import os
 import sys
 import urllib.error
 import subprocess
@@ -98,10 +99,15 @@ def test_missing_remote_checksum_remains_pending(ready, base, monkeypatch):
     assert sent["remote_verification_state"] == "pending" and sent["restore_state"] == "not_tested"
 
 
-def test_official_offline_launcher_requires_private_terminal_without_opening_database(tmp_path):
+def test_official_launcher_requires_private_terminal_without_opening_database(tmp_path):
     root = Path(__file__).resolve().parents[1]
     target = tmp_path / "must-not-exist.db"
-    result = subprocess.run([str(root / "run.sh"), "--offline", "--cli", "--json", "--db", str(target),
+    if os.name == "nt":
+        # run.bat executa a CLI diretamente sem iniciar MT5; não aceita --offline.
+        launcher = [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(root / "run.bat"), "--cli"]
+    else:
+        launcher = [str(root / "run.sh"), "--offline", "--cli"]
+    result = subprocess.run([*launcher, "--json", "--db", str(target),
                              "resources", "drive", "restore-key"], capture_output=True, text=True, timeout=30)
     assert result.returncode == cli.EXIT_FAIL, result.stderr
     data = json.loads(result.stdout)
@@ -112,10 +118,13 @@ def test_official_offline_launcher_requires_private_terminal_without_opening_dat
 def test_snapshot_preserves_existing_target_and_handles_uri_characters(tmp_path):
     from mt5_extracao.resources.files import consistent_snapshot
     import sqlite3
-    source, target = tmp_path / "a?b#c.db", tmp_path / "copy.db"
+    source, target = tmp_path / "a#b%c space.db", tmp_path / "copy.db"
     with sqlite3.connect(source) as con:
         con.execute("CREATE TABLE example (id INTEGER PRIMARY KEY)")
+        con.execute("INSERT INTO example (id) VALUES (7)")
     consistent_snapshot(source, target)
+    with sqlite3.connect(target) as con:
+        assert con.execute("SELECT id FROM example").fetchall() == [(7,)]
     original = target.read_bytes()
     with pytest.raises(FileExistsError):
         consistent_snapshot(source, target)

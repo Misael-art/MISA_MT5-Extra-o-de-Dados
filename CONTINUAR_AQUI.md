@@ -1,5 +1,15 @@
 # Retomar MT5X em um host limpo
 
+## PR302 — corretivo do CI em 08/11/2026
+
+Owner: **Recursos/Dados**, tarefa **T20.30-HOST1-DRIVE**, limitada a SQLite/uma conta. Na ponta remota `9d55fb50b00861f35e0617c9ccd2273ade471a52`, o CI 42400089570 falhou em `Testes (ubuntu-latest)` e `Testes (windows-latest)`; PostgreSQL, lint e os dois instaladores passaram. Logs confirmam: Ubuntu não tinha `.venv` ao chamar `run.sh`; Windows tentou executar `run.sh` e usou nome SQLite com `?` (inválido no Windows).
+
+Corretivo para revisão: `.github/workflows/ci.yml` cria `.venv` com acesso às dependências previamente instaladas e executa `bootstrap configure --non-interactive --skip-credentials --no-doctor` antes de `pytest`. `tests/test_drive_security.py` seleciona `run.bat --cli` via `cmd.exe` no Windows e `run.sh --offline --cli` no Linux; o teste SQLite usa `a#b%c space.db` e comprova a leitura do registro `id=7` no snapshot. O `run.bat` existente não mudou; a transmissão efetiva de argumentos com espaço e `%` depende do novo Windows CI.
+
+O recorte de código foi comparado com o SHA da PR: dois arquivos afetados; as duas regressões diretas passaram de novo no Linux em 08/11 (`2 passed`, `18 deselected`). Da passagem técnica anterior: regressão conjunta de sete módulos `104 passed` em 39,42 s, ShellCheck aprovado, doctor offline `16 OK/2 avisos/0 falhas`, YAML e bootstrap conferidos. Esses resultados locais não qualificam Windows físico, OAuth/Drive real, PostgreSQL do Drive, MT5 nem negociação. A nova execução do CI somente poderá ser declarada aprovada após resultados associados ao SHA publicado.
+
+Checkout principal preservado em `codex/launcher-classes`/`550b6d5` com alterações de outras frentes. O incremento da PR302 deve usar índice Git isolado sobre a ponta remota, sem stage global, troca de branch ou nova árvore de trabalho; publicar somente o corretivo e as atualizações específicas desta passagem. Não atualizar a prévia do proprietário com a branch do Drive antes dos aceites correspondentes. Depois de estabilizar a PR302, próximo incremento autorizado em PR independente: **múltiplas contas Drive**, com identidades estáveis, cofres isolados, seleção explícita, confirmação da identidade antes do envio e testes sintéticos.
+
 ## Drive — estabilização sintética de 07/11/2026
 
 A [PR302](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/302) recebe somente correções do objetivo original de SQLite/uma conta: recuperação fora de argv/JSON/logs, entrada oculta, snapshot de Recursos reutilizado, estados separados de envio/checksum/restauração, identidade remota estável e retomada após interrupção. Falha conserva a última cópia boa e o preparo cifrado. Downloads acima de 70 MB são manuais e têm plano/conferência local; restauração confere SHA-256, contagens e integridade.
