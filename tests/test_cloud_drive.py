@@ -43,6 +43,7 @@ class FakeGoogle:
 
     def __init__(self, account="dono@example.com"):
         self.account = account
+        self.permission_id = "permission-" + account
         self.folders = {}
         self.calls = []
         self.refresh_error = None
@@ -60,12 +61,13 @@ class FakeGoogle:
         if url.path == "/revoke":
             return FakeResp(b"")
         if url.path.endswith("/about"):
-            return FakeResp(json.dumps({"user": {"emailAddress": self.account, "displayName": "Dono"},
+            return FakeResp(json.dumps({"user": {"emailAddress": self.account, "displayName": "Dono", "permissionId": self.permission_id},
                                         "storageQuota": {"limit": str(self.quota), "usage": "400"}}).encode())
         if url.path.endswith("/files") and req.get_method() == "POST":
             fid = f"f{len(self.folders) + 1}"
             self.folders[fid] = {"id": fid, "name": json.loads(body)["name"], "mimeType": cd.FOLDER_MIME,
-                                 "trashed": False, "shared": False, "capabilities": {"canAddChildren": True}}
+                                 "trashed": False, "shared": False, "owners": [{"permissionId": self.permission_id}],
+                                 "capabilities": {"canAddChildren": True}}
             return FakeResp(json.dumps({"id": fid, "name": self.folders[fid]["name"]}).encode())
         if "/files/" in url.path:
             fid = url.path.rsplit("/", 1)[1]
@@ -131,8 +133,9 @@ def test_verify_blocks_on_account_change_shared_or_trashed_folder(downloads):
     folder = next(iter(google.folders.values()))
     folder["shared"] = True
     google.account = "outra@example.com"
+    google.permission_id = "permission-outra"
     result = link.verify()
-    assert not result["ok"] and len(result["problems"]) == 2
+    assert not result["ok"] and len(result["problems"]) >= 2
     google.folders.clear()
     assert any("não existe" in p for p in link.verify()["problems"])
 

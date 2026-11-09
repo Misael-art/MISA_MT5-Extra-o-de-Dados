@@ -17,10 +17,12 @@ POLL_MS = 100
 
 
 class DrivePanel:
-    def __init__(self, notebook, ui, link_factory=cloud_drive.DriveLink, db_getter=lambda: None):
+    def __init__(self, notebook, ui, db_getter=lambda: None, accounts=None):
         self.ui = ui
         self.db_getter = db_getter
-        self.link_factory = link_factory
+        self.accounts = accounts or cloud_drive.DriveAccounts()
+        self.selected_account = None
+        self.account_labels = {}
         self.cancel = None
         self.busy = False
         tab = ttk.Frame(notebook, padding=10, style="Surface.TFrame")
@@ -29,15 +31,23 @@ class DrivePanel:
         ttk.Label(tab, text="Cópia de segurança no Google Drive", style="Surface.TLabel",
                   font=("TkDefaultFont", 11, "bold")).pack(anchor="w")
         ttk.Label(tab, style="Muted.TLabel", wraplength=760, justify=tk.LEFT, text=(
-            "Clique em Conectar: o navegador abre na sua conta Google e você autoriza. O App só enxerga a pasta "
-            "\"MT5X Backup\" que ele mesmo cria. O acesso fica no cofre de senhas do sistema; nada é gravado em "
-            "arquivo. As cópias são cifradas neste computador antes de sair; guarde o código de recuperação "
+            "Adicione as contas pelo navegador e escolha a conta de destino antes de enviar. O App só acessa "
+            "arquivos e pastas criados ou concedidos a ele. Cada conta mantém seu acesso no cofre de senhas do "
+            "sistema. As cópias são cifradas neste computador antes de sair; guarde o código de recuperação "
             "fora do Drive.")).pack(anchor="w", pady=(4, 10))
         self.state_label = ttk.Label(tab, text="Verificando...", style="Surface.TLabel", wraplength=760,
                                      justify=tk.LEFT)
         self.state_label.pack(anchor="w")
         self.detail_label = ttk.Label(tab, text="", style="Muted.TLabel", wraplength=760, justify=tk.LEFT)
         self.detail_label.pack(anchor="w", pady=(4, 10))
+        account_row = ttk.Frame(tab, style="Surface.TFrame")
+        account_row.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(account_row, text="Conta de destino", style="Surface.TLabel").pack(side=tk.LEFT)
+        self.account_choice = ttk.Combobox(account_row, state="readonly", width=58)
+        self.account_choice.pack(side=tk.LEFT, padx=(8, 0))
+        self.account_choice.bind("<<ComboboxSelected>>", self._select_account)
+        self.folder_button = ttk.Button(account_row, text="Escolher pasta...", command=self.choose_folder)
+        self.folder_button.pack(side=tk.LEFT, padx=(8, 0))
         row = ttk.Frame(tab, style="Surface.TFrame")
         row.pack(anchor="w")
         self.connect_button = ttk.Button(row, text="Conectar Google Drive", style="Accent.TButton",
@@ -77,13 +87,15 @@ class DrivePanel:
 
     # --- execução fora da thread do Tk -----------------------------------------------------------------------------
 
-    def _run(self, work, done):
+    def _run(self, work, done, *, account_operation=False, account_id=None):
+        selected = account_id or self.selected_account
         self._set_busy(True)
         box = {}
 
         def target():
             try:
-                box["result"] = work(self.link_factory())
+                target = self.accounts if account_operation else self.accounts.link(selected)
+                box["result"] = work(target)
             except cloud_drive.DriveError as exc:
                 box["error"] = exc
             except Exception:
@@ -104,8 +116,9 @@ class DrivePanel:
     def _set_busy(self, busy):
         self.busy = busy
         for b in (self.connect_button, self.verify_button, self.disconnect_button, self.client_button,
-                  self.send_button, self.drill_button, self.code_button, self.restore_key_button):
+                  self.send_button, self.drill_button, self.code_button, self.restore_key_button, self.folder_button):
             b.state(["disabled"] if busy else ["!disabled"])
+        self.account_choice.configure(state="disabled" if busy else "readonly")
 
     def _show(self, result, error):
         if error is not None:
@@ -136,16 +149,37 @@ class DrivePanel:
             detail = (detail + "\n" if detail else "") + result["warning"]
         self.detail_label.config(text=detail)
         connected = state == "connected"
-        self.connect_button.config(text="Conectar de novo" if connected else "Conectar Google Drive")
+        self.connect_button.config(text="Adicionar conta Google")
         self.verify_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
         self.disconnect_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
         self.send_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
         self.drill_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
+        self.folder_button.state(["!disabled"] if connected and not self.busy else ["disabled"])
+        for button in (self.code_button, self.restore_key_button):
+            button.state(["!disabled"] if self.selected_account and not self.busy else ["disabled"])
 
     # --- ações -----------------------------------------------------------------------------------------------------
 
     def refresh(self):
-        self._run(lambda link: link.status(), self._show)
+        selected = self.selected_account
+        self._run(lambda accounts: accounts.status(selected), self._show_accounts, account_operation=True)
+
+    def _show_accounts(self, result, error):
+        if error is None:
+            labels = {}
+            for account in result.get("accounts", []):
+                label = f"{account.get('account') or 'Conta'} · {account['account_id'][:8]}"
+                labels[label] = account["account_id"]
+            self.account_labels = labels
+            self.account_choice.configure(values=list(labels))
+            self.selected_account = result.get("account_id")
+            chosen = next((label for label, key in labels.items() if key == self.selected_account), "")
+            self.account_choice.set(chosen)
+        self._show(result, error)
+
+    def _select_account(self, event=None):
+        self.selected_account = self.account_labels.get(self.account_choice.get())
+        self.refresh()
 
     def connect(self):
         if self.busy:
@@ -159,11 +193,11 @@ class DrivePanel:
 
         def done(result, error):
             self.cancel_button.pack_forget()
-            self._show(result, error)
+            self._show_accounts(result, error)
             if error is None:
                 self.ui.log(f"Google Drive: conectado a {result.get('account')}.")
 
-        self._run(lambda link: link.connect(cancel=cancel), done)
+        self._run(lambda accounts: accounts.connect(cancel=cancel), done, account_operation=True)
 
     def cancel_connect(self):
         if self.cancel is not None:
@@ -184,11 +218,24 @@ class DrivePanel:
         if not path:
             return
 
-        def work(link):
-            link.use_client_file(path)
-            return link.status()
+        selected = self.selected_account
+        def work(accounts):
+            accounts.use_client_file(path)
+            return accounts.status(selected)
 
-        self._run(work, self._show)
+        self._run(work, self._show_accounts, account_operation=True)
+
+    def choose_folder(self):
+        selected = self.selected_account
+        if selected is None:
+            messagebox.showinfo("Escolher pasta", "Selecione primeiro a conta de destino.", parent=self.frame)
+            return
+        folder = simpledialog.askstring("Pasta privada do App", "ID ou link da pasta criada ou concedida ao App:",
+                                        parent=self.frame)
+        if folder:
+            self._run(lambda accounts: accounts.select_folder(selected, folder.strip()),
+                      lambda result, error: (self._show(result, error), self.refresh() if error is None else None),
+                      account_operation=True)
 
     def open_console(self):
         webbrowser.open(cloud_drive.CONSOLE_URL)
@@ -204,6 +251,7 @@ class DrivePanel:
         self.ui.log("Google Drive: " + ok_text(result))
 
     def show_code(self):
+        selected = self.selected_account
         def done(state, error):
             if error is not None:
                 self._show(None, error)
@@ -219,15 +267,18 @@ class DrivePanel:
                                            parent=self.frame, show="*")
             if typed:
                 self._run(lambda link: drive_backup.Keys(link.store).confirm(typed) or {"ok": True},
-                          lambda r, e: self._show_line(r, e, lambda _: "Código confirmado; envio liberado."))
+                          lambda r, e: self._show_line(r, e, lambda _: "Código confirmado; envio liberado."),
+                          account_id=selected)
 
         self._run(lambda link: drive_backup.Keys(link.store).ensure(), done)
 
     def restore_key(self):
+        selected = self.selected_account
         typed = simpledialog.askstring("Código de recuperação", "Digite o código guardado:", parent=self.frame, show="*")
         if typed:
             self._run(lambda link: drive_backup.Keys(link.store).restore(typed) or {"ok": True},
-                      lambda r, e: self._show_line(r, e, lambda _: "Chave restaurada a partir do código."))
+                      lambda r, e: self._show_line(r, e, lambda _: "Chave restaurada a partir do código."),
+                      account_id=selected)
 
     def send(self):
         db = self.db_getter()

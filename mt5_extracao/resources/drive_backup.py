@@ -212,7 +212,7 @@ def _raw(method, url, body=None, headers=None, opener=None):
             payload = json.loads(raw)
         except ValueError:
             payload = {}
-        if exc.code in (429, 500, 502, 503, 504):
+        if exc.code in (429, 500, 502, 503, 504) or cd._http_error(exc.code, payload).code == "rate_limit":
             raise ConnectionError(f"HTTP {exc.code}") from exc
         raise cd._http_error(exc.code, payload) from exc
 
@@ -294,7 +294,7 @@ def snapshot(source: Path, target: Path) -> None:
 
 class DriveBackup:
     def __init__(self, link: Optional[cd.DriveLink] = None, opener=None):
-        self.link = link or cd.DriveLink(opener=opener)
+        self.link = link or cd.DriveAccounts(opener=opener).link()
         self.opener = opener if opener is not None else self.link.opener
         self.keys = Keys(self.link.store)
 
@@ -303,6 +303,9 @@ class DriveBackup:
         if not state["confirmed"]:
             raise cd.DriveError("key_unconfirmed", "Guarde o código de recuperação e confirme-o antes do primeiro "
                                                    "envio (sem ele, ninguém decifra as cópias).")
+        return self._destination()
+
+    def _destination(self):
         token = self.link.access_token()
         verified = self.link.verify(token=token)
         if not verified.get("ok"):
@@ -345,8 +348,10 @@ class DriveBackup:
                 self.link.store.set(journal_key, json.dumps(journal))
 
             if journal:
-                if journal["folder_id"] != verified["folder_id"] or journal["account"] != verified["account"]:
+                if (journal["folder_id"] != verified["folder_id"] or
+                        journal.get("permission_id") != verified["permission_id"]):
                     raise cd.DriveError("destination", "O destino da cópia mudou. Retome na conta e pasta originais.")
+                journal["account"] = verified["account"]
                 try:
                     remote = self._remote(journal["file_id"], token)
                 except cd.DriveError as exc:
@@ -360,6 +365,7 @@ class DriveBackup:
                 ids = self.link._api("GET", "/files/generateIds", token, params={"count": 1, "space": "drive"})
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                 journal = {"copy_id": copy_id, "file_id": ids["ids"][0], "folder_id": verified["folder_id"],
+                           "permission_id": verified["permission_id"],
                            "account": verified["account"], "name": source.stem + "." + stamp + ".db.mt5xenc",
                            "scope": scope, "plain_sha256": plain_hash, "plain_bytes": plain.stat().st_size,
                            "table_counts_sha256": counts_hash,
@@ -417,7 +423,8 @@ class DriveBackup:
         result = {"ok": bool(checksum), "snapshot_state": "verified", "upload_state": "sent",
                   "remote_verification_state": "verified_md5" if checksum else "pending", "restore_state": "not_tested",
                   **{k: journal[k] for k in ("copy_id", "file_id", "name", "bytes", "md5", "scope", "plain_sha256",
-                                            "plain_bytes", "account")}}
+                                            "plain_bytes", "account", "permission_id")},
+                  "account_id": getattr(self.link.store, "account_id", None)}
         journal.update(upload_state="sent", remote_verification_state=result["remote_verification_state"], session=None)
         self.link.store.set(journal_key, json.dumps(journal))
         if checksum:
@@ -430,10 +437,10 @@ class DriveBackup:
         return result
 
     def list(self) -> list:
-        link = self.link.link()
-        if not link:
-            raise cd.DriveError("disconnected", "O Google Drive não está conectado.")
-        token = self.link.access_token()
+        link, token = self._destination()
+        return self._list(link, token)
+
+    def _list(self, link, token):
         q = (f"'{link['folder_id']}' in parents and trashed=false and "
              f"appProperties has {{ key='kind' and value='{KIND}' }}")
         out, page = [], None
@@ -449,23 +456,28 @@ class DriveBackup:
                 return out
 
     def download_plan(self, file_id=None, destination=None):
-        files = self.list()
+        binding, token = self._destination()
+        files = self._list(binding, token)
         target = next((f for f in files if f["id"] == file_id), None) if file_id else (files[0] if files else None)
         if target is None:
             raise cd.DriveError("not_found", "Cópia não encontrada na conta selecionada.")
+        account_id = getattr(self.link.store, "account_id", None)
         return {"state": "manual_download_plan", "file_id": target["id"], "name": target["name"],
+                "account_id": account_id,
                 "bytes": int(target.get("size", -1)), "md5": target.get("md5Checksum"),
                 "url": "https://drive.google.com/file/d/" + urllib.parse.quote(target["id"], safe="") + "/view",
                 "destination": str(destination or target["name"]), "automatic_download": False,
                 "validate_argv": ["resources", "drive", "drill", "--file-id", target["id"],
-                                  "--downloaded-file", str(destination or target["name"])]}
+                                  "--downloaded-file", str(destination or target["name"])] +
+                                 (["--account", account_id] if account_id else [])}
 
     def drill(self, file_id: Optional[str] = None, work_dir=None, downloaded_file=None) -> dict:
         """Ensaio de restauração isolado: baixa, confere, decifra e testa a integridade numa pasta temporária."""
         key = self.keys.get()
         if key is None:
             raise cd.DriveError("no_key", "Não há chave neste computador. Use o código de recuperação para restaurá-la.")
-        files = self.list()
+        binding, token = self._destination()
+        files = self._list(binding, token)
         target = next((f for f in files if f["id"] == file_id), None) if file_id else (files[0] if files else None)
         if target is None:
             raise cd.DriveError("not_found", "Nenhuma cópia do MT5X encontrada na pasta do Drive.")
@@ -477,7 +489,6 @@ class DriveBackup:
                                 "e retome o ensaio com --downloaded-file ARQ (sem dividir para contornar o limite).")
         if shutil.disk_usage(work_dir or tempfile.gettempdir()).free < size * (1.1 if downloaded_file else 2.2):
             raise cd.DriveError("disk", "Disco livre insuficiente para o ensaio de restauração.")
-        token = self.link.access_token()
         props = target.get("appProperties", {})
         with tempfile.TemporaryDirectory(prefix="mt5x-ensaio-", dir=work_dir) as tmp:
             sealed, plain = Path(tmp) / "copia.mt5xenc", Path(tmp) / "restaurada.db"
@@ -521,6 +532,7 @@ class DriveBackup:
             finally:
                 con.close()
         result = {"ok": integrity == "ok", "restore_state": "verified" if integrity == "ok" else "failed",
+                "account_id": getattr(self.link.store, "account_id", None), "copy_id": props.get("copy_id"),
                 "remote_verification_state": "verified_md5", "file_id": target["id"], "name": target["name"], "scope": props.get("scope"),
                 "created_at": props.get("created_at"), "md5": md5, "integrity": integrity, "tables": tables,
                 "table_counts": counts, "counts_state": "verified" if props.get("table_counts_sha256") else "legacy_no_manifest",
