@@ -31,7 +31,7 @@ WIN_PYTHON_DIR_WIN='C:\Python311'          # deve bater com paths.WINE_PYTHON_WI
 WIN_PYTHON_DIR_UNIX_REL="drive_c/Python311"
 RPYC_VERSION="6.0.2"                       # deve bater com requirements.txt
 WINE_MIN_MAJOR=8
-MIN_PY_MINOR=9                             # Python 3.9+
+MIN_PY_MINOR=11                            # Python 3.11+ (mínimo coberto pelo CI)
 
 # --- Opções -------------------------------------------------------------------
 ASSUME_YES=0
@@ -211,7 +211,7 @@ install_system_packages() {
             as_root zypper --non-interactive install python3 python3-pip python3-tk curl xvfb-run
             if [[ $INSTALL_MT5 -eq 1 ]]; then as_root zypper --non-interactive install wine; fi ;;
         *)
-            warn "Distribuição não reconhecida. Instale manualmente: python3 (3.9+), venv, tkinter, curl, Xvfb e Wine $WINE_MIN_MAJOR+."
+            warn "Distribuição não reconhecida. Instale manualmente: python3 (3.11+), venv, tkinter, curl, Xvfb e Wine $WINE_MIN_MAJOR+."
             warn "Depois rode: ./install.sh --skip-system-packages" ;;
     esac
     ok "Pacotes do sistema verificados"
@@ -230,7 +230,7 @@ pick_python() {
     local c want
     # 1ª passada: exige tkinter (interface gráfica); 2ª: qualquer Python compatível
     for want in tk any; do
-        for c in python3.11 python3.12 python3.10 python3.13 python3.9 python3; do
+        for c in python3.11 python3.12 python3.13 python3; do
             if py_ok "$c" "$want"; then echo "$c"; return; fi
         done
     done

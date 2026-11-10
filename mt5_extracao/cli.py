@@ -158,6 +158,10 @@ class Context:
 
     def connector(self):
         if self._connector is None:
+            from mt5_extracao import launch_policy
+            if os.environ.get(launch_policy.LOCAL_ENV) == "1":
+                raise RuntimeError("Este comando foi aberto como consulta local, sem a ponte MT5, mas pediu o "
+                                   "MetaTrader 5. Reclassifique-o em mt5_extracao/launch_policy.py.")
             from mt5_extracao.mt5_connector import MT5Connector
             connector = MT5Connector(config_path=self.args.config)
             if not connector.initialize():

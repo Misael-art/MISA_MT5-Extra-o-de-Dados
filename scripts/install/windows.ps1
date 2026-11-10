@@ -42,7 +42,7 @@ $env:PYTHONIOENCODING = "utf-8"
 
 # --- Versões/URLs (altere aqui, em um único lugar) ---------------------------
 $MT5SetupUrl = "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe"
-$PythonMinor = @(3, 9)      # mínimo aceito
+$PythonMinor = @(3, 11)     # mínimo aceito (coberto pelo CI)
 $PythonMaxMinor = 13        # máximo testado (3.13)
 
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
@@ -126,7 +126,7 @@ function Test-PythonCandidate([string]$Exe, [string[]]$PrefixArgs) {
 function Find-Python {
     $candidates = @()
     if (Get-Command py -ErrorAction SilentlyContinue) {
-        foreach ($v in @("3.11", "3.12", "3.10", "3.13", "3.9")) {
+        foreach ($v in @("3.11", "3.12", "3.13")) {
             $candidates += , @("py", @("-$v"))
         }
     }
@@ -175,7 +175,7 @@ function Initialize-PythonEnv {
     if ($python) {
         Write-Ok "Python $($python.Version) encontrado"
     } else {
-        Write-Warn "Nenhum Python 3.9-3.13 com tkinter encontrado."
+        Write-Warn "Nenhum Python 3.11-3.13 com tkinter encontrado."
         $python = Install-Python
         Write-Ok "Python $($python.Version) instalado"
     }
