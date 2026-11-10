@@ -36,6 +36,7 @@ dependencies = [
 ta = ["pandas-ta"]
 columnar = ["pyarrow", "duckdb"]
 postgresql = ["psycopg[binary]"]
+drive = ["keyring"]
 dev = ["pytest>=7.4", "pytest-timeout>=2.2", "pytest-cov>=4.1"]
 
 [project.scripts]

@@ -45,6 +45,15 @@ def add_parser(sub) -> None:
     move.add_argument("--quarantine", metavar="ID", help="mover uma sessão própria encerrada e sem referências")
     move.add_argument("--restore", metavar="ID", help="restaurar uma sessão da quarentena")
     q.add_argument("--yes", action="store_true")
+    q = rs.add_parser("drive", help="vínculo com o Google Drive: status, connect (abre o navegador), verify, disconnect")
+    q.add_argument("action", nargs="?", default="status",
+                   choices=("status", "connect", "verify", "disconnect", "key", "confirm-key", "restore-key", "send",
+                            "list", "drill", "download-plan"))
+    q.add_argument("--scope", default="ativa", choices=("ativa", "pesquisa", "qa"), help="escopo da base enviada")
+    q.add_argument("--source", help="base SQLite a enviar (padrão: a base configurada)")
+    q.add_argument("--file-id", help="cópia do Drive para o ensaio (padrão: a mais nova)")
+    q.add_argument("--downloaded-file", help="cópia cifrada baixada manualmente para o ensaio")
+    q.add_argument("--client-file", help="credencial OAuth \"App para computador\" a usar (sem ela, o App procura)")
     q = rs.add_parser("history", help="medições gravadas e ações executadas")
     q.add_argument("--limit", type=int, default=30)
     p.set_defaults(func=run)
@@ -58,9 +67,103 @@ def _rules(raw: str):
     return rules or None
 
 
+def reject_drive_secret_arguments(argv) -> None:
+    """Recusa o argumento antigo antes que argparse possa ecoar seu valor."""
+    if any(argv[i:i + 2] == ["resources", "drive"] for i in range(len(argv) - 1)):
+        if any(arg == "--code" or arg.startswith("--code=") for arg in argv):
+            raise ValueError("Códigos do Drive só podem ser digitados na interface ou em terminal privado, sem --code.")
+
+
+def _drive_private_key(action, keys) -> dict:
+    import getpass
+    import sys
+    import warnings
+    from mt5_extracao.resources.cloud_drive import DriveError
+
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        raise DriveError("private_terminal", "Abra Recursos → Google Drive ou execute este comando em terminal "
+                         "interativo, sem redirecionar a entrada ou a saída de erro.")
+    if action == "key":
+        state = keys.ensure()
+        # Exibição explícita ao proprietário; nunca usa o coletor JSON/log da CLI.
+        sys.stderr.write("Guarde fora do Drive este código de recuperação:\n" + state["code"] + "\n")
+        sys.stderr.flush()
+        return {"state": "key", "confirmed": state["confirmed"],
+                "message": "Código exibido no terminal privado. Confirme com resources drive confirm-key."}
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", getpass.GetPassWarning)
+            code = getpass.getpass("Código de recuperação (entrada oculta): ", stream=sys.stderr)
+    except (getpass.GetPassWarning, EOFError, OSError, KeyboardInterrupt):
+        raise DriveError("private_terminal", "Não foi possível ler o código com entrada oculta. Use a interface.") from None
+    if action == "confirm-key":
+        keys.confirm(code)
+    else:
+        keys.restore(code)
+    return {"state": "key", "confirmed": True, "message": "Código confirmado."}
+
+
+def _drive(args, cli, ctx) -> int:
+    from mt5_extracao.resources import cloud_drive, drive_backup
+    out, data, err = cli._print, cli._data, cli._err
+    link = cloud_drive.DriveLink()
+    backup = drive_backup.DriveBackup(link)
+    try:
+        if args.client_file:
+            link.use_client_file(args.client_file)
+        if args.action in ("key", "confirm-key", "restore-key"):
+            result = _drive_private_key(args.action, backup.keys)
+        elif args.action == "send":
+            if args.source:
+                source = args.source
+            elif getattr(ctx.db, "db_type", None) == "sqlite" and getattr(ctx.db, "db_path", None):
+                source = ctx.db.db_path
+            else:
+                err("a base configurada não é SQLite; informe --source")
+                return cli.EXIT_USAGE
+            result = backup.send(source, scope=args.scope)
+            result["message"] = drive_backup.receipt_message(result)
+        elif args.action == "list":
+            files = backup.list()
+            for f in files:
+                p = f.get("appProperties", {})
+                out(f"{f['id']}\t{p.get('scope')}\t{p.get('created_at')}\t{f.get('size')} bytes\t{f['name']}")
+            result = {"state": "list", "files": files, "message": f"{len(files)} cópia(s) no Drive."}
+        elif args.action == "download-plan":
+            result = backup.download_plan(args.file_id, args.downloaded_file)
+        elif args.action == "drill":
+            result = backup.drill(args.file_id, downloaded_file=args.downloaded_file)
+            result["message"] = ("Ensaio de restauração OK: " if result["ok"] else "Ensaio FALHOU: ") + \
+                f"{result['name']} ({result['tables']} tabelas, integridade {result['integrity']})."
+        elif args.action == "connect":
+            out("Abrindo o navegador para o consentimento do Google (até 5 min)...")
+            result = link.connect()
+        elif args.action == "verify":
+            result = link.verify()
+        elif args.action == "disconnect":
+            result = link.disconnect()
+        else:
+            result = link.status()
+    except cloud_drive.DriveError as exc:
+        err(exc.message)
+        data(state="error", code=exc.code, message=exc.message)
+        return cli.EXIT_FAIL
+    out(result.get("message") or f"Google Drive: {result['state']}")
+    if result.get("state") == "connected" and "ok" in result:
+        out("Destino conferido: " + ("OK" if result["ok"] else "; ".join(result["problems"])))
+    if result.get("warning"):
+        err(result["warning"])
+    for cand in result.get("candidates", []):
+        out("  credencial encontrada: " + cand["path"])
+    data(**result)
+    return cli.EXIT_OK if result.get("ok", True) else cli.EXIT_FAIL
+
+
 def run(args: argparse.Namespace, ctx) -> int:
     from mt5_extracao import cli
     out, data, err = cli._print, cli._data, cli._err
+    if args.resources_command == "drive":
+        return _drive(args, cli, ctx)
     db, config = ctx.db, ctx.config
     policy = policy_mod.load(config)
     for message in policy.errors:

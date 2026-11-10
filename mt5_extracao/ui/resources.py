@@ -103,6 +103,8 @@ class ResourcesPanel:
         self._build_clean_tab()
         self._build_archive_tab()
         self._build_files_tab()
+        from mt5_extracao.ui.drive_panel import DrivePanel
+        self.drive = DrivePanel(self.tabs, ui, db_getter=self._db)
         self._build_auto_tab()
         self._build_history_tab()
         self.frame.bind("<Configure>", self._resized, add="+")
