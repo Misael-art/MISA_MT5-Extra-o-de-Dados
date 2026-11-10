@@ -54,6 +54,7 @@ def test_invalid_window_overlap_and_implicit_calendar_are_refused(research):
 def test_late_feature_clocks_excluded_and_invalid_tests_stay_in_family(research):
     db,r,spec=research
     r['channels'][0]['source_ends']=['2026-01-01T00:00Z']*len(r['times'])
+    r.pop('integrity_sha256')  # conteúdo alterado de propósito: sem selo, só a identidade é conferida
     p=relations.register(db,r,spec);result=relations.evaluate(db,r,p['protocol_id'],key='late')
     rows=[v for v in result['results'] if v['channel_id']==r['channels'][0]['id']]
     assert all(v['n_pairs']==0 and v['n_temporal_rejected']>0 and v['p_adjusted'] is None for v in rows)

@@ -193,6 +193,12 @@ def test_cli_and_sdk_produce_same_frozen_diagnostic(snapshots, source_db, tmp_pa
     study_path.write_text(study.to_json().replace(payload["data"]["analysis_id"], "f" * 64), encoding="utf-8")
     assert cli.main(["--json", "laboratory", "study", "--analysis", str(path), "--study", str(study_path)]) == 2
     assert "outra análise" in capsys.readouterr().out
+    broken = json.loads(study.to_json())
+    del broken["items"][0]["id"]
+    study_path.write_text(json.dumps(broken), encoding="utf-8")
+    assert cli.main(["--json", "laboratory", "study", "--analysis", str(path), "--study", str(study_path)]) == 2
+    envelope = json.loads(capsys.readouterr().out)                      # envelope JSON preservado
+    assert envelope["ok"] is False and "id inteiro" in json.dumps(envelope, ensure_ascii=False)
 
 
 def test_cli_freeze_and_strategy_only_share_canonical_snapshots(source_db, monkeypatch, capsys):
@@ -512,3 +518,17 @@ def test_exported_analysis_reopens_with_identity_and_tampering_is_refused(snapsh
         service.load_report(json.dumps(dict(report, laboratory_version=99)))
     with pytest.raises(ValueError, match="não é uma análise"):
         service.load_report("{")
+
+
+def test_v1_values_are_sealed_and_legacy_export_reopens_as_unverified(snapshots):
+    report = json.loads(json.dumps(analysis(snapshots)))
+    assert report["laboratory_version"] == 1 and service.integrity_state(report) == "verified"
+    priced = next(c for c in report["channels"] if any(v is not None for v in c["values"]))
+    tampered = copy.deepcopy(report)
+    index = next(i for i, v in enumerate(priced["values"]) if v is not None)
+    next(c for c in tampered["channels"] if c["id"] == priced["id"])["values"][index] += 1.0
+    with pytest.raises(ValueError, match="integrity_sha256"):
+        service.load_report(json.dumps(tampered))
+    legacy = {k: v for k, v in report.items() if k != "integrity_sha256"}
+    assert service.load_report(json.dumps(legacy)) == legacy           # leitura legada preservada, sem mutação
+    assert service.integrity_state(legacy) == "legacy_unverified"

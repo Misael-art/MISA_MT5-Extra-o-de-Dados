@@ -1472,6 +1472,9 @@ class SeriesLaboratoryPanel:
         if report["formula_source_sha256"] != service.formula_source_hash():
             self.status.configure(text=self.status.cget("text") + " · fórmulas mudaram desde o congelamento; "
                                   "valores exibidos são os congelados.")
+        if service.integrity_state(report) == "legacy_unverified":
+            self.status.configure(text=self.status.cget("text") + " · exportação antiga sem selo de conteúdo: "
+                                  "identidade conferida, valores não verificáveis.")
 
     def open_presets(self):
         """Conecta ao gerador Default/Manual existente; nenhuma inferência financeira na UI."""
