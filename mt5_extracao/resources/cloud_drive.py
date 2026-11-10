@@ -20,6 +20,7 @@ import hashlib
 import http.server
 import json
 import os
+import re
 import secrets
 import socket
 import sys
@@ -43,6 +44,7 @@ FOLDER_MIME = "application/vnd.google-apps.folder"
 CONSOLE_URL = "https://console.cloud.google.com/apis/credentials"
 SERVICE = "mt5x-google-drive"
 KEY_CLIENT, KEY_TOKEN, KEY_LINK = "client", "refresh_token", "link"
+KEY_ACCOUNTS = "accounts/v1"
 SEARCH_MAX_AGE_DAYS = 30
 SEARCH_MAX_BYTES = 64 * 1024
 CONNECT_TIMEOUT_S = 300
@@ -242,7 +244,8 @@ def _http(method: str, url: str, data=None, headers=None, json_body=None, opener
                 payload = json.loads(exc.read() or b"{}")
             except ValueError:
                 payload = {}
-            if exc.code in (429, 500, 502, 503, 504) and attempt < RETRIES - 1:
+            retryable = exc.code in (429, 500, 502, 503, 504) or _http_error(exc.code, payload).code == "rate_limit"
+            if retryable and attempt < RETRIES - 1:
                 time.sleep(2 ** attempt)
                 continue
             raise _http_error(exc.code, payload) from exc
@@ -261,6 +264,14 @@ def _http_error(status: int, payload: dict) -> DriveError:
     if code in ("invalid_client", "unauthorized_client"):
         return DriveError("client_rejected", "O Google recusou esta credencial (cliente apagado ou de outro tipo). "
                                              "Escolha outra credencial ou crie uma nova no Console.")
+    reasons = {item.get("reason") for item in err.get("errors", [])} if isinstance(err, dict) else set()
+    if "storageQuotaExceeded" in reasons:
+        return DriveError("quota", "O Drive recusou por falta de capacidade. Confira o espaço da conta selecionada.")
+    if reasons & {"rateLimitExceeded", "userRateLimitExceeded"} or status == 429:
+        return DriveError("rate_limit", "O limite da API foi atingido. Aguarde e tente novamente; outras contas "
+                          "continuam sujeitas ao limite do projeto.")
+    if status == 401:
+        return DriveError("revoked", "O Google recusou a autorização. Reconecte a conta selecionada.")
     if status == 403:
         detail = (err or {}).get("message", "") if isinstance(err, dict) else ""
         if "has not been used" in detail or "disabled" in detail:
@@ -433,29 +444,35 @@ class DriveLink:
             raise DriveError("no_refresh", "O Google não devolveu um token de renovação. Conecte de novo.")
         if SCOPE not in tokens.get("scope", SCOPE).split():
             raise DriveError("scope", "A permissão de arquivos do Drive não foi concedida. Marque-a no consentimento.")
-        about = self._api("GET", "/about", access, params={"fields": "user(emailAddress,displayName)"})
-        account = about.get("user", {}).get("emailAddress")
+        about = self._api("GET", "/about", access, params={"fields": "user(emailAddress,displayName,permissionId)"})
+        user = about.get("user", {})
+        permission_id = user.get("permissionId")
+        if not permission_id:
+            raise DriveError("identity", "O Google não informou uma identidade estável da conta. Conecte de novo.")
+        account = user.get("emailAddress") or user.get("displayName") or permission_id
         previous = self.link()
         folder = None
-        if previous and previous.get("account") == account and previous.get("folder_id"):
+        if previous and previous.get("permission_id") == permission_id and previous.get("folder_id"):
             try:
                 folder = self._folder(previous["folder_id"], access)
                 if folder.get("trashed"):
                     folder = None
-            except DriveError:
+            except DriveError as exc:
+                if exc.code not in ("not_found", "forbidden"):
+                    raise
                 folder = None
         if folder is None:
             folder = self._api("POST", "/files", access, json_body={"name": FOLDER_NAME, "mimeType": FOLDER_MIME},
                                params={"fields": "id,name"})
         self.store.set(KEY_TOKEN, refresh)
-        link = {"account": account, "display_name": about.get("user", {}).get("displayName"),
+        link = {"account": account, "permission_id": permission_id, "display_name": user.get("displayName"),
                 "folder_id": folder["id"], "folder_name": folder.get("name", FOLDER_NAME), "connected_at": _now()}
         self.store.set(KEY_LINK, json.dumps(link))
-        return self.verify()
+        return self.verify(token=access)
 
     def _folder(self, folder_id, token):
         return self._api("GET", "/files/" + folder_id, token,
-                         params={"fields": "id,name,mimeType,trashed,shared,capabilities(canAddChildren)"})
+                         params={"fields": "id,name,mimeType,trashed,shared,owners(permissionId),capabilities(canAddChildren)"})
 
     def verify(self, *, token=None) -> dict:
         """Validação somente leitura do destino. ``ok`` falso bloqueia envio; ``problems`` explica o que corrigir."""
@@ -463,11 +480,15 @@ class DriveLink:
         if not link:
             raise DriveError("disconnected", "O Google Drive não está conectado.")
         token = token or self.access_token()
-        about = self._api("GET", "/about", token, params={"fields": "user(emailAddress),storageQuota(limit,usage)"})
+        about = self._api("GET", "/about", token, params={"fields": "user(emailAddress,displayName,permissionId),storageQuota(limit,usage)"})
         problems = []
-        account = about.get("user", {}).get("emailAddress")
-        if account != link["account"]:
-            problems.append(f"A conta mudou de {link['account']} para {account}. Desconecte e conecte de novo.")
+        user = about.get("user", {})
+        permission_id = user.get("permissionId")
+        account = user.get("emailAddress") or user.get("displayName") or permission_id
+        if not link.get("permission_id") or permission_id != link["permission_id"]:
+            problems.append("A identidade da conta não confere. Conecte novamente à conta selecionada.")
+        else:
+            link["account"] = account
         try:
             folder = self._folder(link["folder_id"], token)
         except DriveError as exc:
@@ -476,18 +497,21 @@ class DriveLink:
             folder = None
             problems.append("A pasta do App não existe mais no Drive. Clique em Conectar para recriá-la.")
         if folder:
+            link["folder_name"] = folder.get("name", link.get("folder_name", FOLDER_NAME))
             if folder.get("mimeType") != FOLDER_MIME:
                 problems.append("O destino não é uma pasta.")
-            if folder.get("trashed"):
+            if folder.get("trashed") is not False:
                 problems.append("A pasta do App está na lixeira do Drive. Restaure-a ou conecte de novo.")
             if folder.get("shared") is not False:
                 problems.append("A privacidade da pasta não foi comprovada. Remova o compartilhamento e verifique de novo.")
             if not folder.get("capabilities", {}).get("canAddChildren"):
                 problems.append("O App não tem permissão de gravar na pasta.")
+            if permission_id not in {owner.get("permissionId") for owner in folder.get("owners", [])}:
+                problems.append("A pasta não pertence à conta selecionada.")
         quota = about.get("storageQuota", {})
         free = None
-        if quota.get("limit"):
-            free = int(quota["limit"]) - int(quota.get("usage", 0))
+        if quota.get("limit") is not None and quota.get("usage") is not None:
+            free = max(0, int(quota["limit"]) - int(quota["usage"]))
         link.update({"verified_at": _now(), "ok": not problems, "problems": problems, "free_bytes": free})
         self.store.set(KEY_LINK, json.dumps(link))
         return {"state": "connected", **link}
@@ -510,3 +534,235 @@ class DriveLink:
     def forget_client(self) -> None:
         self.disconnect()
         self.store.delete(KEY_CLIENT)
+
+
+class _PendingStore:
+    """Prepara um vínculo em memória; só publica no cofre depois da verificação completa."""
+    def __init__(self, values=None):
+        self.values = dict(values or {})
+
+    def get(self, key):
+        return self.values.get(key)
+
+    def set(self, key, value):
+        self.values[key] = value
+
+    def delete(self, key):
+        self.values.pop(key, None)
+
+
+class AccountStore:
+    """Namespace no cofre existente, por cliente e permissionId; sem fallback para outro token."""
+    def __init__(self, root, account_id, client_id):
+        if not re.fullmatch(r"[a-f0-9]{64}", account_id):
+            raise DriveError("account_invalid", "Identificador de conta inválido.")
+        self.root, self.account_id, self.client_id = root, account_id, client_id
+        self.prefix = "account/" + account_id + "/"
+
+    def locked(self):
+        return getattr(self.root, "locked", lambda: False)()
+
+    def binding(self):
+        raw = self.root.get(self.prefix + "binding")
+        values = json.loads(raw) if raw else {}
+        if values.get(KEY_CLIENT) and json.loads(values[KEY_CLIENT])["client_id"] != self.client_id:
+            raise DriveError("client_mismatch", "O cliente do vínculo não confere; preserve o cofre e reconecte.")
+        if values.get(KEY_LINK):
+            permission_id = json.loads(values[KEY_LINK]).get("permission_id")
+            expected = hashlib.sha256(json.dumps([self.client_id, permission_id]).encode()).hexdigest()
+            if expected != self.account_id:
+                raise DriveError("account_mismatch", "A identidade do vínculo não confere; preserve o cofre e reconecte.")
+        return values
+
+    def get(self, key):
+        return self.binding().get(key) if key in (KEY_CLIENT, KEY_TOKEN, KEY_LINK) else self.root.get(self.prefix + key)
+
+    def set(self, key, value):
+        if key in (KEY_CLIENT, KEY_TOKEN, KEY_LINK):
+            values = self.binding()
+            if key == KEY_CLIENT and json.loads(value)["client_id"] != self.client_id:
+                raise DriveError("client_mismatch", "Este vínculo pertence a outro cliente OAuth. Adicione uma conta.")
+            values[key] = value
+            self.root.set(self.prefix + "binding", json.dumps(values))
+        else:
+            self.root.set(self.prefix + key, value)
+
+    def delete(self, key):
+        if key in (KEY_CLIENT, KEY_TOKEN, KEY_LINK):
+            values = self.binding()
+            values.pop(key, None)
+            self.root.set(self.prefix + "binding", json.dumps(values))
+        else:
+            self.root.delete(self.prefix + key)
+
+
+class DriveAccounts:
+    """Contas autorizadas no mesmo cofre/transporte; escolha explícita quando há mais de uma."""
+    def __init__(self, store=None, opener=None):
+        self.store = store or KeyringStore()
+        self.opener = opener
+
+    def _registry(self):
+        raw = self.store.get(KEY_ACCOUNTS)
+        if not raw:
+            return {}
+        try:
+            data = json.loads(raw)
+            if data["schema"] != 1 or not isinstance(data["accounts"], dict):
+                raise ValueError()
+            return data["accounts"]
+        except (ValueError, KeyError, TypeError):
+            raise DriveError("accounts_invalid", "O catálogo de contas está ilegível; preserve o cofre e reconecte.") from None
+
+    def _write_registry(self, registry):
+        self.store.set(KEY_ACCOUNTS, json.dumps({"schema": 1, "accounts": registry}))
+
+    def _publish_binding(self, scoped, before, pending, registry):
+        """Publica vínculo e índice; uma falha dupla exige reconexão, sem ocultar estado parcial."""
+        key = scoped.prefix + "binding"
+        self.store.set(key, json.dumps(pending.values))
+        try:
+            self._write_registry(registry)
+        except BaseException:
+            try:
+                self.store.set(key, json.dumps(before))
+            except BaseException:
+                # O cofre pode ter aceitado o novo vínculo. Reautorizar a mesma identidade
+                # reconcilia o índice, sem apagar as credenciais que possam estar salvas.
+                raise DriveError("storage_partial", "O cofre falhou ao concluir e reverter o vínculo. "
+                                 "Nenhum dado foi apagado; reconecte a mesma conta para reconciliar o catálogo.") from None
+            raise
+
+    def _legacy_link(self, client_id, permission_id):
+        """Somente um vínculo anterior comprovadamente da mesma identidade pode ser reaproveitado."""
+        raw_client, raw_link = self.store.get(KEY_CLIENT), self.store.get(KEY_LINK)
+        if not raw_client or not raw_link:
+            return None
+        try:
+            client, link = json.loads(raw_client), json.loads(raw_link)
+        except (TypeError, ValueError):
+            return None
+        if (isinstance(client, dict) and isinstance(link, dict) and
+                client.get("client_id") == client_id and link.get("permission_id") == permission_id):
+            return link
+        return None
+
+    def _preserve_legacy_key(self, scoped):
+        """Copia a chave anterior para o namespace correspondente, sem removê-la do cofre."""
+        from mt5_extracao.resources.drive_backup import KEY_ENC, KEY_ENC_CONFIRMED
+        old = self.store.get(KEY_ENC)
+        if not old:
+            return None
+        try:
+            if len(base64.b64decode(old, validate=True)) != 32:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return "A chave anterior está inválida; recupere as cópias antigas com o código guardado."
+        current = scoped.get(KEY_ENC)
+        if current:
+            if current != old:
+                return "Esta conta já tem outra chave; conserve os dois códigos para recuperar as cópias anteriores."
+            return None
+        scoped.set(KEY_ENC, old)
+        if self.store.get(KEY_ENC_CONFIRMED) == "1":
+            scoped.set(KEY_ENC_CONFIRMED, "1")
+        return None
+
+    def use_client_file(self, path):
+        return DriveLink(store=self.store, opener=self.opener).use_client_file(path)
+
+    def link(self, account_id=None):
+        registry = self._registry()
+        if account_id is None and len(registry) == 1:
+            account_id = next(iter(registry))
+        if account_id not in registry:
+            raise DriveError("account_required", "Selecione uma conta autorizada (CLI: --account ID; veja accounts).")
+        metadata = registry[account_id]
+        return DriveLink(store=AccountStore(self.store, account_id, metadata["client_id"]), opener=self.opener)
+
+    def accounts(self):
+        return [{"account_id": key, "account": metadata.get("label"), **self.link(key).status()}
+                for key, metadata in self._registry().items()]
+
+    def status(self, account_id=None):
+        if getattr(self.store, "locked", lambda: False)():
+            return {"state": "locked", "accounts": [], "message": "Desbloqueie o cofre do sistema para escolher uma conta."}
+        registry = self._registry()
+        accounts = self.accounts()
+        if not registry:
+            state = DriveLink(store=self.store, opener=self.opener).status()
+            if state.get("state") == "connected":
+                state = {"state": "legacy_connection", "message": "Conexão anterior preservada. Reconecte pelo navegador "
+                         "para vincular uma identidade estável; restaure o código guardado para ler cópias antigas."}
+            return {**state, "accounts": []}
+        if account_id is None and len(registry) == 1:
+            account_id = next(iter(registry))
+        if account_id is None:
+            return {"state": "choose_account", "accounts": accounts, "message": "Escolha a conta de destino."}
+        return {**self.link(account_id).status(), "account_id": account_id, "accounts": accounts}
+
+    def connect(self, *, account_id=None, client_file=None, folder_id=None, open_browser=webbrowser.open,
+                timeout=CONNECT_TIMEOUT_S, cancel=None, authorize_fn=None):
+        from mt5_extracao.resources.actions import exclusive
+        if client_file:
+            self.use_client_file(client_file)
+        client = DriveLink(store=self.store, opener=self.opener).ensure_client()
+        tokens = (authorize_fn or authorize)(client, open_browser=open_browser, timeout=timeout, cancel=cancel)
+        if not tokens.get("access_token") or not tokens.get("refresh_token"):
+            raise DriveError("no_refresh", "O Google não devolveu os tokens necessários. Conecte de novo.")
+        probe = DriveLink(store=_PendingStore(), opener=self.opener)
+        user = probe._api("GET", "/about", tokens["access_token"], params={"fields": "user(permissionId)"}).get("user", {})
+        if not user.get("permissionId"):
+            raise DriveError("identity", "O Google não informou uma identidade estável da conta.")
+        stable_id = hashlib.sha256(json.dumps([client["client_id"], user["permissionId"]]).encode()).hexdigest()
+        if account_id is not None and account_id != stable_id:
+            raise DriveError("account_mismatch", "O consentimento foi feito em outra conta; o vínculo anterior foi preservado.")
+        with exclusive(_config_dir(), "contas Google Drive"):
+            registry = self._registry()
+            scoped = AccountStore(self.store, stable_id, client["client_id"])
+            before = scoped.binding()
+            pending = _PendingStore(before)
+            pending.set(KEY_CLIENT, json.dumps(client))
+            previous = registry.get(stable_id, {})
+            legacy = self._legacy_link(client["client_id"], user["permissionId"])
+            reusable_folder = previous.get("folder_id") or (legacy or {}).get("folder_id")
+            if folder_id or (not pending.get(KEY_LINK) and reusable_folder):
+                pending.set(KEY_LINK, json.dumps({"permission_id": user["permissionId"],
+                            "folder_id": folder_id or reusable_folder}))
+            candidate = DriveLink(store=pending, opener=self.opener)
+            if folder_id:
+                checked = candidate.verify(token=tokens["access_token"])
+                if not checked["ok"]:
+                    raise DriveError("destination", "Pasta solicitada recusada: " + "; ".join(checked["problems"]))
+            result = candidate.connect(authorize_fn=lambda *a, **kw: tokens)
+            if not result["ok"]:
+                raise DriveError("destination", "Conta não adicionada: " + "; ".join(result["problems"]))
+            registry[stable_id] = {"client_id": client["client_id"], "permission_id": user["permissionId"],
+                                   "label": result["account"], "folder_id": result["folder_id"], "folder_name": result["folder_name"]}
+            warning = self._preserve_legacy_key(scoped) if legacy else None
+            self._publish_binding(scoped, before, pending, registry)
+            return {**result, "account_id": stable_id, "accounts": self.accounts(), "warning": warning}
+
+    def select_folder(self, account_id, folder_id):
+        from mt5_extracao.resources.actions import exclusive
+        if folder_id.startswith("https://drive.google.com/"):
+            folder_id = urllib.parse.urlparse(folder_id).path.rstrip("/").rsplit("/", 1)[-1]
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", folder_id):
+            raise DriveError("folder_invalid", "Informe o ID ou link de uma pasta criada ou concedida ao App.")
+        with exclusive(_config_dir(), "pasta Google Drive"):
+            link = self.link(account_id)
+            account_id = link.store.account_id
+            before = link.store.binding()
+            pending = _PendingStore(before)
+            binding = link.link()
+            if not binding:
+                raise DriveError("disconnected", "Reconecte a conta antes de escolher a pasta.")
+            binding["folder_id"] = folder_id
+            pending.set(KEY_LINK, json.dumps(binding))
+            result = DriveLink(store=pending, opener=self.opener).verify()
+            if not result["ok"]:
+                raise DriveError("destination", "Pasta preservada: " + "; ".join(result["problems"]))
+            registry = self._registry()
+            registry[account_id].update(folder_id=folder_id, folder_name=result["folder_name"])
+            self._publish_binding(link.store, before, pending, registry)
+            return {**result, "account_id": account_id}

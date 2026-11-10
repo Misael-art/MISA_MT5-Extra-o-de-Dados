@@ -1,5 +1,11 @@
 # Retomar MT5X em um host limpo
 
+## PR303 — múltiplas contas Drive em 10/11/2026
+
+Owner: **Recursos/Dados**, continuação de T20.30-HOST1-DRIVE. A [PR303](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/303) (`codex/drive-contas`, `bceb06c`) tem base `codex/drive-conectar` (`f60832c`, PR302) e só deve ser integrada depois dela. Recorte: `cloud_drive.py`, `drive_backup.py`, `drive_panel.py`, `resources/commands.py`, `tests/test_cloud_drive.py`, `tests/test_drive_accounts.py`. Identidade por `permissionId`, cofre/estado por conta, `--account`, `accounts`, `select-folder --folder-id`, dono da pasta conferido antes do envio.
+
+Montada por índice Git isolado a partir do WIP local; o checkout `codex/launcher-classes`/`550b6d5` não mudou e mantém o WIP das outras frentes (PR296/299/301 e docs). Branch registrada em `review_branches` de `.workspace/projects.json`. Validação local sintética: 47/47 em três repetições dos módulos Drive; um teste de launcher falhou uma vez sob carga alta e passou nas repetições (causa não confirmada). CI 42735825627 do SHA `bceb06c`: Ubuntu, Windows, PostgreSQL, lint e instaladores aprovados. Não cobre OAuth/Drive real, Windows físico nem MT5. Merge exige autorização do proprietário.
+
 ## PR302 — corretivo do CI em 08/11/2026
 
 Owner: **Recursos/Dados**, tarefa **T20.30-HOST1-DRIVE**, limitada a SQLite/uma conta. Na ponta remota `9d55fb50b00861f35e0617c9ccd2273ade471a52`, o CI 42400089570 falhou em `Testes (ubuntu-latest)` e `Testes (windows-latest)`; PostgreSQL, lint e os dois instaladores passaram. Logs confirmam: Ubuntu não tinha `.venv` ao chamar `run.sh`; Windows tentou executar `run.sh` e usou nome SQLite com `?` (inválido no Windows).
