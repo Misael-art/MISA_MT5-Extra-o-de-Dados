@@ -1,5 +1,11 @@
 # Testar o desenvolvimento pelo atalho habitual
 
+## Conferência de 07/11/2026
+
+Prévia efetiva conferida em 07/11: `650656fac67d` (PR300), 354 hashes sem divergência; retorno `57d13ee` preservado. O atalho não foi atualizado neste lote. HADOUKEN `d4d389e` preservado em branch; Safety `27b8599` detached.
+
+Drive segue em revisão na PR302; as composições abaixo são históricas.
+
 ## Correção de monitor PLAY/REPLAY — 23/10/2026
 
 A branch `codex/play-replay-display` acrescenta a correção sobre App G19

@@ -11,6 +11,7 @@ import logging
 import json
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -53,6 +54,25 @@ def backup_due(db, config, now: Optional[datetime] = None) -> bool:
     return last is None or (now or datetime.now()) - last >= timedelta(hours=policy.backup_interval_hours)
 
 
+def consistent_snapshot(source, target) -> None:
+    """Snapshot SQLite somente leitura na origem; destino novo, conferido, sem sobrescrita."""
+    source, target = Path(source).resolve(), Path(target)
+    with target.open("xb"):
+        pass
+    try:
+        with closing(sqlite3.connect(source.as_uri() + "?mode=ro", uri=True, timeout=30)) as src:
+            dst = sqlite3.connect(str(target))
+            try:
+                src.backup(dst, pages=4096)
+                if dst.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                    raise ValueError("A cópia SQLite não passou no quick_check.")
+            finally:
+                dst.close()
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+
+
 def backup(db, config, origin: str = "ui", prune: bool = True) -> dict:
     """Cria uma cópia conferida e (com prune) apaga as mais velhas além de `backup_keep`. Nunca lança."""
     policy = policy_mod.load(config)
@@ -76,17 +96,7 @@ def backup(db, config, origin: str = "ui", prune: bool = True) -> dict:
             while target.exists():                   # duas cópias no mesmo segundo não se sobrescrevem
                 target, n = folder / f"{stamp}-{n}{BACKUP_SUFFIX}", n + 1
             partial = target.with_suffix(".parcial")
-            src = sqlite3.connect(str(source), timeout=30)
-            dst = sqlite3.connect(str(partial))
-            try:
-                src.backup(dst, pages=4096)
-                check = dst.execute("PRAGMA quick_check").fetchone()[0]
-            finally:
-                dst.close()
-                src.close()
-            if check != "ok":
-                partial.unlink(missing_ok=True)
-                raise RuntimeError(f"a cópia não passou na conferência ({check})")
+            consistent_snapshot(source, partial)
             partial.replace(target)
             result.update(ok=True, path=str(target), bytes=target.stat().st_size)
             for old in (list_backups(db, config)[policy.backup_keep:] if prune else []):

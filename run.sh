@@ -12,6 +12,26 @@ if [[ ! -f config/config.ini ]]; then
     .venv/bin/python -m mt5_extracao.bootstrap configure
 fi
 
+# Drive é uma operação local explícita: não inicia Wine nem a ponte.
+if [[ "${1:-}" == "--offline" && "${2:-}" == "--cli" ]]; then
+    shift 2
+    offline_arguments=("$@")
+    for ((offline_index=0; offline_index<${#offline_arguments[@]}; offline_index++)); do
+        case "${offline_arguments[offline_index]}" in
+            --config|--db) offline_index=$((offline_index + 1)) ;;
+            --json|-v|--verbose|--config=*|--db=*) ;;
+            resources)
+                if [[ "${offline_arguments[offline_index+1]:-}" == "drive" ]]; then
+                    MT5X_LOCAL_ONLY=1 exec .venv/bin/python -m mt5_extracao.cli "$@"
+                fi
+                break ;;
+            *) break ;;
+        esac
+    done
+    echo "Use --offline --cli somente para resources drive."
+    exit 2
+fi
+
 # Consultas locais (classe em mt5_extracao/launch_policy.py) não abrem ponte/terminal MT5.
 if [[ "${1:-}" == "--cli" ]] && .venv/bin/python -m mt5_extracao.launch_policy "${@:2}"; then
     shift

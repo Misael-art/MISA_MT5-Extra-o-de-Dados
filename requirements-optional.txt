@@ -8,3 +8,5 @@ pyarrow
 duckdb
 # psycopg: banco PostgreSQL/TimescaleDB ([DATABASE] type = postgresql)
 psycopg[binary]
+# keyring: cofre de senhas do sistema para o vínculo com o Google Drive (aba Recursos)
+keyring

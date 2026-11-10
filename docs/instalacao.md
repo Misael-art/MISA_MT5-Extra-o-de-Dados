@@ -139,6 +139,55 @@ O padrão é SQLite (um arquivo, nada a instalar). Para bases grandes ou acesso 
 Se a extensão TimescaleDB existir no banco (`CREATE EXTENSION timescaledb;`), as tabelas de barras
 novas são criadas como hypertables automaticamente.
 
+## Google Drive (cópia na nuvem, opcional)
+
+Na aba **Recursos → Google Drive**, clique em **Conectar Google Drive**. O App procura sozinho uma credencial
+OAuth do tipo "App para computador" (cofre do sistema, pasta de configuração `~/.config/mt5x` ou `%APPDATA%\mt5x`,
+e arquivos `client_secret*.json` dos últimos 30 dias em Downloads, Área de Trabalho e Documentos), abre o
+navegador no consentimento do Google e recebe a resposta em `127.0.0.1` (PKCE). Sem credencial, o botão
+**Criar credencial no Google** abre o Console: crie o projeto, ative a Google Drive API, crie um "ID do cliente
+OAuth" do tipo "App para computador" e baixe o JSON; não é preciso mover o arquivo.
+
+- Escopo único `drive.file`: o App só vê a pasta **MT5X Backup** que ele cria.
+- Credencial, token de renovação e vínculo ficam no cofre de senhas do sistema (pacote `keyring`, em
+  `requirements-optional.txt`); sem cofre disponível o App recusa e explica, nunca grava o token em arquivo.
+- **Verificar destino** confere, só lendo, conta, pasta, lixeira, compartilhamento, permissão de gravação e espaço.
+- **Desconectar** revoga no Google e apaga o token do cofre.
+- Linha de comando: `mt5x resources drive status|connect|verify|disconnect [--client-file ARQ]`.
+
+- **Enviar cópia agora**: copia a base ativa com ela em uso (`quick_check`), cifra com AES-256-GCM neste
+  computador, envia de forma retomável e confere o MD5 recebido pelo Google. Envio bloqueado se a verificação do
+  destino acusar problema. Nada é apagado no Drive e não há envio automático.
+- **Código de recuperação**: criado no primeiro envio; o App só envia depois que você o redigita. Guarde-o fora do
+  Drive. Num computador novo, **Já tenho um código...** recria a chave.
+- **Ensaiar restauração**: baixa a cópia mais nova para uma pasta temporária, confere MD5, decifra, compara o
+  SHA-256 e roda `PRAGMA integrity_check`; a base em uso não é tocada.
+- Cofre bloqueado (KWallet/Chaveiro): a guia avisa sem abrir janela; Conectar pede o desbloqueio.
+- CLI: `mt5x resources drive key|confirm-key|restore-key` exige terminal interativo; o código é exibido
+  explicitamente no terminal e digitado com entrada oculta. Nunca passe o código em argumentos, scripts ou logs.
+  Na interface, a confirmação e a recuperação usam campos ocultos.
+- `mt5x resources drive send [--scope ativa|pesquisa|qa] [--source ARQ]`, `list` e `drill [--file-id ID]`
+  mantêm a saída estruturada sem códigos de recuperação. No Linux, `./run.sh --offline --cli ...` executa
+  operações locais sem Wine/ponte; no Windows, use `run.bat --cli ...`.
+- A mesma cópia tem ID remoto pré-gerado persistido no cofre; retry e retomada após reiniciar o processo
+  reutilizam esse ID. Em falha, o arquivo cifrado fica no preparo local e a URL de sessão fica só no cofre.
+  Preserve ambos para retomar. Nada apaga a última cópia boa.
+- `download-plan [--file-id ID]` informa origem, bytes, MD5 e argumentos de conferência sem transferir.
+  Downloads acima de 70 MB são manuais, incluindo o total de partes; depois use
+  `drill --file-id ID --downloaded-file ARQ`. O ensaio confere também as contagens de tabelas da cópia nova.
+- O recibo separa `snapshot_state`, `upload_state`, `remote_verification_state` e `restore_state`. Um envio com
+  MD5 remoto conferido ainda tem restauração `not_tested`; checksum ausente fica `pending`, com `ok=false`.
+  A restauração só muda para `verified` depois do ensaio. MD5 remoto não é uma prova de SHA-256 remoto.
+- A capacidade vem de `storageQuota` quando conhecida e dos erros da API, sem quota fixa no App.
+  Limites por projeto da API continuam válidos, inclusive com várias contas selecionadas pelo usuário.
+- Referências oficiais: [OAuth desktop](https://developers.google.com/identity/protocols/oauth2/native-app),
+  [drive.file](https://developers.google.com/workspace/drive/api/guides/api-specific-auth),
+  [limites](https://developers.google.com/workspace/drive/api/guides/limits),
+  [upload retomável](https://developers.google.com/workspace/drive/api/guides/manage-uploads) e
+  [download parcial](https://developers.google.com/workspace/drive/api/guides/manage-downloads).
+- Consentimento e transferência com conta real aguardam a qualificação sintética da composição completa.
+  PostgreSQL continua com aceite separado por `pg_dump`/`pg_restore`.
+
 ## Diagnóstico
 
 ```bash
