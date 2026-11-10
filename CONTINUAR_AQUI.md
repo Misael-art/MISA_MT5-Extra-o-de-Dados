@@ -7,7 +7,7 @@ Pedido do proprietário de 09–10/11 (vídeo martingale × lote fixo). Fonte ca
 (11.10), especificação H0–H6 (11.11), coesão com o Ultra e piso de PF 2 (11.12), resultados e
 lacunas (11.13). Entregue no App, só estudo: T16.14 `mt5x trades fidelity`, T16.15
 `mt5x trades recovery` (cinco modos novos também na guia Execução) e T19.52a
-`mt5x trades router`. 34 testes novos; regressão afetada 277 aprovados (Linux/Xvfb); launcher
+`mt5x trades router`. 21 testes novos; regressão afetada 277 aprovados (Linux/Xvfb); launcher
 oficial em base de QA isolada com barras reais EURUSD M15
 ([recibo](docs/evidencias/T1615_RECUPERACAO_ROTEADOR_EURUSD_M15_QA_20261110.json)).
 

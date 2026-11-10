@@ -810,7 +810,7 @@ execução nativa, UI).
 `mt5x trades fidelity | recovery | router`. Os cinco modos novos aparecem sozinhos na guia
 Execução do Laboratório, marcados "só estudo".
 
-**Verificação.** 34 testes novos (`test_trade_recovery_study.py`, `test_tick_fidelity.py`,
+**Verificação.** 21 testes novos (`test_trade_recovery_study.py`, `test_tick_fidelity.py`,
 `test_conditional_policy.py`); regressão de motor, livro, trajetórias, elegibilidade, backtester,
 presets e UI do Laboratório (Linux/Xvfb): 277 aprovados. Percurso pelo launcher oficial
 (`./run.sh --cli`, classe local, sem ponte) em **base de QA isolada**: barras reais EURUSD M15
