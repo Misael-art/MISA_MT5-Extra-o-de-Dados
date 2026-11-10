@@ -20,7 +20,7 @@ EXIT, SIZING = "saida", "dimensionamento"
 class Mode:
     key: str
     name: str
-    kind: str                                  # EXIT ou SIZING
+    kind: str                                  # EXIT, SIZING ou RECOVERY
     help: str
     params: Dict[str, float] = field(default_factory=dict)        # padrão de cada parâmetro
     build: Callable[[ExitPolicy, dict], ExitPolicy] = lambda base, p: base
@@ -91,6 +91,50 @@ register(Mode("martingale", "Martingale (só robôs que o suportam)", SIZING,
 register(Mode("anti_martingale", "Anti-martingale (só robôs que o suportam)", SIZING,
               "Multiplica o lote depois de cada ganho e volta ao inicial depois de uma perda, com as travas do robô.",
               {"niveis": 4}, study_only=True))
+
+
+# --- recuperação condicional (T16.15) -----------------------------------------------------------
+# Hipóteses H1–H4 e H6 de docs/propostas/ANALYTICS_OPERACOES.md, seção 11.11. Decidem no fechamento da barra com os
+# sinais causais de `reversal.compute` e executam na abertura seguinte. Sempre estudo: a bateria reprova preço médio.
+RECOVERY = "recuperacao"
+_ZONE = {"zona_r": 0.6}
+
+
+def _recovery(action, **fixed):
+    def build(base, p):
+        return base.with_(recovery=action, recovery_zone_r=p["zona_r"],
+                          recovery_lot_factor=p.get("fator_lote", 1.0),
+                          recovery_max_adds=int(p.get("max_adicoes", 1)),
+                          recovery_max_volume=p.get("teto_lotes") or None, **fixed)
+    return build
+
+
+register(Mode("saida_antecipada", "Saída antecipada (H1)", RECOVERY,
+              "Perto do stop, se o fechamento confirma a continuação contra a posição, sai na abertura seguinte. "
+              "Não usa capital extra.", dict(_ZONE), _recovery("saida"), study_only=True))
+register(Mode("recuperacao_unica", "Recuperação com adição única (H2)", RECOVERY,
+              "Perto do stop, com sinal causal de reversão, adiciona uma vez o lote inicial e sai no equilíbrio "
+              "líquido do conjunto. O stop continua o inicial: a perda máxima cresce com a adição.",
+              dict(_ZONE, fator_lote=1.0, teto_lotes=0), _recovery("adicao", recovery_exit="equilibrio"),
+              study_only=True))
+register(Mode("recuperacao_proporcional", "Recuperação com adição proporcional (H3)", RECOVERY,
+              "Como a adição única, com lote maior que o inicial e teto de exposição.",
+              dict(_ZONE, fator_lote=2.0, teto_lotes=0), _recovery("adicao", recovery_exit="equilibrio"),
+              study_only=True))
+register(Mode("recuperacao_gerida", "Recuperação gerida (H4)", RECOVERY,
+              "Adição única; ao tocar o equilíbrio o stop sobe para ele e o alvo passa a ser a entrada original; "
+              "se o fechamento perde o extremo da barra do sinal, zera na abertura seguinte.",
+              dict(_ZONE, fator_lote=1.0, teto_lotes=0),
+              _recovery("adicao", recovery_exit="escalonada", recovery_invalidate=True), study_only=True))
+register(Mode("reversao_independente", "Reentrada independente (H6)", RECOVERY,
+              "No mesmo sinal, fecha a posição perdedora e abre uma operação nova com o mesmo stop e a mesma saída "
+              "da adição única. Mede o mérito do sinal sem carregar o lote antigo.",
+              dict(_ZONE, fator_lote=1.0, teto_lotes=0), _recovery("independente", recovery_exit="equilibrio"),
+              study_only=True))
+
+
+def recovery_modes() -> Dict[str, Mode]:
+    return {k: m for k, m in MODES.items() if m.kind == RECOVERY}
 
 
 def available(robot=None, preset: Optional[str] = None) -> Dict[str, Mode]:

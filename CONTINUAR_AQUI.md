@@ -1,5 +1,24 @@
 # Retomar MT5X em um host limpo
 
+## Exposição, fidelidade de ticks e recuperação condicional — 10/11/2026
+
+Pedido do proprietário de 09–10/11 (vídeo martingale × lote fixo). Fonte canônica:
+[ANALYTICS_OPERACOES §11](docs/propostas/ANALYTICS_OPERACOES.md): auditoria (11.9), classes A–E
+(11.10), especificação H0–H6 (11.11), coesão com o Ultra e piso de PF 2 (11.12), resultados e
+lacunas (11.13). Entregue no App, só estudo: T16.14 `mt5x trades fidelity`, T16.15
+`mt5x trades recovery` (cinco modos novos também na guia Execução) e T19.52a
+`mt5x trades router`. 34 testes novos; regressão afetada 277 aprovados (Linux/Xvfb); launcher
+oficial em base de QA isolada com barras reais EURUSD M15
+([recibo](docs/evidencias/T1615_RECUPERACAO_ROTEADOR_EURUSD_M15_QA_20261110.json)).
+
+Resultado: a base local é classe D (nenhum tick extraído); preço médio sem sinal reprovado em
+todos os runs; adição condicionada com 3–9 casos por run (amostra insuficiente, tendência
+desfavorável); política condicional sem candidato elegível; nada sustenta PF 2. HADOUKEN/Safety
+intocados; nenhum gate, preset ou executor mudou. Não validado: Tester/MT5, DEMO, Windows, CI.
+Próximo: extrair ticks e calibrar custos, ampliar história/ativos, corrigir runs triplicados no
+livro e estudar modos de saída antes de adição (lista em 11.13). O host reiniciou uma vez durante
+esta passagem, com suíte e preparação de QA simultâneas: rodar uma operação por vez.
+
 ## PR302 — corretivo do CI em 08/11/2026
 
 Owner: **Recursos/Dados**, tarefa **T20.30-HOST1-DRIVE**, limitada a SQLite/uma conta. Na ponta remota `9d55fb50b00861f35e0617c9ccd2273ade471a52`, o CI 42400089570 falhou em `Testes (ubuntu-latest)` e `Testes (windows-latest)`; PostgreSQL, lint e os dois instaladores passaram. Logs confirmam: Ubuntu não tinha `.venv` ao chamar `run.sh`; Windows tentou executar `run.sh` e usou nome SQLite com `?` (inválido no Windows).
