@@ -32,7 +32,7 @@ TABLE, RUNS = "_trade_features", "_trade_features_runs"
 CACHE_VERSION = 2
 _SCHEMA_LOCK = threading.RLock()
 _CODE_FILES = (Path(__file__), Path(enrich.__file__), Path(timeframes.__file__),
-               Path(enrich.indicators.__file__))
+               Path(enrich.indicators.__file__), Path(enrich.backtester.__file__), Path(enrich.specs.__file__))
 _INTEGERS = {"seq", "direction", "bars", "feature_version", "day_of_week", "day_of_month",
              "week_of_month", "month", "is_month_end", "hour", "event_impact", "win_flag"}
 _FLOATS = {"minutes_from_open", "minutes_to_event", "event_surprise", "entry_volume", "volume_rank",
