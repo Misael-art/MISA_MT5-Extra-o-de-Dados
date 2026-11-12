@@ -11,8 +11,11 @@ import logging
 import json
 import os
 import sqlite3
+import hashlib
+import re
+import uuid
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -57,8 +60,8 @@ def backup_due(db, config, now: Optional[datetime] = None) -> bool:
 def consistent_snapshot(source, target) -> None:
     """Snapshot SQLite somente leitura na origem; destino novo, conferido, sem sobrescrita."""
     source, target = Path(source).resolve(), Path(target)
-    with target.open("xb"):
-        pass
+    descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(descriptor)
     try:
         with closing(sqlite3.connect(source.as_uri() + "?mode=ro", uri=True, timeout=30)) as src:
             dst = sqlite3.connect(str(target))
@@ -73,10 +76,22 @@ def consistent_snapshot(source, target) -> None:
         raise
 
 
+def _sync_artifact(path):
+    """Confirma o arquivo próprio e, no POSIX, sua entrada no diretório."""
+    path = Path(path)
+    with path.open("r+b") as stream:
+        os.fsync(stream.fileno())
+    if os.name != "nt":
+        descriptor = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
 def backup(db, config, origin: str = "ui", prune: bool = True) -> dict:
-    """Cria uma cópia conferida e (com prune) apaga as mais velhas além de `backup_keep`. Nunca lança."""
+    """Cria uma cópia conferida e aplica a retenção às cópias elegíveis. Nunca lança."""
     policy = policy_mod.load(config)
-    folder = backup_dir(db, policy)
     result = {"ok": False, "path": None, "bytes": None, "pruned": [], "error": None}
     if db.dialect != "sqlite":
         result["error"] = ("cópia automática só para SQLite; no PostgreSQL use pg_dump "
@@ -84,36 +99,51 @@ def backup(db, config, origin: str = "ui", prune: bool = True) -> dict:
         return result
     try:
         with actions.exclusive(policy_mod.archive_dir(db, policy), f"cópia ({origin})"):
-            folder.mkdir(parents=True, exist_ok=True)
-            source = Path(db.db_path).resolve()
-            size = sum(storage._sqlite_files(db).values())
-            disk = storage.disk_usage(folder)
-            if disk and disk["free"] < size * 1.1:
-                raise RuntimeError(f"disco livre ({storage.human_bytes(disk['free'])}) menor que o tamanho da base "
-                                   f"({storage.human_bytes(size)}); a cópia não foi feita")
-            stamp = f"{source.stem}__{datetime.now():%Y%m%d-%H%M%S}"
-            target, n = folder / f"{stamp}{BACKUP_SUFFIX}", 1
-            while target.exists():                   # duas cópias no mesmo segundo não se sobrescrevem
-                target, n = folder / f"{stamp}-{n}{BACKUP_SUFFIX}", n + 1
-            partial = target.with_suffix(".parcial")
-            consistent_snapshot(source, partial)
-            partial.replace(target)
-            result.update(ok=True, path=str(target), bytes=target.stat().st_size)
-            for old in (list_backups(db, config)[policy.backup_keep:] if prune else []):
-                try:
-                    Path(old["path"]).unlink()
-                    result["pruned"].append(old["path"])
-                except OSError as e:
-                    log.warning(f"Cópia antiga não apagada ({old['path']}): {e}")
-            actions.audit(db, "copiar", target.name, origin, True, detail={"bytes": result["bytes"],
-                                                                           "pruned": result["pruned"]})
-            log.info(f"Cópia da base criada: {target}")
-    except actions.Busy as e:
-        result["error"] = str(e)
-    except Exception as e:
-        log.error(f"Falha na cópia da base: {e}")
-        result["error"] = str(e)
-        actions.audit(db, "copiar", None, origin, False, detail={"error": str(e)})
+            return _backup_locked(db, config, origin, prune)
+    except actions.Busy as error:
+        result["error"] = str(error)
+    except Exception as error:
+        log.error("Falha na cópia da base: %s", error)
+        result["error"] = str(error)
+        actions.audit(db, "copiar", None, origin, False, detail={"error": str(error)})
+    return result
+
+
+def _backup_locked(db, config, origin, prune, target=None):
+    """Mesmo produtor de cópias, chamado com o lease de Recursos já adquirido."""
+    policy = policy_mod.load(config)
+    folder = backup_dir(db, policy)
+    result = {"ok": False, "path": None, "bytes": None, "pruned": [], "error": None}
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    source = Path(db.db_path).resolve()
+    size = sum(storage._sqlite_files(db).values())
+    disk = storage.disk_usage(folder)
+    if disk and disk["free"] < size * 1.1:
+        raise RuntimeError(f"disco livre ({storage.human_bytes(disk['free'])}) menor que o tamanho da base "
+                           f"({storage.human_bytes(size)}); a cópia não foi feita")
+    if target is None:
+        stamp = f"{source.stem}__{datetime.now():%Y%m%d-%H%M%S}"
+        target, n = folder / f"{stamp}{BACKUP_SUFFIX}", 1
+        while target.exists():
+            target, n = folder / f"{stamp}-{n}{BACKUP_SUFFIX}", n + 1
+    elif target.exists():
+        raise FileExistsError("A cópia desta operação já existe; consulte seu resultado.")
+    partial = target.with_suffix(".parcial")
+    consistent_snapshot(source, partial)
+    partial.replace(target)
+    _sync_artifact(target)
+    result.update(ok=True, path=str(target), bytes=target.stat().st_size)
+    for old in (list_backups(db, config)[policy.backup_keep:] if prune else []):
+        try:
+            if _retain_restore_copy(Path(old["path"])):
+                continue
+            Path(old["path"]).unlink()
+            result["pruned"].append(old["path"])
+        except OSError as e:
+            log.warning(f"Cópia antiga não apagada ({old['path']}): {e}")
+    actions.audit(db, "copiar", target.name, origin, True, detail={"bytes": result["bytes"],
+                                                                   "pruned": result["pruned"]})
+    log.info(f"Cópia da base criada: {target}")
     return result
 
 
@@ -274,62 +304,275 @@ def _restore_inventory(conn):
     return schema, counts
 
 
-def restore_backup(db, config, backup_path, origin: str = "ui") -> dict:
-    """
-    Volta a base inteira ao estado de uma cópia. Antes, faz uma cópia do estado atual (se ela falhar, nada muda).
-    A troca usa a API de backup do SQLite sobre a base aberta; extrações e backtests devem estar parados.
+_RESTORE_SCHEMA = "mt5x-restore/v1"
+_RESTORE_STATES = {"prepared", "applying", "succeeded", "failed", "uncertain", "recovered"}
+
+
+def _restore_id(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{32}", value):
+        raise ValueError("ID de restauração inválido; consulte resources restore-status.")
+    return value
+
+
+def _restore_manifest_path(folder, owner_key, operation_id):
+    return Path(folder) / f"restore__{owner_key}_{_restore_id(operation_id)}.restore.json"
+
+
+def _restore_control_dir():
+    shared, _local = actions.control_lock_paths(Path("."))
+    return shared.parent / "restore_receipts"
+
+
+def _load_restore(path):
+    path = Path(path)
+    if path.is_symlink() or path.stat().st_size > 256 * 1024:
+        raise ValueError("Manifesto de restauração indisponível; preserve a cópia e confira a operação.")
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+        json.dumps(record, allow_nan=False)
+        datetime.fromisoformat(record["created_at"])
+        datetime.fromisoformat(record["updated_at"])
+        owner_key = record["owner_key"]
+        operation_id = _restore_id(record["operation_id"])
+        expected = _restore_manifest_path(path.parent, owner_key, operation_id)
+        safety = Path(record["safety_copy"])
+        safety_name = path.name.removesuffix(".restore.json") + ".db"
+        valid = (record["schema"] == _RESTORE_SCHEMA and isinstance(owner_key, str)
+                 and re.fullmatch(r"[0-9a-f]{64}", owner_key)
+                 and path == expected and record["state"] in _RESTORE_STATES
+                 and safety.is_absolute() and safety.name == safety_name
+                 and record["safety_copy"] == str(safety.resolve())
+                 and isinstance(record["source"], str) and Path(record["source"]).is_absolute()
+                 and isinstance(record["active_path"], str) and Path(record["active_path"]).is_absolute()
+                 and isinstance(record["created_at"], str)
+                 and isinstance(record["result"], dict)
+                 and isinstance(record["result"].get("ok"), bool)
+                 and record["result"].get("operation_id") == operation_id
+                 and record["result"].get("state") == record["state"]
+                 and record["result"]["ok"] == (record["state"] == "succeeded"))
+        if record["state"] in {"applying", "succeeded", "uncertain", "recovered"}:
+            valid = valid and isinstance(record.get("safety_sha256"), str) and re.fullmatch(
+                r"[0-9a-f]{64}", record["safety_sha256"])
+        if record.get("recovery_of") is not None:
+            _restore_id(record["recovery_of"])
+        if record.get("recovery_operation_id") is not None:
+            _restore_id(record["recovery_operation_id"])
+        if not valid:
+            raise ValueError
+        return record
+    except (KeyError, TypeError, ValueError, AttributeError):
+        raise ValueError("Manifesto de restauração ilegível ou com schema desconhecido; confira a operação.") from None
+
+
+def _save_restore(path, record):
+    from mt5_extracao.bootstrap.config_builder import atomic_write_text
+    path = Path(path)
+    if path.is_symlink():
+        raise ValueError("Manifesto de restauração contém link; preserve a operação.")
+    record["updated_at"] = datetime.now(timezone.utc).isoformat()
+    atomic_write_text(path, json.dumps(record, ensure_ascii=False, allow_nan=False), private=True)
+    _sync_artifact(path)
+
+
+def _restore_records(db, config):
+    """Lê e reconcilia recibos sob o lease comum de Recursos."""
+    owner_key = session_owner_key(db, physical_only=True)
+    if not owner_key:
+        raise ValueError("A identidade da base não está disponível; preserve a operação.")
+    folder = backup_dir(db, policy_mod.load(config)).resolve()
+    control = _restore_control_dir()
+    records = [_load_restore(path) for path in control.glob(f"restore__{owner_key}_*.restore.json")]
+    for record in records:
+        original = Path(record["active_path"])
+        if not original.is_file() or not original.samefile(db.db_path):
+            raise ValueError("A localização original da base não confirma sua identidade; preserve os recibos e confira a operação.")
+    for path in folder.glob(f"restore__{owner_key}_*.db"):
+        if not control.joinpath(path.with_suffix(".restore.json").name).is_file():
+            raise ValueError("Cópia de restauração sem manifesto; confira seu resultado antes de outra troca.")
+    for record in records:
+        if record["state"] == "prepared":
+            # O lease foi obtido e o marco applying nunca foi confirmado. O
+            # produtor só toca a base depois de persistir esse segundo marco.
+            record["state"] = "failed"
+            record["result"].update(state="failed", error="Preparo interrompido antes da troca da base.")
+            _save_restore(_restore_manifest_path(control, owner_key, record["operation_id"]), record)
+    recovered = {r["recovery_of"]: r["operation_id"] for r in records
+                 if r["state"] == "succeeded" and r.get("recovery_of")}
+    for record in records:
+        if record["operation_id"] in recovered:
+            record["state"] = "recovered"
+            record["recovery_operation_id"] = recovered[record["operation_id"]]
+    return owner_key, folder, sorted(records, key=lambda record: record["created_at"], reverse=True)
+
+
+def _restore_outcome(record):
+    """Chamado sob o lease que exclui uma troca ainda em execução."""
+    state = record["state"]
+    if state in {"prepared", "applying"}:
+        state = "uncertain"
+    return {**record["result"], "operation_id": record["operation_id"], "state": state,
+            "source": record["source"], "safety_copy": record["safety_copy"],
+            "created_at": record["created_at"], "updated_at": record.get("updated_at"),
+            "receipt_path": str(_restore_manifest_path(_restore_control_dir(), record["owner_key"],
+                                                       record["operation_id"])),
+            "safety_copy_available": Path(record["safety_copy"]).is_file(),
+            "recovery_operation_id": record.get("recovery_operation_id")}
+
+
+def restore_status(db, config, operation_id=None):
+    """Consulta e reconcilia os recibos privados sob o lease de Recursos."""
+    try:
+        if db.dialect != "sqlite":
+            raise ValueError("Consulta de restauração de cópia disponível para SQLite.")
+        policy = policy_mod.load(config)
+        with actions.exclusive(policy_mod.archive_dir(db, policy), "consultar restauração"):
+            _owner_key, _folder, records = _restore_records(db, config)
+            if operation_id is None:
+                return {"ok": True, "state": "history", "operations": [_restore_outcome(r) for r in records]}
+            operation_id = _restore_id(operation_id)
+            record = next((r for r in records if r["operation_id"] == operation_id), None)
+            if record is None:
+                raise ValueError("Resultado indisponível para este ID; nenhuma troca foi solicitada.")
+            return _restore_outcome(record)
+    except actions.Busy as error:
+        return {"ok": False, "state": "running", "operation_id": operation_id, "error": str(error)}
+    except (OSError, ValueError) as error:
+        return {"ok": False, "state": "unknown", "operation_id": operation_id, "error": str(error)}
+
+
+def _retain_restore_copy(path):
+    if not path.name.startswith("restore__"):
+        return False
+    try:
+        record = _load_restore(_restore_control_dir() / path.with_suffix(".restore.json").name)
+        return (record["safety_copy"] != str(path.resolve())
+                or record["state"] not in {"succeeded", "failed", "recovered"})
+    except (OSError, ValueError):
+        return True
+
+
+def _file_sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def restore_backup(db, config, backup_path, origin: str = "ui", *, operation_id=None, recovery_of=None) -> dict:
+    """Restaura uma fotografia verificada, com intenção e resultado nos recibos de Recursos.
+
+    Um ID informado consulta a intenção anterior. Recuperação de resultado incerto exige
+    pedido novo e explícito para a cópia de segurança vinculada e conferida por SHA-256.
+    Extrações e backtests devem estar parados, conforme o contrato de Recursos.
     """
     path = Path(backup_path).resolve()
-    result = {"ok": False, "safety_copy": None, "error": None}
+    result = {"ok": False, "safety_copy": None, "error": None, "operation_id": operation_id, "state": "failed"}
+    record, manifest, applying = None, None, False
     if db.dialect != "sqlite":
         result["error"] = "só para SQLite; no PostgreSQL use pg_restore"
         return result
     try:
-        active = Path(db.db_path).resolve()
-        if not path.is_file():
-            raise ValueError("A cópia escolhida não existe; nada foi alterado.")
-        if path.samefile(active):
-            raise ValueError("Escolha uma cópia diferente da base ativa; nada foi alterado.")
-        # as_uri codifica #/%/espaços. Manter a mesma conexão evita reabrir outro arquivo
-        # entre a conferência e a cópia; BEGIN fixa a fotografia que será restaurada.
-        with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=10)) as src:
-            src.execute("BEGIN")
-            check = src.execute("PRAGMA quick_check").fetchall()
-            if check != [("ok",)]:
-                raise RuntimeError("a cópia escolhida não passou na conferência; nada foi alterado")
-            expected = _restore_inventory(src)
-            safety = backup(db, config, origin=f"{origin}, antes de voltar à cópia", prune=False)
-            if not safety["ok"]:
-                raise RuntimeError(f"não foi possível guardar o estado atual antes de trocar ({safety['error']}); "
-                                   "nada foi alterado")
-            result["safety_copy"] = safety["path"]
-            policy = policy_mod.load(config)
-            with actions.exclusive(policy_mod.archive_dir(db, policy), f"voltar à cópia ({origin})"):
+        if operation_id is not None and recovery_of is not None:
+            raise ValueError("Consulta por ID e recuperação são solicitações distintas.")
+        policy = policy_mod.load(config)
+        with actions.exclusive(policy_mod.archive_dir(db, policy), f"voltar à cópia ({origin})"):
+            owner_key, folder, records = _restore_records(db, config)
+            if operation_id is not None:
+                operation_id = _restore_id(operation_id)
+                existing = next((r for r in records if r["operation_id"] == operation_id), None)
+                if existing is None:
+                    return {**result, "state": "unknown", "error": "Resultado indisponível para este ID."}
+                return _restore_outcome(existing)
+            pending = [r for r in records if r["state"] in {"prepared", "applying", "uncertain"}]
+            previous = None
+            if recovery_of is not None:
+                recovery_of = _restore_id(recovery_of)
+                previous = next((r for r in pending if r["operation_id"] == recovery_of), None)
+                if previous is None:
+                    raise ValueError("A operação indicada não tem recuperação incerta disponível.")
+                if path != Path(previous["safety_copy"]) or _file_sha256(path) != previous["safety_sha256"]:
+                    raise ValueError("A cópia de segurança vinculada está indisponível ou diverge do SHA-256.")
+            if any(r is not previous for r in pending):
+                blocked = next(r for r in pending if r is not previous)
+                return {**_restore_outcome(blocked), "ok": False,
+                        "error": "Existe uma restauração sem resultado confirmado. Consulte o ID antes de outra troca."}
+            active = Path(db.db_path).resolve()
+            if not path.is_file():
+                raise ValueError("A cópia escolhida não existe; nada foi alterado.")
+            if path.samefile(active):
+                raise ValueError("Escolha uma cópia diferente da base ativa; nada foi alterado.")
+            source_identity = path.stat()
+            with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=10)) as src:
+                src.execute("BEGIN")
+                if src.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                    raise ValueError("A cópia escolhida não passou na conferência; nada foi alterado.")
+                expected = _restore_inventory(src)
+                operation_id = uuid.uuid4().hex
+                manifest = _restore_manifest_path(_restore_control_dir(), owner_key, operation_id)
+                safety_path = folder / (manifest.name.removesuffix(".restore.json") + ".db")
+                if manifest.exists() or safety_path.exists():
+                    raise ValueError("Este ID já existe; consulte seu resultado antes de continuar.")
+                folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+                manifest.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                from mt5_extracao.process_owner import current
+                result.update(operation_id=operation_id, safety_copy=str(safety_path),
+                              receipt_path=str(manifest), state="prepared")
+                record = {"schema": _RESTORE_SCHEMA, "owner_key": owner_key, "operation_id": operation_id,
+                          "active_path": str(active),
+                          "source": str(path), "safety_copy": str(safety_path), "safety_sha256": None,
+                          "owner": current(), "created_at": datetime.now(timezone.utc).isoformat(), "state": "prepared",
+                          "recovery_of": recovery_of, "result": dict(result)}
+                _save_restore(manifest, record)
+                _backup_locked(db, config, f"{origin}, antes de voltar à cópia", False, target=safety_path)
+                record["safety_sha256"] = _file_sha256(safety_path)
+                now = path.stat()
+                if (session_owner_key(db, physical_only=True) != owner_key or path.samefile(active)
+                        or (now.st_dev, now.st_ino, now.st_size, now.st_mtime_ns)
+                        != (source_identity.st_dev, source_identity.st_ino, source_identity.st_size,
+                            source_identity.st_mtime_ns)):
+                    raise ValueError("A identidade da origem ou da base mudou durante o preparo; confira a operação.")
+                if previous is not None and _file_sha256(path) != previous["safety_sha256"]:
+                    raise ValueError("A cópia de segurança mudou durante o preparo; confira a operação.")
+                result["state"] = record["state"] = "applying"
+                record["result"] = dict(result)
+                _save_restore(manifest, record)
+                applying = True
                 db.engine.dispose()
-                with closing(sqlite3.connect(str(active), timeout=60)) as dst:
-                    src.backup(dst)
-                    check = dst.execute("PRAGMA quick_check").fetchall()
-                    if check != [("ok",)] or _restore_inventory(dst) != expected:
-                        raise RuntimeError("a base trocada diverge da cópia; volte à cópia de segurança "
-                                           f"{safety['path']}")
-                db.engine.dispose()
-                if isinstance(getattr(db, "_table_cache", None), dict):
-                    db._table_cache.clear()
-        result["ok"] = True
-        actions.audit(db, "voltar à cópia", path.name, origin, True, detail={"safety_copy": safety["path"]})
-        log.info(f"Base trocada pela cópia {path} (estado anterior guardado em {safety['path']}).")
-    except actions.Busy as e:
-        result["error"] = str(e)
-    except Exception as e:
-        log.error(f"Falha ao voltar à cópia {path}: {e}")
-        result["error"] = str(e)
-        actions.audit(db, "voltar à cópia", path.name, origin, False, detail={"error": str(e)})
+                try:
+                    with closing(sqlite3.connect(active.as_uri() + "?mode=rw", uri=True, timeout=60)) as dst:
+                        src.backup(dst)
+                        if dst.execute("PRAGMA quick_check").fetchall() != [("ok",)] or _restore_inventory(dst) != expected:
+                            raise RuntimeError("A base trocada diverge da fotografia escolhida.")
+                finally:
+                    db.engine.dispose()
+                    if isinstance(getattr(db, "_table_cache", None), dict):
+                        db._table_cache.clear()
+                result.update(ok=True, state="succeeded")
+                record.update(state="succeeded", result=dict(result))
+                _save_restore(manifest, record)
+            if previous is not None:
+                previous.update(state="recovered", recovery_operation_id=operation_id)
+                previous["result"]["state"] = "recovered"
+                _save_restore(_restore_manifest_path(_restore_control_dir(), owner_key, recovery_of), previous)
+        actions.audit(db, "voltar à cópia", path.name, origin, True, detail=dict(result))
+    except Exception as error:
+        result.update(ok=False, state="uncertain" if applying else "failed", error=str(error))
+        if record is not None:
+            record.update(state=result["state"], result=dict(result))
+            try:
+                _save_restore(manifest, record)
+            except Exception:
+                result["state"] = "uncertain" if applying else "unknown"
+                result["error"] += " O recibo não pôde ser atualizado; consulte o ID e preserve as cópias."
+        log.error("Falha ao voltar à cópia %s, operação %s, estado %s: %s",
+                  path, result["operation_id"], result["state"], result["error"])
     return result
 
 
 # --- perfis privados: retirada reversível, sem apagar relatórios -----------------------------
 
-def session_owner_key(db):
+def session_owner_key(db, *, physical_only=False):
     """Vínculo ao banco criador, sem guardar URI nem credenciais no manifesto."""
     import hashlib
     try:
@@ -340,7 +583,12 @@ def session_owner_key(db):
                 return None
             path = Path(url.database).expanduser().resolve()
             info = path.stat()
-            identity = [backend, os.path.normcase(str(path)), info.st_dev, info.st_ino]
+            if physical_only:
+                if info.st_ino <= 0:
+                    return None
+                identity = [backend, info.st_dev, info.st_ino]
+            else:
+                identity = [backend, os.path.normcase(str(path)), info.st_dev, info.st_ino]
         elif backend == "postgresql":
             # Usuário/options distinguem namespaces/RLS; senha não faz parte da identidade.
             if not url.host:

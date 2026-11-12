@@ -94,3 +94,53 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 
 - Testes em `tests/test_resources.py` (medição, regras, arquivar/restaurar ida e volta, trava, automação, CLI).
 - Windows: só simulado. Pendências no checklist de `docs/validacao_instaladores.md` (T10.W).
+
+## Restauração com intenção e recuperação — 12/11/2026
+
+O fluxo SQLite de `resources.files.restore_backup` usa o produtor de backups
+existente e o mesmo lease de Recursos durante preparo, conferência e troca.
+A GUI solicita o serviço em `run_bg`. Extrações e backtests devem estar parados
+antes da confirmação. A composição de desenvolvimento acrescenta Recursos à
+política local do launcher Linux, pela integração das PR296/308.
+
+Cada solicitação nova recebe um ID e um manifesto privado `mt5x-restore/v1`
+no estado compartilhado de Recursos, em `restore_receipts`. A identidade física
+da base e o vínculo com sua localização são conferidos no ato. O recibo continua
+consultável após mudar `backup_dir` ou abrir um alias da mesma base. Localização
+original indisponível ou identidade inconclusiva exige reconciliação dos recibos.
+
+O marco `prepared` é persistido antes da cópia de segurança. O marco `applying`
+é confirmado depois da conferência SHA-256 da cópia anterior e antes da troca.
+A cópia anterior e os manifestos novos têm permissão privada. Arquivo e entrada
+de diretório são sincronizados no POSIX. Windows sincroniza o arquivo e mantém
+o aceite físico de persistência após falha abrupta.
+
+Sob o lease liberado pelo produtor, preparo interrompido antes de `applying`
+pode ser reconciliado como falha anterior à troca. Um marco `applying` sem
+conclusão representa resultado incerto. Nova troca fica bloqueada até consultar
+o resultado e solicitar a recuperação correspondente. Leitura parcial, schema
+desconhecido, alias inconsistente e checksum divergente preservam os dados.
+
+```bash
+rtk ./run.sh --cli resources restore-backup CAMINHO --yes
+rtk ./run.sh --cli resources restore-status --operation-id ID
+rtk ./run.sh --cli resources restore-backup CAMINHO --operation-id ID
+rtk ./run.sh --cli resources restore-backup COPIA_ANTERIOR --recover-operation ID --yes
+```
+
+`--operation-id` consulta a intenção existente. Um ID ausente retorna resultado
+indisponível. A recuperação é uma intenção nova ligada ao ID incerto e aceita
+a cópia anterior vinculada, com SHA-256 revalidado. A aba Recursos oferece
+Conferir restauração e solicita confirmação antes do retorno.
+
+A retenção conserva cópias com resultado pendente ou manifesto ilegível.
+Recibos concluídos continuam como evidência privada após a retenção das cópias
+de dados. Eles pertencem ao estado de recuperação do host. Antes de voltar
+a uma prévia antiga, reconciliar as operações pendentes pela fonte que reconhece
+esse contrato. A prévia de retorno tem aceite operacional próprio.
+
+Regressões locais cobrem interrupção antes/depois do marco, processo próprio
+encerrado após o efeito, consulta sem repetição, troca de diretório, hardlink,
+recuperação explícita, manifestos inválidos e retenção. O launcher CLI exerceu
+esses caminhos em SQLite sintético. GUI real da revisão final, CI do SHA
+publicado, falha de energia e Windows físico têm resultados próprios no handoff.

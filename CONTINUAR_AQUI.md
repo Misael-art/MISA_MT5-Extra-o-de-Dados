@@ -862,3 +862,38 @@ permaneceu fora dos ensaios. CI do SHA publicado, Windows físico e recuperaçã
 com encerramento abrupto têm aceites próprios. A lacuna de intenção durável e
 consulta de resultado da restauração exige incremento específico nos serviços
 de Recursos, CLI e GUI. Recibos locais em `state/qa-tmp/diagnostico-20261112/`.
+
+
+## DIAG-RESTORE-RECUP — intenção e resultado em12/11/2026
+
+Owner Recursos, em validação na continuação da PR307. O fluxo oficial agora
+persiste intenção e resultado em recibos privados `mt5x-restore/v1` no estado
+comum de Recursos, com o produtor de backups e o mesmo lease existentes.
+O ID informado consulta a operação. Resultado incerto bloqueia nova troca e
+oferece retorno explícito à cópia anterior vinculada e conferida por SHA-256.
+O preparo interrompido antes do marco de aplicação é reconciliado sob o lease.
+Recibos ilegíveis, ausentes, schema desconhecido ou identidade inconclusiva
+preservam os dados. As cópias pendentes ficam protegidas da retenção.
+
+Duas regressões adicionais reproduziram perda da pendência ao trocar backup_dir
+e ao abrir a base por hardlink. Recibos no estado comum e identidade física
+corrigiram ambos. O último lote teve28 aprovados em9,35s. Outros seis casos
+existentes de backup/automação/CLI passaram em8,51s. Um lote anterior medido
+teve241,4MiB de pico, mínimo6GiB disponíveis e máximo54°C. A conferência final
+passou sem `hashlib.file_digest`, preservando a compatibilidade declarada pelo
+master. O interpretador local continua Python3.11.15. Doctor offline16/2/0 e
+ShellCheck do launcher aprovados.
+
+O launcher CLI oficial em SQLite próprio provou consulta sem repetição, saída
+abrupta17 de filho próprio após o efeito, estado incerto, mudança de diretório,
+recusa por hardlink e recuperação explícita do valor anterior42. Recibo local
+`restore-launcher-lifecycle-02/proof.json`,11,03s. A GUI usa o worker existente
+e recebeu três regressões de controlador. Seu aceite final no compositor aguarda
+a VM alheia e a pressão sustentada de I/O observada no host. CI do novo SHA,
+Windows físico e falha de energia permanecem específicos. A primeira correção
+de identidade teve GUI real XWayland aprovada no SHA anterior.
+
+Checkout e índice principal preservados. A publicação compõe somente o delta
+de restauração da CLI sobre a PR307; o WIP de múltiplas contas continua em seu
+PR303 e na composição PR308. Fluxo Linux local da composição depende da política
+da PR296/308. Nenhum banco do proprietário foi usado nos ensaios.

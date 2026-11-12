@@ -33,6 +33,11 @@ def add_parser(sub) -> None:
     q = rs.add_parser("restore-backup", help="volta a base inteira a uma cópia (guarda antes o estado atual)")
     q.add_argument("path")
     q.add_argument("--yes", action="store_true")
+    restore_mode = q.add_mutually_exclusive_group()
+    restore_mode.add_argument("--operation-id", help="consulta o resultado de um ID existente")
+    restore_mode.add_argument("--recover-operation", help="retorna à cópia de segurança vinculada ao ID incerto")
+    q = rs.add_parser("restore-status", help="consulta intenções e resultados de restauração sem repetir a troca")
+    q.add_argument("--operation-id", help="ID retornado por restore-backup")
     q = rs.add_parser("trim", help="apara séries: arquiva e retira as linhas mais velhas que --days (reversível)")
     q.add_argument("tables", nargs="*", help="tabelas; sem nomes, usa a retenção de [RESOURCES]")
     q.add_argument("--days", type=int, help="manter os últimos N dias")
@@ -320,13 +325,27 @@ def run(args: argparse.Namespace, ctx) -> int:
         data(**result)
         return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
 
+    if command == "restore-status":
+        result = files.restore_status(db, config, args.operation_id)
+        for item in result.get("operations", [result]):
+            out(f"{item.get('operation_id') or 'indisponível'}\t{item['state']}")
+        if result.get("error"):
+            err(result["error"])
+        data(**result)
+        return cli.EXIT_OK if result.get("ok") else cli.EXIT_FAIL
+
     if command == "restore-backup":
-        if not args.yes:
+        if not args.yes and not args.operation_id:
             err("nada foi alterado: confirme com --yes (pare extrações e backtests antes)")
             return cli.EXIT_USAGE
-        result = files.restore_backup(db, config, args.path, origin="cli")
-        out(f"Base trocada pela cópia. Estado anterior guardado em {result['safety_copy']}." if result["ok"]
-            else f"Nada foi trocado: {result['error']}")
+        result = files.restore_backup(db, config, args.path, origin="cli", operation_id=args.operation_id,
+                                      recovery_of=args.recover_operation)
+        if args.operation_id:
+            out(f"Resultado registrado: {result['state']}.")
+        else:
+            out(f"Base trocada pela cópia. Estado anterior guardado em {result['safety_copy']}." if result["ok"]
+                else f"Resultado da restauração: {result['state']}. {result['error']}")
+        out(f"Operação: {result['operation_id'] or 'indisponível'}; estado: {result['state']}.")
         data(**result)
         return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
 
@@ -358,7 +377,7 @@ def run(args: argparse.Namespace, ctx) -> int:
         items = files.list_backups(db, config)
         for b in items:
             out(f"{b['path']}\t{hb(b['bytes'])}\t{b['created_at']:%Y-%m-%d %H:%M}")
-        out(f"\n{len(items)} cópia(s). Para voltar a uma delas: feche o programa e copie o arquivo por cima da base.")
+        out(f"\n{len(items)} cópia(s). Para voltar: resources restore-backup CAMINHO --yes.")
         data(backups=items)
         return cli.EXIT_OK
 
