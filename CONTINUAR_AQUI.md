@@ -916,3 +916,29 @@ Aceite deste incremento exige os novos testes no CI, preservação de seleção
 explícita/legado/filtros/moeda, regressões do livro/cache/roteador e validação
 da composição da próxima prévia. Entrada física, acessibilidade, login,
 Windows físico, MT5 e negociação têm aceites próprios.
+
+## DIAG-AMOSTRA — leitura legada e validação retomada em 12/11/2026
+
+A retomada reconferiu fonte, processos e PRs. O host estava sem VM ou build
+concorrente, com aproximadamente 7,8 GiB disponíveis e swap sem atividade.
+As regressões foram divididas em lotes proporcionais ao orçamento.
+
+A leitura integral de cada execução agora ocorre após qualificar os metadados
+do produtor. Uma regressão com banco e produtor próprios confirmou a leitura
+redundante para um run legado antes do ajuste e sua eliminação depois dele.
+O livro legado e a indicação de equivalência desconhecida são preservados.
+As execuções qualificadas passam pela comparação integral e validação de snapshot.
+
+Depois do ajuste, lotes de 9 e 26 casos passaram, com 14 casos da amostra e
+21 de assinaturas/cache no conjunto. O lote anterior de contexto/roteador passou
+com 14 casos. Os resultados têm sobreposição com os recibos anteriores.
+Doctor novamente com 16 OK, 2 avisos e zero falhas. O teste de 50 mil operações
+continua com seu limite original e integra o gate completo do CI.
+
+O primeiro lote orçamentado de 60 s terminou após 11 casos, com pico observado
+de 159,3 MiB. O processo próprio foi encerrado e as duas fontes temporariamente
+usadas na validação, junto com o índice principal, foram restauradas. O ensaio
+parcial permanece em `sample-final-tests.json`; os lotes separados concluídos
+estão no handoff local. A QA local usa a composição do checkout, com os corretivos
+de excursões. O CI da PR valida a árvore publicada sobre PR304. Sua conclusão
+e a próxima prévia continuam pendentes.

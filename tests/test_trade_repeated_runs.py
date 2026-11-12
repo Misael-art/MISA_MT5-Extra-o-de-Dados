@@ -84,6 +84,22 @@ def test_unknown_execution_identity_preserves_rows_and_reports_uncertainty(repea
     assert context.population(lab)["unqualified_python_runs"] == 1
 
 
+def test_legacy_identity_does_not_read_the_full_book_again(repeated, monkeypatch):
+    db, config, _, trades, add = repeated
+    add("legacy", change=lambda r: r["metrics"].pop("execution_identity"))
+    original = ledger.load
+    reread = []
+
+    def observed(*args, **kwargs):
+        if kwargs.get("run_id") == "legacy":
+            reread.append("legacy")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(ledger, "load", observed)
+    assert len(aggregate.frame(db, config)) == 2 * len(trades)
+    assert reread == []
+
+
 @pytest.mark.parametrize("version", [None, 2, True, 1.0, "1"])
 def test_unknown_or_mistyped_identity_version_preserves_rows(repeated, version):
     db, config, _, trades, add = repeated

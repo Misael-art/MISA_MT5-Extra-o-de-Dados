@@ -43,23 +43,25 @@ def _distinct_runs(db, trades, connection):
     for run_id, part in known.groupby("run_id", sort=True):
         if not part.source.eq("python").all():
             continue
-        # A janela visível pode omitir diferenças no restante da execução.
-        part = ledger.load(db, run_id=run_id, connection=connection)
         record = records.get(run_id) or {}
         try:
             metrics = json.loads(record.get("metrics_json") or "{}")
             identity = metrics.get("execution_identity") or {}
-            same_scope = all(part[column].nunique(dropna=False) == 1 and
-                             part[column].iloc[0] == record.get(column)
-                             for column in ("robot_key", "symbol", "timeframe"))
-            qualified = (record.get("source") == "backtest" and part.source.eq("python").all() and same_scope and
-                         part.completeness.eq(ledger.COMPLETE).all() and
+            qualified = (record.get("source") == "backtest" and
                          type(identity.get("version")) is int and identity["version"] == 1 and
                          identity.get("cache_eligible") is True and identity.get("status") == "frozen_reference" and
                          identity.get("data_manifest_id") == metrics.get("data_manifest_id") and
                          all(isinstance(identity.get(key), str) and re.fullmatch(r"[0-9a-f]{64}", identity[key])
                              for key in ("digest", "code_sha256", "data_manifest_id")))
             if not qualified:
+                unqualified.append(run_id)
+                continue
+            # A janela visível pode omitir diferenças no restante da execução.
+            part = ledger.load(db, run_id=run_id, connection=connection)
+            same_scope = all(part[column].nunique(dropna=False) == 1 and
+                             part[column].iloc[0] == record.get(column)
+                             for column in ("robot_key", "symbol", "timeframe"))
+            if not (part.source.eq("python").all() and same_scope and part.completeness.eq(ledger.COMPLETE).all()):
                 unqualified.append(run_id)
                 continue
             metadata = {"scope": [record.get(key) for key in ("robot_key", "symbol", "timeframe")],
