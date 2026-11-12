@@ -366,8 +366,11 @@ class ResourcesPanel:
             if result["ok"]:
                 messagebox.showinfo("Retenção de cópias", "Consulta concluída. A consulta preservou as cópias existentes.", parent=self.frame)
             else:
-                messagebox.showerror("Retenção de cópias", result.get("error") or
-                                     "Resultado ainda incerto. Preserve os arquivos e confira os recibos.", parent=self.frame)
+                text = result.get("error") or "Resultado ainda incerto. Preserve os arquivos e confira os recibos."
+                unknown = result.get("unrecognized_receipts", [])
+                if unknown:
+                    text += "\n\nRecibos indisponíveis\n" + "\n".join(unknown[:10])
+                messagebox.showerror("Retenção de cópias", text, parent=self.frame)
 
         self._run_action("conferindo retenção", lambda: files.backup_status(db, config), done)
 

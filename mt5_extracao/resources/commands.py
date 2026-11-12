@@ -372,6 +372,8 @@ def run(args: argparse.Namespace, ctx) -> int:
         result = files.backup_status(db, config, args.operation_id)
         for item in result.get("backups", []):
             out(f"{item['backup_id']}\t{item['state']}\t{item['path']}")
+        for path in result.get("unrecognized_receipts", []):
+            err(f"Recibo de cópia indisponível: {path}. Preserve os arquivos e recupere o recibo antes do expurgo.")
         if result.get("error"):
             err(result["error"])
         data(**result)

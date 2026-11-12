@@ -3,6 +3,7 @@ import os
 import json
 from pathlib import Path
 import shutil
+import sqlite3
 
 import pytest
 
@@ -257,3 +258,160 @@ def test_unrecognized_retention_never_authorizes_deletion(restoration, change):
     assert result["ok"] and path.is_file() and str(path) in result["preserved"]
     query = files.backup_status(db, config, previous["backup_id"])
     assert not query["ok"] and query["state"] == "unknown"
+
+
+@pytest.mark.parametrize("receipt_state", ["corrupt", "missing"])
+def test_lost_pending_receipt_preserves_every_possible_target(restoration, monkeypatch, receipt_state):
+    db, config, _ = restoration
+    previous = files.backup(db, config)
+    target = Path(previous["path"])
+    os.utime(target, (1, 1))
+    with monkeypatch.context() as patch:
+        def interrupted(*args):
+            raise OSError("interrupção antes da exclusão")
+        patch.setattr(files, "_prune_backup", interrupted)
+        pending = files.backup(db, config)
+    receipt = files._backup_receipt(Path(pending["path"]))
+    if receipt_state == "missing":
+        receipt.unlink()
+    else:
+        receipt.write_text("{")
+    result = files.backup(db, config)
+    assert result["ok"] and result["retention_state"] == "uncertain"
+    assert target.is_file(), "um recibo perdido pode referenciar esta cópia"
+    assert not result["pruned"]
+
+
+def test_backup_revalidates_source_identity_before_retention(restoration, monkeypatch):
+    db, config, chosen = restoration
+    previous = files.backup(db, config)
+    path = Path(previous["path"])
+    os.utime(path, (1, 1))
+    real = files.consistent_snapshot
+
+    def replaced_after_snapshot(source, target):
+        real(source, target)
+        db.engine.dispose()
+        replacement = source.with_suffix(".replacement")
+        shutil.copyfile(chosen, replacement)
+        replacement.replace(source)
+
+    monkeypatch.setattr(files, "consistent_snapshot", replaced_after_snapshot)
+    result = files.backup(db, config)
+    assert not result["ok"] and path.is_file()
+    assert not result["pruned"]
+    with sqlite3.connect(db.db_path) as connection:
+        assert connection.execute("SELECT id FROM proof").fetchone()[0] == 7
+        assert connection.execute("SELECT count(*) FROM sqlite_master WHERE name='_resource_actions'").fetchone()[0] == 0
+
+
+def test_pending_restore_blocks_every_retention_delete(restoration, monkeypatch):
+    from tests.test_restore_operations import fail_after_copy
+    db, config, chosen = restoration
+    previous = files.backup(db, config)
+    path = Path(previous["path"])
+    os.utime(path, (1, 1))
+    fail_after_copy(monkeypatch)
+    pending = files.restore_backup(db, config, chosen)
+    assert pending["state"] == "uncertain"
+    result = files.backup(db, config)
+    assert result["ok"] and result["retention_state"] == "uncertain"
+    assert pending["operation_id"] in result["pending_restore"]
+    assert path.is_file() and not result["pruned"]
+
+
+@pytest.mark.parametrize("change", ["replacement", "same-inode"])
+def test_backup_artifact_is_revalidated_after_hash(restoration, monkeypatch, change):
+    db, config, chosen = restoration
+    real = files._file_sha256
+
+    def changed_after_hash(path):
+        digest = real(path)
+        if change == "replacement":
+            replacement = path.with_suffix(".replacement")
+            shutil.copyfile(chosen, replacement)
+            replacement.replace(path)
+        else:
+            path.write_bytes(chosen.read_bytes())
+        return digest
+
+    monkeypatch.setattr(files, "_file_sha256", changed_after_hash)
+    result = files.backup(db, config)
+    assert not result["ok"] and result["backup_id"]
+    assert not result["pruned"]
+
+
+def test_gui_names_unavailable_receipt(monkeypatch):
+    from mt5_extracao.ui import resources
+    from tests.test_restore_operations_ui import panel_with_worker
+    panel, work, _, _ = panel_with_worker(monkeypatch)
+    errors = []
+    monkeypatch.setattr(files, "backup_status", lambda *args: {
+        "ok": False, "backups": [], "unrecognized_receipts": ["lost.backup.json"]})
+    monkeypatch.setattr(resources.messagebox, "showerror", lambda title, text, **kwargs: errors.append(text))
+    panel.check_backup()
+    task, done = work[0]
+    done(task())
+    assert "lost.backup.json" in errors[0]
+
+
+def test_cli_names_unavailable_receipt(restoration, tmp_path, capsys):
+    from mt5_extracao import cli
+    db, config, _ = restoration
+    first = files.backup(db, config)
+    receipt = Path(first["path"]).parent / "unreadable.backup.json"
+    receipt.write_text("{")
+    config_path = tmp_path / "qa.ini"
+    with config_path.open("w") as stream:
+        config.write(stream)
+    code = cli.main(["--config", str(config_path), "--db", db.db_path, "resources", "backup-status"])
+    assert code == cli.EXIT_FAIL
+    assert str(receipt) in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("protected", ["copies", "active", "archive", "restore-control"])
+def test_generic_cleanup_preserves_data_and_control_when_directories_overlap(restoration, monkeypatch, protected):
+    db, config, chosen = restoration
+    config.set("RESOURCES", "exports_keep_days", "1")
+    if protected == "copies":
+        previous = files.backup(db, config)
+        target = Path(previous["path"])
+    elif protected == "active":
+        target = Path(db.db_path)
+    elif protected == "archive":
+        folder = files.policy_mod.archive_dir(db, files.policy_mod.load(config))
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / "own-archive.db"
+        shutil.copyfile(chosen, target)
+    else:
+        folder = files._restore_control_dir()
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / "unknown.restore.json"
+        target.write_text("{")
+    os.utime(target, (1, 1))
+    monkeypatch.setitem(files.storage.EXTRA_DIRS, "Exportações", lambda *args: target.parent)
+    result = files.clean_files(db, config)
+    assert target.is_file(), "limpeza genérica atingiu dados ou controle de outra responsabilidade"
+    assert result["ok"] and result["removed"] == 0
+
+
+def test_cleanup_preserves_restore_references_after_backup_directory_changes(restoration, monkeypatch, tmp_path):
+    db, config, chosen = restoration
+    exports = tmp_path / "exports"
+    exports.mkdir()
+    selected = exports / "selected.snapshot"
+    shutil.copyfile(chosen, selected)
+    config.set("RESOURCES", "backup_dir", str(exports / "copies"))
+    restored = files.restore_backup(db, config, selected)
+    assert restored["ok"]
+    safety = Path(restored["safety_copy"])
+    config.set("RESOURCES", "backup_dir", str(tmp_path / "new-copies"))
+    config.set("RESOURCES", "exports_keep_days", "1")
+    ordinary = exports / "own-report.csv"
+    ordinary.write_text("own QA export")
+    for path in [selected, safety, ordinary]:
+        os.utime(path, (1, 1))
+    monkeypatch.setitem(files.storage.EXTRA_DIRS, "Exportações", lambda *args: exports)
+    result = files.clean_files(db, config)
+    assert selected.is_file() and safety.is_file()
+    assert result["ok"] and result["removed"] == 1 and not ordinary.exists()

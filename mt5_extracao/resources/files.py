@@ -100,7 +100,7 @@ def _backup_receipt(path):
     return Path(path).with_suffix(".backup.json")
 
 
-def _backup_record(db, path, *, require_file=True):
+def _backup_record(db, path, *, require_file=True, match_owner=True):
     """Proveniência registrada; o hash do conteúdo é reconferido antes do expurgo."""
     path = Path(path)
     receipt = _backup_receipt(path)
@@ -109,7 +109,8 @@ def _backup_record(db, path, *, require_file=True):
             return None
         record = json.loads(receipt.read_text(encoding="utf-8"))
         json.dumps(record, allow_nan=False)
-        valid = (record["schema"] == BACKUP_SCHEMA and record["owner_key"] == session_owner_key(db, physical_only=True)
+        valid = (record["schema"] == BACKUP_SCHEMA
+                 and (not match_owner or record["owner_key"] == session_owner_key(db, physical_only=True))
                  and isinstance(record["owner_key"], str) and re.fullmatch(r"[0-9a-f]{64}", record["owner_key"])
                  and record["path"] == str(path.resolve())
                  and type(record["bytes"]) is int and record["bytes"] > 0
@@ -137,11 +138,30 @@ def _backup_record(db, path, *, require_file=True):
         return None
 
 
-def _record_backup(db, path, backup_id):
+def _unrecognized_backups(db, folder):
+    """Recibo perdido pode guardar referências que a retenção já não consegue ler."""
+    unknown = []
+    for receipt in folder.glob("*.backup.json"):
+        path = receipt.with_name(receipt.name.removesuffix(".backup.json") + BACKUP_SUFFIX)
+        if _backup_record(db, path, require_file=False, match_owner=False) is None:
+            unknown.append(str(receipt))
+    for path in folder.glob("*.db"):
+        if (re.fullmatch(r".+__\d{8}-\d{6}_[0-9a-f]{32}(?:-\d+)?\.db", path.name, flags=re.DOTALL)
+                and not _backup_receipt(path).is_file()):
+            unknown.append(str(_backup_receipt(path)))
+    return sorted(set(unknown))
+
+
+def _record_backup(db, path, backup_id, source_owner):
     """Recibo privado ao lado da fotografia nova, sem sobrescrever metadados existentes."""
     info = path.stat()
-    record = dict(schema=BACKUP_SCHEMA, owner_key=session_owner_key(db, physical_only=True), path=str(path.resolve()),
-                  bytes=info.st_size, device=info.st_dev, inode=info.st_ino, sha256=_file_sha256(path),
+    digest = _file_sha256(path)
+    after = path.stat()
+    if (info.st_dev != after.st_dev or info.st_ino != after.st_ino or info.st_size != after.st_size
+            or info.st_mtime_ns != after.st_mtime_ns or source_owner != session_owner_key(db, physical_only=True)):
+        raise ValueError("A identidade da origem ou da cópia mudou durante o preparo. Preserve os arquivos e confira a operação.")
+    record = dict(schema=BACKUP_SCHEMA, owner_key=source_owner, path=str(path.resolve()),
+                  bytes=info.st_size, device=info.st_dev, inode=info.st_ino, sha256=digest,
                   created_at=datetime.now(timezone.utc).isoformat(), backup_id=backup_id,
                   state="complete", retention=[])
     descriptor = os.open(_backup_receipt(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -208,7 +228,9 @@ def backup_status(db, config, backup_id=None):
                 records.append(record)
             if backup_id is not None and not records:
                 raise ValueError("Resultado indisponível para este ID. Consulte a lista de cópias e seus recibos.")
-            return {"ok": all(r["state"] == "complete" for r in records), "backups": records}
+            unknown = _unrecognized_backups(db, folder)
+            return {"ok": all(r["state"] == "complete" for r in records) and not unknown,
+                    "backups": records, "unrecognized_receipts": unknown}
     except (OSError, ValueError, actions.Busy) as error:
         return {"ok": False, "state": "unknown", "error": str(error)}
 
@@ -239,31 +261,38 @@ def backup(db, config, origin: str = "ui", prune: bool = True) -> dict:
         result["error"] = ("cópia automática só para SQLite; no PostgreSQL use pg_dump "
                            "(ex.: pg_dump -Fc banco > copia.dump)")
         return result
+    source_owner = session_owner_key(db, physical_only=True)
+    result["backup_id"] = uuid.uuid4().hex
     try:
         with actions.exclusive(policy_mod.archive_dir(db, policy), f"cópia ({origin})"):
-            return _backup_locked(db, config, origin, prune)
+            return _backup_locked(db, config, origin, prune, backup_id=result["backup_id"], source_owner=source_owner)
     except actions.Busy as error:
         result["error"] = str(error)
     except Exception as error:
         log.error("Falha na cópia da base: %s", error)
         result["error"] = str(error)
-        actions.audit(db, "copiar", None, origin, False, detail={"error": str(error)})
+        if source_owner is not None and source_owner == session_owner_key(db, physical_only=True):
+            actions.audit(db, "copiar", None, origin, False, detail={"error": str(error), "backup_id": result["backup_id"]})
     return result
 
 
-def _backup_locked(db, config, origin, prune, target=None):
+def _backup_locked(db, config, origin, prune, target=None, *, backup_id=None, source_owner=None):
     """Mesmo produtor de cópias, chamado com o lease de Recursos já adquirido."""
     policy = policy_mod.load(config)
     folder = backup_dir(db, policy)
     result = {"ok": False, "path": None, "bytes": None, "pruned": [], "preserved": [], "error": None}
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     source = Path(db.db_path).resolve()
+    current_owner = session_owner_key(db, physical_only=True)
+    source_owner = current_owner if source_owner is None else source_owner
+    if source_owner != current_owner:
+        raise ValueError("A identidade da base mudou antes da cópia. Confira a origem antes de outra solicitação.")
     size = sum(storage._sqlite_files(db).values())
     disk = storage.disk_usage(folder)
     if disk and disk["free"] < size * 1.1:
         raise RuntimeError(f"disco livre ({storage.human_bytes(disk['free'])}) menor que o tamanho da base "
                            f"({storage.human_bytes(size)}); a cópia não foi feita")
-    backup_id = uuid.uuid4().hex
+    backup_id = backup_id or uuid.uuid4().hex
     if target is None:
         stamp = f"{source.stem[:48]}__{datetime.now():%Y%m%d-%H%M%S}_{backup_id}"
         target, n = folder / f"{stamp}{BACKUP_SUFFIX}", 1
@@ -275,13 +304,23 @@ def _backup_locked(db, config, origin, prune, target=None):
     consistent_snapshot(source, partial)
     partial.replace(target)
     _sync_artifact(target)
-    record = _record_backup(db, target, backup_id)
+    record = _record_backup(db, target, backup_id, source_owner)
     result.update(ok=True, path=str(target), bytes=target.stat().st_size, backup_id=record["backup_id"], retention_state="complete")
     copies = list_backups(db, config) if prune else []
     result["preserved"] = [item["path"] for item in copies if not item["managed"]]
     eligible = [item for item in copies if item["managed"]]
-    if any(item["retention_state"] != "complete" for item in eligible):
-        result.update(retention_state="uncertain", error="Retenção anterior incerta. Consulte resources backup-status antes de outro expurgo.")
+    unknown, pending_restore, restore_error = [], [], None
+    if prune:
+        unknown = _unrecognized_backups(db, folder)
+        try:
+            _owner_key, _folder, restores = _restore_records(db, config)
+            pending_restore = [r["operation_id"] for r in restores if r["state"] in {"prepared", "applying", "uncertain"}]
+        except (OSError, ValueError) as error:
+            restore_error = str(error)
+    if unknown or pending_restore or restore_error or any(item["retention_state"] != "complete" for item in eligible):
+        result.update(retention_state="uncertain", error="Retenção ou restauração ainda incerta. "
+                      "Consulte resources backup-status e resources restore-status antes de outro expurgo.",
+                      unrecognized_receipts=unknown, pending_restore=pending_restore, restore_error=restore_error)
         result["pending_retention"] = [item["backup_id"] for item in eligible if item["retention_state"] != "complete"]
         result["preserved"].extend(item["path"] for item in eligible if item["path"] != str(target))
         actions.audit(db, "copiar", target.name, origin, True, detail=dict(result))
@@ -342,8 +381,17 @@ def _protected_artifacts(db, config, *, check=lambda: None):
             raise ValueError("Referência de artefato inválida; confira os registros antes de limpar arquivos.")
         path = Path(value).expanduser().resolve()
         (directories if directory else files).add(path)
-    for path in actions.control_lock_paths(policy_mod.archive_dir(db, policy_mod.load(config))):
+    policy = policy_mod.load(config)
+    if db is not None and getattr(db, "dialect", None) == "sqlite" and getattr(db, "db_path", None):
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            add(str(db.db_path) + suffix)
+    for path in actions.control_lock_paths(policy_mod.archive_dir(db, policy)):
         add(str(path))
+    for manifest in _restore_control_dir().glob("restore__*.restore.json"):
+        check()
+        record = _load_restore(manifest)
+        add(record["safety_copy"])
+        add(record["source"])
     if config is not None:
         if config.get("MT5", "path", fallback="").strip():
             from mt5_extracao.robots import mt5_tools
@@ -395,6 +443,9 @@ def _protected_artifacts(db, config, *, check=lambda: None):
 
 
 def _artifact_protected(path, files, directories):
+    if (path.suffix.lower() in {".db", ".sqlite", ".sqlite3"}
+            or path.name.endswith((".backup.json", ".restore.json"))):
+        return True
     resolved = path.resolve()
     if resolved in files or any(resolved == root or root in resolved.parents for root in directories):
         return True
@@ -414,6 +465,8 @@ def old_files(db, config, now: Optional[datetime] = None, *, check=None) -> List
     if check is not None:
         check()
     protected_files, protected_dirs = _protected_artifacts(db, config, check=check or (lambda: None))
+    for folder in (backup_dir(db, policy), policy_mod.archive_dir(db, policy), _restore_control_dir()):
+        protected_dirs.add(Path(folder).resolve())
     for label, (folder, days) in _folders(db, policy).items():
         if check is not None:
             check()

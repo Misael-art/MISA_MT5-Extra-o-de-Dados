@@ -200,3 +200,44 @@ incerto e a consulta reconciliou ausência. Recibos locais em
 descartáveis. QA gráfico do artefato final aguarda capacidade do host, ocupado
 pela VM alheia. CI do SHA publicado, Windows físico e perda de energia possuem
 aceites próprios. A causa dos reinícios do host continua sem diagnóstico.
+
+
+## DIAG-RETENCAO — fronteiras ampliadas em 12/11/2026
+
+A primeira revisão deixou passar a perda de um recibo pendente. As duas
+regressões seguintes reproduziram exclusão de outra cópia quando o recibo
+ficou ausente ou corrompido. O produtor agora conserva todos os possíveis
+alvos diante de recibo desconhecido/incompleto e de marcador de cópia sem
+recibo. Recibos válidos de outras bases conservam seu isolamento. Restauração
+pendente também impede expurgo. A consulta informa os recibos indisponíveis
+na CLI e na GUI, com cópia nova e resultado da retenção em estados próprios.
+
+Outra regressão reproduziu troca da identidade da origem após o snapshot com
+sucesso indevido. A identidade é fixada antes do lease e reconferida depois
+do snapshot/hash, incluindo a identidade do artefato. A falha conserva o ID
+da solicitação e evita auditar uma base que substituiu a origem escolhida.
+
+Quatro ensaios próprios reproduziram a limpeza genérica apagando cópia, base
+ativa, arquivo e controle quando as pastas se sobrepunham. O leitor de
+candidatos agora protege os diretórios de dados/controle, arquivos SQLite,
+recibos e arquivos auxiliares da base ativa. Referências positivas dos recibos
+de restauração conservam origem e cópia de segurança após mudar backup_dir.
+O teste de mudança de pasta demonstrou preservação dessas referências e
+remoção de um CSV próprio elegível. A guarda de referências continua no
+serviço existente, sem catálogo ou mecanismo de limpeza paralelo.
+
+Validação final com sete fontes registradas e hashes idênticos antes/depois
+teve 44 aprovados em 9,75 s, incluindo 35 casos novos e nove de restauração/
+identidade. Guardas existentes tiveram 28 aprovados e um caso gráfico sem
+DISPLAY em 7,36 s. Dois casos de limpeza/CLI passaram em 2,52 s. Doctor
+offline teve 16 OK, dois avisos e zero falhas. Resultados intermediários foram
+repetidos após a estabilização das fontes. Nenhum gate foi afrouxado.
+
+Quatro chamadas do launcher oficial com dados próprios produziram saídas
+0/1/1/1. Após perder um recibo pendente, o ciclo conservou as cópias anteriores
+e a consulta confirmou a pendência sem solicitar exclusão. Evidências em
+`retention-unknown-launcher/proof.json`, `retention-frozen-final.xml`,
+`retention-existing-frozen.xml` e `retention-final-frozen-sources.json`.
+O artefato 2066 preparado anteriormente foi marcado como superado antes de
+qualquer ativação. Publicação e composição desta revisão exigem nova
+conferência de SHA, CI e QA gráfico do artefato exato.
