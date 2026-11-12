@@ -109,15 +109,41 @@ def test_permission_denied_reading_boot_time_preserves_owner(local_boot, monkeyp
     assert process_owner.is_alive(previous_owner())
 
 
-def test_existing_resource_lease_reconciles_verified_previous_boot(local_boot, tmp_path):
+@pytest.mark.parametrize("separate_reader_denied", [False, True])
+def test_existing_resource_lease_reconciles_verified_previous_boot(
+        local_boot, tmp_path, monkeypatch, separate_reader_denied):
     from mt5_extracao.resources import actions
     folder = tmp_path / "archive"
     folder.mkdir()
     lock = folder / ".lock"
     lock.write_text(json.dumps({"resource_lock_version": 2, "identity": previous_owner(),
                                 "state": "active", "action": "controlled interrupted action"}))
+    held = []
+    original_lock = actions._lock_resource_file
+    original_read = type(lock).read_text
+
+    def observed_lock(handle, *, release=False):
+        original_lock(handle, release=release)
+        if release:
+            held.remove(handle)
+        else:
+            held.append(handle)
+
+    def read_text(path, *args, **kwargs):
+        if separate_reader_denied and path == lock and held:
+            raise PermissionError("Leitor separado impedido pelo bloqueio obrigatório")
+        return original_read(path, *args, **kwargs)
+
+    monkeypatch.setattr(actions, "_lock_resource_file", observed_lock)
+    monkeypatch.setattr(type(lock), "read_text", read_text)
     with actions.exclusive(folder, "controlled recovery"):
-        assert json.loads(lock.read_text())["state"] == "active"
+        if separate_reader_denied:
+            with pytest.raises(PermissionError):
+                lock.read_text()
+        # Windows impede um segundo handle de ler o byte bloqueado pelo lease.
+        stream = held[-1]
+        stream.seek(0)
+        assert json.loads(stream.read())["state"] == "active"
     assert json.loads(lock.read_text())["state"] == "released"
 
 

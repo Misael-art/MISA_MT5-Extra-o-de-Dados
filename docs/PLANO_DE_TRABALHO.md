@@ -4813,3 +4813,20 @@ interrompido após a cópia. O lote integrado de restauração e tempo teve 39
 aprovados em 14,20 s no Linux, com dados próprios, um processo e um thread.
 A reprodução anterior teve duas falhas e um caso compatível aprovado. CI deste
 SHA e QA do artefato composto permanecem em validação.
+
+
+## DIAG-LEASE — leitura do teste sob bloqueio em 12/11/2026
+
+A tentativa Windows1 foi cancelada prematuramente por esta tarefa após mais
+de duas horas. O log arquivado mostrou avanço até98% e uma falha anterior no
+caso de reconciliação do lease. A tentativa2 no mesmo SHA foi solicitada antes
+da leitura dessa falha. O teste abria outro descritor para ler o byte que
+mantinha bloqueado. O contrato do Windows recusa esse acesso pelo segundo
+descritor no mesmo processo. [Fonte primária](https://learn.microsoft.com/en-us/windows/win32/fileio/locking-and-unlocking-byte-ranges-in-files).
+
+Uma reprodução local com leitura externa recusada teve1 falha/1 aprovado.
+O teste passou a observar o descritor que adquiriu o lease e conserva as
+assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
+O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
+em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
+precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.
