@@ -918,3 +918,41 @@ têm aceites próprios. A inspeção do helper comum identificou que o boot Linu
 anterior fica indeterminado pelo contrato atual; próximo incremento independente
 é qualificar a prova de encerramento na mesma máquina, com testes próprios.
 CI deve ser conferido na ponta publicada.
+
+
+## DIAG-RETENCAO — cópias com proveniência, 12/11/2026
+
+O expurgo global de `*.db` apagou um arquivo desconhecido no ensaio anterior
+à correção. O produtor existente agora grava recibos privados `mt5x-backup/v1`
+ao lado das cópias, com ID estável, identidade física da origem/artefato, bytes
+e SHA-256. O nome novo inclui UUID e prefixo limitado para conservar identidade
+entre solicitações. Legado sem recibo, cópia de outra base, link, conteúdo
+alterado e schema ilegível/desconhecido são preservados. A leitura de cópia
+recente usa a proveniência registrada. O hash integral é reconferido no expurgo.
+
+`backup_keep` conta cópias reconhecidas da base atual. Intenções de retenção
+são sincronizadas no recibo antes de cada exclusão. Resultado incerto bloqueia
+novo expurgo. `resources backup-status --operation-id ID` consulta/reconcilia
+presença e identidade, sem repetir exclusões. Ausência é registrada como
+`absent`. Conteúdo conhecido presente recebe `not_applied`. Conteúdo alterado
+continua pendente. Os recibos persistem após expirar o arquivo SQLite, mantendo
+o resultado consultável. Recibos são privados, limitados a 256 KiB cada.
+A GUI mostra arquivos preservados e solicita Conferir retenção pelo worker.
+
+Validação final local teve 22 regressões novas aprovadas em 6,49 s. Um lote
+anterior de 27 casos, sobreposto, passou em 7,03 s com identidade/restauração.
+Dois casos existentes de cópia/CLI foram reexecutados separadamente. O lote
+integrado inicial foi interrompido por orçamento após 31 aprovados em 101,74 s,
+com recibo e resultados parciais preservados. O maior processo observado nesse
+lote teve cerca de 155 MiB RSS, com RAM disponível acima de 6 GiB e 48 °C na
+medição. A estimativa de duração desse lote foi excedida e o restante foi
+dividido. Doctor offline teve 16 OK, dois avisos e zero falhas.
+
+Launcher oficial em quatro chamadas próprias confirmou retenção, arquivo
+desconhecido com valor 7 preservado, recibo conservado e consulta do ID expirado.
+Outro ensaio CLI com falha controlada após excluir retornou código 1/estado
+incerto e a consulta reconciliou ausência. Recibos locais em
+`state/qa-tmp/diagnostico-20261112/retention-*`. Os bancos dos ensaios são
+descartáveis. QA gráfico do artefato final aguarda capacidade do host, ocupado
+pela VM alheia. CI do SHA publicado, Windows físico e perda de energia possuem
+aceites próprios. A causa dos reinícios do host continua sem diagnóstico.

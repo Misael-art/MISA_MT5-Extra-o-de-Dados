@@ -30,6 +30,8 @@ def add_parser(sub) -> None:
     q = rs.add_parser("backup", help="cópia de segurança conferida da base (SQLite), guardando as mais novas")
     q.add_argument("--yes", action="store_true")
     rs.add_parser("backups", help="lista as cópias de segurança")
+    q = rs.add_parser("backup-status", help="consulta e reconcilia retenção incerta sem repetir exclusões")
+    q.add_argument("--operation-id", help="ID retornado por backup ou backups")
     q = rs.add_parser("restore-backup", help="volta a base inteira a uma cópia (guarda antes o estado atual)")
     q.add_argument("path")
     q.add_argument("--yes", action="store_true")
@@ -322,6 +324,19 @@ def run(args: argparse.Namespace, ctx) -> int:
             else f"Cópia não feita: {result['error']}")
         for old in result["pruned"]:
             out(f"Cópia antiga apagada: {old}")
+        if result.get("preserved"):
+            out(f"{len(result['preserved'])} arquivo(s) preservado(s) pela conferência de posse, conteúdo ou recuperação.")
+        if result.get("retention_state") == "uncertain":
+            err(result["error"])
+        data(**result)
+        return cli.EXIT_OK if result["ok"] and result.get("retention_state") != "uncertain" else cli.EXIT_FAIL
+
+    if command == "backup-status":
+        result = files.backup_status(db, config, args.operation_id)
+        for item in result.get("backups", []):
+            out(f"{item['backup_id']}\t{item['state']}\t{item['path']}")
+        if result.get("error"):
+            err(result["error"])
         data(**result)
         return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
 
@@ -376,7 +391,9 @@ def run(args: argparse.Namespace, ctx) -> int:
     if command == "backups":
         items = files.list_backups(db, config)
         for b in items:
-            out(f"{b['path']}\t{hb(b['bytes'])}\t{b['created_at']:%Y-%m-%d %H:%M}")
+            provenance = "recibo da base atual" if b.get("managed") else "preservada sem recibo válido da base atual"
+            out(f"{b['path']}\t{hb(b['bytes'])}\t{b['created_at']:%Y-%m-%d %H:%M}\t{provenance}\t"
+                f"{b.get('backup_id') or ''}\t{b.get('retention_state') or 'unknown'}")
         out(f"\n{len(items)} cópia(s). Para voltar: resources restore-backup CAMINHO --yes.")
         data(backups=items)
         return cli.EXIT_OK
