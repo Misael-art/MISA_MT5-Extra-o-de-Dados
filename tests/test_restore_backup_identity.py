@@ -1,5 +1,6 @@
 """Restauração usa exatamente a cópia escolhida, inclusive nomes especiais."""
 import configparser
+import os
 import sqlite3
 
 import pytest
@@ -52,7 +53,7 @@ def test_invalid_source_never_replaces_active_database(tmp_path, kind):
         elif kind == "active":
             chosen = tmp_path / "active.db"
         elif kind == "active_alias":
-            chosen.hardlink_to(tmp_path / "active.db")
+            os.link(tmp_path / "active.db", chosen)
         result = files.restore_backup(db, cfg, chosen)
         assert not result["ok"]
         assert result["safety_copy"] is None

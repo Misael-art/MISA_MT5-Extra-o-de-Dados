@@ -98,3 +98,20 @@ Confira ambos e os hashes runtime. O checkout único e seu índice principal
 permanecem preservados. Retorno primário `development-650656fac67d`,
 com retorno histórico adicional `development-57d13ee91620`. Os ambientes,
 dados e configuração atuais são reutilizados por links.
+
+
+## Composição de diagnóstico em12/11/2026
+
+A branch `codex/composicao-diagnostico-20261112` reúne as fontes públicas
+revisadas de configuração, dados, Laboratório, Drive e restauração. A fila
+com owners, SHAs, evidências e próximos passos está em [continuidade](../CONTINUAR_AQUI.md).
+O destino efetivo de `app-development` e o `mt5x-release.json` identificam
+a prévia usada pelo atalho. A conferência do artefato e os checks se referem
+à fonte publicada. Retorno, ambiente e dados são preservados.
+
+A restauração inclui intenção durável, consulta e recuperação explícita.
+Teve31 regressões focadas, seis casos existentes em lote próprio, CLI oficial
+e GUI XWayland em SQLite sintético, com preferências isoladas. O CI do SHA
+publicado e os aceites de hardware, entrada física, login, falha de energia
+e operação nativa têm registros próprios. Seções datadas anteriores conservam
+suas fotografias históricas.

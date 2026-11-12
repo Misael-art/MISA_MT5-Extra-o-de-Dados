@@ -4656,3 +4656,20 @@ com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidência
 e próximos passos estão na fila de [continuidade](../CONTINUAR_AQUI.md). Prévia identificada
 pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
 OAuth real, entrada física e observação prolongada conservam aceites próprios.
+
+
+## Composição de diagnóstico em12/11/2026
+
+A branch `codex/composicao-diagnostico-20261112` reúne as fontes públicas
+revisadas de configuração, dados, Laboratório, Drive e restauração. A fila
+com owners, SHAs, evidências e próximos passos está em [continuidade](../CONTINUAR_AQUI.md).
+O destino efetivo de `app-development` e o `mt5x-release.json` identificam
+a prévia usada pelo atalho. A conferência do artefato e os checks se referem
+à fonte publicada. Retorno, ambiente e dados são preservados.
+
+A restauração inclui intenção durável, consulta e recuperação explícita.
+Teve31 regressões focadas, seis casos existentes em lote próprio, CLI oficial
+e GUI XWayland em SQLite sintético, com preferências isoladas. O CI do SHA
+publicado e os aceites de hardware, entrada física, login, falha de energia
+e operação nativa têm registros próprios. Seções datadas anteriores conservam
+suas fotografias históricas.
