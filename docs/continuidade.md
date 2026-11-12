@@ -6390,3 +6390,126 @@ Recibos `session-control/gui{4,5,6}`. `PROTECTION_APPROVED_FINGERPRINT` e
 `PROTECTION_HADOUKEN_REVISION` passam ao candidato medido; o fingerprint anterior
 `2e0a4bf209628c86` continua nas evidências. Manifesto do novo host aponta o
 HADOUKEN `2809938`. Pendentes: DEMO do `session.close_out`, netting e Windows físico.
+
+## Diagnóstico reconferido em 12/11/2026
+
+A fila vigente desta passagem está em [CONTINUAR_AQUI](../CONTINUAR_AQUI.md).
+Os registros anteriores conservam seu contexto histórico. Cada SHA de código,
+check e aceite precisa ser associado à composição efetivamente executada.
+
+### Arquitetura e posse verificadas
+
+| Caminho oficial | Responsabilidade e evidência de conexão |
+|---|---|
+| `run.sh`, `run.bat`, `app.py`, `cli.py` | GUI Tk e CLI `mt5x`. O entrypoint está em `pyproject.toml`. O launcher Linux consulta `launch_policy` para comandos locais e usa a ponte nos demais. `--offline --cli` está limitado ao Drive na fonte atual |
+| `services.py`, `bootstrap/config_builder.py` | Configuração e montagem compartilhadas. Defaults e arquivo de exemplo preservam instalações antigas. `services.load_config` usa UTF-8 e leitura literal. O corretivo da GUI está na PR299 |
+| `mt5_connector.py`, `mt5_backend.py`, `scripts/mt5_bridge_server.py` | Acesso a mercado. Windows usa o pacote MetaTrader5 e Linux usa RPyC/Wine. O contrato da ponte permite leitura de mercado. Operações financeiras pertencem aos Experts/HADOUKEN/Safety |
+| `database_manager.py`, `analytics/datasets.py`, `analytics/feature_store.py` | Dono Dados/F13. Registro de símbolos/tabelas, relógio, qualidade, namespace, revisões congeladas e referências. SQLite e PostgreSQL compartilham o serviço. Transporte de snapshots existente preserva manifesto e validação |
+| `robots/backtest.py`, `robots/runner.py`, `robots/budget.py`, `robots/store.py` | Produtor, executor e checkpoint existentes. Identidade de execução Python qualificada liga dados, código, parâmetros, regras, custos e runtime. Retomada usa IDs persistidos |
+| `trade_analytics/ledger.py`, `enrich.py`, `cache.py`, `aggregate.py`, `context.py` | Dono Dados/Laboratório F16. Livro persistido, enriquecimento aditivo e lentes descritivas. A GUI usa `LaboratoryPanel.load_lab` e `ui.run_bg`, com atualização de widgets no loop Tk |
+| `presets/`, `sdk.py`, `robots/sessions.py` | Dono Presets/F19 e integração SDK. Seleção, compilação e sessões usam contratos existentes. Aceites operacionais dependem dos pins dos componentes e de ambiente permitido |
+| `resources/files.py`, `cloud_drive.py`, `drive_backup.py`, `ui/drive_panel.py` | Dono Recursos/Dados. Snapshot SQLite, manutenção, identidade de conta e cofre, envio cifrado retomável, verificação e ensaio isolado. PR302 integrada e múltiplas contas na PR303 com CI aprovado |
+| `dashboard/`, `ui_manager.py` | Clientes dos serviços. A prévia instalada inclui Biblioteca da PR300. Estado, consultas e ações precisam preservar a operação assíncrona e os mesmos contratos |
+
+Os donos acima são responsabilidades dos contratos do projeto. A pasta `.github`
+foi conferida e não contém CODEOWNERS. A composição usa três repositórios e um
+ambiente App. Dependências de produção declaradas incluem Python 3.11+, pandas,
+NumPy, SQLAlchemy, SciPy, Matplotlib, Pillow, psutil, dotenv, cryptography,
+requests/Flask, MetaTrader5 no Windows e RPyC no Linux. Parquet/DuckDB, psycopg
+e keyring têm caminhos opcionais. A indisponibilidade de `pandas_ta` foi
+observada na GUI de QA, que declarou o uso das implementações básicas existentes.
+Nenhuma dependência foi instalada nesta passagem.
+
+### Estado integrado e validação
+
+O checkout único do App está em `codex/launcher-classes`, HEAD `550b6d5`, com
+WIP anterior preservado e sem upstream configurado. Master remoto `09a618c`
+e prévia efetiva `650656f` são referências diferentes. A prévia tem 354 hashes
+conferidos, e o retorno `57d13ee` tem 341. O recibo local
+`state/development-preview.json` ainda cita `784a252`. O destino efetivo do link
+e o manifesto da release foram conferidos. HADOUKEN `d4d389e` está limpo em
+branch e Safety `27b8599` limpo detached, conforme observado neste host.
+
+PR303 já implementou múltiplas contas Drive e tem os seis jobs aprovados.
+PR299 recebeu o uso de configuração compartilhada na GUI, PR305 corrige
+excursões nas lentes e o custo ask em vendas, e PR304 recebeu auditoria de
+ticks v2. O agrupamento de backtests repetidos está em validação própria.
+Detalhes, SHAs e checklists atualizados ficam na fila única do handoff.
+Os incrementos abertos têm integração em master e na prévia pendentes.
+
+As verificações locais usaram SQLite próprio e entradas sintéticas, com o
+produtor real, CLI oficial e janelas próprias no compositor XWayland. MAE/MFE
+foram confirmados na GUI, e a alternância entre amostra agrupada e integral
+foi observada. Os callbacks e a carga da GUI passaram pelo controlador ativo.
+Testes focados cobriram configuração, cache legado, preservação do livro,
+qualificação de ticks, identidade de execução e seleção explícita.
+CI de PostgreSQL é evidência específica desse backend nos SHAs registrados.
+Windows CI, Windows físico, MT5/Tester, DEMO e entrada física têm aceites próprios.
+
+### Lacunas e riscos com dependências
+
+A auditoria inicial reproduziu falhas de configuração literal na GUI,
+MAE/MFE ocultos pelo merge do enriquecimento e flags de ticks não finitas.
+A repetição de execuções inflava a população das lentes. As correções usam
+os serviços e contratos existentes. O suposto defeito de nomes de símbolos
+com separador foi descartado após seguir `refresh_inventory` até a identidade
+registrada. O caminho antigo chama um método de compatibilidade vazio.
+
+O cancelamento/retomada apresentou falha no Windows CI anterior e timeout
+posterior em COMMIT. Dois testes dirigidos passam no Linux. A hipótese de
+conexão com lock retido exige reprodução e instrumentação no alvo antes de
+uma mudança de pool, journal ou timeout. Os logs disponíveis não estabelecem
+uma causa única. Falhas futuras devem preservar stack, teste, SHA e ambiente.
+
+Pacotes Drive por ativo e reunião em QA continuam planejados. O snapshot de
+base e o transporte de uma revisão já existem. O aceite do pacote exige
+inventário completo das famílias/tabelas e dependências, namespace, relógio,
+revisões e hashes. A reunião exige plano de leitura, conflitos explícitos,
+idempotência, transação e consumidores preservados. OAuth/conta/pasta reais e
+proteção privada independente dependem do fluxo do proprietário após o aceite
+sintético conjunto. Drive PostgreSQL exige dump/restauração próprios.
+
+T13.4-P08…P11 dependem do marco M1 aceito. Os resultados registrados para a
+cadeia atual reprovam ou não atingem amostra/economia suficientes. F19/F20
+mantêm as dependências de executores, risco e aceites nativos dos pins.
+Documentação, CI e simulação pertencem aos escopos descritos em cada recibo.
+
+O host tem histórico de reinícios sem diagnóstico conclusivo nesta passagem.
+A proteção aplicada consiste em reservar RAM e disco, medir PSI/swap/temperatura,
+limitar paralelismo e adiar testes durante a VM de outro projeto. Recursos livres
+variaram com o trabalho concorrente. A inspeção desta passagem preservou todos
+os processos alheios. O próximo passo de execução e o orçamento ficam no handoff.
+
+
+A [PR302](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/302) recebe somente correções do objetivo original de SQLite/uma conta: recuperação fora de argv/JSON/logs, entrada oculta, snapshot de Recursos reutilizado, estados separados de envio/checksum/restauração, identidade remota estável e retomada após interrupção. Falha conserva a última cópia boa e o preparo cifrado. Downloads acima de 70 MB são manuais e têm plano/conferência local; restauração confere SHA-256, contagens e integridade.
+
+Baseline: 63 testes. Regressão integrada: 99 aprovados em 42,8 s; pico observado da árvore de processos 315,4 MiB; CPU 29,6 s usuário/3,2 s sistema. I/O informado pelo SO: 2.008 blocos de entrada/1.034.576 de saída (512 B). Ajuste final de erro do cofre: 28 testes focados aprovados, com sobreposição. ShellCheck passou; doctor offline: 16 OK/2 avisos/0 falhas. Launcher oficial Linux/Xvfb com série sintética: verificar → enviar → ensaiar restauração, zero erros de callback. Não é aceite OAuth/Drive real, CI do novo SHA, Windows físico, MT5/DEMO ou PostgreSQL.
+
+Prévia efetiva conferida em 07/11: `650656fac67d` (PR300), 354 hashes sem divergência; retorno `57d13ee` preservado. O atalho não foi atualizado neste lote. HADOUKEN `d4d389e` preservado em branch; Safety `27b8599` detached.
+
+Checkout do App continua em `codex/launcher-classes`/`550b6d5`, com WIP alheio preservado. A publicação Drive usa índice separado sobre o SHA remoto da PR302, sem transportar as outras frentes ou trocar a branch do checkout. A cópia local do WIP tem manifesto e hashes verificados; proteção independente pendente, pois a página privada registrada não está acessível nesta sessão. Btrfs permaneceu em 6.741 corrupções acumuladas; isso não diagnostica a causa dos reinícios. Nenhum scrub/reparo/limpeza foi executado.
+
+Próximos incrementos, em PRs distintas e dependentes: contas múltiplas com identidade estável e cofre isolado; pacotes por ativo com inventário/dependências; reunião em QA com conflitos explícitos e consumidores existentes. O proprietário fará consentimento e testes reais só depois da aprovação sintética conjunta. Nenhum dado privado enviado.
+
+## Diagnóstico e composição conferidos em 12/11/2026
+
+A fila vigente, a arquitetura, os owners e o roteiro priorizado estão em
+[CONTINUAR_AQUI](../CONTINUAR_AQUI.md). A fonte composta é PR308 `561152b`,
+com PR307 `c296538`, PR309 `2a5638d` e runtime PR310 `fdbe0d9`; a ponta
+documental da PR310 é `97da399`, com conflito de recibos resolvido e CI iniciado.
+A prévia efetiva continua `650656f` enquanto os gates pertinentes executam.
+
+O artefato tem365 hashes do Git publicado e6.378.666B. Launcher real XWayland
+confirmou restauração/recuperação7→99, relógio incompatível recusado, cópia e
+consulta de retenção pelo worker, com preferências próprias. Observação adicional
+de180s teve4.168 pulsos, seis leituras, três temas e zero erros de callback.
+Pico272,6MiB, mínimo7,73GiB disponíveis e máximo68°C. São solicitações
+instrumentadas na janela visível; entrada física, tecnologia assistiva, login,
+maior duração e alvos nativos possuem aceites próprios.51 regressões finais
+passaram em14,75s, com oito fontes estáveis por hash. Doctor16/2/0 offline.
+
+Windows309 foi cancelado prematuramente após mais de duas horas. O log arquivado
+provou avanço até98%; a repetição foi solicitada somente para o job Windows no
+mesmo SHA, preservando o histórico. Os demais CIs continuam com estado próprio.
+A pergunta sobre destino da reunião em QA aguarda resposta. Base privada não
+foi fixture; seus bytes/mtime ativos permaneceram iguais na conferência final.
