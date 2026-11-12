@@ -796,6 +796,7 @@ def restore_backup(db, config, backup_path, origin: str = "ui", *, operation_id=
                             raise RuntimeError("A base trocada diverge da fotografia escolhida.")
                 finally:
                     db.engine.dispose()
+                    db._time_basis_checked = False
                     if isinstance(getattr(db, "_table_cache", None), dict):
                         db._table_cache.clear()
                 result.update(ok=True, state="succeeded")
