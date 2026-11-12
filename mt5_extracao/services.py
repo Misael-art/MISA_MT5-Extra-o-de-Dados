@@ -80,7 +80,8 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> configparser.ConfigPa
         raise FileNotFoundError(
             f"Arquivo de configuração não encontrado: {config_path}. "
             "Execute o instalador ou: python -m mt5_extracao.bootstrap configure")
-    config = configparser.ConfigParser()
+    # Sem interpolação, como doctor/bootstrap: '%' em URLs (ex.: search_path%3D) é literal.
+    config = configparser.ConfigParser(interpolation=None)
     config.read(config_path, encoding="utf-8")
     return config
 
