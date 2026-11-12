@@ -4673,3 +4673,34 @@ e GUI XWayland em SQLite sintético, com preferências isoladas. O CI do SHA
 publicado e os aceites de hardware, entrada física, login, falha de energia
 e operação nativa têm registros próprios. Seções datadas anteriores conservam
 suas fotografias históricas.
+
+
+## DIAG-LEASE-REBOOT — identidade e retomada em 12/11/2026
+
+O helper comum preserva o digest legado e passa a registrar boot e namespace
+Linux com a identidade de processos novos. Um boot anterior só prova término
+quando o digest confirma a mesma máquina, o UUID/namespace são válidos e o
+processo é anterior ao boot atual. Host estrangeiro, namespace divergente no
+mesmo boot, identidade parcial, erro de leitura e registro legado sem essa
+prova continuam preservados. O protocolo Windows conserva seu escopo existente.
+
+Foram reproduzidas retomadas indevidas com identidade ausente/incompleta,
+estado desconhecido e histórico de job corrompido. A fila existente agora
+revalida a identidade do solicitante, estado, tempo e histórico antes do CAS,
+na mesma transação. Consulta sem claim continua disponível. A recuperação do
+produtor e o lease de Recursos usam o mesmo helper. Nenhum scheduler foi criado.
+
+Validação local em Python 3.11.15, um processo e BLAS/OMP em um thread. Lotes
+focados reuniram 43 casos distintos aprovados, com sobreposição entre lotes.
+Os três casos finais de posse ativa, publicação interrompida e histórico de
+falha passaram em 5,76 s. O launcher oficial criou uma cópia SQLite própria,
+gravou evidência de boot e liberou o lease. Doctor offline teve 16 OK, dois
+avisos e zero falhas. Recibos locais estão em
+`state/qa-tmp/diagnostico-20261112/lease-*.xml` e `lease-launcher/proof.json`
+da composição. VM alheia preservada; RAM disponível observada próxima de
+6 GiB, sem ensaio de carga, alteração de serviços ou dados do proprietário.
+
+Aceites restantes incluem CI do SHA publicado, Windows físico e reinício
+físico em janela autorizada. Os metadados de boot das regressões são
+controlados. A trava real inspecionada já estava liberada, sem reparo manual.
+As evidências desta correção não diagnosticam a causa dos reinícios do host.
