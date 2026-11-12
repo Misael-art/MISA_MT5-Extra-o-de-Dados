@@ -10,13 +10,12 @@ com HADOUKEN na [PR84](https://github.com/Misael-art/projeto-indicadores-mt5/pul
 e Safety na [PR11](https://github.com/Misael-art/mt5x-safety/pull/11). São
 revisões abertas; não equivalem a merge ou aceite operacional.
 
-O atalho de desenvolvimento instalado executa a prévia `784a252`; o retorno
-conferido é `57d13ee` ([composição e retorno](CONTINUAR_AQUI.md)). No
+O atalho de desenvolvimento instalado ainda executa a prévia `57d13ee`. No
 checkout, `./run.sh` abre a GUI e `./run.sh --cli` abre a CLI. A branch local
 separada de correção da GUI permite `./run.sh --offline --config <arquivo-de-QA>`
 para uma configuração/base isolada; ela ainda não está nesta fonte.
-O estudo documental T13.4-P00 e os incrementos P01–P07 estão integrados no
-master, com implementação e ensaios sintéticos até os consumidores. A GUI
+O estudo documental T13.4-P00 e os incrementos P01–P07 estão em branches locais
+encadeadas, com implementação e ensaios sintéticos até os consumidores. A GUI
 da composição local de QA anterior exibiu um recibo sintético persistido em
 Padrões pelo launcher; essa composição não está instalada;
 nenhum candidato ou dado real foi aprovado por isso. A branch LAB-03 acrescenta
@@ -166,3 +165,7 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 Este projeto é licenciado sob os termos da licença MIT.
 Agentes e engenheiros: [workflow completo por CLI/SDK, sem cliques](docs/agente.md).
+
+## Estado conferido em 12/11/2026
+
+Master remoto `09a618c`. A prévia efetiva do atalho executa `650656f` (PR300), com 354 hashes conferidos. O retorno `57d13ee` tem 341 hashes conferidos. PR302 está integrada e PR303 já implementou múltiplas contas Drive com CI aprovado. Correções adicionais de configuração, excursões e ticks estão em revisão nas PRs299, 305 e 304. A fila e o diagnóstico atualizados ficam em [CONTINUAR_AQUI](CONTINUAR_AQUI.md) e [continuidade](docs/continuidade.md). Os parágrafos anteriores conservam seu contexto histórico.

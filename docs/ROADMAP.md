@@ -7,7 +7,7 @@ GUI e Dashboard. Os testes sintéticos e o launcher offline de QA passaram nos
 recortes registrados em [continuidade](continuidade.md). Publicação das PRs,
 Windows CI/físico, PostgreSQL da campanha, fonte real elegível e seus gates nativos
 permanecem abertos; o marco T13.4-M1 não está aceito. P08–P11 seguem planejados.
-A prévia instalada é `784a252` desde 04/11/2026; o retorno conferido é `57d13ee`.
+A prévia instalada continua em `57d13ee`, anterior à ponta E14 e ao estudo.
 Em LAB-03, a matriz já alinhava cabeçalho e corpo nesta fonte e uma regressão
 de rolagem/resize passou; em LAB-04, os testes existentes de cores por magnitude,
 zero/ausência e amostra no detalhe passaram (3 casos). LAB-01…10 ainda têm os
@@ -435,3 +435,7 @@ reutiliza os contratos operacionais; correlações não aplicam regras automatic
 Comparação financeira da mesma revisão de preset, inspetor temporal vinculado,
 convergência dos catálogos nativo/histórico e gerador automático mantêm seus donos,
 dependências e aceites próprios. O pilar de dados não é reimplementado nesta frente.
+
+## Conferência de 12/11/2026
+
+A fila ativa e os aceites de cada incremento estão em [CONTINUAR_AQUI](../CONTINUAR_AQUI.md). PR302 integrada e PR303 implementada com seis jobs de produto aprovados. Pacotes por ativo, reunião em QA e OAuth real seguem os contratos de Recursos/Dados. A prévia efetiva é `650656f` e o retorno é `57d13ee`, conferidos por manifesto. O marco M1 continua pendente de aceite. Registros anteriores deste roadmap são históricos.

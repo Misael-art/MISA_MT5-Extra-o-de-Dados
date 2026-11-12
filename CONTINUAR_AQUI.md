@@ -1,59 +1,5 @@
 # Retomar MT5X em um host limpo
 
-## Lote de lacunas — 06/11/2026
-
-Um incremento por PR, todos sobre `master` `06b78eb`; nenhum merge feito.
-
-| Passo | PR | Estado |
-|---|---|---|
-| 1 Composição e retorno | [295](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/295) | Docs/registro; retorno `57d13ee` conferido por hash, arranque não exercitado |
-| 2 B3/Binance | [293](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/293) `35ad88c` | Recusa sem gravar, relógio por fonte, MN1 por calendário, filtro e erro estruturado; amostra pública real conferida; CI verde |
-| 3 LAB-08 | [294](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/294) | Selo de conteúdo v1, leitura legada declarada, envelope do estudo; CI verde. LAB-01…10 pelo atalho, tema/DPI/monitor físico pendentes |
-| 4 Launcher, Python, BD18a | [296](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/296) | Consultas locais sem ponte, Python ≥3.11, bancada BD18a (linear na seleção; sem otimização) |
-| 5 T13.4-M1 | [297](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/297) | Cadeia real EURUSD H1 em SQLite/PostgreSQL, zero aprovados; simulação econômica bloqueada pelo contrato de custo |
-| 6 E14 painel | [298](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/298) | Compila 0/0; bateria estática aprovada; backtest real 0 operações (painel só manual) |
-| Achado | [299](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/299) | `config.ini` sem interpolação na CLI/conector |
-
-Pendentes com dono: passo 7 (Drive) aguarda cliente OAuth do proprietário; DEMO ao vivo
-exige autorização vigente e janela; netting exige conta netting; Windows físico exige host;
-recuperação/capacidade/pendentes/risco agregado exigem escopo nos pins HADOUKEN/Safety;
-M1 econômico exige custo conhecido antes de janela prospectiva e plano P04. Teste Windows
-`test_backtest_scope_assets` expira de forma intermitente só no Windows CI (PR 299 `[ram]`, PR 298
-`[3]`, esta só de docs): o worker espera o lock SQLite em `ledger.ensure_table` sem outra thread
-ativa, indicando conexão ociosa com lock (journal rollback, timeout 30 s). Defeito do `master`, não
-das PRs; corrigir exige reprodução no Windows e decisão sobre WAL/vida das conexões em ficha própria.
-
-## Composição conferida — 06/11/2026
-
-Conferência local deste host, sem instalar, trocar nem limpar releases.
-
-| Elemento | Estado verificado |
-|---|---|
-| `master` remoto | `06b78eb` (merge da PR292 sobre `784a252`; acréscimo só no handoff) |
-| Prévia do atalho | `~/.local/share/mt5x/app-development` → `releases/development-784a25210b04`, App `784a252`; 350 arquivos conferidos pelo `mt5x-release.json`, sem divergência |
-| Atalhos | `~/.local/share/applications/` e área de trabalho: mesmo `mt5-extracao.desktop` (SHA-256 `bf617cb5…`), executável, `Exec` no `run.sh` da prévia |
-| Retorno | `releases/development-57d13ee91620`, App `57d13ee` (ancestral do master); 341 arquivos conferidos, sem divergência; links de dados resolvem |
-| PR293 dados públicos | `35ad88c` (correções B3/Binance sobre `e5fa91e`/`7bb510f`) |
-| PR294 LAB-08 | `46cfc2e` (selo de conteúdo v1 e envelope do estudo) |
-| Pins | HADOUKEN `d4d389ee`, Safety `27b8599`, detached |
-
-Correções de registros anteriores: o recibo `state/development-preview.json`
-citado abaixo não existe neste host; o recibo efetivo é o `mt5x-release.json`
-de cada release. O alias `app-current` não existe; o destino de retorno é a
-release `57d13ee` acima.
-
-Retorno (troca atômica do link, com a janela do App fechada):
-
-```bash
-cd ~/.local/share/mt5x && ln -sfn releases/development-57d13ee91620 app-development.next && mv -T app-development.next app-development
-```
-
-Antes de usar, conferir de novo os hashes do manifesto da release. Limitação:
-a release de retorno reutiliza `.venv`, base, configuração e logs atuais por
-links; o arranque de `57d13ee` sobre esse estado não foi exercitado nesta
-conferência. Para voltar à prévia, repetir o comando com
-`releases/development-784a25210b04`.
-
 ## Integração no master e prévia — 04/11/2026
 
 Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs
@@ -868,3 +814,122 @@ posteriores à coleta estão no próximo delta. Credenciais/contas/configuraçõ
 resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+## Lote de lacunas — 06/11/2026
+
+Um incremento por PR, todos sobre `master` `06b78eb`; nenhum merge feito.
+
+| Passo | PR | Estado |
+|---|---|---|
+| 1 Composição e retorno | [295](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/295) | Docs/registro; retorno `57d13ee` conferido por hash, arranque não exercitado |
+| 2 B3/Binance | [293](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/293) `35ad88c` | Recusa sem gravar, relógio por fonte, MN1 por calendário, filtro e erro estruturado; amostra pública real conferida; CI verde |
+| 3 LAB-08 | [294](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/294) | Selo de conteúdo v1, leitura legada declarada, envelope do estudo; CI verde. LAB-01…10 pelo atalho, tema/DPI/monitor físico pendentes |
+| 4 Launcher, Python, BD18a | [296](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/296) | Consultas locais sem ponte, Python ≥3.11, bancada BD18a (linear na seleção; sem otimização) |
+| 5 T13.4-M1 | [297](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/297) | Cadeia real EURUSD H1 em SQLite/PostgreSQL, zero aprovados; simulação econômica bloqueada pelo contrato de custo |
+| 6 E14 painel | [298](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/298) | Compila 0/0; bateria estática aprovada; backtest real 0 operações (painel só manual) |
+| Achado | [299](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/299) | `config.ini` sem interpolação na CLI/conector |
+
+Pendentes com dono: passo 7 (Drive) aguarda cliente OAuth do proprietário; DEMO ao vivo
+exige autorização vigente e janela; netting exige conta netting; Windows físico exige host;
+recuperação/capacidade/pendentes/risco agregado exigem escopo nos pins HADOUKEN/Safety;
+M1 econômico exige custo conhecido antes de janela prospectiva e plano P04. Teste Windows
+`test_backtest_scope_assets` expira de forma intermitente só no Windows CI (PR 299 `[ram]`, PR 298
+`[3]`, esta só de docs): o worker espera o lock SQLite em `ledger.ensure_table` sem outra thread
+ativa, indicando conexão ociosa com lock (journal rollback, timeout 30 s). Defeito do `master`, não
+das PRs; corrigir exige reprodução no Windows e decisão sobre WAL/vida das conexões em ficha própria.
+
+
+## Composição conferida — 06/11/2026
+
+Conferência local deste host, sem instalar, trocar nem limpar releases.
+
+| Elemento | Estado verificado |
+|---|---|
+| `master` remoto | `06b78eb` (merge da PR292 sobre `784a252`; acréscimo só no handoff) |
+| Prévia do atalho | `~/.local/share/mt5x/app-development` → `releases/development-784a25210b04`, App `784a252`; 350 arquivos conferidos pelo `mt5x-release.json`, sem divergência |
+| Atalhos | `~/.local/share/applications/` e área de trabalho: mesmo `mt5-extracao.desktop` (SHA-256 `bf617cb5…`), executável, `Exec` no `run.sh` da prévia |
+| Retorno | `releases/development-57d13ee91620`, App `57d13ee` (ancestral do master); 341 arquivos conferidos, sem divergência; links de dados resolvem |
+| PR293 dados públicos | `35ad88c` (correções B3/Binance sobre `e5fa91e`/`7bb510f`) |
+| PR294 LAB-08 | `46cfc2e` (selo de conteúdo v1 e envelope do estudo) |
+| Pins | HADOUKEN `d4d389ee`, Safety `27b8599`, detached |
+
+Correções de registros anteriores: o recibo `state/development-preview.json`
+citado abaixo não existe neste host; o recibo efetivo é o `mt5x-release.json`
+de cada release. O alias `app-current` não existe; o destino de retorno é a
+release `57d13ee` acima.
+
+Retorno (troca atômica do link, com a janela do App fechada):
+
+```bash
+cd ~/.local/share/mt5x && ln -sfn releases/development-57d13ee91620 app-development.next && mv -T app-development.next app-development
+```
+
+Antes de usar, conferir de novo os hashes do manifesto da release. Limitação:
+a release de retorno reutiliza `.venv`, base, configuração e logs atuais por
+links; o arranque de `57d13ee` sobre esse estado não foi exercitado nesta
+conferência. Para voltar à prévia, repetir o comando com
+`releases/development-784a25210b04`.
+
+
+## Fila de diagnóstico e correções — 12/11/2026
+
+Owner escritor desta passagem: **Codex, diagnóstico/integração**. Checkout único
+`repos/app`, branch `codex/launcher-classes`, HEAD `550b6d5`; índice principal e
+WIPs anteriores preservados. Inspeção de processos encontrou esta sessão Codex,
+sem outra suíte ou escritor MT5X identificado. Isso não presume abandono de frentes.
+Publicação de correções usa índice separado sobre a ponta da PR correspondente,
+sem trocar a branch nem transportar WIP alheio. Sem merge/release/DEMO.
+
+Reconferência de 12/11. Master remoto `09a618c` integrou PR302 (`f60832c`).
+PR296 `0285bd4`, PR300 `650656f` e PR303 `37cf1a3` têm seis jobs de produto
+aprovados. PR299 `d0ea937` e PR305 `38304e0` têm cinco aprovados e Windows
+em andamento. PR304 `dc17f49` tem PostgreSQL, lint e instaladores aprovados,
+com Ubuntu/Windows em andamento. Na execução anterior `061e061`, Windows
+reprovou em `test_partial_product_resource_guard_and_cancel_resume_exactly_once[cancel]`.
+Prévia efetiva `650656f`: 354 hashes aprovados; retorno `57d13ee`: 341 hashes
+aprovados. `state/development-preview.json` existe, mas ainda declara `784a252`;
+o manifesto da release e o destino efetivo do link prevalecem. HADOUKEN `d4d389e`
+limpo em branch; Safety `27b8599` limpo detached. Não foram repinados.
+
+| ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
+|---|---|---|---|---|
+| DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | em validação | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. Conferir SHA remoto e CI de produto |
+| DIAG-EXCURSOES | MAE/MFE disponíveis nas lentes e custo ask em vendas / Dados/Laboratório | em validação | PR305 `38304e0`, `codex/lab-excursoes` | Publicado e PR criada. 38 testes de excursões/enriquecimento/agregação e 21 de cache/livro/importação/CLI aprovados em lotes separados. Lote final 13 aprovados/1 PG sem servidor. Inclui legado, preservação do livro, point inválido e spread calibrado. QA por launcher CLI em base sintética confirmou ask e estado. GUI real XWayland pelo launcher aprovada em janela própria, com MAE 4/MFE 2 e ask declarados. CI Linux/PG e instaladores aprovados; Windows em curso |
+| DIAG-IDENTIDADE | Marcação de ativos pela identidade registrada / App/Dados | concluído | fluxo já integrado no App | Hipótese funcional descartada por inspeção do caminho ativo. `UIManager.refresh_inventory` lê `data_inventory` em `run_bg`, e `_inventory_loaded` agrupa por símbolo registrado. O método chamado pela rotina antiga que divide nomes é vazio. Nenhuma correção funcional necessária neste recorte |
+| DIAG-CI304 | Reproduzir travamento de cancelamento/retomada / execução App | em andamento | PR304 `dc17f49` | Log do Windows 130029697303 mostra falha em cancelamento e timeout posterior no COMMIT de `presets.defaults.ensure_default`. As duas regressões dirigidas passam no Linux em 9,52 s, pico 171 MiB. Lock retido segue hipótese, sem mudança de WAL/pool/timeouts. Conferir execução Windows da ponta e obter reprodução com evidência de conexão se repetir |
+| DIAG-TICKS | Auditoria tolerante a metadados inválidos, sem certificação indevida / Dados | em validação | PR304 `dc17f49` | Auditoria v2 publicada. 15 falhas reproduzidas; lote integrado 80 aprovados e lote final 34 aprovados, sobrepostos. Launcher `--cli trades fidelity` em 3 ticks próprios com flag infinita retorna JSON finito, classe D e intrabarra recusada. CI da ponta em curso |
+| DIAG-AMOSTRA | Repetição do mesmo backtest não aumenta amostra nas lentes / Laboratório | em andamento | branch preparada `codex/lab-amostra-execucoes`, dependente da PR304 | Reusar `execution_identity` do produtor e assinatura do livro. Agrupar apenas execuções Python qualificadas com dados, código, parâmetros, avaliação e operações iguais. Preservar consulta completa e explicitar exclusões. 47 testes focados aprovados em 42,16 s. Três backtests reais do produtor em 600 barras sintéticas guardaram 9 operações; launcher CLI e GUI XWayland exibem 3 na visão padrão e 9 na integral. Publicação preparada em índice separado; validar árvore exata quando encerrar VM concorrente |
+| DIAG-COMPOSICAO | Diagnóstico, docs, SHAs e proteção independentes reconciliados / integrador | livre | PR295; prévia PR300 `650656f` | Atualizar estado após cada lote; preparar composição apenas com incrementos revisados e gates próprios, preservando retorno e referência aceita |
+| ACEITE-NATIVO | MT5/Tester, DEMO, netting e Windows físico / operacional | bloqueado | pins H `d4d389e`, Safety `27b8599` | Sem autorização vigente de negociação nem Windows físico; conta netting e ensaio de falhas contra broker próprios. CI/mocks não substituem esses alvos |
+| ACEITE-DRIVE | OAuth real, proteção independente, pacotes por ativo e reunião / Recursos/Dados | livre | PR302 integrada; PR303 aberta `37cf1a3` | Reconciliar primeiro o mecanismo sintético e o escopo dos pacotes existentes; consentimento/envio privado só pelo proprietário após aceite sintético; não usar base privada como fixture |
+| ACEITE-UI | Launcher, compositor, acessibilidade, entrada física, login/soak / App | livre | prévia `650656f` | Exercitar janela própria e orçamento; entrada física/login/tempo contínuo exigem evidência específica, sem interferir em aplicações alheias |
+
+O backlog completo continua no painel de `docs/PLANO_DE_TRABALHO.md` e nos
+contratos Dados/LAB/F19/F20. Esta fila é o recorte de coordenação da passagem,
+não uma declaração de que fichas planejadas ou aceites anteriores foram concluídos.
+Recursos medidos antes dos ensaios: aproximadamente 8 GiB disponíveis na medição inicial, 60 GiB
+livres no destino na reconferência de 12/11, swap sem atividade nas duas amostras finais; uma operação
+por vez, orçamento inicial por ensaio até 512 MiB e 60 s, sem suíte ampla concorrente.
+
+
+### Orçamento e recibos da passagem de 12/11
+
+As suítes locais usam um processo e BLAS/OMP limitados a um thread. A suíte
+completa fica no CI. Nas amostras observadas, ACPI ficou entre 53 e 66 °C,
+com trip passivo de 100 °C e crítico de 105 °C. Não houve swap-in/out nas
+janelas medidas. A VM de outro projeto voltou a executar com cerca de 2 GiB
+às 12h26 locais. Suítes e novo QA do App foram adiados após a detecção.
+A queda de RAM disponível foi conferida, sem encerrar processos alheios.
+Essas medições não diagnosticam a causa dos reinícios.
+
+Recibos locais ficam em `state/qa-tmp/diagnostico-20261112/` da raiz MT5X.
+`excursions-gui.json`, `sample-cli-proof.json`, `sample-gui.json` e
+`cancel-tests.json` registram os percursos próprios. O primeiro comando de
+backtest de QA foi recusado por usar `--offline --cli`, reservado ao Drive
+na versão atual do wrapper. A preparação foi feita pelo produtor oficial
+`robots.backtest.run_python` e os relatórios por `run.sh --cli`, classificados
+como locais. A primeira sonda GUI falhou por faltar o caminho do App no
+PYTHONPATH e a janela própria terminou no timeout de 35 s. A repetição com
+instrumentação corrigida abriu a janela e confirmou a alternância 3/9.
+A sonda observa a interface e solicita ações pelo controlador existente.
+Não substitui entrada física, acessibilidade, login ou observação prolongada.

@@ -45,8 +45,8 @@ Os dois atalhos `mt5-extracao.desktop` usam o mesmo destino estável
 uma release criada do commit publicado. `mt5x-release.json` nessa release registra
 SHA, composição, hashes dos arquivos e modalidade `development_preview`.
 
-A release anterior da prévia permanece disponível para retorno (o alias
-`app-current` não existe neste host; ver [CONTINUAR_AQUI](../CONTINUAR_AQUI.md)). Só a prévia é usada pelo atalho habitual solicitado. A configuração,
+A referência aceita `app-current` e sua release permanecem disponíveis para
+retorno. Só a prévia é usada pelo atalho habitual solicitado. A configuração,
 base, preferências, logs, exportações e `.venv` existentes são reutilizados por
 links; não se copia banco nem instalação Wine/MT5 para publicar uma interface.
 Não publicar configuração, credenciais ou conteúdo da base no GitHub.
@@ -76,3 +76,7 @@ Não criar outro ambiente virtual, cópias de banco ou caches MT5 para essa troc
 Retirar apenas staging próprio e releases de prévia substituídas sem processos
 ou referências, após a validação. Preservar fontes, histórico, WIP e diagnósticos
 relevantes; não limpar caches globais ou worktrees do proprietário.
+
+## Conferência de 12/11/2026
+
+O link efetivo aponta para `development-650656fac67d`, com 354 hashes aprovados. Retorno `development-57d13ee91620`, com 341 hashes aprovados. `state/development-preview.json` existe e ainda cita `784a252`. O destino efetivo e o manifesto da release foram conferidos. O arranque do retorno sobre dados atuais permanece pendente. Os novos corretivos estão publicados para revisão e a composição da próxima prévia tem validação própria na [fila](../CONTINUAR_AQUI.md).
