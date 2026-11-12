@@ -113,7 +113,7 @@ def study(db, config, symbol: str, timeframe: str, *, runs: Optional[Iterable[st
     min_rule_trades = int(min_rule_trades or minimum)
     if min_rule_trades < 1 or int(top) < 1:
         raise ValueError("Mínimo de operações por regra e número de setups por contexto devem ser positivos.")
-    lab = aggregate.frame(db, config, symbol=symbol, timeframe=timeframe)
+    lab = aggregate.frame(db, config, symbol=symbol, timeframe=timeframe, include_repeated_runs=bool(runs))
     if not lab.empty:
         lab = lab[(lab.completeness == "completo") & lab.entry_time.notna() & lab.exit_time.notna()
                   & lab.pnl.notna()]

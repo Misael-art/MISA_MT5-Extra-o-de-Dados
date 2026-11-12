@@ -281,7 +281,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
-| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
+| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | Correção de amostra repetida em revisão. Livro preservado, equivalência qualificada do run completo, consulta integral e seleção explícita. 47 regressões locais e launcher CLI/GUI sintéticos aprovados antes do ajuste final de integridade. CI da árvore publicada e próxima prévia pendentes |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
 | T16.6 | Laboratório: motor de re-simulação de execução com paridade com o backtester (seis estratégias) | T16.5 | ✅ concluída |

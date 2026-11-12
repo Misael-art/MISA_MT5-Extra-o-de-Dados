@@ -39,6 +39,8 @@ def add_parser(sub) -> None:
         if name == "report":
             q.add_argument("--by", default="day_of_week,time_bucket,event_impact,volatility_bucket",
                            help="dimensões separadas por vírgula")
+            q.add_argument("--include-repeated-runs", action="store_true",
+                           help="inclui todas as execuções guardadas, inclusive repetições comprovadas")
         if name == "insights":
             q.add_argument("--save", action="store_true", help="grava em _trade_insights")
         if name == "simulate":
@@ -170,7 +172,8 @@ def _calendar(args, ctx) -> int:
 def _lab(args, ctx):
     from mt5_extracao.trade_analytics import aggregate
     filters = {"robot_key": args.robot} if args.robot else {"symbol": args.symbol}
-    lab = aggregate.frame(ctx.db, ctx.config, **filters)
+    lab = aggregate.frame(ctx.db, ctx.config, include_repeated_runs=getattr(args, "include_repeated_runs", False),
+                          **filters)
     if lab.empty:
         raise ValueError("Nenhuma operação no livro para essa seleção (veja mt5x trades runs; importe com mt5x trades "
                          "import).")

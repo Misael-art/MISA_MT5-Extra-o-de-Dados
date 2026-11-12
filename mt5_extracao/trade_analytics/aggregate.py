@@ -8,6 +8,8 @@ Agregações do Laboratório (T16.4): as perguntas das duas lentes sobre o livro
     robot_view(lab); asset_view(lab); equity_curves(lab, "symbol"); daily_correlation(lab)
 """
 from typing import Dict, Iterable, List, Optional
+import json
+import re
 
 import numpy as np
 import pandas as pd
@@ -31,17 +33,76 @@ def min_trades(config) -> int:
         return stats.MIN_TRADES
 
 
-def frame(db, config, features: Optional[pd.DataFrame] = None, **filters) -> pd.DataFrame:
+def _distinct_runs(db, trades, connection):
+    """Agrupa réplicas comprovadas pelo contrato do produtor e por todas as operações."""
+    from mt5_extracao.trade_analytics import cache
+
+    known = trades[trades.run_id.notna()]
+    records = {row["run_id"]: row for row in cache._run_part(db, known, connection=connection)} if not known.empty else {}
+    representatives, repeated, unqualified, references = {}, {}, [], {}
+    for run_id, part in known.groupby("run_id", sort=True):
+        if not part.source.eq("python").all():
+            continue
+        # A janela visível pode omitir diferenças no restante da execução.
+        part = ledger.load(db, run_id=run_id, connection=connection)
+        record = records.get(run_id) or {}
+        try:
+            metrics = json.loads(record.get("metrics_json") or "{}")
+            identity = metrics.get("execution_identity") or {}
+            same_scope = all(part[column].nunique(dropna=False) == 1 and
+                             part[column].iloc[0] == record.get(column)
+                             for column in ("robot_key", "symbol", "timeframe"))
+            qualified = (record.get("source") == "backtest" and part.source.eq("python").all() and same_scope and
+                         part.completeness.eq(ledger.COMPLETE).all() and
+                         type(identity.get("version")) is int and identity["version"] == 1 and
+                         identity.get("cache_eligible") is True and identity.get("status") == "frozen_reference" and
+                         identity.get("data_manifest_id") == metrics.get("data_manifest_id") and
+                         all(isinstance(identity.get(key), str) and re.fullmatch(r"[0-9a-f]{64}", identity[key])
+                             for key in ("digest", "code_sha256", "data_manifest_id")))
+            if not qualified:
+                unqualified.append(run_id)
+                continue
+            metadata = {"scope": [record.get(key) for key in ("robot_key", "symbol", "timeframe")],
+                        "execution": identity, "params": json.loads(record.get("params_json") or "{}"),
+                        "valuation": json.loads(record.get("valuation_json") or "null"),
+                        "comparison": metrics.get("comparison_context"), "currency": metrics.get("currency")}
+            key = (json.dumps(metadata, sort_keys=True, ensure_ascii=False, allow_nan=False),
+                   cache._frame_digest(part.drop(columns=["run_id"])))
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise ValueError("Metadados de execução inválidos no livro. Confira o run antes de analisar a amostra.") from exc
+        references[run_id] = identity["data_manifest_id"]
+        if key in representatives:
+            repeated.setdefault(representatives[key], []).append(run_id)
+        else:
+            representatives[key] = run_id
+    excluded = {run_id for aliases in repeated.values() for run_id in aliases}
+    return trades.loc[~trades.run_id.isin(excluded)], repeated, unqualified, references
+
+
+def frame(db, config, features: Optional[pd.DataFrame] = None, *, include_repeated_runs: bool = False, **filters) -> pd.DataFrame:
     """Livro filtrado (ledger.load) com as colunas do enriquecimento. `features` pronto (cache da T16.5) evita recalcular."""
-    trades = ledger.load(db, **filters)
-    if trades.empty:
-        return trades
+    repeated, unqualified, references = {}, [], {}
+    if db is None or getattr(db, "engine", None) is None:
+        return ledger.load(db, **filters)
+    with db.consistent_read() as connection:
+        trades = ledger.load(db, connection=connection, **filters)
+        if trades.empty:
+            return trades
+        if not include_repeated_runs:
+            trades, repeated, unqualified, references = _distinct_runs(db, trades, connection)
+    # A validação dos blocos pode ser grande; encerrar a leitura do livro primeiro.
+    from mt5_extracao.analytics import datasets
+    for run_id, manifest_id in references.items():
+        if getattr(datasets.for_run(db, run_id), "manifest_id", None) != manifest_id:
+            raise ValueError("Referência de dados indisponível; recupere o snapshot antes de analisar o run.")
     if features is None:
         from mt5_extracao.trade_analytics import cache       # T16.5: calcula só os runs que mudaram
         features = cache.features(db, config, trades)
     feats = features
     merged = trades.merge(feats, on=["run_id", "seq"], how="left", suffixes=("", "_f"))
     merged["day"] = pd.to_datetime(merged["entry_time"].fillna(merged["exit_time"])).dt.normalize()
+    merged.attrs["repeated_runs"] = {"groups": repeated, "unqualified": unqualified,
+                                     "include_repeated_runs": bool(include_repeated_runs)}
     return merged
 
 
