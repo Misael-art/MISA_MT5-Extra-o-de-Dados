@@ -241,3 +241,19 @@ e a consulta confirmou a pendência sem solicitar exclusão. Evidências em
 O artefato 2066 preparado anteriormente foi marcado como superado antes de
 qualquer ativação. Publicação e composição desta revisão exigem nova
 conferência de SHA, CI e QA gráfico do artefato exato.
+
+
+## DIAG-RETENCAO — leitura completa do controle em 12/11/2026
+
+Reprodução em árvores SQLite próprias mostrou que a enumeração de arquivos podia
+ocultar uma falha de leitura e esquecer uma intenção pendente. Recursos agora
+materializa a leitura e propaga a falha antes de qualquer expurgo. A cópia já
+conferida permanece disponível, com retenção incerta e consulta explícita.
+
+No Linux, 45 regressões de cópia/restauração passaram em 10,15 s e 29 de
+proteção, sessões e leitura parcial passaram em 13,31 s. O caso Tk antes
+adiado também executou no compositor real. Sete hashes de fontes foram
+conferidos antes e depois. Doctor offline teve 16 OK, 2 avisos e zero falhas.
+Um processo, BLAS/OMP com um thread, sem suíte completa local. Falhas originais
+foram preservadas. CI deste incremento e GUI do artefato composto seguem
+pendentes. Entrada física e interrupção de energia têm aceites próprios.

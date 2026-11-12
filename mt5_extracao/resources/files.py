@@ -37,13 +37,19 @@ def backup_dir(db, policy) -> Path:
     return Path("database") / "copias"
 
 
+def _matching_paths(folder, pattern):
+    """Materializa a leitura inteira e propaga falhas, sem aceitar um prefixo da pasta."""
+    with os.scandir(folder) as entries:
+        return [Path(entry.path) for entry in entries if Path(entry.name).match(pattern)]
+
+
 def list_backups(db, config) -> List[dict]:
     """Cópias existentes, a mais nova primeiro: [{path, bytes, created_at}]."""
     folder = backup_dir(db, policy_mod.load(config))
     if not folder.is_dir():
         return []
     items = []
-    for path in folder.glob(f"*{BACKUP_SUFFIX}"):
+    for path in _matching_paths(folder, f"*{BACKUP_SUFFIX}"):
         if path.is_file():
             record = _backup_record(db, path)
             items.append(dict(path=str(path), bytes=path.stat().st_size,
@@ -141,11 +147,11 @@ def _backup_record(db, path, *, require_file=True, match_owner=True):
 def _unrecognized_backups(db, folder):
     """Recibo perdido pode guardar referências que a retenção já não consegue ler."""
     unknown = []
-    for receipt in folder.glob("*.backup.json"):
+    for receipt in _matching_paths(folder, "*.backup.json"):
         path = receipt.with_name(receipt.name.removesuffix(".backup.json") + BACKUP_SUFFIX)
         if _backup_record(db, path, require_file=False, match_owner=False) is None:
             unknown.append(str(receipt))
-    for path in folder.glob("*.db"):
+    for path in _matching_paths(folder, "*.db"):
         if (re.fullmatch(r".+__\d{8}-\d{6}_[0-9a-f]{32}(?:-\d+)?\.db", path.name, flags=re.DOTALL)
                 and not _backup_receipt(path).is_file()):
             unknown.append(str(_backup_receipt(path)))
@@ -197,7 +203,7 @@ def backup_status(db, config, backup_id=None):
         with actions.exclusive(policy_mod.archive_dir(db, policy), "consultar retenção"):
             records = []
             folder = backup_dir(db, policy)
-            for receipt in folder.glob("*.backup.json"):
+            for receipt in (_matching_paths(folder, "*.backup.json") if folder.is_dir() else []):
                 artifact = receipt.with_name(receipt.name.removesuffix(".backup.json") + BACKUP_SUFFIX)
                 record = _backup_record(db, artifact, require_file=False)
                 if record is None or (backup_id is not None and record["backup_id"] != backup_id):
@@ -228,7 +234,7 @@ def backup_status(db, config, backup_id=None):
                 records.append(record)
             if backup_id is not None and not records:
                 raise ValueError("Resultado indisponível para este ID. Consulte a lista de cópias e seus recibos.")
-            unknown = _unrecognized_backups(db, folder)
+            unknown = _unrecognized_backups(db, folder) if folder.is_dir() else []
             return {"ok": all(r["state"] == "complete" for r in records) and not unknown,
                     "backups": records, "unrecognized_receipts": unknown}
     except (OSError, ValueError, actions.Busy) as error:
@@ -306,12 +312,19 @@ def _backup_locked(db, config, origin, prune, target=None, *, backup_id=None, so
     _sync_artifact(target)
     record = _record_backup(db, target, backup_id, source_owner)
     result.update(ok=True, path=str(target), bytes=target.stat().st_size, backup_id=record["backup_id"], retention_state="complete")
-    copies = list_backups(db, config) if prune else []
+    try:
+        copies = list_backups(db, config) if prune else []
+        unknown = _unrecognized_backups(db, folder) if prune else []
+    except (OSError, ValueError) as error:
+        result.update(retention_state="uncertain", retention_scan_complete=False,
+                      error="Leitura do controle de cópias indisponível. Preserve os arquivos e consulte o resultado. " + str(error))
+        actions.audit(db, "copiar", target.name, origin, True, detail=dict(result))
+        return result
+    result["retention_scan_complete"] = True
     result["preserved"] = [item["path"] for item in copies if not item["managed"]]
     eligible = [item for item in copies if item["managed"]]
-    unknown, pending_restore, restore_error = [], [], None
+    pending_restore, restore_error = [], None
     if prune:
-        unknown = _unrecognized_backups(db, folder)
         try:
             _owner_key, _folder, restores = _restore_records(db, config)
             pending_restore = [r["operation_id"] for r in restores if r["state"] in {"prepared", "applying", "uncertain"}]
@@ -387,7 +400,8 @@ def _protected_artifacts(db, config, *, check=lambda: None):
             add(str(db.db_path) + suffix)
     for path in actions.control_lock_paths(policy_mod.archive_dir(db, policy)):
         add(str(path))
-    for manifest in _restore_control_dir().glob("restore__*.restore.json"):
+    control = _restore_control_dir()
+    for manifest in (_matching_paths(control, "restore__*.restore.json") if control.is_dir() else []):
         check()
         record = _load_restore(manifest)
         add(record["safety_copy"])
@@ -608,7 +622,7 @@ def _restore_records(db, config):
     control = _restore_control_dir()
     records = []
     active = Path(db.db_path).resolve()
-    for path in control.glob("restore__*.restore.json"):
+    for path in (_matching_paths(control, "restore__*.restore.json") if control.is_dir() else []):
         record = _load_restore(path)
         original = Path(record["active_path"])
         pending = record["state"] in {"prepared", "applying", "uncertain"}
@@ -622,7 +636,7 @@ def _restore_records(db, config):
         elif pending:
             raise ValueError(f"A localização original da restauração {record['operation_id']} não confirma sua identidade; "
                              "preserve os recibos e confira a operação.")
-    for path in folder.glob(f"restore__{owner_key}_*.db"):
+    for path in (_matching_paths(folder, f"restore__{owner_key}_*.db") if folder.is_dir() else []):
         if not control.joinpath(path.with_suffix(".restore.json").name).is_file():
             raise ValueError("Cópia de restauração sem manifesto; confira seu resultado antes de outra troca.")
     for record in records:
