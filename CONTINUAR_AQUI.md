@@ -1,18 +1,5 @@
 # Retomar MT5X em um host limpo
 
-## DIAG-CONFIG — leitura literal na GUI, 11/11/2026
-
-Owner: App/Codex. A GUI ainda interpolava `%` mesmo após o corretivo CLI/conector
-na PR299. Dois testes com nomes SQLite `%`/UTF-8 falharam antes da mudança.
-`MT5Extracao.load_config_and_db` agora usa `services.load_config`, com a mesma
-leitura UTF-8 sem interpolação dos demais caminhos. Regressão local: 32 aprovados
-(configuração, bootstrap, URL e inicialização GUI), doctor offline 16 OK/2 avisos/0
-falhas. Launcher oficial `run.sh --offline --config` abriu janela XWayland própria,
-base SQLite de QA com `%` e acentos, UI pronta e encerramento próprio. Não testa
-PostgreSQL real, Windows físico, MT5/DEMO, entrada física nem observação prolongada.
-Sem atualização do atalho ou alteração de dados/configuração do proprietário.
-CI da nova ponta precisa ser consultado; resultados da ponta anterior não se transferem.
-
 ## Integração no master e prévia — 04/11/2026
 
 Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs
@@ -827,3 +814,16 @@ posteriores à coleta estão no próximo delta. Credenciais/contas/configuraçõ
 resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+## DIAG-CONFIG — leitura literal na GUI, 11/11/2026
+
+Owner: App/Codex. A GUI ainda interpolava `%` mesmo após o corretivo CLI/conector
+na PR299. Dois testes com nomes SQLite `%`/UTF-8 falharam antes da mudança.
+`MT5Extracao.load_config_and_db` agora usa `services.load_config`, com a mesma
+leitura UTF-8 sem interpolação dos demais caminhos. Regressão local: 32 aprovados
+(configuração, bootstrap, URL e inicialização GUI), doctor offline 16 OK/2 avisos/0
+falhas. Launcher oficial `run.sh --offline --config` abriu janela XWayland própria,
+base SQLite de QA com `%` e acentos, UI pronta e encerramento próprio. Não testa
+PostgreSQL real, Windows físico, MT5/DEMO, entrada física nem observação prolongada.
+Sem atualização do atalho ou alteração de dados/configuração do proprietário.
+CI da nova ponta precisa ser consultado; resultados da ponta anterior não se transferem.
