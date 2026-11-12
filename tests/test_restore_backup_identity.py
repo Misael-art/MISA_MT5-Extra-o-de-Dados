@@ -3,11 +3,50 @@ import configparser
 import os
 import sqlite3
 
+import pandas as pd
 import pytest
 from sqlalchemy import text
 
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.resources import files
+
+
+@pytest.mark.parametrize("active_basis,chosen_basis,chosen_zone,compatible", [
+    ("broker", "utc", None, False),
+    ("utc", "utc", "Europe/Athens", False),
+    ("broker", "broker", None, True),
+])
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_restored_clock_contract_is_revalidated_before_writing(
+        tmp_path, monkeypatch, active_basis, chosen_basis, chosen_zone, compatible, interrupted):
+    db = DatabaseManager(db_path=str(tmp_path / "active.db"), time_basis=active_basis)
+    chosen = tmp_path / "selected.db"
+    source = DatabaseManager(db_path=str(chosen), time_basis=chosen_basis, broker_timezone=chosen_zone)
+    config = configparser.ConfigParser(interpolation=None)
+    config["RESOURCES"] = {"backup_dir": str(tmp_path / "copies"), "archive_dir": str(tmp_path / "archive")}
+    frame = pd.DataFrame({"time": pd.to_datetime(["2024-01-02 09:00"]), "open": [1.0],
+                          "high": [1.0], "low": [1.0], "close": [1.0], "tick_volume": [1],
+                          "spread": [1], "real_volume": [1]})
+    try:
+        assert db.save_ohlcv_data("QA", "1 minuto", frame)
+        assert source.save_ohlcv_data("QA", "1 minuto", frame)
+        source.close()
+        if interrupted:
+            from tests.test_restore_operations import fail_after_copy
+            fail_after_copy(monkeypatch)
+        result = files.restore_backup(db, config, chosen)
+        assert result["ok"] is not interrupted, result
+        assert result["state"] == ("uncertain" if interrupted else "succeeded")
+        frame["time"] += pd.Timedelta(minutes=1)
+        assert db.save_ohlcv_data("QA", "1 minuto", frame) is compatible
+        assert db.get_metadata("time_basis") == chosen_basis
+        assert db.get_metadata("broker_timezone") == chosen_zone
+        table = db.get_table_name_for_symbol("QA", "1 minuto")
+        with db.engine.connect() as conn:
+            assert conn.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar_one() == 1 + int(compatible)
+    finally:
+        source.close()
+        db.close()
 
 
 @pytest.mark.parametrize("name", ["a#b%c space.db", "ação %.db", "normal.db"])

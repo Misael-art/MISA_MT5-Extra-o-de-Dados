@@ -415,3 +415,34 @@ def test_cleanup_preserves_restore_references_after_backup_directory_changes(res
     result = files.clean_files(db, config)
     assert selected.is_file() and safety.is_file()
     assert result["ok"] and result["removed"] == 1 and not ordinary.exists()
+
+
+def test_incomplete_control_directory_read_never_authorizes_retention(restoration, monkeypatch):
+    db, config, _ = restoration
+    previous = files.backup(db, config)
+    target = Path(previous["path"])
+    os.utime(target, (1, 1))
+    with monkeypatch.context() as patch:
+        def interrupted(*args):
+            raise OSError("interrupção antes da exclusão")
+        patch.setattr(files, "_prune_backup", interrupted)
+        pending = files.backup(db, config)
+    files._backup_receipt(Path(pending["path"])).write_text("{")
+    folder = target.parent
+    real_scandir = os.scandir
+    scans = 0
+
+    def denied_after_first_read(path):
+        nonlocal scans
+        if not isinstance(path, int) and Path(path) == folder:
+            scans += 1
+            if scans > 1:
+                raise PermissionError("leitura de controle indisponível")
+        return real_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", denied_after_first_read)
+    result = files.backup(db, config)
+    assert target.is_file(), "leitura parcial esqueceu o recibo e autorizou exclusão"
+    assert not result["pruned"]
+    assert not result["ok"] or result["retention_state"] == "uncertain"
+    assert scans > 1
