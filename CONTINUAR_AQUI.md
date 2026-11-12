@@ -836,3 +836,26 @@ posteriores à coleta estão no próximo delta. Credenciais/contas/configuraçõ
 resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+## Excursões nas lentes e no cache — 12/11/2026
+
+Owner Dados/Laboratório, fila DIAG-EXCURSOES, branch `codex/lab-excursoes`.
+As lentes agora preenchem MAE/MFE ausentes com o enriquecimento e preservam
+valores registrados no livro. Vendas usam o ask modelado pela regra de spread
+do backtester, incluindo o piso calibrado. Falta ou invalidade do point mantém
+as excursões indisponíveis. O campo `excursion_basis` identifica livro,
+combinação de fontes, envelope bid/ask ou ask indisponível. A versão de cálculo 2
+invalida caches anteriores e acrescenta a coluna pelo mecanismo aditivo existente.
+As amplitudes continuam em unidades de preço sobre envelopes de barras. A ordem
+dos eventos intrabarra e o instante dos extremos da barra de saída permanecem desconhecidos.
+
+Reprodução inicial com quatro falhas. No Linux, lotes separados tiveram 38 testes
+aprovados e 21 de cache/livro/importação/CLI aprovados, incluindo 50 mil operações.
+Após ajustar tipos e cobrir cache legado, o lote final teve 13 aprovados e um teste
+PostgreSQL pendente por ausência de `MT5X_TEST_PG_URL`. As contagens se sobrepõem.
+O lote de cache levou 56,46 s e atingiu 400 MiB de RSS. A medição durante o lote
+registrou RAM disponível acima de 7,9 GiB, swap inativo e ACPI até 59 °C nas amostras.
+Doctor offline aprovado com 16 OK e dois avisos. Launcher oficial CLI com SQLite
+sintético confirmou MAE 4, MFE 2 e `ask_bar_envelope`, conservando o livro.
+CI do novo SHA, PostgreSQL real, Windows físico e percurso GUI desta correção
+permanecem pendentes. Evidência local em `state/qa-tmp/diagnostico-20261112`.
