@@ -876,3 +876,69 @@ O percurso CLI dedicado e a GUI aguardam uma janela sem a VM de outra tarefa,
 que passou a ocupar cerca de 2 GiB com pressão de I/O. A suíte Windows da ponta
 anterior falha no lote de cancelamento SQLite, item DIAG-CI304. O CI da nova
 ponta terá estado próprio. Windows físico, Tester e DEMO conservam seus aceites.
+
+## DIAG-AMOSTRA — agrupamento de execuções em 12/11/2026
+
+Owner escritor Codex, Laboratório. Branch `codex/lab-amostra-execucoes`,
+encadeada na PR304 `dc17f49`, sem alterar a branch do checkout único.
+O índice principal e os WIPs anteriores foram preservados.
+
+O agrupamento padrão nas lentes exige execução Python qualificada pelo
+produtor existente, com identidade v1, snapshot íntegro e mesmo escopo,
+código, parâmetros, custos/avaliação/moeda e conteúdo integral do livro.
+A janela de exibição usa a equivalência do run completo. Legados com identidade
+incompleta são preservados com incerteza explícita. Referência de snapshot
+quebrada interrompe a análise. A consulta integral está na CLI por
+`trades report --include-repeated-runs` e na GUI pelo controle correspondente.
+A seleção explícita de run no roteador mantém acesso às repetições guardadas.
+As contagens excluídas acompanham os filtros exibidos. O livro continua íntegro.
+
+Reprodução e validação locais em SQLite próprio, Python 3.11 do `.venv`,
+BLAS/OMP com um thread. Dois limites novos falharam antes do ajuste, moeda e
+diferença fora do período visível. Lote de regressão 47 aprovados em 42,16 s,
+com sobreposição com os lotes anteriores de 35 e 43 casos. Três backtests
+reais do produtor em 600 barras sintéticas guardaram nove operações.
+Launcher CLI e janela própria XWayland mostraram três na visão padrão e nove
+na integral. Recibos em `state/qa-tmp/diagnostico-20261112` da raiz MT5X.
+A primeira chamada `--offline --cli` foi recusada pelo wrapper e a primeira
+sonda GUI falhou por configuração da instrumentação; os percursos corrigidos
+estão registrados no handoff local e nos recibos.
+
+A regressão adicional de referência de snapshot ausente e o recorte PostgreSQL
+foram adicionados após o lote local. A validação final da árvore publicada
+foi direcionada ao CI existente enquanto a VM de outro projeto mantém pressão
+de I/O no host. O CI completo permanece um gate. O último ajuste de integridade
+aguarda evidência do CI. QA descrito corresponde à composição do checkout com
+PR304 e PR305, com o overlay de amostra. A árvore desta PR conserva o
+recorte de amostra sobre PR304, com as excursões em PR própria.
+
+Aceite deste incremento exige os novos testes no CI, preservação de seleção
+explícita/legado/filtros/moeda, regressões do livro/cache/roteador e validação
+da composição da próxima prévia. Entrada física, acessibilidade, login,
+Windows físico, MT5 e negociação têm aceites próprios.
+
+## DIAG-AMOSTRA — leitura legada e validação retomada em 12/11/2026
+
+A retomada reconferiu fonte, processos e PRs. O host estava sem VM ou build
+concorrente, com aproximadamente 7,8 GiB disponíveis e swap sem atividade.
+As regressões foram divididas em lotes proporcionais ao orçamento.
+
+A leitura integral de cada execução agora ocorre após qualificar os metadados
+do produtor. Uma regressão com banco e produtor próprios confirmou a leitura
+redundante para um run legado antes do ajuste e sua eliminação depois dele.
+O livro legado e a indicação de equivalência desconhecida são preservados.
+As execuções qualificadas passam pela comparação integral e validação de snapshot.
+
+Depois do ajuste, lotes de 9 e 26 casos passaram, com 14 casos da amostra e
+21 de assinaturas/cache no conjunto. O lote anterior de contexto/roteador passou
+com 14 casos. Os resultados têm sobreposição com os recibos anteriores.
+Doctor novamente com 16 OK, 2 avisos e zero falhas. O teste de 50 mil operações
+continua com seu limite original e integra o gate completo do CI.
+
+O primeiro lote orçamentado de 60 s terminou após 11 casos, com pico observado
+de 159,3 MiB. O processo próprio foi encerrado e as duas fontes temporariamente
+usadas na validação, junto com o índice principal, foram restauradas. O ensaio
+parcial permanece em `sample-final-tests.json`; os lotes separados concluídos
+estão no handoff local. A QA local usa a composição do checkout, com os corretivos
+de excursões. O CI da PR valida a árvore publicada sobre PR304. Sua conclusão
+e a próxima prévia continuam pendentes.
