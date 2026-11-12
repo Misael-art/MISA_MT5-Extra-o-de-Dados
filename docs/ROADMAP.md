@@ -1,29 +1,5 @@
 # Roadmap: construtor de bases MT5 completo (Windows + Linux)
 
-## Diagnóstico e composição conferidos em 12/11/2026
-
-A fila vigente, a arquitetura, os owners e o roteiro priorizado estão em
-[CONTINUAR_AQUI](../CONTINUAR_AQUI.md). A fonte composta é PR308 `561152b`,
-com PR307 `c296538`, PR309 `2a5638d` e runtime PR310 `fdbe0d9`; a ponta
-documental da PR310 é `97da399`, com conflito de recibos resolvido e CI iniciado.
-A prévia efetiva continua `650656f` enquanto os gates pertinentes executam.
-
-O artefato tem365 hashes do Git publicado e6.378.666B. Launcher real XWayland
-confirmou restauração/recuperação7→99, relógio incompatível recusado, cópia e
-consulta de retenção pelo worker, com preferências próprias. Observação adicional
-de180s teve4.168 pulsos, seis leituras, três temas e zero erros de callback.
-Pico272,6MiB, mínimo7,73GiB disponíveis e máximo68°C. São solicitações
-instrumentadas na janela visível; entrada física, tecnologia assistiva, login,
-maior duração e alvos nativos possuem aceites próprios.51 regressões finais
-passaram em14,75s, com oito fontes estáveis por hash. Doctor16/2/0 offline.
-
-Windows309 foi cancelado prematuramente após mais de duas horas. O log arquivado
-provou avanço até98%; a repetição foi solicitada somente para o job Windows no
-mesmo SHA, preservando o histórico. Os demais CIs continuam com estado próprio.
-A pergunta sobre destino da reunião em QA aguarda resposta. Base privada não
-foi fixture; seus bytes/mtime ativos permaneceram iguais na conferência final.
-
-
 **Atualização de 03/11/2026:** P00 foi reconciliado com App E14 `0993ae7`,
 HADOUKEN `d4d389e` e Safety `27b8599`. P01–P07 estão implementados em branches
 locais encadeadas até o consumo de recibos persistidos em SDK, CLI, Laboratório,
@@ -463,3 +439,26 @@ dependências e aceites próprios. O pilar de dados não é reimplementado nesta
 ## Conferência de 12/11/2026
 
 A fila ativa e os aceites de cada incremento estão em [CONTINUAR_AQUI](../CONTINUAR_AQUI.md). PR302 integrada e PR303 implementada com seis jobs de produto aprovados. Pacotes por ativo, reunião em QA e OAuth real seguem os contratos de Recursos/Dados. A prévia efetiva é `650656f` e o retorno é `57d13ee`, conferidos por manifesto. O marco M1 continua pendente de aceite. Registros anteriores deste roadmap são históricos.
+
+## Diagnóstico e composição conferidos em 12/11/2026
+
+A fila vigente, a arquitetura, os owners e o roteiro priorizado estão em
+[CONTINUAR_AQUI](../CONTINUAR_AQUI.md). A fonte composta é PR308 `561152b`,
+com PR307 `c296538`, PR309 `2a5638d` e runtime PR310 `fdbe0d9`; a ponta
+documental da PR310 é `97da399`, com conflito de recibos resolvido e CI iniciado.
+A prévia efetiva continua `650656f` enquanto os gates pertinentes executam.
+
+O artefato tem365 hashes do Git publicado e6.378.666B. Launcher real XWayland
+confirmou restauração/recuperação7→99, relógio incompatível recusado, cópia e
+consulta de retenção pelo worker, com preferências próprias. Observação adicional
+de180s teve4.168 pulsos, seis leituras, três temas e zero erros de callback.
+Pico272,6MiB, mínimo7,73GiB disponíveis e máximo68°C. São solicitações
+instrumentadas na janela visível; entrada física, tecnologia assistiva, login,
+maior duração e alvos nativos possuem aceites próprios.51 regressões finais
+passaram em14,75s, com oito fontes estáveis por hash. Doctor16/2/0 offline.
+
+Windows309 foi cancelado prematuramente após mais de duas horas. O log arquivado
+provou avanço até98%; a repetição foi solicitada somente para o job Windows no
+mesmo SHA, preservando o histórico. Os demais CIs continuam com estado próprio.
+A pergunta sobre destino da reunião em QA aguarda resposta. Base privada não
+foi fixture; seus bytes/mtime ativos permaneceram iguais na conferência final.
