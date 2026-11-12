@@ -4643,3 +4643,99 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+
+## DIAG-RESTORE — identidade da cópia em 12/11/2026
+
+Owner Recursos/Dados, em validação na branch `codex/restore-backup-integridade`.
+A versão pública foi executada em árvore SQLite descartável com o nome
+`a#b%c space.db`. Informou sucesso, criou o caminho truncado em `#` e deixou
+a base ativa sem a tabela esperada. O corretivo local anterior foi preservado
+e revisado. A abertura agora usa URI codificada e mantém a mesma conexão e
+fotografia entre validação e cópia. Ausência, arquivo vazio/corrompido e alias
+da base ativa são recusados antes da cópia de segurança. Schema, contagens
+e quick_check são comparados após a troca.
+
+Lotes locais sobrepostos passaram com 51 casos de Recursos/identidade em
+31,32 s e 24 de launcher/identidade em 11,06 s. Incluem oito regressões de
+identidade. O launcher CLI, em base própria, confirmou o valor 7 escolhido
+e o estado anterior 99 na cópia de segurança. A GUI real XWayland pelo
+launcher confirmou a restauração na aba Recursos, com sete pulsos do loop,
+janela visível e zero erros de callback. Entrada foi solicitada pelo controlador
+instrumentado. Doctor offline deu 16 OK, dois avisos e zero falhas.
+
+O índice principal e os WIPs foram preservados. O banco do proprietário
+permaneceu fora dos ensaios. CI do SHA publicado, Windows físico e recuperação
+com encerramento abrupto têm aceites próprios. A lacuna de intenção durável e
+consulta de resultado da restauração exige incremento específico nos serviços
+de Recursos, CLI e GUI. Recibos locais em `state/qa-tmp/diagnostico-20261112/`.
+
+
+## DIAG-RESTORE-RECUP — intenção e resultado em12/11/2026
+
+Owner Recursos, em validação na continuação da PR307. O fluxo oficial agora
+persiste intenção e resultado em recibos privados `mt5x-restore/v1` no estado
+comum de Recursos, com o produtor de backups e o mesmo lease existentes.
+O ID informado consulta a operação. Resultado incerto bloqueia nova troca e
+oferece retorno explícito à cópia anterior vinculada e conferida por SHA-256.
+O preparo interrompido antes do marco de aplicação é reconciliado sob o lease.
+Recibos ilegíveis, ausentes, schema desconhecido ou identidade inconclusiva
+preservam os dados. As cópias pendentes ficam protegidas da retenção.
+
+Duas regressões adicionais reproduziram perda da pendência ao trocar backup_dir
+e ao abrir a base por hardlink. Recibos no estado comum e identidade física
+corrigiram ambos. O último lote teve28 aprovados em9,35s. Outros seis casos
+existentes de backup/automação/CLI passaram em8,51s. Um lote anterior medido
+teve241,4MiB de pico, mínimo6GiB disponíveis e máximo54°C. A conferência final
+passou sem `hashlib.file_digest`, preservando a compatibilidade declarada pelo
+master. O interpretador local continua Python3.11.15. Doctor offline16/2/0 e
+ShellCheck do launcher aprovados.
+
+O launcher CLI oficial em SQLite próprio provou consulta sem repetição, saída
+abrupta17 de filho próprio após o efeito, estado incerto, mudança de diretório,
+recusa por hardlink e recuperação explícita do valor anterior42. Recibo local
+`restore-launcher-lifecycle-02/proof.json`,11,03s. A GUI usa o worker existente
+e recebeu três regressões de controlador. Seu aceite final no compositor aguarda
+a VM alheia e a pressão sustentada de I/O observada no host. CI do novo SHA,
+Windows físico e falha de energia permanecem específicos. A primeira correção
+de identidade teve GUI real XWayland aprovada no SHA anterior.
+
+Checkout e índice principal preservados. A publicação compõe somente o delta
+de restauração da CLI sobre a PR307; o WIP de múltiplas contas continua em seu
+PR303 e na composição PR308. Fluxo Linux local da composição depende da política
+da PR296/308. Nenhum banco do proprietário foi usado nos ensaios.
+
+
+### Reconferência de identidade e GUI em12/11/2026
+
+Reproduzida a perda da pendência quando o arquivo ativo era substituído entre
+solicitações. A consulta dos recibos agora também verifica o vínculo do caminho
+com outra identidade pendente. O arquivo novo fica preservado. Bases independentes
+e recibos concluídos por alias têm regressões próprias. Formato v1 preservado.
+Último lote31 aprovados em10,38s, com sobreposição ao lote28 anterior.
+
+Launcher oficial com GUI real XWayland e preferências isoladas confirmou
+resultado incerto7, consulta e recuperação99, duas confirmações, guia/botão
+visíveis e zero erros inesperados. Foram18 pulsos, intervalo máximo observado
+0,581s, alternância de tema, pico270,2MiB, mínimo7,96GiB disponíveis e máximo68°C.
+Hashes de preferências do proprietário preservados. Recibos locais em
+`restore-gui-lifecycle/`. O controlador invocou os botões na janela real.
+Entrada física, reinício físico/falha de energia, novo host e Windows físico
+têm aceites próprios. A inspeção do helper comum identificou que o boot Linux
+anterior fica indeterminado pelo contrato atual; próximo incremento independente
+é qualificar a prova de encerramento na mesma máquina, com testes próprios.
+CI deve ser conferido na ponta publicada.
+
+
+## DIAG-RESTORE — contrato de relógio após a troca em 12/11/2026
+
+Duas falhas reproduzidas mostraram que a validação de relógio da sessão anterior
+continuava em cache após restaurar uma base UTC ou com outro fuso. A restauração
+agora invalida essa validação junto ao cache de tabelas, inclusive se o efeito
+terminar incerto. A próxima gravação passa pelo validador canônico existente.
+
+Seis casos cobrem relógio e fuso divergentes, compatibilidade e resultado
+interrompido após a cópia. O lote integrado de restauração e tempo teve 39
+aprovados em 14,20 s no Linux, com dados próprios, um processo e um thread.
+A reprodução anterior teve duas falhas e um caso compatível aprovado. CI deste
+SHA e QA do artefato composto permanecem em validação.
