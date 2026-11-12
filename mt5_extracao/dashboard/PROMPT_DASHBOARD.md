@@ -615,3 +615,53 @@ Estado por critério, com evidência e limite. "Parcial" não conclui o critéri
 Integrações analíticas ausentes, registradas à parte e sem bloquear o Expert:
 surpresa comparável (produtor inexistente), hipóteses T13.4, recibos reais do
 Filtro C, bateria/preset/fingerprint MQL5 gravados e baseline de novidade.
+
+## Biblioteca do MT5X
+
+A página **Biblioteca** é uma rota somente de leitura do Dashboard local. O
+cabeçalho leva ao índice e o retorno abre a mesma fotografia. A biblioteca
+mantém os setores Indicadores, Experts, Laboratório, Operacional, Carteira e
+Leitura gráfica, com busca e exemplos sintéticos. A fotografia portátil
+continua autossuficiente. Seu HTML não inclui a chave da sessão.
+
+As fórmulas, versões, unidades, parâmetros e saídas analíticas vêm do registro
+de Indicadores. A relação de robôs vem do catálogo do App e das bibliotecas
+configuradas, sem consultar dados ou execuções. Os fontes nativos HADOUKEN
+mostram a descrição declarada e a versão quando disponíveis. A ficha pedagógica
+não concede suporte a um perfil, aprovação estatística ou autorização.
+
+### Pesquisa dos cinco Experts
+
+A hipótese e o predicado de sinal pertencem à estratégia. A ordem, gestão,
+dimensionamento, sessão, cota e saída pertencem à composição operacional.
+Parâmetros dos vídeos ficam como comparadores. A melhor composição pode depender
+de ativo, sessão, timeframe, custos e objetivo. A grade de pesquisa é pré-fixada,
+com janelas vizinhas, teste cronológico fora da amostra e evidência preservada
+no preset. O Laboratório não promete um horário vencedor para todo ativo.
+
+| Referência | Sinal a estudar | Sequência no MT5X |
+|---|---|---|
+| Gap de Abertura | Distância percentual do primeiro fechamento ao fechamento da sessão anterior. Faixa moderada a favor, extrema contra. | Primeira ficha T19.47 com o produtor de sessão BD05. Discutir o sinal no ponto de extensão existente. Fixá-lo ao comparar entrada, SL, TP e janelas elegíveis. |
+| Trader Xpert | Renko 7R observável. Predicado de entrada reservado. | Qualificar formação por ticks em T19.41. Comparar trailing por barra e por tick separadamente quando houver capacidade. Regras públicas novas ficam com identidade própria. |
+| Código do Milhão | Classificação da abertura pelos canais da máxima e mínima anteriores. | Separar observação da entrada única ou dupla vinculada. A variante dupla exige reserva, cancelamento e fill duplo conciliados. |
+| Sniper Trend | SMA21 e RSI14 são observáveis. Combinação de compra e venda não publicada. | Tratar 10h30, M5 e SL/TP demonstrados como comparadores. Cruzamento, confirmação de momento e janelas são hipóteses separadas, com condição causal explícita. |
+| MaxFluxo | Força de ofertas no DOM. Fórmula dos dois sinais não publicada. | BD10 qualifica profundidade, cadência, cobertura e replay. Estudar desequilíbrio por nível quando houver fonte suficiente. Travas monetárias pertencem à gestão. |
+
+Aceite de cada ficha futura percorre a referência sintética, o símbolo original
+e outro símbolo compatível. Usar a propriedade do ativo para ponto, tick,
+lote, preço e calendário. Demonstrar no Tester com o mesmo preset e conciliar
+decisão, pedido, ordem, negócio e saída. Pendentes, netting, DEMO e Windows
+físico conservam seus gates de aceitação.
+
+### Manutenção no mesmo incremento
+
+Ao acrescentar ou alterar um indicador, Expert, função de pesquisa ou modo
+operacional, revisar `library_content.json` e subir a revisão editorial no
+mesmo PR. A ficha deve registrar a premissa, fonte original quando conhecida,
+variante e unidade, sinal causal, dois cenários de leitura, limites de uso,
+comparações coerentes e um exemplo rotulado. Campos técnicos consultam o
+contrato canônico. O teste `test_dashboard_library.py` confere cobertura das
+definições analíticas, estratégias Python e modos da composição. Fontes nativas
+adicionadas a uma biblioteca configurada entram no índice automaticamente.
+As fichas nativas conferidas vinculam a revisão do fonte pelo SHA-256 do texto
+normalizado. Um fonte diferente pede revisão antes de exibir a ficha anterior.

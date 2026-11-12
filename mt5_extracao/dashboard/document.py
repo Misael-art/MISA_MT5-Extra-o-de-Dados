@@ -10,7 +10,7 @@ from markupsafe import Markup
 from . import generator
 
 ROOT = Path(__file__).parent
-RENDERER_VERSION = "DASH-03/1"
+RENDERER_VERSION = "DASH-03/2"
 RESOURCES = ("css/dashboard.css", "vendor/echarts-6.0.0.min.js", "vendor/LICENSE-echarts",
              "vendor/NOTICE-echarts", "vendor/manifest.json", "js/transport.js", "js/charts/surprise.js",
              "js/charts/regime.js", "js/charts/volume.js", "js/charts/hypothesis.js", "js/charts/validation.js", "js/dashboard.js")
@@ -78,3 +78,57 @@ def export(snapshot, destination):
     _publish(target, content.encode())
     return {"snapshot_id": snapshot["snapshot_id"], "path": str(target), "bytes": len(content.encode()),
             "sha256": hashlib.sha256(content.encode()).hexdigest(), "network_required": False}
+
+
+def library_context(config=None):
+    """Projeta os contratos distribuídos sem consultar base, terminal ou execução."""
+    from mt5_extracao.analytics import indicator_registry
+    from mt5_extracao.composition.registry import FILTER_PARAMETERS, MODULE_PARAMETERS
+    from mt5_extracao.robots import catalog, mql
+
+    content = json.loads((ROOT / "library_content.json").read_text(encoding="utf-8"))
+    definitions = {spec["feature_id"]: spec for spec in indicator_registry.definitions()}
+    groups = []
+    for guide in content["indicators"]:
+        specs = [definitions.pop(ident) for ident in guide["definitions"] if ident in definitions]
+        groups.append({**guide, "specs": specs})
+    for spec in definitions.values():
+        groups.append({"id": spec["feature_id"], "title": spec["name"], "family": spec["family"], "specs": [spec],
+                       "summary": "Contrato disponível. Origem histórica e exemplos didáticos aguardam revisão."})
+
+    robots = [
+        {"name": robot.name, "key": robot.key, "kind": robot.kind, "description": robot.description,
+         "timeframes": robot.timeframes, "regime": robot.regime,
+         "guide": content["strategies"].get(robot.key) or
+         content["strategies"].get(f"python:{robot.manifest.get('parity_with', '')}")}
+        for robot in sorted(catalog.load_catalog(config), key=lambda item: (item.kind, item.name.casefold()))
+    ]
+    native = {}
+    for folder in catalog.library_dirs(config):
+        root = next((path for path in (folder / "Indicators/HADOUKEN", folder / "MQL5/Indicators/HADOUKEN")
+                     if path.is_dir()), None)
+        if root is None:
+            continue
+        for path in sorted(root.rglob("*.mq5")):
+            try:
+                text = mql.read_text(path)
+                source = mql.parse_source(text)
+            except (OSError, ValueError):
+                continue
+            if source.indicator:
+                guide = content["native_guides"].get(path.stem, {})
+                reviewed = guide.get("source_sha256") == hashlib.sha256(text.encode()).hexdigest()
+                native.setdefault(path.stem, {"name": path.stem, "family": path.parent.name,
+                                              "version": source.version, "description": " ".join(source.descriptions),
+                                              "guide": guide if reviewed else None})
+
+    operation = []
+    for slot, modes in {**MODULE_PARAMETERS, "filters": FILTER_PARAMETERS}.items():
+        guide = content["operations"].get(slot, {})
+        operation.append({"id": slot, "title": guide.get("title", slot), "summary": guide.get("summary", ""),
+                          "modes": [{"id": mode, "description": guide.get("modes", {}).get(mode),
+                                     "params": [(key, spec.unit) for key, spec in params.items()]}
+                                    for mode, params in modes.items()]})
+    return {**content, "indicators": groups, "operations": operation, "robots": robots,
+            "native_indicators": list(native.values()),
+            "definition_count": sum(len(group["specs"]) for group in groups)}

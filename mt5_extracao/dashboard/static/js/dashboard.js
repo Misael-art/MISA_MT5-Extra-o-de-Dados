@@ -3,6 +3,14 @@
   const started = performance.now();
   const root = document.querySelector("#sections");
   const status = document.querySelector("#render-status");
+  const library = document.querySelector("#library-link");
+  const sessionKey = new URLSearchParams(location.search).get("k");
+  if (library && location.protocol === "http:" && sessionKey) {
+    const target = new URL(library.href);
+    target.searchParams.set("k", sessionKey);
+    library.href = target.href;
+    library.hidden = false;
+  }
   const text = (tag, value, className) => {
     const node = document.createElement(tag);
     node.textContent = value === null || value === undefined ? "Não informado" : String(value);

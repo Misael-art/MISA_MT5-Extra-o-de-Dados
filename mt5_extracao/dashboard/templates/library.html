@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biblioteca · mt5x</title>
+  <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/library.css') }}">
+  <script src="{{ asset('vendor/echarts-6.0.0.min.js') }}" defer></script>
+  <script src="{{ asset('js/library.js') }}" defer></script>
+</head>
+<body class="library">
+  <a class="skip" href="#biblioteca">Ir para a biblioteca</a>
+  <header class="masthead">
+    <a class="brand" href="{{ dashboard_url }}" aria-label="mt5x, dashboard">mt5<span>x</span></a>
+    <span class="eyebrow">CENTRO DE REFERÊNCIA</span>
+    <a class="library-link" href="{{ dashboard_url }}">Voltar ao dashboard</a>
+  </header>
+  <main id="biblioteca">
+    <div class="intro library-intro">
+      <p class="eyebrow">MT5X / BIBLIOTECA</p>
+      <h1>Do gráfico à estratégia.</h1>
+      <p class="lead">Entenda o que cada indicador mede, como um Expert decide e como o Laboratório compara maneiras de executar o mesmo sinal.</p>
+      <p class="library-meta">{{ definition_count }} definições analíticas · {{ robots | length }} itens no catálogo desta composição · {{ studies | length }} estudos de referência</p>
+    </div>
+    <nav class="library-nav" aria-label="Setores da biblioteca">
+      {% for id, label in sectors.items() %}<a href="#{{ id }}">{{ label }}</a>{% endfor %}
+    </nav>
+    <div class="library-search" hidden>
+      <label for="library-query">Buscar na biblioteca</label>
+      <input type="search" id="library-query" autocomplete="off" placeholder="RSI, Renko, stop, horário…">
+      <p role="status" id="library-results"></p>
+    </div>
+    <figure class="library-example" aria-labelledby="example-title" id="exemplos" data-examples="{{ examples | tojson | forceescape }}">
+      <div class="library-example-text">
+        <p class="eyebrow">LEITURA GUIADA / DADOS SINTÉTICOS</p>
+        <h2 id="example-title">Veja o sinal no gráfico</h2>
+        <label for="example-select">Cenário</label>
+        <select id="example-select" disabled>
+          {% for example in examples %}<option value="{{ example.id }}">{{ example.title }}</option>{% endfor %}
+        </select>
+        <p id="example-caption">{{ examples[0].caption }}</p>
+      </div>
+      <div class="library-example-plot">
+        <div id="example-chart" hidden role="img" aria-label="{{ examples[0].title }}" aria-describedby="example-caption"></div>
+        <details>
+          <summary>Valores do exemplo</summary>
+          <div class="library-table-wrap" id="example-values">
+            <table><caption>{{ examples[0].title }}</caption><thead><tr><th scope="col">Evento</th>{% for series in examples[0].series %}<th scope="col">{{ series.name }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for label in examples[0].labels %}{% set row = loop.index0 %}<tr><th scope="row">{{ label }}</th>{% for series in examples[0].series %}<td>{{ series.values[row] }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+          </div>
+        </details>
+      </div>
+    </figure>
+
+    {% macro sources(links) %}
+      {% if links %}<ul class="library-sources" aria-label="Fontes">{% for label, href in links %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>{% endif %}
+    {% endmacro %}
+    {% macro card(item) %}
+      <article class="library-entry" id="{{ item.id }}" data-library-entry>
+        <h3>{{ item.title }}</h3>
+        {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
+        {% if item.notes %}<dl class="library-facts">{% for name, value in item.notes.items() %}<dt>{{ name }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>{% endif %}
+        {{ sources(item.sources) }}
+        {% if item.example is defined %}<p><a href="#exemplos" data-example="{{ item.example }}">Ver exemplo no gráfico</a></p>{% endif %}
+      </article>
+    {% endmacro %}
+
+    <section id="indicadores" class="library-sector" aria-labelledby="ind-title">
+      <div class="library-section-title"><p class="eyebrow">01 / MEDIR</p><h2 id="ind-title">Indicadores</h2><p>O que a medida representa, quando fica disponível e como muda de um cenário para outro.</p></div>
+      <div>
+        {% for item in indicators %}
+        <article class="library-entry" id="{{ item.id }}" data-library-entry>
+          <p class="library-tag">{{ item.family }}</p><h3>{{ item.title }}</h3><p>{{ item.summary }}</p>
+          {% if item.notes %}<dl class="library-facts">{% for label, value in item.notes.items() %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>{% endif %}
+          {{ sources(item.sources) }}
+          {% if item.example is defined %}<p><a href="#exemplos" data-example="{{ item.example }}">Ver exemplo no gráfico</a></p>{% endif %}
+          {% if item.specs %}<details><summary>Contratos do MT5X · {{ item.specs | length }} {% if item.specs | length == 1 %}saída{% else %}saídas{% endif %}</summary>
+            <ul class="library-contracts">
+            {% for spec in item.specs %}
+              <li><strong>{{ spec.name }}</strong> · <code>{{ spec.feature_id }}</code> v{{ spec.algorithm_version }}
+                <dl><dt>Fórmula</dt><dd>{{ spec.formula }}</dd><dt>Fonte</dt><dd>{{ spec.source_id }} · {{ spec.required_columns | join(', ') }}</dd>
+                <dt>Unidade</dt><dd>{{ spec.unit }}</dd><dt>Aquecimento</dt><dd>{{ spec.warmup_count }} barras</dd>
+                <dt>Disponibilidade</dt><dd>{{ spec.availability_rule }}</dd><dt>Parâmetros</dt><dd><code>{{ spec.parameters | tojson }}</code></dd></dl>
+              </li>
+            {% endfor %}
+            </ul>
+          </details>{% endif %}
+        </article>
+        {% endfor %}
+        {% if native_indicators %}
+        <article class="library-entry" id="indicadores-nativos" data-library-entry>
+          <h3>Indicadores nativos HADOUKEN</h3>
+          <p>{{ native_indicators | length }} fontes descobertas nas bibliotecas configuradas. Cada linha identifica a variante declarada no MQL5. A disponibilidade no Laboratório depende de contrato próprio.</p>
+          <details><summary>Ver índice nativo</summary><ul class="library-contracts">
+            {% for item in native_indicators %}
+              <li><strong>{{ item.name }}</strong> · {{ item.family }}{% if item.version %} · v{{ item.version }}{% endif %}
+              {% if item.guide %}<br>{{ item.guide.summary }} <a href="#{{ item.guide.reference }}">Conceito e gráfico</a>
+              {% else %}<br>{{ item.description or 'Sem descrição declarada no fonte.' }}<br>Ficha pedagógica pendente para esta revisão.{% endif %}</li>
+            {% endfor %}
+          </ul></details>
+        </article>
+        {% else %}
+        <p class="library-meta">O índice nativo aparece quando uma biblioteca HADOUKEN está configurada no catálogo de Robôs.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section id="experts" class="library-sector" aria-labelledby="expert-title">
+      <div class="library-section-title"><p class="eyebrow">02 / FORMULAR</p><h2 id="expert-title">Experts</h2><p>Uma hipótese explica o porquê. O sinal define o que observar. O preset define como e quando testar.</p></div>
+      <div>
+        <h3 class="library-subheading">Cinco referências para pesquisa</h3>
+        {% for item in studies %}{{ card(item) }}{% endfor %}
+        <h3 class="library-subheading">Catálogo da composição</h3>
+        {% for robot in robots %}
+        <article class="library-entry" id="expert-{{ robot.key }}" data-library-entry>
+          <p class="library-tag">{{ 'Pesquisa Python' if robot.kind == 'python' else 'Expert MQL5' }}{% if robot.regime %} · {{ robot.regime }}{% endif %}</p>
+          <h3>{{ robot.name }}</h3><p>{{ robot.description or 'Descrição ausente no contrato do Expert.' }}</p>
+          {% if robot.guide %}
+          {% if robot.kind != 'python' %}<p class="library-meta">Referência de leitura. As capacidades efetivas dependem da versão do Expert.</p>{% endif %}
+          <dl class="library-facts">{% for label, value in robot.guide.items() %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
+          {% else %}<p class="library-meta">Premissa e cenários didáticos aguardam revisão para este fonte.</p>{% endif %}
+          <p class="library-meta"><code>{{ robot.key }}</code>{% if robot.timeframes %} · TFs declarados {{ robot.timeframes | join(', ') }}{% endif %}</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section id="laboratorio" class="library-sector" aria-labelledby="lab-title">
+      <div class="library-section-title"><p class="eyebrow">03 / TESTAR</p><h2 id="lab-title">Laboratório</h2><p>Congele a pergunta, compare alternativas e preserve a evidência que gerou o preset.</p></div>
+      <div>{% for item in laboratory %}{{ card(item) }}{% endfor %}</div>
+    </section>
+
+    <section id="operacional" class="library-sector" aria-labelledby="op-title">
+      <div class="library-section-title"><p class="eyebrow">04 / EXECUTAR</p><h2 id="op-title">Operacional</h2><p>Modos e unidades do contrato. A execução depende das capacidades declaradas e qualificadas do perfil, do símbolo e da conta.</p></div>
+      <div>
+        {% for item in operations %}
+        <article class="library-entry" id="operacao-{{ item.id }}" data-library-entry>
+          <h3>{{ item.title }}</h3><p>{{ item.summary }}</p>
+          <dl class="library-facts">
+            {% for mode in item.modes %}<dt><code>{{ mode.id }}</code></dt><dd>{{ mode.description or 'Explicação didática pendente.' }}
+              {% if mode.params %}<details><summary>Parâmetros e unidades</summary><ul>{% for name, unit in mode.params %}<li><code>{{ name }}</code> · {{ unit }}</li>{% endfor %}</ul></details>{% endif %}
+            </dd>{% endfor %}
+          </dl>
+        </article>
+        {% endfor %}
+        {% for item in combinations %}{{ card(item) }}{% endfor %}
+      </div>
+    </section>
+
+    <section id="carteira" class="library-sector" aria-labelledby="risk-title">
+      <div class="library-section-title"><p class="eyebrow">05 / PROTEGER</p><h2 id="risk-title">Carteira</h2><p>Controle exposição, margem e posse quando mais de uma intenção compete pelo mesmo capital.</p></div>
+      <div>{% for item in portfolio %}{{ card(item) }}{% endfor %}</div>
+    </section>
+
+    <section id="leitura" class="library-sector" aria-labelledby="chart-title">
+      <div class="library-section-title"><p class="eyebrow">06 / INTERPRETAR</p><h2 id="chart-title">Leitura gráfica</h2><p>Identifique a escala, a unidade e o instante em que cada elemento ficou conhecido.</p></div>
+      <div>{% for item in reading %}{{ card(item) }}{% endfor %}</div>
+    </section>
+  </main>
+  <footer><span>mt5x / Biblioteca · revisão {{ revision }}</span><a href="{{ dashboard_url }}">Voltar ao dashboard</a></footer>
+</body>
+</html>
