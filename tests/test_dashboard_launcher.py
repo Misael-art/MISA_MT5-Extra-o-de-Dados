@@ -13,14 +13,21 @@ import pytest
     (["dashboard", "--no-browser"], False),
     (["--json", "--config", "config com espaço.ini", "--db", "dashboard", "dashboard"], False),
     (["--verbose", "dashboard"], False),
-    (["tables"], True),
+    (["tables"], False),
+    (["extract", "--symbols", "X"], True),
 ])
 def test_launcher_preserves_bridge_boundary(tmp_path, arguments, bridge):
     source = Path(__file__).resolve().parents[1]
     shutil.copyfile(source / "run.sh", tmp_path / "run.sh")
     python = tmp_path / ".venv/bin/python"
     python.parent.mkdir(parents=True)
-    python.write_text("#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps(sys.argv[1:]))\n")
+    # Interpretador falso: responde a classe pelo módulo real e ecoa a chamada da CLI.
+    python.write_text("#!/usr/bin/env python3\nimport json,sys\n"
+                      f"if sys.argv[1:3] == ['-m', 'mt5_extracao.launch_policy']:\n"
+                      f"    sys.path.insert(0, {str(source)!r})\n"
+                      "    from mt5_extracao import launch_policy\n"
+                      "    sys.exit(launch_policy.main(sys.argv[3:]))\n"
+                      "print(json.dumps(sys.argv[1:]))\n")
     python.chmod(0o700)
     (tmp_path / "config").mkdir()
     (tmp_path / "config/config.ini").write_text("[DASHBOARD]\n")

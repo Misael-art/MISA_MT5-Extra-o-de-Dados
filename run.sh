@@ -32,21 +32,10 @@ if [[ "${1:-}" == "--offline" && "${2:-}" == "--cli" ]]; then
     exit 2
 fi
 
-# Dashboard é leitura local: não abrir ponte/terminal para servir HTML.
-# Respeita também as opções globais da CLI antes do nome do comando.
-if [[ "${1:-}" == "--cli" ]]; then
-    cli_arguments=("$@")
-    for ((argument_index=1; argument_index<${#cli_arguments[@]}; argument_index++)); do
-        case "${cli_arguments[argument_index]}" in
-            --config|--db) argument_index=$((argument_index + 1)) ;;
-            --json|-v|--verbose) ;;
-            dashboard)
-                shift
-                exec .venv/bin/python -m mt5_extracao.cli "$@"
-                ;;
-            *) break ;;
-        esac
-    done
+# Consultas locais (classe em mt5_extracao/launch_policy.py) não abrem ponte/terminal MT5.
+if [[ "${1:-}" == "--cli" ]] && .venv/bin/python -m mt5_extracao.launch_policy "${@:2}"; then
+    shift
+    MT5X_LOCAL_ONLY=1 exec .venv/bin/python -m mt5_extracao.cli "$@"
 fi
 
 # No Linux o MT5 roda no Wine: garante que a ponte esteja ativa
