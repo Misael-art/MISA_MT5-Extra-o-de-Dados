@@ -35,6 +35,8 @@ EXIT_REASONS = {
     "time_absolute":"prazo absoluto", "time_progress":"prazo sem lucro mínimo",
     "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate", "time_er":"eficiência baixa após idade mínima", "time_donchian":"retorno ao canal sem renovação", "time_atr":"horizonte ATR limitado",
     "signal": "sinal de saída", "time": "tempo máximo", "eod": "fim do dia", "end": "fim dos dados",
+    # Só a re-simulação de estudo do Laboratório (T16.15) produz estes três; o backtester não os usa.
+    "early": "saída antecipada", "recovery": "saída de recuperação", "invalidation": "sinal de reversão invalidado",
 }
 
 
