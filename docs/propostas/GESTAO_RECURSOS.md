@@ -106,7 +106,7 @@ política local do launcher Linux, pela integração das PR296/308.
 Cada solicitação nova recebe um ID e um manifesto privado `mt5x-restore/v1`
 no estado compartilhado de Recursos, em `restore_receipts`. A identidade física
 da base e o vínculo com sua localização são conferidos no ato. O recibo continua
-consultável após mudar `backup_dir` ou abrir um alias da mesma base. Localização
+consultável após mudar `backup_dir` ou abrir um alias da mesma base. Operação pendente com localização
 original indisponível ou identidade inconclusiva exige reconciliação dos recibos.
 
 O marco `prepared` é persistido antes da cópia de segurança. O marco `applying`
@@ -144,3 +144,21 @@ encerrado após o efeito, consulta sem repetição, troca de diretório, hardlin
 recuperação explícita, manifestos inválidos e retenção. O launcher CLI exerceu
 esses caminhos em SQLite sintético. GUI real da revisão final, CI do SHA
 publicado, falha de energia e Windows físico têm resultados próprios no handoff.
+
+### Identidade entre sessões e QA da GUI
+
+O vínculo pelo caminho também é consultado quando a identidade física muda.
+Substituir o arquivo ativo com uma operação pendente produz resultado desconhecido
+e preserva o arquivo novo. Bases independentes continuam com intenções próprias.
+Recibos concluídos permanecem consultáveis quando um alias mantém o arquivo
+físico e o nome anterior é retirado. Registros v1 publicados são preservados.
+
+Em12/11,31 casos focados passaram em10,38s. A GUI pelo launcher oficial em
+XWayland mostrou a guia Cópias e arquivos e o botão Conferir restauração,
+solicitou a primeira troca, declarou o resultado incerto da falha injetada e
+recuperou o valor anterior99 com nova confirmação. Teve18 pulsos do loop,
+intervalo máximo observado0,581s e zero erros inesperados. Tema foi alternado
+com preferências de QA isoladas e hashes do proprietário preservados. Pico
+270,2MiB, mínimo7,96GiB disponíveis e máximo68°C. Os botões foram invocados
+pelo controlador, com a janela real mapeada. Entrada física e falha de energia
+conservam seus aceites. O CI deve ser associado à ponta publicada.

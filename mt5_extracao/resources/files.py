@@ -381,11 +381,22 @@ def _restore_records(db, config):
         raise ValueError("A identidade da base não está disponível; preserve a operação.")
     folder = backup_dir(db, policy_mod.load(config)).resolve()
     control = _restore_control_dir()
-    records = [_load_restore(path) for path in control.glob(f"restore__{owner_key}_*.restore.json")]
-    for record in records:
+    records = []
+    active = Path(db.db_path).resolve()
+    for path in control.glob("restore__*.restore.json"):
+        record = _load_restore(path)
         original = Path(record["active_path"])
-        if not original.is_file() or not original.samefile(db.db_path):
-            raise ValueError("A localização original da base não confirma sua identidade; preserve os recibos e confira a operação.")
+        pending = record["state"] in {"prepared", "applying", "uncertain"}
+        if record["owner_key"] != owner_key:
+            if pending and os.path.normcase(str(original)) == os.path.normcase(str(active)):
+                raise ValueError(f"A identidade da base mudou com a restauração {record['operation_id']} pendente; "
+                                 "preserve os recibos e confira a operação.")
+            continue
+        if not pending or (original.is_file() and original.samefile(active)):
+            records.append(record)
+        elif pending:
+            raise ValueError(f"A localização original da restauração {record['operation_id']} não confirma sua identidade; "
+                             "preserve os recibos e confira a operação.")
     for path in folder.glob(f"restore__{owner_key}_*.db"):
         if not control.joinpath(path.with_suffix(".restore.json").name).is_file():
             raise ValueError("Cópia de restauração sem manifesto; confira seu resultado antes de outra troca.")

@@ -897,3 +897,24 @@ Checkout e índice principal preservados. A publicação compõe somente o delta
 de restauração da CLI sobre a PR307; o WIP de múltiplas contas continua em seu
 PR303 e na composição PR308. Fluxo Linux local da composição depende da política
 da PR296/308. Nenhum banco do proprietário foi usado nos ensaios.
+
+
+### Reconferência de identidade e GUI em12/11/2026
+
+Reproduzida a perda da pendência quando o arquivo ativo era substituído entre
+solicitações. A consulta dos recibos agora também verifica o vínculo do caminho
+com outra identidade pendente. O arquivo novo fica preservado. Bases independentes
+e recibos concluídos por alias têm regressões próprias. Formato v1 preservado.
+Último lote31 aprovados em10,38s, com sobreposição ao lote28 anterior.
+
+Launcher oficial com GUI real XWayland e preferências isoladas confirmou
+resultado incerto7, consulta e recuperação99, duas confirmações, guia/botão
+visíveis e zero erros inesperados. Foram18 pulsos, intervalo máximo observado
+0,581s, alternância de tema, pico270,2MiB, mínimo7,96GiB disponíveis e máximo68°C.
+Hashes de preferências do proprietário preservados. Recibos locais em
+`restore-gui-lifecycle/`. O controlador invocou os botões na janela real.
+Entrada física, reinício físico/falha de energia, novo host e Windows físico
+têm aceites próprios. A inspeção do helper comum identificou que o boot Linux
+anterior fica indeterminado pelo contrato atual; próximo incremento independente
+é qualificar a prova de encerramento na mesma máquina, com testes próprios.
+CI deve ser conferido na ponta publicada.

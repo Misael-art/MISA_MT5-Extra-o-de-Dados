@@ -119,6 +119,51 @@ def test_alias_of_active_database_preserves_pending_operation(restoration, monke
         other.close()
 
 
+def test_replaced_active_file_does_not_hide_pending_operation(restoration, monkeypatch, tmp_path):
+    db, config, chosen = restoration
+    fail_after_copy(monkeypatch)
+    files.restore_backup(db, config, chosen)
+    active = Path(db.db_path)
+    os.link(active, tmp_path / "previous-active.db")
+    active.unlink()
+    with sqlite3.connect(active) as conn:
+        conn.execute("CREATE TABLE proof(id INTEGER)")
+        conn.execute("INSERT INTO proof VALUES(123)")
+    result = files.restore_backup(db, config, chosen)
+    assert not result["ok"] and value(active) == 123
+    assert files.restore_status(db, config)["state"] == "unknown"
+
+
+def test_known_pending_operation_keeps_other_database_independent(restoration, monkeypatch, tmp_path):
+    db, config, chosen = restoration
+    fail_after_copy(monkeypatch)
+    first = files.restore_backup(db, config, chosen)
+    separate = DatabaseManager(db_path=str(tmp_path / "other-active.db"))
+    try:
+        result = files.restore_backup(separate, config, chosen)
+        assert result["ok"] and value(separate.db_path) == 7
+        assert files.restore_status(db, config, first["operation_id"])["state"] == "uncertain"
+    finally:
+        separate.close()
+
+
+def test_completed_receipt_keeps_alias_usable_after_original_name_is_removed(restoration, tmp_path):
+    db, config, chosen = restoration
+    first = files.restore_backup(db, config, chosen)
+    assert first["ok"]
+    alias = tmp_path / "renamed-active.db"
+    os.link(db.db_path, alias)
+    db.engine.dispose()
+    Path(db.db_path).unlink()
+    renamed = DatabaseManager(db_path=str(alias))
+    try:
+        assert files.restore_status(renamed, config, first["operation_id"])["state"] == "succeeded"
+        result = files.restore_backup(renamed, config, chosen)
+        assert result["ok"] and value(alias) == 7
+    finally:
+        renamed.close()
+
+
 @pytest.mark.parametrize("kind", ["missing", "partial", "unknown_schema", "inconsistent_result", "nonfinite"])
 def test_unknown_manifest_blocks_effects(restoration, kind):
     db, config, chosen = restoration
