@@ -82,3 +82,19 @@ Não criar outro ambiente virtual, cópias de banco ou caches MT5 para essa troc
 Retirar apenas staging próprio e releases de prévia substituídas sem processos
 ou referências, após a validação. Preservar fontes, histórico, WIP e diagnósticos
 relevantes; não limpar caches globais ou worktrees do proprietário.
+
+
+## Reconferência de composição em12/11/2026
+
+Composição revisável na branch `codex/composicao-diagnostico-20261112`,
+com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidências
+e próximos passos estão na fila de [continuidade](../CONTINUAR_AQUI.md). Prévia identificada
+pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
+OAuth real, entrada física e observação prolongada conservam aceites próprios.
+
+Os commits aplicados na composição são ancestrais da prévia. Patches de PRs
+independentes mantêm o vínculo entre SHA original e SHA aplicado no manifesto.
+Confira ambos e os hashes runtime. O checkout único e seu índice principal
+permanecem preservados. Retorno primário `development-650656fac67d`,
+com retorno histórico adicional `development-57d13ee91620`. Os ambientes,
+dados e configuração atuais são reutilizados por links.

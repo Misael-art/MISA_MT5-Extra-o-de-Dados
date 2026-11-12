@@ -171,3 +171,12 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 Este projeto é licenciado sob os termos da licença MIT.
 Agentes e engenheiros: [workflow completo por CLI/SDK, sem cliques](docs/agente.md).
+
+
+## Reconferência de composição em12/11/2026
+
+Composição revisável na branch `codex/composicao-diagnostico-20261112`,
+com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidências
+e próximos passos estão na fila de [continuidade](CONTINUAR_AQUI.md). Prévia identificada
+pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
+OAuth real, entrada física e observação prolongada conservam aceites próprios.

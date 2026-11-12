@@ -10,7 +10,7 @@ import sys
 # Leitura/análise sobre bases, recibos e arquivos locais; nenhum chama o conector MT5.
 LOCAL_COMMANDS = frozenset({
     "dashboard", "tables", "quality", "export", "strategies", "analyze", "status", "validate", "screen",
-    "report", "laboratory", "analytics", "trades", "experiments",
+    "report", "laboratory", "analytics", "trades", "experiments", "resources", "b3", "crypto",
 })
 # Opções globais da CLI que consomem o argumento seguinte.
 _GLOBAL_WITH_VALUE = frozenset({"--config", "--db"})

@@ -1,3 +1,96 @@
+## Drive — estabilização sintética de 07/11/2026
+
+## Diagnóstico reconferido em 12/11/2026
+
+A fila vigente desta passagem está em [CONTINUAR_AQUI](../CONTINUAR_AQUI.md).
+Os registros anteriores conservam seu contexto histórico. Cada SHA de código,
+check e aceite precisa ser associado à composição efetivamente executada.
+
+### Arquitetura e posse verificadas
+
+| Caminho oficial | Responsabilidade e evidência de conexão |
+|---|---|
+| `run.sh`, `run.bat`, `app.py`, `cli.py` | GUI Tk e CLI `mt5x`. O entrypoint está em `pyproject.toml`. O launcher Linux consulta `launch_policy` para comandos locais e usa a ponte nos demais. `--offline --cli` está limitado ao Drive na fonte atual |
+| `services.py`, `bootstrap/config_builder.py` | Configuração e montagem compartilhadas. Defaults e arquivo de exemplo preservam instalações antigas. `services.load_config` usa UTF-8 e leitura literal. O corretivo da GUI está na PR299 |
+| `mt5_connector.py`, `mt5_backend.py`, `scripts/mt5_bridge_server.py` | Acesso a mercado. Windows usa o pacote MetaTrader5 e Linux usa RPyC/Wine. O contrato da ponte permite leitura de mercado. Operações financeiras pertencem aos Experts/HADOUKEN/Safety |
+| `database_manager.py`, `analytics/datasets.py`, `analytics/feature_store.py` | Dono Dados/F13. Registro de símbolos/tabelas, relógio, qualidade, namespace, revisões congeladas e referências. SQLite e PostgreSQL compartilham o serviço. Transporte de snapshots existente preserva manifesto e validação |
+| `robots/backtest.py`, `robots/runner.py`, `robots/budget.py`, `robots/store.py` | Produtor, executor e checkpoint existentes. Identidade de execução Python qualificada liga dados, código, parâmetros, regras, custos e runtime. Retomada usa IDs persistidos |
+| `trade_analytics/ledger.py`, `enrich.py`, `cache.py`, `aggregate.py`, `context.py` | Dono Dados/Laboratório F16. Livro persistido, enriquecimento aditivo e lentes descritivas. A GUI usa `LaboratoryPanel.load_lab` e `ui.run_bg`, com atualização de widgets no loop Tk |
+| `presets/`, `sdk.py`, `robots/sessions.py` | Dono Presets/F19 e integração SDK. Seleção, compilação e sessões usam contratos existentes. Aceites operacionais dependem dos pins dos componentes e de ambiente permitido |
+| `resources/files.py`, `cloud_drive.py`, `drive_backup.py`, `ui/drive_panel.py` | Dono Recursos/Dados. Snapshot SQLite, manutenção, identidade de conta e cofre, envio cifrado retomável, verificação e ensaio isolado. PR302 integrada e múltiplas contas na PR303 com CI aprovado |
+| `dashboard/`, `ui_manager.py` | Clientes dos serviços. A prévia instalada inclui Biblioteca da PR300. Estado, consultas e ações precisam preservar a operação assíncrona e os mesmos contratos |
+
+Os donos acima são responsabilidades dos contratos do projeto. A pasta `.github`
+foi conferida e não contém CODEOWNERS. A composição usa três repositórios e um
+ambiente App. Dependências de produção declaradas incluem Python 3.11+, pandas,
+NumPy, SQLAlchemy, SciPy, Matplotlib, Pillow, psutil, dotenv, cryptography,
+requests/Flask, MetaTrader5 no Windows e RPyC no Linux. Parquet/DuckDB, psycopg
+e keyring têm caminhos opcionais. A indisponibilidade de `pandas_ta` foi
+observada na GUI de QA, que declarou o uso das implementações básicas existentes.
+Nenhuma dependência foi instalada nesta passagem.
+
+### Estado integrado e validação
+
+O checkout único do App está em `codex/launcher-classes`, HEAD `550b6d5`, com
+WIP anterior preservado e sem upstream configurado. Master remoto `09a618c`
+e prévia efetiva `650656f` são referências diferentes. A prévia tem 354 hashes
+conferidos, e o retorno `57d13ee` tem 341. O recibo local
+`state/development-preview.json` ainda cita `784a252`. O destino efetivo do link
+e o manifesto da release foram conferidos. HADOUKEN `d4d389e` está limpo em
+branch e Safety `27b8599` limpo detached, conforme observado neste host.
+
+PR303 já implementou múltiplas contas Drive e tem os seis jobs aprovados.
+PR299 recebeu o uso de configuração compartilhada na GUI, PR305 corrige
+excursões nas lentes e o custo ask em vendas, e PR304 recebeu auditoria de
+ticks v2. O agrupamento de backtests repetidos está em validação própria.
+Detalhes, SHAs e checklists atualizados ficam na fila única do handoff.
+Os incrementos abertos têm integração em master e na prévia pendentes.
+
+As verificações locais usaram SQLite próprio e entradas sintéticas, com o
+produtor real, CLI oficial e janelas próprias no compositor XWayland. MAE/MFE
+foram confirmados na GUI, e a alternância entre amostra agrupada e integral
+foi observada. Os callbacks e a carga da GUI passaram pelo controlador ativo.
+Testes focados cobriram configuração, cache legado, preservação do livro,
+qualificação de ticks, identidade de execução e seleção explícita.
+CI de PostgreSQL é evidência específica desse backend nos SHAs registrados.
+Windows CI, Windows físico, MT5/Tester, DEMO e entrada física têm aceites próprios.
+
+### Lacunas e riscos com dependências
+
+A auditoria inicial reproduziu falhas de configuração literal na GUI,
+MAE/MFE ocultos pelo merge do enriquecimento e flags de ticks não finitas.
+A repetição de execuções inflava a população das lentes. As correções usam
+os serviços e contratos existentes. O suposto defeito de nomes de símbolos
+com separador foi descartado após seguir `refresh_inventory` até a identidade
+registrada. O caminho antigo chama um método de compatibilidade vazio.
+
+O cancelamento/retomada apresentou falha no Windows CI anterior e timeout
+posterior em COMMIT. Dois testes dirigidos passam no Linux. A hipótese de
+conexão com lock retido exige reprodução e instrumentação no alvo antes de
+uma mudança de pool, journal ou timeout. Os logs disponíveis não estabelecem
+uma causa única. Falhas futuras devem preservar stack, teste, SHA e ambiente.
+
+Pacotes Drive por ativo e reunião em QA continuam planejados. O snapshot de
+base e o transporte de uma revisão já existem. O aceite do pacote exige
+inventário completo das famílias/tabelas e dependências, namespace, relógio,
+revisões e hashes. A reunião exige plano de leitura, conflitos explícitos,
+idempotência, transação e consumidores preservados. OAuth/conta/pasta reais dependem do fluxo do proprietário após o aceite
+sintético conjunto. A página privada de recuperação foi reconferida nesta sessão,
+e o complemento com resgate WIP e checkpoint parcial foi relido por hash e
+restaurado pelo recuperador oficial. Drive PostgreSQL exige dump/restauração próprios.
+
+T13.4-P08…P11 dependem do marco M1 aceito. Os resultados registrados para a
+cadeia atual reprovam ou não atingem amostra/economia suficientes. F19/F20
+mantêm as dependências de executores, risco e aceites nativos dos pins.
+Documentação, CI e simulação pertencem aos escopos descritos em cada recibo.
+
+O host tem histórico de reinícios sem diagnóstico conclusivo nesta passagem.
+A proteção aplicada consiste em reservar RAM e disco, medir PSI/swap/temperatura,
+limitar paralelismo e adiar testes durante a VM de outro projeto. Recursos livres
+variaram com o trabalho concorrente. A inspeção desta passagem preservou todos
+os processos alheios. O próximo passo de execução e o orçamento ficam no handoff.
+
+
 ## Drive — remoção idempotente no cofre, 07/11/2026
 
 O adaptador trata a ausência de uma senha dentro da operação do backend, antes da sanitização genérica de erros. Assim criar a primeira chave ou desconectar sem chave anterior continua idempotente, sem expor mensagens do cofre. Dois testes dirigidos aprovados com backend simulado; sem acesso a credenciais reais. Correção do mesmo objetivo na PR302, separada do incremento de múltiplas contas.

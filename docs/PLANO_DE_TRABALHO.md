@@ -4647,3 +4647,12 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+
+## Reconferência de composição em12/11/2026
+
+Composição revisável na branch `codex/composicao-diagnostico-20261112`,
+com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidências
+e próximos passos estão na fila de [continuidade](../CONTINUAR_AQUI.md). Prévia identificada
+pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
+OAuth real, entrada física e observação prolongada conservam aceites próprios.

@@ -38,7 +38,9 @@ def test_local_command_that_asks_for_mt5_is_refused(monkeypatch, tmp_path):
 
 @pytest.mark.skipif(os.name == "nt", reason="run.sh é o launcher Linux")
 @pytest.mark.parametrize("argv, bridged", [(["tables"], False), (["--json", "laboratory", "catalog"], False),
-                                           (["status"], False), (["extract", "--help"], True)])
+                                           (["status"], False), (["resources", "backups"], False),
+                                           (["b3", "--help"], False), (["crypto", "--help"], False),
+                                           (["extract", "--help"], True)])
 def test_official_launcher_starts_bridge_only_for_mt5_commands(tmp_path, argv, bridged):
     app = tmp_path / "app"
     (app / "scripts").mkdir(parents=True)
