@@ -18,12 +18,12 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao import timeframes
-from mt5_extracao.strategies import indicators
+from mt5_extracao.strategies import backtester, indicators, specs
 
 log = logging.getLogger(__name__)
 
 SECTION = "TRADE_ANALYTICS"
-FEATURE_VERSION = 1            # mude quando uma fórmula mudar: invalida o cache (T16.5)
+FEATURE_VERSION = 2            # excursões bid/ask; invalida a fórmula anterior no cache (T16.5)
 VOL_LOOKBACK = 250             # barras para o percentil de volatilidade
 VOLUME_LOOKBACK = 20           # barras para o percentil de volume
 VOL_LABELS = ("baixa", "média", "alta")
@@ -31,7 +31,8 @@ VOL_LABELS = ("baixa", "média", "alta")
 COLUMNS = ("run_id", "seq", "time_ref", "day_of_week", "day_of_month", "week_of_month", "month", "is_month_end",
            "hour", "time_bucket", "minutes_from_open", "event_impact", "minutes_to_event", "event_name",
            "event_surprise", "entry_volume", "volume_rank", "atr", "atr_pct", "bb_width", "prior_return_pct",
-           "volatility_rank", "volatility_bucket", "win_flag", "duration_min", "mae", "mfe", "feature_version")
+           "volatility_rank", "volatility_bucket", "win_flag", "duration_min", "mae", "mfe", "excursion_basis",
+           "feature_version")
 
 
 def _setting(config, key, default):
@@ -74,6 +75,21 @@ def _bars(db, symbol: str, timeframe: str, cache: Dict) -> pd.DataFrame:
             frame["vol"] = np.where(pd.Series(real).fillna(0) > 0, real, frame["tick_volume"])
             frame["date"] = frame["time"].dt.normalize()
             frame["day_open"] = frame.groupby("date")["time"].transform("min")
+            frame["ask_high"] = frame["ask_low"] = np.nan
+            row = db.get_symbol_spec(symbol) if hasattr(db, "get_symbol_spec") else None
+            if row:
+                try:
+                    spec = specs.to_symbol_spec(symbol, row)
+                    # Especificação ausente/inválida não autoriza presumir point ou spread zero.
+                    fallback = float(row["spread"]) if row.get("spread") is not None else np.nan
+                    spec.spread_points = fallback if np.isfinite(fallback) and fallback >= 0 else np.nan
+                    if np.isfinite(spec.point) and spec.point > 0:
+                        spread = backtester.execution_spreads(frame, spec, backtester.BacktestConfig())[0]
+                        valid = np.isfinite(spread) & (spread >= 0)
+                        frame["ask_high"] = np.where(valid, frame["high"] + spread, np.nan)
+                        frame["ask_low"] = np.where(valid, frame["low"] + spread, np.nan)
+                except (ValueError, TypeError, KeyError):
+                    pass  # Estado explícito ask_unavailable na operação; sem inventar cotação.
         cache[key] = frame
     return cache[key]
 
@@ -148,6 +164,19 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
         bars = _bars(db, row["symbol"], row.get("timeframe"), cache)
         if bars.empty:
             continue
+        out.at[i, "excursion_basis"] = "unavailable"
+        if pd.notna(exit_.loc[i]) and pd.notna(row.get("entry_price")) and row.get("direction") in (1, -1):
+            path = bars[(bars["time"] >= entry.loc[i]) & (bars["time"] <= exit_.loc[i])]
+            if not path.empty:
+                d, price = int(row["direction"]), float(row["entry_price"])
+                high, low = ("high", "low") if d == 1 else ("ask_high", "ask_low")
+                if np.isfinite(price) and np.isfinite(path[[high, low]].to_numpy(dtype=float)).all():
+                    favorable = (path[high].max() - price) if d == 1 else (price - path[low].min())
+                    adverse = (price - path[low].min()) if d == 1 else (path[high].max() - price)
+                    out.at[i, "mfe"], out.at[i, "mae"] = max(0.0, float(favorable)), max(0.0, float(adverse))
+                    out.at[i, "excursion_basis"] = "bid_bar_envelope" if d == 1 else "ask_bar_envelope"
+                elif d == -1:
+                    out.at[i, "excursion_basis"] = "ask_unavailable"
         k = int(bars["time"].searchsorted(entry.loc[i], side="left")) - 1   # última barra fechada antes da entrada
         if k < 0:
             continue
@@ -166,11 +195,4 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
                            float(bar["atr_pct"]) if pd.notna(bar["atr_pct"]) else np.nan)
         out.at[i, "volatility_rank"] = rank
         out.at[i, "volatility_bucket"] = None if rank is None else VOL_LABELS[min(2, int(rank * 3))]
-        if pd.notna(exit_.loc[i]) and pd.notna(row.get("entry_price")) and row.get("direction") in (1, -1):
-            path = bars[(bars["time"] >= entry.loc[i]) & (bars["time"] <= exit_.loc[i])]
-            if not path.empty:
-                d, price = int(row["direction"]), float(row["entry_price"])
-                favorable = (path["high"].max() - price) if d == 1 else (price - path["low"].min())
-                adverse = (price - path["low"].min()) if d == 1 else (path["high"].max() - price)
-                out.at[i, "mfe"], out.at[i, "mae"] = max(0.0, float(favorable)), max(0.0, float(adverse))
     return out[list(COLUMNS)]

@@ -41,6 +41,18 @@ def frame(db, config, features: Optional[pd.DataFrame] = None, **filters) -> pd.
         features = cache.features(db, config, trades)
     feats = features
     merged = trades.merge(feats, on=["run_id", "seq"], how="left", suffixes=("", "_f"))
+    recorded_excursions = merged[["mae", "mfe"]].notna()
+    # O livro pode ter excursões observadas; quando ausentes, usar o enriquecimento
+    # sem regravar o livro nem esconder o resultado calculado em mae_f/mfe_f.
+    for name in ("mae", "mfe"):
+        if name + "_f" in merged:
+            recorded = pd.to_numeric(merged[name], errors="coerce")
+            derived = pd.to_numeric(merged[name + "_f"], errors="coerce")
+            merged[name] = recorded.fillna(derived)
+    if "excursion_basis" in merged:
+        merged.loc[recorded_excursions.all(axis=1), "excursion_basis"] = "ledger"
+        mixed = recorded_excursions.any(axis=1) & ~recorded_excursions.all(axis=1)
+        merged.loc[mixed, "excursion_basis"] = "mixed_ledger_and_enrichment"
     merged["day"] = pd.to_datetime(merged["entry_time"].fillna(merged["exit_time"])).dt.normalize()
     return merged
 
