@@ -4643,3 +4643,29 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+
+## DIAG-RESTORE — identidade da cópia em 12/11/2026
+
+Owner Recursos/Dados, em validação na branch `codex/restore-backup-integridade`.
+A versão pública foi executada em árvore SQLite descartável com o nome
+`a#b%c space.db`. Informou sucesso, criou o caminho truncado em `#` e deixou
+a base ativa sem a tabela esperada. O corretivo local anterior foi preservado
+e revisado. A abertura agora usa URI codificada e mantém a mesma conexão e
+fotografia entre validação e cópia. Ausência, arquivo vazio/corrompido e alias
+da base ativa são recusados antes da cópia de segurança. Schema, contagens
+e quick_check são comparados após a troca.
+
+Lotes locais sobrepostos passaram com 51 casos de Recursos/identidade em
+31,32 s e 24 de launcher/identidade em 11,06 s. Incluem oito regressões de
+identidade. O launcher CLI, em base própria, confirmou o valor 7 escolhido
+e o estado anterior 99 na cópia de segurança. A GUI real XWayland pelo
+launcher confirmou a restauração na aba Recursos, com sete pulsos do loop,
+janela visível e zero erros de callback. Entrada foi solicitada pelo controlador
+instrumentado. Doctor offline deu 16 OK, dois avisos e zero falhas.
+
+O índice principal e os WIPs foram preservados. O banco do proprietário
+permaneceu fora dos ensaios. CI do SHA publicado, Windows físico e recuperação
+com encerramento abrupto têm aceites próprios. A lacuna de intenção durável e
+consulta de resultado da restauração exige incremento específico nos serviços
+de Recursos, CLI e GUI. Recibos locais em `state/qa-tmp/diagnostico-20261112/`.

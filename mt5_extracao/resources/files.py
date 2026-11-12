@@ -262,46 +262,59 @@ def clean_files(db, config, origin: str = "ui", now: Optional[datetime] = None) 
 
 # --- voltar a uma cópia ----------------------------------------------------------------------
 
+def _restore_inventory(conn):
+    """Schema e contagens da fotografia mantida aberta durante a restauração."""
+    schema = conn.execute("SELECT type, name, tbl_name, sql FROM sqlite_master "
+                          "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").fetchall()
+    tables = [row[1] for row in schema if row[0] == "table"]
+    if not tables:
+        raise ValueError("A cópia não contém tabelas; escolha uma cópia válida da base.")
+    counts = {name: conn.execute('SELECT COUNT(*) FROM "' + name.replace('"', '""') + '"').fetchone()[0]
+              for name in tables}
+    return schema, counts
+
+
 def restore_backup(db, config, backup_path, origin: str = "ui") -> dict:
     """
     Volta a base inteira ao estado de uma cópia. Antes, faz uma cópia do estado atual (se ela falhar, nada muda).
     A troca usa a API de backup do SQLite sobre a base aberta; extrações e backtests devem estar parados.
     """
-    path = Path(backup_path)
+    path = Path(backup_path).resolve()
     result = {"ok": False, "safety_copy": None, "error": None}
     if db.dialect != "sqlite":
         result["error"] = "só para SQLite; no PostgreSQL use pg_restore"
         return result
     try:
-        src = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=10)
-        try:
-            check = src.execute("PRAGMA quick_check").fetchone()[0]
-        finally:
-            src.close()
-        if check != "ok":
-            raise RuntimeError(f"a cópia escolhida não passou na conferência ({check}); nada foi alterado")
-        safety = backup(db, config, origin=f"{origin}, antes de voltar à cópia", prune=False)   # não apaga a escolhida
-        if not safety["ok"]:
-            raise RuntimeError(f"não foi possível guardar o estado atual antes de trocar ({safety['error']}); "
-                               "nada foi alterado")
-        result["safety_copy"] = safety["path"]
-        policy = policy_mod.load(config)
-        with actions.exclusive(policy_mod.archive_dir(db, policy), f"voltar à cópia ({origin})"):
-            db.engine.dispose()                      # solta as conexões do programa antes de sobrescrever
-            src = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=10)
-            dst = sqlite3.connect(str(Path(db.db_path).resolve()), timeout=60)
-            try:
-                src.backup(dst)
-                check = dst.execute("PRAGMA quick_check").fetchone()[0]
-            finally:
-                dst.close()
-                src.close()
-            db.engine.dispose()
-            if isinstance(getattr(db, "_table_cache", None), dict):
-                db._table_cache.clear()
-            if check != "ok":
-                raise RuntimeError(f"a base trocada não passou na conferência ({check}); volte à cópia de segurança "
-                                   f"{safety['path']}")
+        active = Path(db.db_path).resolve()
+        if not path.is_file():
+            raise ValueError("A cópia escolhida não existe; nada foi alterado.")
+        if path.samefile(active):
+            raise ValueError("Escolha uma cópia diferente da base ativa; nada foi alterado.")
+        # as_uri codifica #/%/espaços. Manter a mesma conexão evita reabrir outro arquivo
+        # entre a conferência e a cópia; BEGIN fixa a fotografia que será restaurada.
+        with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=10)) as src:
+            src.execute("BEGIN")
+            check = src.execute("PRAGMA quick_check").fetchall()
+            if check != [("ok",)]:
+                raise RuntimeError("a cópia escolhida não passou na conferência; nada foi alterado")
+            expected = _restore_inventory(src)
+            safety = backup(db, config, origin=f"{origin}, antes de voltar à cópia", prune=False)
+            if not safety["ok"]:
+                raise RuntimeError(f"não foi possível guardar o estado atual antes de trocar ({safety['error']}); "
+                                   "nada foi alterado")
+            result["safety_copy"] = safety["path"]
+            policy = policy_mod.load(config)
+            with actions.exclusive(policy_mod.archive_dir(db, policy), f"voltar à cópia ({origin})"):
+                db.engine.dispose()
+                with closing(sqlite3.connect(str(active), timeout=60)) as dst:
+                    src.backup(dst)
+                    check = dst.execute("PRAGMA quick_check").fetchall()
+                    if check != [("ok",)] or _restore_inventory(dst) != expected:
+                        raise RuntimeError("a base trocada diverge da cópia; volte à cópia de segurança "
+                                           f"{safety['path']}")
+                db.engine.dispose()
+                if isinstance(getattr(db, "_table_cache", None), dict):
+                    db._table_cache.clear()
         result["ok"] = True
         actions.audit(db, "voltar à cópia", path.name, origin, True, detail={"safety_copy": safety["path"]})
         log.info(f"Base trocada pela cópia {path} (estado anterior guardado em {safety['path']}).")
