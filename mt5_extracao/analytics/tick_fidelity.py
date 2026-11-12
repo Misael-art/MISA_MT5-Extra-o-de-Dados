@@ -14,7 +14,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-VERSION = 1
+VERSION = 2
 LABELS = {
     "A": "ticks reais com origem e cobertura verificadas",
     "B": "ticks reais com limitações identificadas",
@@ -29,31 +29,57 @@ GAP_SECONDS = 60
 SPREAD_ANOMALY = 10.0          # vezes a mediana
 
 
+def _integers(values: pd.Series):
+    """Inteiros não negativos de 64 bits, com máscara que conserva entradas inválidas."""
+    numbers = pd.to_numeric(values, errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    valid = np.isfinite(numbers) & (numbers >= 0) & (numbers < 2**63) & (numbers == np.floor(numbers))
+    valid &= ~values.map(lambda value: isinstance(value, (bool, np.bool_))).to_numpy(dtype=bool)
+    return np.where(valid, numbers, 0).astype("int64"), valid
+
+
 def audit(ticks: Optional[pd.DataFrame], point: Optional[float] = None) -> dict:
     """Mede a sequência capturada como está gravada (ordem time_msc, seq). Não corrige nem descarta nada."""
     empty = {"version": VERSION, "rows": 0, "defects": ["no_ticks"]}
     if ticks is None or len(ticks) == 0 or "time_msc" not in ticks:
         return empty
     order = [c for c in ("time_msc", "seq") if c in ticks]
-    stored = pd.to_numeric(ticks["time_msc"], errors="coerce").to_numpy(dtype=float)
-    data = ticks.sort_values(order, kind="stable")
-    msc = pd.to_numeric(data["time_msc"], errors="coerce").to_numpy(dtype=float)
-    if not np.isfinite(msc).any():
-        return {"version": VERSION, "rows": int(len(data)), "defects": ["invalid_time"]}
-    bid = pd.to_numeric(data.get("bid", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float)
-    ask = pd.to_numeric(data.get("ask", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float)
+    stored = pd.to_numeric(ticks["time_msc"], errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    # Ordenar pelo valor numérico; textos/NaN/infinito continuam contabilizados como
+    # inválidos, sem contaminar extremos ou intervalos nem modificar a captura.
+    data = ticks.assign(time_msc=pd.to_numeric(ticks["time_msc"], errors="coerce"))
+    if "seq" in data:
+        sequence, valid_sequence = _integers(data["seq"])
+        data = data.assign(seq=np.where(valid_sequence, sequence, np.nan))
+    data = data.sort_values(order, kind="stable")
+    msc = pd.to_numeric(data["time_msc"], errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    finite = np.isfinite(msc)
+    if not finite.any():
+        return {"version": VERSION, "rows": int(len(data)), "invalid_time": int(len(data)),
+                "defects": ["invalid_time"]}
+    bid = pd.to_numeric(data.get("bid", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    ask = pd.to_numeric(data.get("ask", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float, na_value=np.nan)
     quoted = np.isfinite(bid) & np.isfinite(ask) & (bid > 0) & (ask > 0)
     crossed = quoted & (ask < bid)
-    same_ms = pd.Series(msc).value_counts()
-    gaps = np.diff(msc) / 1000.0 if len(msc) > 1 else np.array([])
+    same_ms = pd.Series(msc[finite]).value_counts()
+    # Não inventar um intervalo entre eventos separados por timestamp inválido.
+    valid_pairs = finite[:-1] & finite[1:]
+    gaps = (msc[1:][valid_pairs] - msc[:-1][valid_pairs]) / 1000.0
+    stored_pairs = np.isfinite(stored[:-1]) & np.isfinite(stored[1:])
     days = pd.Series(msc[np.isfinite(msc)] // 86_400_000).value_counts()
+    invalid_sequence, duplicate_sequence = 0, 0
+    if "seq" in data:
+        _sequence, valid_sequence = _integers(data["seq"])
+        invalid_sequence = int((~valid_sequence).sum())
+        duplicate_sequence = int(data.loc[finite & valid_sequence].duplicated(["time_msc", "seq"], keep=False).sum())
     out = {
         "version": VERSION, "rows": int(len(data)),
-        "first_time_msc": int(np.nanmin(msc)), "last_time_msc": int(np.nanmax(msc)),
+        "first_time_msc": int(msc[finite].min()), "last_time_msc": int(msc[finite].max()),
         "invalid_time": int((~np.isfinite(msc)).sum()),
-        "stored_order_regressions": int((np.diff(stored) < 0).sum()) if len(stored) > 1 else 0,
+        "stored_order_regressions": int((stored[1:][stored_pairs] < stored[:-1][stored_pairs]).sum()),
         "same_ms_groups": int((same_ms > 1).sum()), "max_same_ms": int(same_ms.max()),
-        "provider_sequence": "seq" in ticks,
+        "provider_sequence": "seq" in ticks and not invalid_sequence and not duplicate_sequence,
+        "invalid_sequence": invalid_sequence, "duplicate_sequence_rows": duplicate_sequence,
+        "invalid_flags": 0,
         "quoted_rows": int(quoted.sum()), "unquoted_rows": int((~quoted).sum()), "crossed_quotes": int(crossed.sum()),
         "last_rows": int((pd.to_numeric(data["last"], errors="coerce") > 0).sum()) if "last" in data else 0,
         "real_volume_rows": int((pd.to_numeric(data["volume_real"], errors="coerce") > 0).sum())
@@ -63,18 +89,40 @@ def audit(ticks: Optional[pd.DataFrame], point: Optional[float] = None) -> dict:
         "largest_gaps_s": [float(v) for v in np.sort(gaps)[::-1][:5]],
     }
     if "flags" in data:
-        flags = pd.to_numeric(data["flags"], errors="coerce").fillna(0).astype("int64").to_numpy()
+        flags, valid_flags = _integers(data["flags"])
+        out["invalid_flags"] = int((~valid_flags).sum())
         out["flags"] = {name: int(((flags & bit) != 0).sum()) for name, bit in FLAG_BITS.items()}
     spread = (ask - bid)[quoted & ~crossed]
+    try:
+        scale = float(point) if point is not None and not isinstance(point, (bool, np.bool_)) else np.nan
+    except (ValueError, TypeError, OverflowError):
+        scale = np.nan
+    valid_point = bool(np.isfinite(scale) and scale > 0)
+    out["point_state"] = "available" if valid_point else "unavailable" if point is None else "invalid"
     if len(spread):
-        scale = point if point and point > 0 else 1.0
-        median = float(np.median(spread))
-        out["spread"] = {"unit": "points" if point and point > 0 else "price", "median": median / scale,
-                         "p99": float(np.quantile(spread, 0.99)) / scale, "max": float(spread.max()) / scale,
+        scale = scale if valid_point else 1.0
+        median = float(np.quantile(spread, 0.5))
+        statistics = np.array([median, np.quantile(spread, 0.99), spread.max()])
+        with np.errstate(over="ignore", invalid="ignore"):
+            converted = statistics / scale
+        if not np.isfinite(converted).all():
+            out["point_state"] = "invalid"
+            valid_point = False
+            converted = statistics
+        out["spread"] = {"unit": "points" if valid_point else "price", "median": float(converted[0]),
+                         "p99": float(converted[1]), "max": float(converted[2]),
                          "anomalous": int((spread > SPREAD_ANOMALY * median).sum()) if median > 0 else 0}
     defects = []
     if out["invalid_time"]:
         defects.append("invalid_time")
+    if out["invalid_sequence"]:
+        defects.append("invalid_sequence")
+    if out["duplicate_sequence_rows"]:
+        defects.append("duplicate_sequence")
+    if out["invalid_flags"]:
+        defects.append("invalid_flags")
+    if out["point_state"] == "invalid":
+        defects.append("invalid_point")
     if out["stored_order_regressions"]:
         defects.append("stored_order_regressions")
     if out["crossed_quotes"]:
@@ -106,15 +154,17 @@ def grade(report: Optional[dict], tick_audit: Optional[dict] = None, tester: Opt
         reasons.append("Relatório do Tester declara 100% de ticks reais." if declared else
                        "Relatório do Tester não declara cobertura integral de ticks reais.")
     defects = list((tick_audit or {}).get("defects") or [])
+    rows = (tick_audit or {}).get("rows")
+    audited = ((tick_audit or {}).get("version") == VERSION and type(rows) is int and rows > 0)
     if ticks_ok and origin == "observed":
-        if complete and tick_audit is not None and not defects:
+        if complete and audited and not defects:
             letter = "A"
         else:
             letter = "B"
             if not complete:
                 reasons.append("Cobertura integral de ticks reais não comprovada.")
-            if tick_audit is None:
-                reasons.append("Auditoria da sequência de ticks não executada.")
+            if not audited:
+                reasons.append("Auditoria da sequência de ticks ausente, vazia ou de versão anterior.")
             reasons.extend(f"Auditoria: {item}." for item in defects)
     elif ticks_ok:
         letter = "C"
@@ -125,8 +175,11 @@ def grade(report: Optional[dict], tick_audit: Optional[dict] = None, tester: Opt
     else:
         letter = "E"
         reasons.append("Sem relatório de qualidade ou sem barras válidas.")
+    certifies = {kind: letter in allowed for kind, allowed in REQUIREMENTS.items()}
+    blocking = set(defects) - {"gaps_not_reconciled_with_sessions"}
+    certifies["intrabarra"] = certifies["intrabarra"] and audited and not blocking
     return {"version": VERSION, "grade": letter, "label": LABELS[letter], "reasons": reasons,
-            "certifies": {kind: letter in allowed for kind, allowed in REQUIREMENTS.items()},
+            "certifies": certifies,
             "basis": "t20_6_capabilities_not_independent_venue_validation"}
 
 
