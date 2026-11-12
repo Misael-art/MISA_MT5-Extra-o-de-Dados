@@ -1,5 +1,100 @@
 # Fase 15 — Gestão de recursos (espaço, higienização e automação)
 
+## DIAG-RETENCAO — cópias com proveniência, 12/11/2026
+
+O expurgo global de `*.db` apagou um arquivo desconhecido no ensaio anterior
+à correção. O produtor existente agora grava recibos privados `mt5x-backup/v1`
+ao lado das cópias, com ID estável, identidade física da origem/artefato, bytes
+e SHA-256. O nome novo inclui UUID e prefixo limitado para conservar identidade
+entre solicitações. Legado sem recibo, cópia de outra base, link, conteúdo
+alterado e schema ilegível/desconhecido são preservados. A leitura de cópia
+recente usa a proveniência registrada. O hash integral é reconferido no expurgo.
+
+`backup_keep` conta cópias reconhecidas da base atual. Intenções de retenção
+são sincronizadas no recibo antes de cada exclusão. Resultado incerto bloqueia
+novo expurgo. `resources backup-status --operation-id ID` consulta/reconcilia
+presença e identidade, sem repetir exclusões. Ausência é registrada como
+`absent`. Conteúdo conhecido presente recebe `not_applied`. Conteúdo alterado
+continua pendente. Os recibos persistem após expirar o arquivo SQLite, mantendo
+o resultado consultável. Recibos são privados, limitados a 256 KiB cada.
+A GUI mostra arquivos preservados e solicita Conferir retenção pelo worker.
+
+Validação final local teve 22 regressões novas aprovadas em 6,49 s. Um lote
+anterior de 27 casos, sobreposto, passou em 7,03 s com identidade/restauração.
+Dois casos existentes de cópia/CLI foram reexecutados separadamente. O lote
+integrado inicial foi interrompido por orçamento após 31 aprovados em 101,74 s,
+com recibo e resultados parciais preservados. O maior processo observado nesse
+lote teve cerca de 155 MiB RSS, com RAM disponível acima de 6 GiB e 48 °C na
+medição. A estimativa de duração desse lote foi excedida e o restante foi
+dividido. Doctor offline teve 16 OK, dois avisos e zero falhas.
+
+Launcher oficial em quatro chamadas próprias confirmou retenção, arquivo
+desconhecido com valor 7 preservado, recibo conservado e consulta do ID expirado.
+Outro ensaio CLI com falha controlada após excluir retornou código 1/estado
+incerto e a consulta reconciliou ausência. Recibos locais em
+`state/qa-tmp/diagnostico-20261112/retention-*`. Os bancos dos ensaios são
+descartáveis. QA gráfico do artefato final aguarda capacidade do host, ocupado
+pela VM alheia. CI do SHA publicado, Windows físico e perda de energia possuem
+aceites próprios. A causa dos reinícios do host continua sem diagnóstico.
+
+
+## DIAG-RETENCAO — fronteiras ampliadas em 12/11/2026
+
+A primeira revisão deixou passar a perda de um recibo pendente. As duas
+regressões seguintes reproduziram exclusão de outra cópia quando o recibo
+ficou ausente ou corrompido. O produtor agora conserva todos os possíveis
+alvos diante de recibo desconhecido/incompleto e de marcador de cópia sem
+recibo. Recibos válidos de outras bases conservam seu isolamento. Restauração
+pendente também impede expurgo. A consulta informa os recibos indisponíveis
+na CLI e na GUI, com cópia nova e resultado da retenção em estados próprios.
+
+Outra regressão reproduziu troca da identidade da origem após o snapshot com
+sucesso indevido. A identidade é fixada antes do lease e reconferida depois
+do snapshot/hash, incluindo a identidade do artefato. A falha conserva o ID
+da solicitação e evita auditar uma base que substituiu a origem escolhida.
+
+Quatro ensaios próprios reproduziram a limpeza genérica apagando cópia, base
+ativa, arquivo e controle quando as pastas se sobrepunham. O leitor de
+candidatos agora protege os diretórios de dados/controle, arquivos SQLite,
+recibos e arquivos auxiliares da base ativa. Referências positivas dos recibos
+de restauração conservam origem e cópia de segurança após mudar backup_dir.
+O teste de mudança de pasta demonstrou preservação dessas referências e
+remoção de um CSV próprio elegível. A guarda de referências continua no
+serviço existente, sem catálogo ou mecanismo de limpeza paralelo.
+
+Validação final com sete fontes registradas e hashes idênticos antes/depois
+teve 44 aprovados em 9,75 s, incluindo 35 casos novos e nove de restauração/
+identidade. Guardas existentes tiveram 28 aprovados e um caso gráfico sem
+DISPLAY em 7,36 s. Dois casos de limpeza/CLI passaram em 2,52 s. Doctor
+offline teve 16 OK, dois avisos e zero falhas. Resultados intermediários foram
+repetidos após a estabilização das fontes. Nenhum gate foi afrouxado.
+
+Quatro chamadas do launcher oficial com dados próprios produziram saídas
+0/1/1/1. Após perder um recibo pendente, o ciclo conservou as cópias anteriores
+e a consulta confirmou a pendência sem solicitar exclusão. Evidências em
+`retention-unknown-launcher/proof.json`, `retention-frozen-final.xml`,
+`retention-existing-frozen.xml` e `retention-final-frozen-sources.json`.
+O artefato 2066 preparado anteriormente foi marcado como superado antes de
+qualquer ativação. Publicação e composição desta revisão exigem nova
+conferência de SHA, CI e QA gráfico do artefato exato.
+
+
+## DIAG-RETENCAO — leitura completa do controle em 12/11/2026
+
+Reprodução em árvores SQLite próprias mostrou que a enumeração de arquivos podia
+ocultar uma falha de leitura e esquecer uma intenção pendente. Recursos agora
+materializa a leitura e propaga a falha antes de qualquer expurgo. A cópia já
+conferida permanece disponível, com retenção incerta e consulta explícita.
+
+No Linux, 45 regressões de cópia/restauração passaram em 10,15 s e 29 de
+proteção, sessões e leitura parcial passaram em 13,31 s. O caso Tk antes
+adiado também executou no compositor real. Sete hashes de fontes foram
+conferidos antes e depois. Doctor offline teve 16 OK, 2 avisos e zero falhas.
+Um processo, BLAS/OMP com um thread, sem suíte completa local. Falhas originais
+foram preservadas. CI deste incremento e GUI do artefato composto seguem
+pendentes. Entrada física e interrupção de energia têm aceites próprios.
+
+
 **Pedido do dono do projeto (2026-10-14):** abrir uma frente paralela ao roadmap com uma aba de gestão de recursos
 na interface. O primeiro problema é o espaço: a base pode ficar muito grande. A aba deve monitorar a base e o disco,
 higienizar, permitir limpar ativos sem resultado positivo, não usados em estudos ou obsoletos, e oferecer
@@ -76,7 +171,7 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | `keep_snapshots_days` | `365` | Quanto histórico de medições guardar |
 | `auto_backup` | `false` | Cópia de segurança automática da base (só SQLite) |
 | `backup_interval_hours` | `24` | Intervalo entre cópias |
-| `backup_keep` | `5` | Quantas cópias guardar |
+| `backup_keep` | `5` | Cópias reconhecidas da base atual guardadas pela retenção. Arquivos sem prova de posse/conteúdo e operações pendentes são preservados |
 | `backup_dir` | vazio | Pasta das cópias (vazio = `copias/` ao lado da base) |
 | `auto_clean_files` | `false` | Apaga sozinho logs e exportações antigos |
 | `logs_keep_days` | `30` | Idade dos logs apagados (0 = nunca; o log em uso nunca é apagado) |
