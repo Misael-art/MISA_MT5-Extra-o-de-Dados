@@ -162,3 +162,17 @@ com preferências de QA isoladas e hashes do proprietário preservados. Pico
 270,2MiB, mínimo7,96GiB disponíveis e máximo68°C. Os botões foram invocados
 pelo controlador, com a janela real mapeada. Entrada física e falha de energia
 conservam seus aceites. O CI deve ser associado à ponta publicada.
+
+
+## DIAG-RESTORE — contrato de relógio após a troca em 12/11/2026
+
+Duas falhas reproduzidas mostraram que a validação de relógio da sessão anterior
+continuava em cache após restaurar uma base UTC ou com outro fuso. A restauração
+agora invalida essa validação junto ao cache de tabelas, inclusive se o efeito
+terminar incerto. A próxima gravação passa pelo validador canônico existente.
+
+Seis casos cobrem relógio e fuso divergentes, compatibilidade e resultado
+interrompido após a cópia. O lote integrado de restauração e tempo teve 39
+aprovados em 14,20 s no Linux, com dados próprios, um processo e um thread.
+A reprodução anterior teve duas falhas e um caso compatível aprovado. CI deste
+SHA e QA do artefato composto permanecem em validação.
