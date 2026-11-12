@@ -308,6 +308,8 @@ class ResourcesPanel:
         summary_row.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
         self.check_restore_button = ttk.Button(summary_row, text="Conferir restauração", command=self.check_restore)
         self.check_restore_button.pack(side=tk.RIGHT, padx=(8, 0))
+        self.check_backup_button = ttk.Button(summary_row, text="Conferir retenção", command=self.check_backup)
+        self.check_backup_button.pack(side=tk.RIGHT, padx=(8, 0))
         self.files_summary = ttk.Label(summary_row, text="", style="Muted.TLabel", wraplength=600, justify=tk.LEFT)
         self.files_summary.pack(fill=tk.X, side=tk.LEFT, expand=True)
         frame, self.backup_tree = scrolled_tree(tab, ("Cópia", "Tamanho", "Criada em"), (420, 100, 140),
@@ -324,6 +326,11 @@ class ResourcesPanel:
         size = sum(f["bytes"] for f in self.old_files)
         text = (f"{len(self.backups)} cópia(s), {hb(sum(b['bytes'] for b in self.backups))}. " if self.backups
                 else "Nenhuma cópia de segurança ainda. ")
+        unmanaged = sum(not item.get("managed", False) for item in self.backups)
+        if unmanaged:
+            text += f"{unmanaged} preservada(s) sem recibo válido da base atual. "
+        if any(item.get("retention_state") == "pruning" for item in self.backups):
+            text += "Retenção incerta. Use Conferir retenção. "
         if not self.old_files_complete:
             text += "Leitura de arquivos antigos incompleta; limpeza indisponível nesta leitura."
         else:
@@ -341,9 +348,28 @@ class ResourcesPanel:
         def done(result):
             if result["ok"]:
                 self.ui.log(f"Recursos: cópia de segurança criada em {result['path']} ({hb(result['bytes'])}).")
+                if result.get("preserved"):
+                    self.ui.log(f"Recursos: {len(result['preserved'])} arquivo(s) preservado(s) pela conferência "
+                                "de posse, conteúdo ou recuperação.")
+                if result.get("retention_state") == "uncertain":
+                    messagebox.showerror("Retenção de cópias", result["error"], parent=self.frame)
             else:
                 messagebox.showerror("Cópia de segurança", result["error"], parent=self.frame)
         self._run_action("copiando a base", lambda: files.backup(db, config, "ui"), done)
+
+    def check_backup(self):
+        db, config = self._db(), self._config()
+        if not db:
+            return
+
+        def done(result):
+            if result["ok"]:
+                messagebox.showinfo("Retenção de cópias", "Consulta concluída. A consulta preservou as cópias existentes.", parent=self.frame)
+            else:
+                messagebox.showerror("Retenção de cópias", result.get("error") or
+                                     "Resultado ainda incerto. Preserve os arquivos e confira os recibos.", parent=self.frame)
+
+        self._run_action("conferindo retenção", lambda: files.backup_status(db, config), done)
 
     def clean_files(self):
         db, config = self._db(), self._config()
@@ -548,7 +574,7 @@ class ResourcesPanel:
         state = ["disabled"] if busy else ["!disabled"]
         for button in (self.refresh_button, self.vacuum_button, self.archive_button, self.orphans_button,
                        self.restore_button, self.cycle_button, self.backup_button, self.files_button, self.trim_button,
-                       self.back_button, self.check_restore_button):
+                       self.back_button, self.check_restore_button, self.check_backup_button):
             button.state(state)
         if busy:
             self.progress.pack(side=tk.RIGHT, padx=(0, 10))

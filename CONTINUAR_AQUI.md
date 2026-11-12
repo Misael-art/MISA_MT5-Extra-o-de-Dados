@@ -33,7 +33,7 @@ limpo em branch; Safety `27b8599` limpo detached. Não foram repinados.
 | DIAG-RESTORE-RECUP | Intenção durável, resultado consultável e recuperação explícita / Recursos | em validação | PR307 `9c2c7eb` | Produtor/lease existentes, recibos privados e identidade física. Interrupção abrupta própria com saída 17, consulta incerta, hardlink e diretório alterado bloqueados; rollback explícito 42. GUI oficial visível em XWayland provou 7→99, 18 pulsos e intervalo máximo 0,581 s, zero erros inesperados. 31 casos finais aprovados. Pico GUI 270,2 MiB, mínimo disponível 7,96 GiB, máximo 68 °C. CI Windows pendente; energia/reinício físico exigem janela própria |
 | DIAG-LAUNCHER-LOCAL | Recursos e fontes públicas abrem sem Wine / integração App | concluído | composição PR308 `f6b6274` | Recursos/B3/crypto integrados à política única após três falhas reproduzidas. Lotes de 24 e 10 casos aprovados, com ponte controlada e extração preservada na classe nativa. Publicado e integrado na composição; prévia ainda depende do QA do artefato exato |
 | DIAG-LEASE-REBOOT | Reconciliação de lease após reinício com prova da mesma máquina / Execução App | em validação | PR309 `2a5638d`, `codex/lease-apos-reinicio` | 43 casos distintos aprovados em lotes sobrepostos. Reprodução de posse indevida com identidade incompleta, estado desconhecido e histórico corrompido. Helper comum verifica máquina/boot/namespace e cronologia; fila valida antes do CAS na transação. Launcher oficial com cópia própria confirmou lease liberado e metadados de boot. Doctor 16/2/0. SHA remoto/PR confirmados; CI em curso. Reinício físico e Windows físico pendentes; trava real já estava liberada |
-| DIAG-RETENCAO | Retenção conserva artefatos sem prova de posse / Recursos | em andamento | produtor `resources.files.backup` | Hipótese confirmável no expurgo global de *.db, sem proveniência da base. Reproduzir com arquivos próprios desconhecidos e cópias de outra base. Preservar retenção das cópias verificadas e segurança das operações incertas; um escritor |
+| DIAG-RETENCAO | Retenção conserva artefatos sem prova de posse / Recursos | em validação | PR310 `ba8963c`, `codex/backup-retencao-posse`, depende da PR307 | Desconhecido apagado na reprodução. Recibos privados, identidade/hash no ato, UUID e intenção sincronizada antes do expurgo. 22 regressões novas passaram em 6,49 s, lote sobreposto 27 em 7,03 s e dois casos existentes em 4,59 s. Lote maior interrompido após 31 aprovados em 101,74 s, evidência retida. Launcher CLI confirmou retenção, falha controlada, consulta e histórico após expiração. GUI solicita pelo worker, dois casos de adiamento do I/O aprovados. SHA remoto/PR confirmados. CI e GUI do artefato exato pendentes |
 | DIAG-COMPOSICAO | Composição publicada, prévia e proteção reconciliadas / integrador | em validação | PR308 `f6b6274`, PR295 `8b5c857`; prévia efetiva `650656f` | Composição linear preserva SHAs originais e pins. Candidato f6 preparado com 365 hashes/6.357.807 B, dados/ambiente compartilhados e retorno 650/57 preservados. QA do checkout real passou; admissão do GUI do artefato recusada antes de iniciar porque a VM alheia retornou. Integrar PR309, conferir CI e executar launcher do artefato exato com margem antes de trocar o link. Recibo do atalho continua desatualizado até a troca |
 | ACEITE-NATIVO | MT5/Tester, DEMO, netting e Windows físico / operacional | bloqueado | pins H `d4d389e`, Safety `27b8599` | Sem autorização vigente de negociação nem Windows físico; conta netting e ensaio de falhas contra broker próprios. CI/mocks não substituem esses alvos |
 | ACEITE-DRIVE | OAuth real, proteção independente, pacotes por ativo e reunião / Recursos/Dados | livre | PR302 integrada; PR303 aberta `37cf1a3` | Reconciliar primeiro o mecanismo sintético e o escopo dos pacotes existentes; consentimento/envio privado só pelo proprietário após aceite sintético; não usar base privada como fixture |
@@ -1174,3 +1174,41 @@ Aceites restantes incluem CI do SHA publicado, Windows físico e reinício
 físico em janela autorizada. Os metadados de boot das regressões são
 controlados. A trava real inspecionada já estava liberada, sem reparo manual.
 As evidências desta correção não diagnosticam a causa dos reinícios do host.
+
+
+## DIAG-RETENCAO — cópias com proveniência, 12/11/2026
+
+O expurgo global de `*.db` apagou um arquivo desconhecido no ensaio anterior
+à correção. O produtor existente agora grava recibos privados `mt5x-backup/v1`
+ao lado das cópias, com ID estável, identidade física da origem/artefato, bytes
+e SHA-256. O nome novo inclui UUID e prefixo limitado para conservar identidade
+entre solicitações. Legado sem recibo, cópia de outra base, link, conteúdo
+alterado e schema ilegível/desconhecido são preservados. A leitura de cópia
+recente usa a proveniência registrada. O hash integral é reconferido no expurgo.
+
+`backup_keep` conta cópias reconhecidas da base atual. Intenções de retenção
+são sincronizadas no recibo antes de cada exclusão. Resultado incerto bloqueia
+novo expurgo. `resources backup-status --operation-id ID` consulta/reconcilia
+presença e identidade, sem repetir exclusões. Ausência é registrada como
+`absent`. Conteúdo conhecido presente recebe `not_applied`. Conteúdo alterado
+continua pendente. Os recibos persistem após expirar o arquivo SQLite, mantendo
+o resultado consultável. Recibos são privados, limitados a 256 KiB cada.
+A GUI mostra arquivos preservados e solicita Conferir retenção pelo worker.
+
+Validação final local teve 22 regressões novas aprovadas em 6,49 s. Um lote
+anterior de 27 casos, sobreposto, passou em 7,03 s com identidade/restauração.
+Dois casos existentes de cópia/CLI foram reexecutados separadamente. O lote
+integrado inicial foi interrompido por orçamento após 31 aprovados em 101,74 s,
+com recibo e resultados parciais preservados. O maior processo observado nesse
+lote teve cerca de 155 MiB RSS, com RAM disponível acima de 6 GiB e 48 °C na
+medição. A estimativa de duração desse lote foi excedida e o restante foi
+dividido. Doctor offline teve 16 OK, dois avisos e zero falhas.
+
+Launcher oficial em quatro chamadas próprias confirmou retenção, arquivo
+desconhecido com valor 7 preservado, recibo conservado e consulta do ID expirado.
+Outro ensaio CLI com falha controlada após excluir retornou código 1/estado
+incerto e a consulta reconciliou ausência. Recibos locais em
+`state/qa-tmp/diagnostico-20261112/retention-*`. Os bancos dos ensaios são
+descartáveis. QA gráfico do artefato final aguarda capacidade do host, ocupado
+pela VM alheia. CI do SHA publicado, Windows físico e perda de energia possuem
+aceites próprios. A causa dos reinícios do host continua sem diagnóstico.

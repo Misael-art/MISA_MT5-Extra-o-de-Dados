@@ -25,6 +25,7 @@ from mt5_extracao.resources import policy as policy_mod
 log = logging.getLogger(__name__)
 
 BACKUP_SUFFIX = ".db"
+BACKUP_SCHEMA = "mt5x-backup/v1"
 ACTIVE_LOGS = {"mt5_extracao.log", "mt5_bridge.log", "mt5_bridge.pid", "mt5_bridge_process.json", "mt5_bridge.lock"}
 
 
@@ -41,13 +42,19 @@ def list_backups(db, config) -> List[dict]:
     folder = backup_dir(db, policy_mod.load(config))
     if not folder.is_dir():
         return []
-    items = [{"path": str(p), "bytes": p.stat().st_size, "created_at": datetime.fromtimestamp(p.stat().st_mtime)}
-             for p in folder.glob(f"*{BACKUP_SUFFIX}") if p.is_file()]
+    items = []
+    for path in folder.glob(f"*{BACKUP_SUFFIX}"):
+        if path.is_file():
+            record = _backup_record(db, path)
+            items.append(dict(path=str(path), bytes=path.stat().st_size,
+                              created_at=datetime.fromtimestamp(path.stat().st_mtime), managed=record is not None,
+                              backup_id=record["backup_id"] if record else None,
+                              retention_state=record["state"] if record else "unknown"))
     return sorted(items, key=lambda i: i["created_at"], reverse=True)
 
 
 def last_backup(db, config) -> Optional[datetime]:
-    items = list_backups(db, config)
+    items = [item for item in list_backups(db, config) if item["managed"]]
     return items[0]["created_at"] if items else None
 
 
@@ -89,10 +96,145 @@ def _sync_artifact(path):
             os.close(descriptor)
 
 
+def _backup_receipt(path):
+    return Path(path).with_suffix(".backup.json")
+
+
+def _backup_record(db, path, *, require_file=True):
+    """Proveniência registrada; o hash do conteúdo é reconferido antes do expurgo."""
+    path = Path(path)
+    receipt = _backup_receipt(path)
+    try:
+        if path.is_symlink() or receipt.is_symlink() or receipt.stat().st_size > 256 * 1024:
+            return None
+        record = json.loads(receipt.read_text(encoding="utf-8"))
+        json.dumps(record, allow_nan=False)
+        valid = (record["schema"] == BACKUP_SCHEMA and record["owner_key"] == session_owner_key(db, physical_only=True)
+                 and isinstance(record["owner_key"], str) and re.fullmatch(r"[0-9a-f]{64}", record["owner_key"])
+                 and record["path"] == str(path.resolve())
+                 and type(record["bytes"]) is int and record["bytes"] > 0
+                 and type(record["device"]) is int and record["device"] >= 0
+                 and type(record["inode"]) is int and record["inode"] > 0
+                 and isinstance(record["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", record["sha256"])
+                 and isinstance(record["backup_id"], str) and re.fullmatch(r"[0-9a-f]{32}", record["backup_id"])
+                 and record["state"] in {"complete", "pruning"} and isinstance(record["retention"], list))
+        datetime.fromisoformat(record["created_at"])
+        if require_file:
+            info = path.stat()
+            valid = (valid and not path.samefile(db.db_path) and record["bytes"] == info.st_size
+                     and record["device"] == info.st_dev and record["inode"] == info.st_ino)
+        for intent in record["retention"]:
+            candidate = Path(intent["path"])
+            valid = (valid and candidate.is_absolute() and candidate.parent == path.resolve().parent
+                     and candidate.suffix == BACKUP_SUFFIX and candidate != path.resolve()
+                     and isinstance(intent["backup_id"], str) and re.fullmatch(r"[0-9a-f]{32}", intent["backup_id"])
+                     and isinstance(intent["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", intent["sha256"])
+                     and intent["state"] in {"prepared", "pruned", "preserved", "absent", "not_applied"})
+        if record["state"] == "complete" and any(intent["state"] == "prepared" for intent in record["retention"]):
+            valid = False
+        return record if valid else None
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return None
+
+
+def _record_backup(db, path, backup_id):
+    """Recibo privado ao lado da fotografia nova, sem sobrescrever metadados existentes."""
+    info = path.stat()
+    record = dict(schema=BACKUP_SCHEMA, owner_key=session_owner_key(db, physical_only=True), path=str(path.resolve()),
+                  bytes=info.st_size, device=info.st_dev, inode=info.st_ino, sha256=_file_sha256(path),
+                  created_at=datetime.now(timezone.utc).isoformat(), backup_id=backup_id,
+                  state="complete", retention=[])
+    descriptor = os.open(_backup_receipt(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False))
+        stream.flush()
+        os.fsync(stream.fileno())
+    _sync_artifact(_backup_receipt(path))
+    return record
+
+
+def _save_backup(db, path, record):
+    from mt5_extracao.bootstrap.config_builder import atomic_write_text
+    previous = _backup_record(db, path)
+    if previous is None or any(previous[key] != record[key] for key in
+                               ("backup_id", "owner_key", "path", "bytes", "device", "inode", "sha256", "created_at")):
+        raise ValueError("O recibo da cópia mudou. Preserve os arquivos e consulte a retenção.")
+    payload = json.dumps(record, ensure_ascii=False, allow_nan=False)
+    if len(payload.encode("utf-8")) > 256 * 1024:
+        raise ValueError("O plano de retenção atingiu o limite de metadados. Os arquivos restantes foram preservados.")
+    atomic_write_text(_backup_receipt(path), payload, private=True)
+    _sync_artifact(_backup_receipt(path))
+
+
+def backup_status(db, config, backup_id=None):
+    """Consulta/reconcilia intenções de expurgo sob o lease, sem apagar nem repetir operações."""
+    try:
+        if db.dialect != "sqlite":
+            raise ValueError("Consulta de cópias disponível para SQLite.")
+        if backup_id is not None and (not isinstance(backup_id, str) or not re.fullmatch(r"[0-9a-f]{32}", backup_id)):
+            raise ValueError("ID de cópia inválido; consulte resources backups.")
+        policy = policy_mod.load(config)
+        with actions.exclusive(policy_mod.archive_dir(db, policy), "consultar retenção"):
+            records = []
+            folder = backup_dir(db, policy)
+            for receipt in folder.glob("*.backup.json"):
+                artifact = receipt.with_name(receipt.name.removesuffix(".backup.json") + BACKUP_SUFFIX)
+                record = _backup_record(db, artifact, require_file=False)
+                if record is None or (backup_id is not None and record["backup_id"] != backup_id):
+                    continue
+                pending = record["state"] == "pruning"
+                for intent in record["retention"]:
+                    if intent["state"] != "prepared":
+                        continue
+                    path = Path(intent["path"])
+                    try:
+                        path.lstat()
+                    except FileNotFoundError:
+                        intent["state"] = "absent"
+                        continue
+                    candidate = _backup_record(db, path)
+                    before = path.stat()
+                    if (candidate is not None and candidate["backup_id"] == intent["backup_id"]
+                            and candidate["sha256"] == intent["sha256"] and _file_sha256(path) == intent["sha256"]):
+                        after = path.stat()
+                        if (before.st_dev == after.st_dev and before.st_ino == after.st_ino
+                                and before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns
+                                and _backup_record(db, path) == candidate):
+                            intent["state"] = "not_applied"
+                record["state"] = "pruning" if any(i["state"] == "prepared" for i in record["retention"]) else "complete"
+                if pending:
+                    _save_backup(db, Path(record["path"]), record)
+                record["copy_available"] = _backup_record(db, artifact) is not None
+                records.append(record)
+            if backup_id is not None and not records:
+                raise ValueError("Resultado indisponível para este ID. Consulte a lista de cópias e seus recibos.")
+            return {"ok": all(r["state"] == "complete" for r in records), "backups": records}
+    except (OSError, ValueError, actions.Busy) as error:
+        return {"ok": False, "state": "unknown", "error": str(error)}
+
+
+def _prune_backup(db, path, intent):
+    """Reconferência no ato; uma cópia alterada ou inconclusiva fica preservada."""
+    record = _backup_record(db, path)
+    if (record is None or record["state"] != "complete" or _retain_restore_copy(path)
+            or any(record[key] != intent[key] for key in ("path", "backup_id", "sha256"))):
+        return False
+    before = path.stat()
+    if _file_sha256(path) != record["sha256"]:
+        return False
+    after = path.stat()
+    if (before.st_mtime_ns != after.st_mtime_ns or before.st_size != after.st_size
+            or before.st_ino != after.st_ino or before.st_dev != after.st_dev
+            or _backup_record(db, path) != record):
+        return False
+    path.unlink()
+    return True
+
+
 def backup(db, config, origin: str = "ui", prune: bool = True) -> dict:
     """Cria uma cópia conferida e aplica a retenção às cópias elegíveis. Nunca lança."""
     policy = policy_mod.load(config)
-    result = {"ok": False, "path": None, "bytes": None, "pruned": [], "error": None}
+    result = {"ok": False, "path": None, "bytes": None, "pruned": [], "preserved": [], "error": None}
     if db.dialect != "sqlite":
         result["error"] = ("cópia automática só para SQLite; no PostgreSQL use pg_dump "
                            "(ex.: pg_dump -Fc banco > copia.dump)")
@@ -113,7 +255,7 @@ def _backup_locked(db, config, origin, prune, target=None):
     """Mesmo produtor de cópias, chamado com o lease de Recursos já adquirido."""
     policy = policy_mod.load(config)
     folder = backup_dir(db, policy)
-    result = {"ok": False, "path": None, "bytes": None, "pruned": [], "error": None}
+    result = {"ok": False, "path": None, "bytes": None, "pruned": [], "preserved": [], "error": None}
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     source = Path(db.db_path).resolve()
     size = sum(storage._sqlite_files(db).values())
@@ -121,28 +263,58 @@ def _backup_locked(db, config, origin, prune, target=None):
     if disk and disk["free"] < size * 1.1:
         raise RuntimeError(f"disco livre ({storage.human_bytes(disk['free'])}) menor que o tamanho da base "
                            f"({storage.human_bytes(size)}); a cópia não foi feita")
+    backup_id = uuid.uuid4().hex
     if target is None:
-        stamp = f"{source.stem}__{datetime.now():%Y%m%d-%H%M%S}"
+        stamp = f"{source.stem[:48]}__{datetime.now():%Y%m%d-%H%M%S}_{backup_id}"
         target, n = folder / f"{stamp}{BACKUP_SUFFIX}", 1
-        while target.exists():
+        while target.exists() or target.is_symlink() or _backup_receipt(target).exists() or _backup_receipt(target).is_symlink():
             target, n = folder / f"{stamp}-{n}{BACKUP_SUFFIX}", n + 1
-    elif target.exists():
+    elif target.exists() or target.is_symlink() or _backup_receipt(target).exists() or _backup_receipt(target).is_symlink():
         raise FileExistsError("A cópia desta operação já existe; consulte seu resultado.")
     partial = target.with_suffix(".parcial")
     consistent_snapshot(source, partial)
     partial.replace(target)
     _sync_artifact(target)
-    result.update(ok=True, path=str(target), bytes=target.stat().st_size)
-    for old in (list_backups(db, config)[policy.backup_keep:] if prune else []):
+    record = _record_backup(db, target, backup_id)
+    result.update(ok=True, path=str(target), bytes=target.stat().st_size, backup_id=record["backup_id"], retention_state="complete")
+    copies = list_backups(db, config) if prune else []
+    result["preserved"] = [item["path"] for item in copies if not item["managed"]]
+    eligible = [item for item in copies if item["managed"]]
+    if any(item["retention_state"] != "complete" for item in eligible):
+        result.update(retention_state="uncertain", error="Retenção anterior incerta. Consulte resources backup-status antes de outro expurgo.")
+        result["pending_retention"] = [item["backup_id"] for item in eligible if item["retention_state"] != "complete"]
+        result["preserved"].extend(item["path"] for item in eligible if item["path"] != str(target))
+        actions.audit(db, "copiar", target.name, origin, True, detail=dict(result))
+        return result
+    for old in eligible[policy.backup_keep:]:
         try:
-            if _retain_restore_copy(Path(old["path"])):
+            candidate = _backup_record(db, Path(old["path"]))
+            if candidate is None:
+                result["preserved"].append(old["path"])
                 continue
-            Path(old["path"]).unlink()
-            result["pruned"].append(old["path"])
-        except OSError as e:
-            log.warning(f"Cópia antiga não apagada ({old['path']}): {e}")
+            intent = dict(path=candidate["path"], backup_id=candidate["backup_id"], sha256=candidate["sha256"], state="prepared")
+            record["state"] = "pruning"
+            record["retention"].append(intent)
+            _save_backup(db, target, record)
+            if _prune_backup(db, Path(old["path"]), intent):
+                result["pruned"].append(old["path"])
+                intent["state"] = "pruned"
+            else:
+                result["preserved"].append(old["path"])
+                intent["state"] = "preserved"
+            record["state"] = "complete"
+            _save_backup(db, target, record)
+        except (OSError, ValueError) as error:
+            result.update(retention_state="uncertain", error="Resultado da retenção incerto. Consulte resources backup-status. " + str(error))
+            if old["path"] not in result["pruned"]:
+                result["preserved"].append(old["path"])
+            log.warning("Resultado da retenção %s incerto: %s", record["backup_id"], error)
+            break
     actions.audit(db, "copiar", target.name, origin, True, detail={"bytes": result["bytes"],
-                                                                   "pruned": result["pruned"]})
+                                                                   "pruned": result["pruned"],
+                                                                   "preserved": result["preserved"],
+                                                                   "backup_id": record["backup_id"],
+                                                                   "retention_state": result["retention_state"]})
     log.info(f"Cópia da base criada: {target}")
     return result
 
