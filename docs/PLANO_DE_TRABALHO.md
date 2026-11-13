@@ -101,6 +101,10 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+E14-CALC-01 em validação: HADOUKEN PR85/569718c,169 testes portáveis em lotes,
+compilação MetaEditor/Wine0/0 e25 testes App de pin/referência congelada aprovados.
+Pin App em reconciliação na PR313; prévia e aceites nativos têm gates próprios.
+
 **Atualização de 03/11/2026:** a composição de desenvolvimento reconciliada é
 App E14 `0993ae7`/PR279, HADOUKEN `d4d389e`/PR84 e Safety `27b8599`/PR11.
 P00 e P01–P07 formam uma cadeia local de revisão; GUI C, teste LAB-10 e

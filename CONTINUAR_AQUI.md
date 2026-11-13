@@ -29,6 +29,20 @@ Uma dependência nativa bloqueada deve receber causa e próxima ação exatas,
 permitindo avançar no próximo recorte independente. Escrita e cargas locais
 continuam serializadas no checkout canônico, com orçamento antes de carga pesada.
 
+## Aceites Windows aguardando host qualificado — determinação de 13/11/2026
+
+O proprietário adiou os aceites específicos de Windows até disponibilizar um
+host qualificado. Isso inclui instalação e integração nativas, observação
+manual/física e reproduções instrumentadas DIAG-CI304/DIAG-CI-NODE. Esses aceites
+estão **bloqueados por disponibilidade futura de host qualificado**. Linux,
+implementação portável, instrumentação, regressões e publicação continuam.
+O CI Windows habitual permanece evidência de runner, com SHA e escopo próprios.
+
+Antes da futura execução, registrar Windows/versões suportadas, toolchain,
+MT5/build quando aplicável, conta permitida sem segredos, recursos/sensores,
+dados de QA, recuperação e periféricos do percurso. Não transferir aceite de
+CI ou mocks para esse host. Não há autorização de negociação REAL nesta tarefa.
+
 ## Fila de diagnóstico e correções — 13/11/2026
 
 Codex assumiu a escrita desta passagem no checkout canônico `repos/app`, em
@@ -52,12 +66,12 @@ conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os do
 atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
 `27b8599` está limpo detached, conforme os pins existentes.
 
-A fila tem 28 itens, com 14 concluídos, seis bloqueados e oito livres.
+A fila tem 28 itens:14 concluídos, seis bloqueados, sete livres e E14-CALC-01 em validação. Esta fotografia acompanha o incremento E14; a próxima posse deve ser reconferida no checkout.
 Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
 |---|---|---|---|---|
-| E14-CALC-01 | P0 · Comissões, fills, parciais e ciclos / HADOUKEN-E14 e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Fonte atual soma a primeira comissão de entrada em cada saída. Exemplo sintético−2/10/20 produz26 em vez de28. Contagem atual acompanha saídas. Próximo é reproduzir no consumidor oficial, fixar contrato e acrescentar regressão de parciais/múltiplos fills antes da correção. Aceite nativo separado |
+| E14-CALC-01 | P0 · Comissões, fills, parciais e ciclos / Codex nesta tarefa, HADOUKEN-E14 e Analytics | em validação | HADOUKEN PR85 `569718c`; App `codex/e14-calc-integracao`, publicação pendente | Consumidor comum reproduziu a falha e corrige26→28 com rateio por volume, taxas, INOUT e entradas antigas. 169 testes únicos passaram em lotes:162 antes de interrupção própria por reserva, sete restantes e sete afetados repetidos. MetaEditor/Wine0erros/0avisos,39fontes idênticas. Manifesto App em reconciliação explícita; prévia continua2b até gates. Aceite de histórico nativo/visual é próprio; Windows aguarda host qualificado |
 | IND-CCI-01 | P0 · Fórmula e aquecimento do CCI / Dados e indicadores App, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | AdvancedIndicators.cci usa média móvel de desvios de médias diferentes. Método executado com27 barras sintéticas/período14 retorna66,6667 e primeira observação na27ª barra; referência da mesma janela123,8095 e14 barras. Fonte idêntico na prévia2b3b274. Cadeia App→DataCollector→Enhanced verificada por chamadas. Próximo é regressão, correção e inventário versionado dos resultados afetados. MT5/iCCI ainda exige paridade própria |
 | IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance / indicadores HADOUKEN, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Arrays e buffers AS_SERIES true, loop começa em prev_calculated−1. Com100/100 atualiza índice99; com101/100 atualiza99/100, deixando a barra corrente0 fora. Inspeção e ensaio de índices, sem execução MQL nativa. Próximo é comparar incremental/reconstrução, corrigir a seleção e qualificar consumidores/artefato com composição revisada |
 | E14-METRIC-01 | P0 · Indisponibilidade, frescor e cobertura / painel HADOUKEN e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | TradeStats.Refresh zera acumuladores antes de HistorySelect. Próximo é reproduzir falha/leitura incompleta, implementar estado explícito e testar recuperação, zero válido e métricas derivadas. Reutiliza o contexto contábil de E14-CALC-01 |
