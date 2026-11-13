@@ -244,8 +244,9 @@ Próximos incrementos, em PRs distintas e dependentes: contas múltiplas com ide
 
 ## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
 
-Windows7df/131581528852 reprovou o cenário macro por RSS do processo acima de
-1024MiB. A repetição anterior2a/131574907486 confirmou a mesma ocorrência.
+Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
+1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
+verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
 A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
 receber o valor padrão. O incremento propaga o orçamento existente à análise.
 O serviço de produção mantém seu contrato de memória e o cenário conserva o
