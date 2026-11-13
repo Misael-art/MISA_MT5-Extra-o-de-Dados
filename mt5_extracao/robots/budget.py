@@ -343,30 +343,52 @@ class Budget:
         self.check()
         if self.db is None:
             return
+        if claim:
+            owner = _owner()
+            if not isinstance(owner, dict) or not owner.get("host_scope") or _json(owner) != self._owner_json:
+                raise ValueError("Não foi possível confirmar a identidade deste executor; confira o estado antes de iniciar.")
         ensure_schema(self.db)
         payload = _json(plan)
         with self.db.engine.begin() as conn:
             conn.execute(text("INSERT INTO _robot_batch_queue (batch_id, plan_json, owner_json, status, reason, elapsed, updated_at) "
                               "VALUES (:b,:p,:empty,:state,:reason,0,:t) ON CONFLICT (batch_id) DO NOTHING"),
                          {"b": self.batch_id, "p": payload, "t": _stamp(), "empty": "{}", "state": "pending", "reason": ""})
-            row = conn.execute(text("SELECT plan_json, owner_json, elapsed FROM _robot_batch_queue WHERE batch_id=:b"), {"b": self.batch_id}).mappings().one()
+            row = conn.execute(text("SELECT plan_json, owner_json, status, elapsed FROM _robot_batch_queue WHERE batch_id=:b"), {"b": self.batch_id}).mappings().one()
             if row["plan_json"] != payload:
                 raise ValueError("Checkpoint de outro plano/código/dados; use um novo identificador de lote.")
             if not claim:
                 self._plan = plan
                 return
+            if row["status"] not in {"pending", "running", "completed", "interrupted", "failed"}:
+                raise ValueError("Estado desconhecido do lote. Confira o checkpoint antes de retomar.")
             previous = json.loads(row["owner_json"])
+            if not isinstance(previous, dict) or (not previous and row["status"] == "running"):
+                raise ValueError("A identidade do executor está indisponível. Confira o encerramento antes de retomar.")
             if previous and _alive(previous):
-                raise ValueError("O lote já tem um executor ativo; aguarde o término antes de retomar.")
+                raise ValueError("Há um executor ativo ou com encerramento ainda não confirmado. "
+                                 "Consulte o estado antes de retomar.")
+            elapsed = float(row["elapsed"])
+            if not math.isfinite(elapsed) or elapsed < 0:
+                raise ValueError("Tempo do checkpoint inválido; confira o lote antes de retomar.")
+            jobs = {x["job_key"]: dict(x) for x in conn.execute(text("SELECT * FROM _robot_batch_jobs WHERE batch_id=:b"),
+                                                              {"b": self.batch_id}).mappings()}
+            admitted = 0
+            for job in jobs.values():
+                history = json.loads(job["history_json"])
+                if (not isinstance(history, list) or not history
+                        or any(not isinstance(event, dict) or event.get("status") not in
+                               {"running", "completed", "interrupted", "failed"} for event in history)
+                        or history[-1]["status"] != job["status"]):
+                    raise ValueError("Histórico do checkpoint inválido; confira o lote antes de retomar.")
+                admitted += sum(event["status"] == "running" for event in history)
             changed = conn.execute(text("UPDATE _robot_batch_queue SET owner_json=:o, status=:s, reason=:r, updated_at=:t "
-                                        "WHERE batch_id=:b AND owner_json=:old"),
-                                   {"b": self.batch_id, "o": self._owner_json, "old": row["owner_json"], "t": _stamp(), "s": "running", "r": ""}).rowcount
+                                        "WHERE batch_id=:b AND owner_json=:old AND status=:old_state AND plan_json=:plan"),
+                                   {"b": self.batch_id, "o": self._owner_json, "old": row["owner_json"],
+                                    "old_state": row["status"], "plan": payload, "t": _stamp(),
+                                    "s": "running", "r": ""}).rowcount
             if changed != 1:
-                raise ValueError("Outro executor assumiu o lote; não houve execução duplicada.")
-            self._previous_elapsed = float(row["elapsed"])
-            self._jobs = {x["job_key"]: dict(x) for x in conn.execute(text("SELECT * FROM _robot_batch_jobs WHERE batch_id=:b"), {"b": self.batch_id}).mappings()}
-        self._admitted = sum(sum(event["status"] == "running" for event in json.loads(job["history_json"]))
-                             for job in self._jobs.values())
+                raise ValueError("O checkpoint mudou. Consulte o estado antes de retomar.")
+        self._previous_elapsed, self._jobs, self._admitted = elapsed, jobs, admitted
         self._plan = plan
         self._claimed = True
 

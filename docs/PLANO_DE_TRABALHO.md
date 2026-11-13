@@ -18,6 +18,25 @@ Documento operacional para agentes (humanos ou IA, inclusive de menor capacidade
 implementarem o [ROADMAP](ROADMAP.md) **sem ambiguidade**. Antes de qualquer
 tarefa, leia [AGENTS.md](../AGENTS.md) (regras obrigatórias).
 
+## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+
+Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
+1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
+verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
+A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
+receber o valor padrão. O incremento propaga o orçamento existente à análise.
+O serviço de produção mantém seu contrato de memória e o cenário conserva o
+mesmo teto entre etapas.
+
+Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
+análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
+do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
+passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
+Os valores do sampler representam simulação, com memória física limitada ao
+processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
+validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
+runtime. Logs e falhas anteriores permanecem como evidência.
+
 ## Como usar este plano
 
 1. Pegue **a primeira tarefa não concluída** na ordem do ROADMAP cujas dependências estejam concluídas.
@@ -4643,3 +4662,51 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+
+## DIAG-LEASE-REBOOT — identidade e retomada em 12/11/2026
+
+O helper comum preserva o digest legado e passa a registrar boot e namespace
+Linux com a identidade de processos novos. Um boot anterior só prova término
+quando o digest confirma a mesma máquina, o UUID/namespace são válidos e o
+processo é anterior ao boot atual. Host estrangeiro, namespace divergente no
+mesmo boot, identidade parcial, erro de leitura e registro legado sem essa
+prova continuam preservados. O protocolo Windows conserva seu escopo existente.
+
+Foram reproduzidas retomadas indevidas com identidade ausente/incompleta,
+estado desconhecido e histórico de job corrompido. A fila existente agora
+revalida a identidade do solicitante, estado, tempo e histórico antes do CAS,
+na mesma transação. Consulta sem claim continua disponível. A recuperação do
+produtor e o lease de Recursos usam o mesmo helper. Nenhum scheduler foi criado.
+
+Validação local em Python 3.11.15, um processo e BLAS/OMP em um thread. Lotes
+focados reuniram 43 casos distintos aprovados, com sobreposição entre lotes.
+Os três casos finais de posse ativa, publicação interrompida e histórico de
+falha passaram em 5,76 s. O launcher oficial criou uma cópia SQLite própria,
+gravou evidência de boot e liberou o lease. Doctor offline teve 16 OK, dois
+avisos e zero falhas. Recibos locais estão em
+`state/qa-tmp/diagnostico-20261112/lease-*.xml` e `lease-launcher/proof.json`
+da composição. VM alheia preservada; RAM disponível observada próxima de
+6 GiB, sem ensaio de carga, alteração de serviços ou dados do proprietário.
+
+Aceites restantes incluem CI do SHA publicado, Windows físico e reinício
+físico em janela autorizada. Os metadados de boot das regressões são
+controlados. A trava real inspecionada já estava liberada, sem reparo manual.
+As evidências desta correção não diagnosticam a causa dos reinícios do host.
+
+
+## DIAG-LEASE — leitura do teste sob bloqueio em 12/11/2026
+
+A tentativa Windows1 foi cancelada prematuramente por esta tarefa após mais
+de duas horas. O log arquivado mostrou avanço até98% e uma falha anterior no
+caso de reconciliação do lease. A tentativa2 no mesmo SHA foi solicitada antes
+da leitura dessa falha. O teste abria outro descritor para ler o byte que
+mantinha bloqueado. O contrato do Windows recusa esse acesso pelo segundo
+descritor no mesmo processo. [Fonte primária](https://learn.microsoft.com/en-us/windows/win32/fileio/locking-and-unlocking-byte-ranges-in-files).
+
+Uma reprodução local com leitura externa recusada teve1 falha/1 aprovado.
+O teste passou a observar o descritor que adquiriu o lease e conserva as
+assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
+O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
+em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
+precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.
