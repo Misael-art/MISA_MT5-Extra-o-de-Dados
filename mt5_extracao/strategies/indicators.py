@@ -26,6 +26,39 @@ def rma(series: pd.Series, n: int) -> pd.Series:
     return series.ewm(alpha=1.0 / n, adjust=False, min_periods=n).mean()
 
 
+def cci(df: pd.DataFrame, n: int = 20) -> pd.Series:
+    """CCI v2: each window uses its own typical-price mean and deviation.
+
+    Requires n consecutive finite, ordered HLC observations. A complete flat
+    window returns zero (the MetaQuotes example convention); missing data does
+    not. Scaling before centering keeps finite large prices from overflowing.
+    """
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
+        raise ValueError("O período do CCI precisa ser um inteiro positivo.")
+    values = {name: pd.to_numeric(df[name], errors="coerce").astype(float)
+              for name in ("high", "low", "close")}
+    high, low, close = (values[name] for name in ("high", "low", "close"))
+    valid = np.isfinite(high) & np.isfinite(low) & np.isfinite(close) & high.ge(low)
+    typical = (high / 3.0 + low / 3.0 + close / 3.0).where(valid)
+
+    def window_cci(window):
+        scale = max(abs(float(v)) for v in window)
+        if scale == 0:
+            return 0.0
+        scaled = [float(v) / scale for v in window]
+        mean = math.fsum(scaled) / len(scaled)
+        deviation = math.fsum(abs(v - mean) for v in scaled) / len(scaled)
+        return (scaled[-1] - mean) / (.015 * deviation) if deviation else 0.0
+
+    result = typical.rolling(n, min_periods=n).apply(window_cci, raw=True)
+    if "_cci_reset_before" in df:
+        positions = np.arange(len(df))
+        resets = df["_cci_reset_before"].fillna(True).to_numpy(dtype=bool)
+        last_reset = np.maximum.accumulate(np.where(resets, positions, -n))
+        result = result.where(positions - last_reset + 1 >= n)
+    return result
+
+
 ALLIGATOR_LINES = (("jaw", 13, 8), ("teeth", 8, 5), ("lips", 5, 3))
 
 

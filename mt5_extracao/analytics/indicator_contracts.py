@@ -19,6 +19,9 @@ _PENDING = "pendente: referência independente própria ainda não escrita (BD08
 
 # (prefixo, pergunta, referência, painel, traço)
 _FAMILIES = (
+    ("momentum.cci_", "Quanto o preço típico se afasta da média da sua própria janela, em desvios médios?",
+     "tests/test_cci.py::reference; IND-CCI-01/v2; constante 0.015, janela constante completa=0",
+     "oscillator", "line"),
     ("momentum.rsi_", "Qual a força relativa recente de altas e baixas do fechamento?",
      "tests/bench_reference.py::rsi (semente 'first')", "oscillator", "line"),
     ("volatility.atr", "Qual a amplitude típica recente das barras, incluindo gaps?",

@@ -291,6 +291,13 @@ class DataCollector:
                 if historical_data is not None and not historical_data.empty:
                     # Concatena o candle atual com os dados históricos
                     combined_data = pd.concat([historical_data, last_data], ignore_index=True)
+                    # A coleta pode reler uma barra já persistida. A observação
+                    # nova substitui a versão anterior; não é outra barra do CCI.
+                    combined_data['time'] = pd.to_datetime(combined_data['time'], errors='raise')
+                    cutoff = pd.Timestamp(last_data['time'].iloc[0])
+                    combined_data = (combined_data[combined_data['time'] <= cutoff]
+                                     .sort_values('time', kind='stable')
+                                     .drop_duplicates('time', keep='last').reset_index(drop=True))
                     
                     # Calcula todos os indicadores no conjunto combinado
                     enriched_data = self.enhanced_calculator.calculate_all_indicators(

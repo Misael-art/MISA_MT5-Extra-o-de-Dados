@@ -82,7 +82,7 @@ class EnhancedIndicatorCalculator:
                 
             # CCI
             df['cci'] = self.advanced_calculator.cci(
-                df['high'], df['low'], df['close'])
+                df['high'], df['low'], df['close'], period=period)
                 
             # Fibonacci levels (apenas para o último candle para não sobrecarregar)
             # Note: Os níveis são estáticos para toda a série, então salvamos apenas a última linha
@@ -198,7 +198,7 @@ class EnhancedIndicatorCalculator:
             'adx': lambda df: self.advanced_calculator.adx(
                 df['high'], df['low'], df['close']),
             'cci': lambda df: {'cci': self.advanced_calculator.cci(
-                df['high'], df['low'], df['close'])},
+                df['high'], df['low'], df['close'], period=period)},
             'fibonacci': lambda df: self.advanced_calculator.fibonacci_levels(
                 df['high'], df['low'], trend='auto', period=period),
             'statistics': lambda df: self.advanced_calculator.calculate_statistics(
