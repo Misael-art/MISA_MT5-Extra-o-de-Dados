@@ -1,5 +1,12 @@
 # MT5 Extração de Dados
 
+**Prioridade corretiva do proprietário em 13/11/2026.** Investigar, corrigir e
+validar primeiro os achados de cálculo e confiabilidade E14-CALC-01,
+IND-CCI-01, IND-AGGR-01, E14-METRIC-01, E14-SCOPE-01 e E14-EXEC-01,
+antes das ampliações afetadas do
+Expert e das novas interfaces. Estado, responsáveis e próximos passos na
+[continuidade](CONTINUAR_AQUI.md), com ordem no [roadmap](docs/ROADMAP.md).
+
 ## Composição conferida em 13/11/2026
 
 A PR308 reúne dados públicos, Laboratório, Dashboard, Drive e Recursos das
@@ -8,7 +15,8 @@ incluindo Linux 4.636/473 e Windows 4.904/205 aprovados/não executados. A prév
 do atalho e menu é `2b3b274`, com 365 arquivos de execução idênticos por hash.
 GUI XWayland visível e launcher oficial foram exercitados em dados próprios.
 
-A fila tem 20 itens, com 14 concluídos e seis bloqueados. A observação controlada
+A fila tem 28 itens, com 14 concluídos, seis bloqueados e oito livres.
+A observação controlada
 de 30 min foi aprovada com solicitações instrumentadas. Entrada física,
 acessibilidade, login, integração nativa e qualificação financeira possuem
 aceites próprios.

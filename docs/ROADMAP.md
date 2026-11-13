@@ -1,5 +1,53 @@
 # Roadmap: construtor de bases MT5 completo (Windows + Linux)
 
+## Prioridade vigente de correções — 13/11/2026
+
+Por determinação do proprietário, **investigação, correção e validação dos
+achados de cálculo e confiabilidade têm prioridade P0**. A sequência desta
+frente começa pelas correções abaixo, antes da otimização de presets, da
+ampliação do Expert e das novas interfaces. Cada aceite depende da evidência
+do caminho afetado. As frentes independentes de proteção de dados e diagnóstico
+do host conservam sua continuidade.
+
+| Ordem | ID / responsável | Ação prioritária |
+|---|---|---|
+| P0 · 1 | E14-CALC-01 / HADOUKEN-E14 e Analytics | Reproduzir e corrigir atribuição de comissões, fills, parciais e contagem de ciclos, reconciliando resultado líquido e métricas derivadas. |
+| P0 · 2 | IND-CCI-01 / Dados e indicadores App | Corrigir o desvio absoluto médio do CCI, com regressão, revisão dos consumidores e identificação dos resultados afetados. Ensaio no método atual produziu66,6667 contra123,8095 na referência de14 barras. |
+| P0 · 3 | IND-AGGR-01 / indicadores HADOUKEN | Corrigir a seleção incremental de índices do AggrVolBalance com arrays AS_SERIES, qualificando barra corrente, nova barra e revisão de histórico. |
+| P0 · 4 | E14-METRIC-01 / painel HADOUKEN e Analytics | Corrigir o caminho que zera estatísticas antes de consultar o histórico e qualificar indisponibilidade, frescor e cobertura. |
+| P0 · 5 | E14-SCOPE-01 / Safety, painel e Analytics | Qualificar escopos de conta/Magic/símbolo nas métricas, travas e zeragem, corrigindo ambiguidades reproduzidas. |
+| P0 · 6 | E14-EXEC-01 / Expert-HADOUKEN e Safety | Qualificar intenção durável, resultado incerto, parcial, reinício e reversão no perfil escolhido, corrigindo lacunas reproduzidas. |
+| P1 · 7 | SA-01-CONTRATO / Expert, Dados e integração | Fechar o contrato da variante Triplo, a matemática, a reentrada e a compatibilidade SL/TP. |
+| P1 · 8 | SA-01-PLOT / Expert e painel | Vincular as três curvas e o plot opcional aos parâmetros, seed e decisões efetivos. |
+
+A análise de seis vídeos complementares acrescentou IND-CCI-01 e IND-AGGR-01.
+Reprodução, alcance, aceites e propostas de CCI, fluxo, setup sequencial,
+gradiente, Renko e zonas de volume ficam em
+[Analytics de operações](propostas/ANALYTICS_OPERACOES.md#vídeos-complementares).
+Os dois novos itens são corretivos. As novas estratégias e representações
+continuam propostas sujeitas aos contratos e gates existentes.
+
+A [auditoria do relatório de 28 vídeos](propostas/ANALYTICS_OPERACOES.md#triagem-de-canais-e-auditoria-do-relatório)
+reconcilia as propostas com os componentes vigentes e preserva os IDs desta
+fila. Ela registra erros nos exemplos externos de lote, parcial e validação,
+o bloqueio atual de netting/exchange por posse sem qualificação e os aceites
+propostos para pesquisa, painel e operação. As evoluções dependentes seguem
+a ordem corretiva acima.
+
+O [mapa de atuação e cruzamentos](propostas/ANALYTICS_OPERACOES.md#encaminhamento-para-atuação-e-cruzamentos)
+vincula todos os temas às fichas existentes, com responsáveis por área,
+próxima investigação e critérios de aceite. Inclui os cruzamentos de gestão,
+custos, dados, regimes, sinal, execução e interface necessários às comparações.
+
+Estado, owner atuante, branch/PR e último SHA ficam na
+[fila única de continuidade](../CONTINUAR_AQUI.md). Reprodução, arquivos,
+dependências e critérios de aceite ficam no
+[backlog existente](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md#correções-prioritárias).
+Os achados estão em análise e aguardam correção/qualificação. O exemplo de
+comissão foi reproduzido aritmeticamente, com aceite nativo pendente.
+Configurador guiado e dashboard consolidado mantêm prioridade **Alta**, depois
+das correções aplicáveis e das operações funcionais do Expert.
+
 ## Drive — revisão sintética de 07/11/2026
 
 SQLite/uma conta: PR302 com entrada privada de recuperação, retry sem duplicata e restauração isolada. 99 testes integrados e 28 focados no ajuste final do cofre (sobrepostos), launcher Linux/Xvfb e doctor offline aprovados. Múltiplas contas, pacotes por ativo e reunião serão PRs próprias dependentes, ainda pendentes. Teste real do proprietário só depois da composição sintética completa. [Contrato e aceites](PLANO_DE_TRABALHO.md#t2030-host1-drive--estado-de-revisão-em-07112026).

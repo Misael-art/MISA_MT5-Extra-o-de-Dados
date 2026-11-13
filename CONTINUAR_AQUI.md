@@ -1,5 +1,34 @@
 # Retomar MT5X em um host limpo
 
+## Prioridade corretiva definida pelo proprietário — 13/11/2026
+
+**Assumir primeiro os itens P0 de cálculo e confiabilidade desta demanda.**
+A ordem é E14-CALC-01 → IND-CCI-01 → IND-AGGR-01 → E14-METRIC-01 →
+E14-SCOPE-01 → E14-EXEC-01,
+seguida de SA-01-CONTRATO e SA-01-PLOT em P1. Reprodução, regressão,
+correção integrada e validação dos resultados precedem a otimização de
+presets e a ampliação do Expert/painel/dashboard nos caminhos afetados.
+As frentes independentes de proteção de dados e diagnóstico do host continuam.
+
+Os oito itens foram acrescentados à fila abaixo, em estado **livre**, com
+responsáveis por componente. O próximo agente registra sua posse real, confere
+working tree, código e PR atual e atualiza branch/PR, SHA, comando e resultado.
+Os detalhes executáveis e critérios de aceite estão no
+[backlog existente](docs/propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md#correções-prioritárias),
+com prioridade refletida no [roadmap](docs/ROADMAP.md).
+Os achados IND-CCI-01/IND-AGGR-01 e os seis vídeos complementares têm
+[análise e aceites em Analytics](docs/propostas/ANALYTICS_OPERACOES.md#vídeos-complementares).
+O relatório de 28 vídeos foi confrontado com a fonte, com erros externos e
+capacidades existentes identificados. O
+[mapa de atuação e cruzamentos](docs/propostas/ANALYTICS_OPERACOES.md#encaminhamento-para-atuação-e-cruzamentos)
+liga os temas às fichas F19/F20 e explicita investigação, integração e aceite.
+Publicação documental desta demanda na branch `codex/auditoria-videos-roadmap`,
+dependente da composição PR308. O executor de cada correção deve registrar
+seu próprio SHA e aceite na linha correspondente.
+Uma dependência nativa bloqueada deve receber causa e próxima ação exatas,
+permitindo avançar no próximo recorte independente. Escrita e cargas locais
+continuam serializadas no checkout canônico, com orçamento antes de carga pesada.
+
 ## Fila de diagnóstico e correções — 13/11/2026
 
 Codex assumiu a escrita desta passagem no checkout canônico `repos/app`, em
@@ -23,11 +52,19 @@ conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os do
 atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
 `27b8599` está limpo detached, conforme os pins existentes.
 
-A fila tem 20 itens, com 14 concluídos e seis bloqueados.
+A fila tem 28 itens, com 14 concluídos, seis bloqueados e oito livres.
 Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
 |---|---|---|---|---|
+| E14-CALC-01 | P0 · Comissões, fills, parciais e ciclos / HADOUKEN-E14 e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Fonte atual soma a primeira comissão de entrada em cada saída. Exemplo sintético−2/10/20 produz26 em vez de28. Contagem atual acompanha saídas. Próximo é reproduzir no consumidor oficial, fixar contrato e acrescentar regressão de parciais/múltiplos fills antes da correção. Aceite nativo separado |
+| IND-CCI-01 | P0 · Fórmula e aquecimento do CCI / Dados e indicadores App, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | AdvancedIndicators.cci usa média móvel de desvios de médias diferentes. Método executado com27 barras sintéticas/período14 retorna66,6667 e primeira observação na27ª barra; referência da mesma janela123,8095 e14 barras. Fonte idêntico na prévia2b3b274. Cadeia App→DataCollector→Enhanced verificada por chamadas. Próximo é regressão, correção e inventário versionado dos resultados afetados. MT5/iCCI ainda exige paridade própria |
+| IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance / indicadores HADOUKEN, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Arrays e buffers AS_SERIES true, loop começa em prev_calculated−1. Com100/100 atualiza índice99; com101/100 atualiza99/100, deixando a barra corrente0 fora. Inspeção e ensaio de índices, sem execução MQL nativa. Próximo é comparar incremental/reconstrução, corrigir a seleção e qualificar consumidores/artefato com composição revisada |
+| E14-METRIC-01 | P0 · Indisponibilidade, frescor e cobertura / painel HADOUKEN e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | TradeStats.Refresh zera acumuladores antes de HistorySelect. Próximo é reproduzir falha/leitura incompleta, implementar estado explícito e testar recuperação, zero válido e métricas derivadas. Reutiliza o contexto contábil de E14-CALC-01 |
+| E14-SCOPE-01 | P0 · Escopos de métricas, risco e zeragem / Safety, painel e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Guard usa equity da conta, estatísticas filtram Magic e pânico alcança símbolos desse Magic. Esses fatos exigem política e rótulos explícitos. Próximo é qualificar escopo, reproduzir ambiguidades e corrigir consumidores afetados, com proteção de posições alheias |
+| E14-EXEC-01 | P0 · Intenção durável, parcial, incerteza, reinício e reversão / Expert-HADOUKEN e Safety, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Qualificar consumidores vigentes StrategyRobot/NativeBaseAdapter, vínculo durável e recuperação. Reproduzir fronteiras e aplicar a política vigente de saída/reversão. Corrigir lacunas demonstradas. Compatibilidade do futuro Triplo pertence a SA-01-CONTRATO. Ensaio nativo exige sessão autorizada própria |
+| SA-01-CONTRATO | P1 · Contrato Triplo e compatibilidade SL/TP / Expert, Dados e integração, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Relato descreve três bandas no mesmo TF20/fatores1/2/3, fonte atual usa multi-TF e saída diferente. Fórmula/seed/reentrada continuam abertas. Adaptador vinculado exige SL/TP positivos. Próximo é fechar a variante e dependências P0 aplicáveis |
+| SA-01-PLOT | P1 · Plot opcional com parâmetros/seed efetivos / Expert e painel, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Catálogo atual chama indicador pelos defaults e exibe dez curvas. Depende de SA-01-CONTRATO. Próximo é vincular as três curvas ao mesmo cálculo e qualificar visual ligado/desligado, preservando estudos alheios |
 | DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | concluído | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados. Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. A tentativa diagnóstica 2 do mesmo SHA passou nos seis jobs, incluindo Windows. As falhas da primeira tentativa continuam preservadas. O timeout do compilador não foi reproduzido |
 | DIAG-EXCURSOES | MAE/MFE disponíveis nas lentes e custo ask em vendas / Dados/Laboratório | concluído | PR305 `38304e0`, `codex/lab-excursoes` | Publicado e PR criada. 38 testes de excursões/enriquecimento/agregação e 21 de cache/livro/importação/CLI aprovados em lotes separados. Lote final 13 aprovados/1 PG sem servidor. Inclui legado, preservação do livro, point inválido e spread calibrado. QA por launcher CLI em base sintética confirmou ask e estado. GUI real XWayland pelo launcher aprovada em janela própria, com MAE 4/MFE 2 e ask declarados. Seis jobs de produto aprovados, incluindo Windows e PG, no SHA `38304e0`. Integração em master e na próxima prévia pertencem à composição |
 | DIAG-PROTECAO-WIP | Proteção independente do resgate anterior e do checkpoint atual / integrador | concluído | página privada existente, recibo local `private-checkpoint/remote-read-proof.json` | Acesso reconferido via Pages, sem compartilhamentos. ZIP 489.138 B/1 parte, SHA `c4f843f78d979ff6aab6f79299e1151a6ed88a29897a158eac48513b806450fd`. Parte relida integralmente. Texto e ZIP decodificado conferidos. Recuperador oficial validou 19 arquivos e o WIP anterior teve seus 24 hashes conferidos. Conteúdo guarda checkpoint parcial de amostra. Base principal tem proteção e aceite próprios |
