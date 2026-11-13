@@ -26,16 +26,18 @@ implementação de cada recorte.
 ## Reconferência do diagnóstico em 13/11/2026
 
 Código composto `0e4f4c6` na PR308 com seis jobs de produto aprovados. A prévia
-`2b3b274` conserva 365 hashes idênticos ao runtime publicado. A fila de 28 itens
-tem 14 concluídos, seis bloqueados e oito livres, com owners, evidências,
+`2b3b274` conserva 365 hashes idênticos ao runtime publicado. A fila de 20 itens
+tem 14 concluídos e seis bloqueados, com owners, evidências,
 SHAs e critérios registrados. A observação de 30 min foi
 aprovada sob orçamento próprio. PR302 está integrada no master `09a618c` e as
 contas múltiplas da PR303 estão na composição testada. Os registros anteriores
 de 07/08 de novembro representam os estados daquelas datas. [Continuidade](../CONTINUAR_AQUI.md)
 
-Na frente independente de Recursos/Dados, pacotes/reunião seguem após a
-decisão de destino, depois o
-consentimento e o percurso real do proprietário. O snapshot canônico conserva
+Essa contagem descreve a fotografia anterior aos oito itens corretivos e de
+integração acrescentados acima. A fila atual tem 28 itens, com 14 concluídos,
+seis bloqueados e oito livres. Na frente independente de Recursos/Dados,
+pacotes/reunião seguem após a decisão de destino, depois o consentimento e o
+percurso real do proprietário. O snapshot canônico conserva
 blocos tipados. O exportador OHLCV projeta oito campos e a importação grava o
 store de snapshots. A preservação de todas as colunas brutas/legadas e a
 reconstituição das tabelas exigem o contrato do pacote. BD03 mantém uma base
@@ -60,25 +62,6 @@ O proprietário fará login e testes reais depois da composição sintética apr
 Documento operacional para agentes (humanos ou IA, inclusive de menor capacidade)
 implementarem o [ROADMAP](ROADMAP.md) **sem ambiguidade**. Antes de qualquer
 tarefa, leia [AGENTS.md](../AGENTS.md) (regras obrigatórias).
-
-## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
-
-Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
-1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
-verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
-A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
-receber o valor padrão. O incremento propaga o orçamento existente à análise.
-O serviço de produção mantém seu contrato de memória e o cenário conserva o
-mesmo teto entre etapas.
-
-Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
-análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
-do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
-passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
-Os valores do sampler representam simulação, com memória física limitada ao
-processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
-validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
-runtime. Logs e falhas anteriores permanecem como evidência.
 
 ## Como usar este plano
 
@@ -147,6 +130,14 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| E14-CALC-01 | P0 · Custos por fill, parciais, ciclos e métricas | Consumidor comum HADOUKEN/Analytics | em validação · HADOUKEN PR85/569718c,169 testes portáveis em lotes e compilação Wine0/0; integração App e prévia em revisão; aceites nativos/Windows próprios |
+| IND-CCI-01 | P0 · Fórmula e aquecimento do CCI App | Contrato de cálculo e consumidores de Dados | livre · método atual reproduzido com27 barras sintéticas, resultado66,6667 contra referência123,8095. Corrigir e qualificar consumidores/resultados pelo plano de Analytics |
+| IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance | Contrato AS_SERIES e composição HADOUKEN | livre · índices antigos selecionados em atualização intrabar/nova barra. Regressão nativa e correção pendentes. Detalhes em Analytics |
+| E14-METRIC-01 | P0 · Histórico indisponível e estado das métricas | Mesmo contexto contábil de E14-CALC-01 | livre · reset antes de HistorySelect verificado no fonte, falha nativa e correção pendentes |
+| E14-SCOPE-01 | P0 · Escopo de métricas, travas e zeragem | Contratos de conta/Magic/símbolo e resultados qualificados | livre · diferença de escopos observada, confirmar política e corrigir ambiguidade reproduzida |
+| E14-EXEC-01 | P0 · Recuperação de operações incertas e reversão | Perfil e intenção durável existentes, escopos qualificados | livre · qualificação dirigida e correção de lacunas reproduzidas no fluxo oficial |
+| SA-01-CONTRATO | P1 · Variante Triplo e compatibilidade matemática/SL/TP | Correções P0 aplicáveis e contratos de Dados/Expert/Safety | livre · fechar fórmula, seed, consenso, reentrada e saída antes de ampliar o consumidor |
+| SA-01-PLOT | P1 · Plot opcional com configuração efetiva | SA-01-CONTRATO e perfil integrado | livre · comparar curvas/seed/decisões e ensaio pareado com visual ligado/desligado |
 | CI-PORTABILITY | CLI de pesquisa com configuração própria e recibo UTF-8 em checkout limpo | CI da PR254 | Corrigidas as fixtures de Super ATR e protocolo; diretório de trabalho isolado, igualdade e integridade do recibo preservadas.28 testes aprovados; doctor16/2/0. Timeout intermitente de retomada assíncrona no Windows é uma falha distinta, ainda em investigação; CI remoto da ponta tem estado próprio |
 | MEN-00 | Registrar contrato Q/P/N, fontes, plano detalhado e prompt de menções na internet | Pedido do proprietário29/10/2026 | Planejamento registrado no [capítulo18 de Dados](dados/PLANO_ESTRUTURA_DADOS.md#18-menções-na-internet--quantidade-positivo-e-negativo); [prompt](repasse/PROMPT_MENCOES_MERCADO_20261029.md). Entrega documental, sem implementação ou aceite de fonte/classificador |
 | MEN-01 | Contrato executável Q/P/N, identidade e chave de checkpoints | MEN-00 + BD03/04/06 | Implementado/validado no host:73 testes e CLI=SDK, quatro escopos/cursores isolados e classificação tardia preservada; versões por escopo completo, três definições NUMBER, contagens/ausências/tempo explícitos; sem novo store/journal. [Inventário/contrato](dados/PLANO_ESTRUTURA_DADOS.md#1811-inventário-e-contrato-executável-men-01). Captura/classificação/consumo final permanecem MEN-02…08 |
@@ -342,8 +333,8 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T16.1 | Laboratório: livro de operações `_trade_ledger` (gravar, ler pelas lentes robô e ativo) | T16.0 | ✅ concluída |
 | T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
-| T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
-| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | PR306 em validação. Agrupamento qualificado, livro integral preservado e leitura legada reutilizada. Lotes finais 9/26 aprovados, incluindo os 14 casos de amostra; contexto/roteador 14 aprovados antes do ajuste de leitura. QA por launcher CLI/GUI sintéticos registrada. CI da nova ponta e próxima prévia pendentes |
+| T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | Enriquecimento implementado. Correção DIAG-EXCURSOES em revisão, com MAE/MFE nas lentes, ask em vendas e cache v2. Regressões Linux e launcher CLI de QA aprovados. CI, PostgreSQL e GUI específicos pendentes |
+| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
 | T16.6 | Laboratório: motor de re-simulação de execução com paridade com o backtester (seis estratégias) | T16.5 | ✅ concluída |
@@ -4416,6 +4407,65 @@ timer com seta neutra/verde/vermelha e fallback inline em espaço restrito.
 [Uso, matemática e pendências](sdk/alvo_probabilistico.md). Calibração/resultado
 financeiro, fills/Tester, concorrência/restart amplo e Windows físico pendentes.
 Sem alteração no pilar de dados, banco owner, launcher/monitores ou Safety publicada.
+
+## T20.30-HOST1-DRIVE
+
+**Estado e dono.** Planejada para Recursos/Dados no App, com apoio do integrador
+de recuperação. Adendo de T20.30-HOST1. Reutiliza a cópia SQLite, o ciclo de
+manutenção e os contratos de verificação e recuperação existentes. O manifesto
+da cópia de uma base deve distinguir seu escopo do pacote de recuperação do host.
+[`resources.files.backup`](../mt5_extracao/resources/files.py) ·
+[Manutenção](../mt5_extracao/resources/automation.py) ·
+[Verificação](../scripts/verify_recovery.py) ·
+[Recuperação](../scripts/recover_cloud_backup.py).
+
+**Dependência.** Cliente OAuth de aplicativo instalado criado, Drive API
+habilitada e consentimento com a conta autorizada testado, incluindo renovação
+e revogação. Usar escopo por arquivo (`drive.file`) para a pasta dedicada
+criada pelo App ou concedida explicitamente. Guardar tokens em armazenamento
+seguro local. O proprietário seleciona a conta, a pasta, as bases e a frequência.
+[OAuth para aplicativos desktop](https://developers.google.com/identity/protocols/oauth2/native-app) ·
+[Escopos da Drive API](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
+
+1. **Validar o destino.** Após conectar, antes de cada envio e no ciclo de
+   manutenção autorizado, conferir por leitura a identidade da conta vinculada,
+   o ID e tipo da pasta, sua disponibilidade, privacidade, permissões de gravação
+   e espaço quando conhecido. Mudança de conta, pasta compartilhada ou privacidade
+   inconclusiva bloqueiam o envio. CLI e Recursos mostram estado, horário da
+   última verificação e ação para corrigir revogação, indisponibilidade ou falta
+   de acesso. A validação de rotina é somente leitura.
+2. **Salvar e conferir.** Com envio desativado por padrão, produzir um snapshot
+   SQLite consistente pelo mecanismo existente, com conferência local. Separar
+   base ativa, pesquisa e QA no destino e no manifesto. Cifrar as bases privadas
+   antes da transferência, com recuperação da chave independente do Drive e do
+   OAuth. Enviar com retomada e identidade estável por cópia. Conferir tamanho e
+   SHA-256 remoto quando fornecido, ou por releitura dentro do orçamento. Na
+   ausência de prova, registrar verificação pendente. O recibo distingue cópia
+   local, envio, verificação remota e restauração ensaiada. Manter a última cópia
+   boa em falha, cancelamento ou retry, sem apagar versões no Drive.
+   [Envio retomável](https://developers.google.com/workspace/drive/api/guides/manage-uploads) ·
+   [Metadados e checksums de arquivos](https://developers.google.com/workspace/drive/api/reference/rest/v3/files).
+3. **Provar recuperação.** Em conta e pasta de QA autorizadas, verificar
+   consentimento e renovação, interromper e retomar um envio, repetir a mesma
+   tentativa sem duplicata e provar as recusas de acesso e destino alterado.
+   Exercitar quota e indisponibilidade com falhas controladas. Recuperar a cópia
+   sintética em diretório novo, conferir manifesto,
+   decifração, integridade SQLite e contagens de referência. Registrar SHA do
+   App, identidade da cópia e resultado em recibo privado, com estado visível
+   pela CLI e por Recursos. Em outro host, reautenticar pelo fluxo oficial.
+4. **Qualificar PostgreSQL separadamente.** Depois do percurso SQLite, ligar o
+   mesmo transporte a um dump consistente produzido com `pg_dump` e provar
+   `pg_restore` em banco de QA isolado, com versão, extensões, objetos e contagens
+   conferidos. Declarar o backend pendente até passar nesse percurso.
+
+**Limites de operação.** Aproveitar a manutenção e os limites de recursos
+existentes. Medir CPU, RAM, swap, I/O, disco e volume total do pacote antes de
+cópia ou restauração grande. Downloads acima de 70 MB seguem o fluxo manual do
+projeto, inclusive pacotes divididos. Manter a proteção privada de recuperação
+existente durante a qualificação. Excluir credenciais, tokens e configurações
+sensíveis do pacote, dos logs e do Git. A ativação para uma base do proprietário
+exige destino e política de backup autorizados.
+
 ## Recuperação de continuidade — 2026-10-26
 
 Correção do bootstrap T20.30-HOST1: a preparação sem MT5 agora usa o diagnóstico
@@ -4710,31 +4760,16 @@ Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a c
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
 
-
-## Reconferência de composição em12/11/2026
-
-Composição revisável na branch `codex/composicao-diagnostico-20261112`,
-com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidências
-e próximos passos estão na fila de [continuidade](../CONTINUAR_AQUI.md). Prévia identificada
-pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
-OAuth real, entrada física e observação prolongada conservam aceites próprios.
-
-
-## Composição de diagnóstico em12/11/2026
-
-A branch `codex/composicao-diagnostico-20261112` reúne as fontes públicas
-revisadas de configuração, dados, Laboratório, Drive e restauração. A fila
-com owners, SHAs, evidências e próximos passos está em [continuidade](../CONTINUAR_AQUI.md).
-O destino efetivo de `app-development` e o `mt5x-release.json` identificam
-a prévia usada pelo atalho. A conferência do artefato e os checks se referem
-à fonte publicada. Retorno, ambiente e dados são preservados.
-
-A restauração inclui intenção durável, consulta e recuperação explícita.
-Teve31 regressões focadas, seis casos existentes em lote próprio, CLI oficial
-e GUI XWayland em SQLite sintético, com preferências isoladas. O CI do SHA
-publicado e os aceites de hardware, entrada física, login, falha de energia
-e operação nativa têm registros próprios. Seções datadas anteriores conservam
-suas fotografias históricas.
+Painel em 06/11/2026 (App `550b6d5`, HADOUKEN `d4d389ee`, Safety `27b8599`, Wine 11.17/MT5 6296):
+`robots compile hdk_hadouken_painel` compilou 0 erros/0 avisos. A bateria `HDK_Conservador`
+aprovou o grupo estático com dois avisos (sem contrato `robot.json`; tetos de risco no código).
+Com o login DEMO restaurado, o backtest cada tick com ticks reais (23/07–23/10) concluiu com
+0 operações: o painel só entra pelos botões (`OnChartEvent` → `TryEnter`) ou Telegram, sem sinal
+automático. A bateria estatística (≥200 operações) não se aplica a esse pacote e não o aprova;
+qualificação estatística exige o pacote manual roteirizado (como no S09 2.13) ou contrato
+`robot.json` de execução manual. Base de QA separada; nada ao vivo.
+[Recibo](evidencias/E14_PAINEL_COMPILE_BATTERY_20261106.json). Recuperação, capacidade,
+pendentes e risco agregado exigem escopo nos pins; DEMO, netting e Windows físico seguem pendentes.
 
 
 ## DIAG-LEASE-REBOOT — identidade e retomada em 12/11/2026
@@ -4877,6 +4912,27 @@ A reprodução anterior teve duas falhas e um caso compatível aprovado. CI dest
 SHA e QA do artefato composto permanecem em validação.
 
 
+## Prévia candidata conferida em 12/11/2026
+
+PR308 `561152b` contém o runtime das correções de relógio/restauração, lease e
+retenção. Os 365 hashes do artefato de 6.378.666 B foram conferidos. O launcher
+do próprio artefato abriu no compositor XWayland com configuração e duas bases
+SQLite próprias. Recuperação 7→99, recusa de relógio incompatível, cópia e
+consulta de retenção pelo worker passaram. Foram 25 pulsos, intervalo máximo
+0,571 s, pico 275,2 MiB, mínimo disponível 7,90 GiB e máximo 59 °C.
+
+Observação contínua adicional, limitada a 180 s, teve 4.168 pulsos, seis
+atualizações, três alternâncias de tema e zero erros de callback. Pico
+272,6 MiB, mínimo 7,73 GiB e máximo 68 °C. Quatro hashes de preferências e
+favoritos do proprietário permaneceram iguais em ambos os ensaios. Os
+controladores solicitaram as ações na janela visível. Entrada física,
+acessibilidade, login, maior duração, hardware nativo e energia seguem próprios.
+A ponta pública da retenção `97da399` reposiciona somente recibos documentais
+para liberar CI após a atualização da dependência, com merge-tree limpo. O
+runtime conserva o SHA de origem `fdbe0d9` usado na composição e no artefato.
+O link estável continua em `650656f` até a conferência dos gates pertinentes.
+
+
 ## DIAG-LEASE — leitura do teste sob bloqueio em 12/11/2026
 
 A tentativa Windows1 foi cancelada prematuramente por esta tarefa após mais
@@ -4892,3 +4948,54 @@ assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
 O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
 em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
 precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.
+
+
+## Disponibilização conferida da prévia2b
+
+O atalho e o menu agora resolvem a composição `2b3b274`, com365 arquivos
+conferidos. Linux completo, PostgreSQL, lint e os dois instaladores passaram
+no SHA publicado. Windows permanece em curso. O procedimento de ativação
+a674860c2d9a4d6398587a43e80513a4 registrou intenção e resultado duráveis e
+revalidou destino/atalhos/estado compartilhado antes da troca atômica. O pico
+do processo de ativação foi23,3MiB. A conferência pelo launcher estável teve
+saída0, três cópias próprias consultadas, valor99 preservado, pico134,6MiB,
+mínimo8,21GiB disponíveis e duração4,09s. Retornos650/57 estão preservados.
+
+A primeira preparação ligava uma lista legada de símbolos do checkout. A
+comparação com a prévia efetiva mostrou que esse arquivo estava ausente.
+O vínculo novo foi retirado antes da ativação e o arquivo legado foi preservado.
+O método de produção `load_symbols` tem o mesmo conteúdo nas duas versões;
+executado com objeto controlado e ausência real do arquivo, devolveu os mesmos
+cinco símbolos e configuração de tempos. Essa validação foi controlada. A GUI
+XWayland2b foi exercitada antes da reconciliação desse vínculo, no mesmo código.
+A comprovação de hash/existência de preferências cobre os ensaios finais
+isolados; o estado anterior aos primeiros ensaios permanece sem comprovação.
+
+A admissão inicial de carga pesada foi aplicada à troca de metadados e adiou
+a tentativa. A operação final foi dimensionada como leve, com128MiB previstos,
+32MiB de leitura,256KiB de gravação e reserva mínima de4GiB. A GUI, builds e
+suítes locais ficaram adiados durante a pressão de I/O. Foi observado copiador
+de outra tarefa,13MiB lidos e13MiB gravados em3s, preservado em execução.
+Kernel sem avisos nos30min consultados e Btrfs com6.741 corrupções acumuladas,
+sem mudança dos contadores. Essas observações mantêm a causa dos reinícios
+indeterminada. Recibos completos em state/qa-tmp/diagnostico-20261112/.
+
+
+## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+
+Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
+1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
+verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
+A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
+receber o valor padrão. O incremento propaga o orçamento existente à análise.
+O serviço de produção mantém seu contrato de memória e o cenário conserva o
+mesmo teto entre etapas.
+
+Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
+análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
+do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
+passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
+Os valores do sampler representam simulação, com memória física limitada ao
+processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
+validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
+runtime. Logs e falhas anteriores permanecem como evidência.

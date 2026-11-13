@@ -1,0 +1,32 @@
+{
+  "schema": "mt5x-e14-calc-integration/v1",
+  "hadouken_commit": "569718c8a132d913ea9d684db095ba8745b56c52",
+  "hadouken_pr": 85,
+  "safety_commit": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "base_app_commit": "e263801e0a7739710efb4ba9a1f1856d20da1a66",
+  "hadouken_ci": {
+    "run": 43528978539,
+    "job": 132241662303,
+    "conclusion": "success",
+    "scope": "static checks and portable tool tests, Ubuntu runner"
+  },
+  "native_compile": {
+    "platform": "Linux/Wine",
+    "target": "HDK_HADOUKEN_Painel",
+    "errors": 0,
+    "warnings": 0,
+    "sources_identical": 39,
+    "evidence": "https://github.com/Misael-art/projeto-indicadores-mt5/blob/569718c8a132d913ea9d684db095ba8745b56c52/Documentation/HADOUKEN_2/evidencias/E14_CALC_20261113.json"
+  },
+  "accepted_operationally": false,
+  "windows_acceptance": "blocked: future qualified physical Windows host",
+  "installed_preview": "development-2b3b274da6de; update after integration gates",
+  "app_validation": {
+    "focused_tests": 25,
+    "result": "passed",
+    "scope": "development manifest and frozen SA-REF-01 source compatibility; Linux controlled test environment",
+    "elapsed_s": 6.725227647000338,
+    "peak_direct_rss_mib": 136.7421875,
+    "native_acceptance": false
+  }
+}
