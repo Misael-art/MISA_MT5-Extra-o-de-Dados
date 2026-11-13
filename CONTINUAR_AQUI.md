@@ -22,6 +22,24 @@ Checkout do App continua em `codex/launcher-classes`/`550b6d5`, com WIP alheio p
 
 Próximos incrementos, em PRs distintas e dependentes: contas múltiplas com identidade estável e cofre isolado; pacotes por ativo com inventário/dependências; reunião em QA com conflitos explícitos e consumidores existentes. O proprietário fará consentimento e testes reais só depois da aprovação sintética conjunta. Nenhum dado privado enviado.
 
+## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+
+Windows7df/131581528852 reprovou o cenário macro por RSS do processo acima de
+1024MiB. A repetição anterior2a/131574907486 confirmou a mesma ocorrência.
+A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
+receber o valor padrão. O incremento propaga o orçamento existente à análise.
+O serviço de produção mantém seu contrato de memória e o cenário conserva o
+mesmo teto entre etapas.
+
+Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
+análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
+do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
+passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
+Os valores do sampler representam simulação, com memória física limitada ao
+processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
+validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
+runtime. Logs e falhas anteriores permanecem como evidência.
+
 ## Integração no master e prévia — 04/11/2026
 
 Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs
