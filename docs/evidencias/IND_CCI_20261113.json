@@ -43,11 +43,21 @@
       "warnings": 2,
       "MT5_probe": false
     },
-    "official_launcher": "prepared; deferred due host RAM/PSI/continuous swap; not yet executed"
+    "official_launcher": {
+      "actions": [
+        "materialize",
+        "context",
+        "export"
+      ],
+      "result": "passed",
+      "dataset": "own synthetic SQLite, 225 M1 bars and 45 M5 observations",
+      "peak_process_tree_rss_mib": 281.46,
+      "minimum_available_gib": 5.285,
+      "MT5_started": false
+    }
   },
   "history_policy": "no bulk update or reinterpretation of unversioned raw CCI; identified additive values through existing producer/store",
   "remaining": [
-    "official launcher QA",
     "CI by published SHA",
     "preview and real GUI path",
     "native iCCI parity",
