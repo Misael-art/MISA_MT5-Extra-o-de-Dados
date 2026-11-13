@@ -39,6 +39,8 @@ def add_parser(sub) -> None:
         if name == "report":
             q.add_argument("--by", default="day_of_week,time_bucket,event_impact,volatility_bucket",
                            help="dimensões separadas por vírgula")
+            q.add_argument("--include-repeated-runs", action="store_true",
+                           help="inclui todas as execuções guardadas, inclusive repetições comprovadas")
         if name == "insights":
             q.add_argument("--save", action="store_true", help="grava em _trade_insights")
         if name == "simulate":
@@ -52,6 +54,26 @@ def add_parser(sub) -> None:
     q.add_argument("--run", required=True, help="run_id (veja mt5x trades runs)")
     q.add_argument("--modes", default="", help="modos separados por vírgula (padrão: os de saída)")
     q.add_argument("--preset", help="preset do robô (para as travas do martingale)")
+    q = ts.add_parser("recovery", help="estudo pareado H0–H6: saída antecipada, adição condicionada a sinal de "
+                                       "reversão e reentrada independente, sobre as mesmas entradas (só estudo)")
+    q.add_argument("--run", required=True, help="run_id (veja mt5x trades runs)")
+    q.add_argument("--signals", default="", help="famílias de sinal separadas por vírgula (padrão: todas)")
+    q.add_argument("--min-signals", type=int, default=1, help="quantas famílias precisam concordar na mesma barra")
+    q.add_argument("--zone", type=float, default=0.6, help="perda no fechamento, em fração de R, que abre a zona")
+    q = ts.add_parser("fidelity", help="classe A–E de fidelidade dos dados de um run ou de um ativo/timeframe")
+    q.add_argument("--run", help="run_id do livro (usa a revisão de dados congelada do run, se houver)")
+    q.add_argument("--symbol", help="ativo, com --timeframe (dados atuais da base)")
+    q.add_argument("--timeframe", help="ex.: M15")
+    q.add_argument("--from", dest="date_from", help="início UTC dos ticks a auditar, AAAA-MM-DD")
+    q.add_argument("--to", dest="date_to", help="fim UTC dos ticks a auditar, AAAA-MM-DD")
+    q = ts.add_parser("router", help="política condicional de estudo: qual setup operar em cada contexto, com piso "
+                                     "de fator de lucro na validação e na reserva (primeiro recorte do Ultra)")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--timeframe", required=True, help="ex.: M15")
+    q.add_argument("--runs", default="", help="run_ids separados por vírgula (padrão: um run por robô)")
+    q.add_argument("--min-pf", type=float, default=2.0, help="piso de fator de lucro (padrão 2)")
+    q.add_argument("--min-rule-trades", type=int, help="operações mínimas por regra (padrão: min_trades_cell)")
+    q.add_argument("--top", type=int, default=2, help="setups aceitos por contexto, em prioridade")
     p.set_defaults(func=run)
 
 
@@ -91,6 +113,12 @@ def run(args: argparse.Namespace, ctx) -> int:
         return _analysis(args, ctx)
     if args.trades_command == "compare":
         return _compare(args, ctx)
+    if args.trades_command == "recovery":
+        return _recovery(args, ctx)
+    if args.trades_command == "fidelity":
+        return _fidelity(args, ctx)
+    if args.trades_command == "router":
+        return _router(args, ctx)
     raise ValueError(f"subcomando desconhecido: {args.trades_command}")
 
 
@@ -144,7 +172,8 @@ def _calendar(args, ctx) -> int:
 def _lab(args, ctx):
     from mt5_extracao.trade_analytics import aggregate
     filters = {"robot_key": args.robot} if args.robot else {"symbol": args.symbol}
-    lab = aggregate.frame(ctx.db, ctx.config, **filters)
+    lab = aggregate.frame(ctx.db, ctx.config, include_repeated_runs=getattr(args, "include_repeated_runs", False),
+                          **filters)
     if lab.empty:
         raise ValueError("Nenhuma operação no livro para essa seleção (veja mt5x trades runs; importe com mt5x trades "
                          "import).")
@@ -241,4 +270,111 @@ def _compare(args, ctx) -> int:
                        "triggers": (item.get("sequence") or {}).get("triggers"),
                        "safety_notes": item.get("safety_notes")}
     data(run=args.run, modes=result)
+    return cli.EXIT_OK
+
+
+def _recovery(args, ctx) -> int:
+    from mt5_extracao import cli
+    from mt5_extracao.trade_analytics.execution import study
+    out, data = cli._print, cli._data
+    report = study.run(ctx.db, ctx.config, args.run, signals=args.signals, min_signals=args.min_signals,
+                       zone_r=args.zone)
+    grade = report["fidelity"]
+    out(f"{report['robot_key']} {report['symbol']} {report['timeframe']}: dados classe {grade['grade']} "
+        f"({grade['label']}); decisão no fechamento, execução na abertura seguinte. Só estudo.")
+    winners = report["excursions"]["winners"]
+    if winners["n"]:
+        out(f"Vencedoras ({winners['n']}): metade suportou até {winners['mae_r_p50']:.2f} R contra e 90% até "
+            f"{winners['mae_r_p90']:.2f} R (zona em {report['protocol']['zone_r']:g} R).")
+    for label, item in report["variants"].items():
+        if "metrics" not in item:
+            out(f"{label} {item['name']}: indisponível. {' '.join(item['reasons'])}")
+            continue
+        m = item["metrics"]
+        line = (f"{label} {item['name']}: líquido {m['net']:.2f}, fator de lucro {profit_factor.text(m['profit_factor'])}, "
+                f"queda {m['max_drawdown_pct'] * 100:.1f}%, pior caso {item['pnl_worst']:.2f}")
+        if label != "H0":
+            line += (f"; {item['n_intervened']} intervenção(ões): {item['recovered']} melhoraram, "
+                     f"{item['aggravated']} pioraram; diferença {item['diff_net']:+.2f}; exposição máx. "
+                     f"{item['max_volume']:g} → {item['verdict']}")
+        out(line)
+        for reason in item["reasons"]:
+            out(f"    {reason}")
+    data(recovery=report)
+    return cli.EXIT_OK
+
+
+def _fidelity(args, ctx) -> int:
+    import pandas as pd
+    from mt5_extracao import cli, timeframes
+    from mt5_extracao.analytics import data_eligibility, datasets, tick_fidelity
+    out, data = cli._print, cli._data
+    db = ctx.db
+    audit = None
+    if args.run:
+        snapshot = datasets.for_run(db, args.run)
+        if snapshot is None:
+            raise ValueError(f"Run {args.run} sem revisão de dados congelada; use --symbol e --timeframe para "
+                             "classificar os dados atuais da base.")
+        report, scope = snapshot.quality, f"run {args.run}"
+        if "ticks" in snapshot.manifest["derivation"].get("market_families", []):
+            audit = tick_fidelity.audit(snapshot.market_frame("ticks"), getattr(snapshot.spec, "point", None))
+    else:
+        tf = timeframes.parse(args.timeframe) if args.timeframe else None
+        if not args.symbol or tf is None:
+            raise ValueError("Informe --run, ou --symbol com --timeframe válido (ex.: M15).")
+        bars = db.load_ohlcv(args.symbol, tf.label)
+        ticks, evidence = None, []
+        table = db.find_table_for_symbol(args.symbol, "ticks")
+        if table is not None:
+            if not args.date_from or not args.date_to:
+                raise ValueError(f"{args.symbol} tem ticks na base: informe --from e --to (UTC) para limitar a "
+                                 "auditoria a uma janela que caiba na memória.")
+            ticks = db.load_market_frame(args.symbol, "ticks", pd.Timestamp(args.date_from, tz="UTC"),
+                                         pd.Timestamp(args.date_to, tz="UTC"))
+            evidence = [item for _start, item in db.quality_reports(table)
+                        if item.get("quality_version") == 1 and item.get("family") == "ticks"]
+            spec = db.get_symbol_spec(args.symbol) or {}
+            audit = tick_fidelity.audit(ticks, spec.get("point"))
+        report = data_eligibility.assess(bars, bar_minutes=tf.minutes or 1440, ticks=ticks, evidence=evidence,
+                                         symbol=args.symbol, timeframe=tf.name)
+        scope = f"{args.symbol} {tf.name} (dados atuais)"
+    grade = tick_fidelity.grade(report, audit)
+    out(f"{scope}: classe {grade['grade']} — {grade['label']}.")
+    for reason in grade["reasons"]:
+        out(f"  {reason}")
+    out("  Decisão dentro da barra (toque, repique antes do stop): "
+        + ("certificável." if grade["certifies"]["intrabarra"] else "NÃO certificável com estes dados."))
+    if audit and audit.get("rows"):
+        out(f"  Ticks auditados: {audit['rows']}; cotações cruzadas {audit['crossed_quotes']}; mesmo milissegundo "
+            f"{audit['same_ms_groups']} grupo(s); intervalos > 60 s: {audit['gaps_over_60s']}.")
+    data(fidelity=grade, audit=audit)
+    return cli.EXIT_OK
+
+
+def _router(args, ctx) -> int:
+    from mt5_extracao import cli, timeframes
+    from mt5_extracao.presets import conditional_policy
+    out, data = cli._print, cli._data
+    tf = timeframes.parse(args.timeframe)
+    if tf is None:
+        raise ValueError(f"Timeframe desconhecido: {args.timeframe}.")
+    report = conditional_policy.study(
+        ctx.db, ctx.config, args.symbol, tf.name, runs=[r.strip() for r in args.runs.split(",") if r.strip()] or None,
+        min_profit_factor=args.min_pf, min_rule_trades=args.min_rule_trades, top=args.top)
+    out(f"Política condicional de estudo {args.symbol} {tf.name}: {report['status']} "
+        f"(piso de fator de lucro {profit_factor.text(report['min_profit_factor'])}; "
+        f"{len(report['policy']['rules'])} regra(s) de contexto; sem regra, a entrada é bloqueada).")
+    for reason in report["reasons"]:
+        out(f"  {reason}")
+    for name, label in (("search", "procura"), ("validation", "validação"), ("holdout", "reserva final")):
+        part = report["segments"][name]
+        got, static = part["policy"], part["static_best"]
+        line = (f"  {label}: política {got['n']} op., fator de lucro {profit_factor.text(got['profit_factor'])}, "
+                f"líquido {got['net']:.2f}")
+        if static:
+            line += (f" | melhor estático ({static['setup']}) {static['n']} op., fator de lucro "
+                     f"{profit_factor.text(static['profit_factor'])}, líquido {static['net']:.2f}")
+        out(line)
+    data(router=report)
     return cli.EXIT_OK

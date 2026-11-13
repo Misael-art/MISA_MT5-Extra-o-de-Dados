@@ -34,7 +34,7 @@ REQUIRED_MODULES = [
 ]
 OPTIONAL_MODULES = [("pandas_ta", "pandas-ta")]
 
-MIN_PYTHON = (3, 9)
+MIN_PYTHON = (3, 11)       # mínimo coberto pelo CI; 3.9 falha em anotações `X | None`
 MAX_TESTED_PYTHON = (3, 13)
 
 

@@ -1,0 +1,2335 @@
+{
+  "revision": 1,
+  "sectors": {
+    "indicadores": "Indicadores",
+    "experts": "Experts",
+    "laboratorio": "Laboratório",
+    "operacional": "Operacional",
+    "carteira": "Carteira",
+    "leitura": "Leitura gráfica"
+  },
+  "indicators": [
+    {
+      "id": "sma-ema",
+      "title": "Médias móveis SMA e EMA",
+      "summary": "Uma SMA atribui o mesmo peso aos fechamentos da janela. A EMA reage mais aos dados recentes. A saída de distância normaliza a diferença preço–EMA pelo ATR.",
+      "notes": {
+        "Origem": "Métodos de suavização estatística. A variante e a semente do MT5X estão no contrato.",
+        "No gráfico": "Sobrepor média e fechamento no painel de preços. Comparar preço acima, abaixo e cruzando.",
+        "Cenário A": "Em avanço sustentado, a média tende a seguir o preço com atraso.",
+        "Cenário B": "Em congestão, cruzamentos próximos podem se alternar sem deslocamento útil."
+      },
+      "sources": [
+        [
+          "MetaTrader · médias móveis",
+          "https://www.metatrader5.com/en/terminal/help/indicators/trend_indicators/ma"
+        ]
+      ],
+      "family": "Tendência",
+      "definitions": [
+        "trend.ema20_distance_atr14"
+      ],
+      "example": "sma-ema"
+    },
+    {
+      "id": "rsi",
+      "title": "RSI · Índice de Força Relativa",
+      "summary": "Suaviza altas e baixas do fechamento e as relaciona em uma escala de 0 a 100. A inclinação de três barras mede a mudança do RSI.",
+      "notes": {
+        "Origem": "J. Welles Wilder Jr., 1978.",
+        "No gráfico": "Painel separado com escala fixa. Marcar o limiar e a direção da passagem.",
+        "Cenário A": "RSI crescente acima de 50 indica predomínio relativo de altas no cálculo.",
+        "Cenário B": "Em uma tendência persistente o RSI pode permanecer alto ou baixo. O nível isolado não implica reversão."
+      },
+      "sources": [
+        [
+          "J. Welles Wilder Jr., New Concepts in Technical Trading Systems (1978)",
+          "https://archive.org/details/newconceptsintec00wild"
+        ],
+        [
+          "MetaTrader · RSI",
+          "https://www.metatrader5.com/en/terminal/help/indicators/oscillators/rsi"
+        ]
+      ],
+      "family": "Momento",
+      "definitions": [
+        "momentum.rsi_14",
+        "momentum.rsi_14_slope_3"
+      ],
+      "example": "rsi"
+    },
+    {
+      "id": "atr",
+      "title": "ATR · amplitude média verdadeira",
+      "summary": "O True Range é a maior entre a amplitude da barra e as distâncias da máxima ou mínima ao fechamento anterior. O ATR suaviza essa amplitude.",
+      "notes": {
+        "Origem": "J. Welles Wilder Jr., 1978.",
+        "No gráfico": "Linha em unidade de preço ou fração do fechamento. Pode dimensionar proteção sem escolher o lado.",
+        "Cenário A": "Uma abertura com salto amplia o True Range mesmo com candle estreito.",
+        "Cenário B": "ATR em queda sinaliza menor amplitude recente. O preço ainda pode subir ou cair."
+      },
+      "sources": [
+        [
+          "J. Welles Wilder Jr., New Concepts in Technical Trading Systems (1978)",
+          "https://archive.org/details/newconceptsintec00wild"
+        ],
+        [
+          "MetaTrader · ATR",
+          "https://www.metatrader5.com/en/terminal/help/indicators/oscillators/atr"
+        ]
+      ],
+      "family": "Volatilidade",
+      "definitions": [
+        "volatility.atr_14",
+        "volatility.atr_pct_14"
+      ],
+      "example": "atr"
+    },
+    {
+      "id": "bollinger",
+      "title": "Bandas de Bollinger",
+      "summary": "Envolvem a média com múltiplos do desvio-padrão. A largura relativa mede dispersão e a posição mede onde o fechamento cai no envelope.",
+      "notes": {
+        "Origem": "John Bollinger, início dos anos 1980.",
+        "No gráfico": "Faixa superior e inferior sobre o preço, com largura ou posição em painel auxiliar.",
+        "Cenário A": "Faixa abrindo após compressão indica maior dispersão recente.",
+        "Cenário B": "Preço acompanhando a banda superior pode refletir tendência. Testar a hipótese de retorno à média separadamente."
+      },
+      "sources": [
+        [
+          "John Bollinger · origem e uso",
+          "https://www.bollingerbands.com/home"
+        ]
+      ],
+      "family": "Volatilidade",
+      "definitions": [
+        "volatility.bb_20_width",
+        "volatility.bb_20_position"
+      ],
+      "example": "bollinger"
+    },
+    {
+      "id": "keltner",
+      "title": "Canal de Keltner",
+      "summary": "A variante registrada usa EMA de 20 barras e distância de 1,5 × ATR(20).",
+      "notes": {
+        "Origem": "Canal atribuído a Chester Keltner. O contrato mostra a variante moderna usada no MT5X.",
+        "No gráfico": "Envelope com centro, teto e piso. A largura acompanha a amplitude suavizada.",
+        "Cenário A": "Bollinger dentro de Keltner pode servir como definição explícita de compressão.",
+        "Cenário B": "Expansão de ATR alarga Keltner mesmo quando o fechamento termina próximo do centro."
+      },
+      "sources": [
+        [
+          "Estratégias do MT5X",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/estrategias.md"
+        ]
+      ],
+      "family": "Volatilidade",
+      "definitions": [
+        "volatility.kc_20_width",
+        "volatility.kc_20_position"
+      ],
+      "example": "keltner"
+    },
+    {
+      "id": "macd",
+      "title": "MACD · linha, sinal e histograma",
+      "summary": "A linha é EMA rápida menos EMA lenta. O sinal suaviza essa diferença. O histograma é linha menos sinal.",
+      "notes": {
+        "Origem": "Gerald Appel. No MT5X, conferir a fórmula da linha de sinal da variante registrada.",
+        "No gráfico": "Painel com duas linhas e histograma em torno de zero.",
+        "Cenário A": "Histograma cruza zero quando a linha do MACD cruza sua linha de sinal.",
+        "Cenário B": "Histograma ainda positivo, mas encolhendo, mostra aproximação das linhas. Isso difere de um cruzamento já confirmado."
+      },
+      "sources": [
+        [
+          "MetaTrader · MACD",
+          "https://www.metatrader5.com/en/terminal/help/indicators/oscillators/macd"
+        ]
+      ],
+      "family": "Momento",
+      "definitions": [
+        "momentum.macd_line_12_26_9",
+        "momentum.macd_signal_12_26_9",
+        "momentum.macd_histogram_12_26_9",
+        "momentum.macd_histogram_atr_14"
+      ],
+      "example": "macd"
+    },
+    {
+      "id": "alligator",
+      "title": "Alligator",
+      "summary": "Três médias suavizadas do ponto médio da barra. O registro separa valor de cálculo do deslocamento de desenho.",
+      "notes": {
+        "Origem": "Bill Williams.",
+        "No gráfico": "Sobrepor mandíbula, dentes e lábios. Identificar a barra de cálculo ao interpretar uma linha deslocada.",
+        "Cenário A": "Lábios acima dos dentes e estes acima da mandíbula formam alinhamento de alta na variante.",
+        "Cenário B": "Linhas entrelaçadas indicam ausência de alinhamento. Um deslocamento visual não antecipa dados."
+      },
+      "sources": [
+        [
+          "MetaTrader · Alligator",
+          "https://www.metatrader5.com/en/terminal/help/indicators/bw_indicators/alligator"
+        ]
+      ],
+      "family": "Tendência",
+      "definitions": [
+        "trend.alligator_jaw_13",
+        "trend.alligator_teeth_8",
+        "trend.alligator_lips_5",
+        "trend.alligator_alignment",
+        "trend.alligator_separation"
+      ],
+      "example": "alligator"
+    },
+    {
+      "id": "ao-ac",
+      "title": "Awesome Oscillator e Accelerator",
+      "summary": "AO compara médias de 5 e 34 barras do ponto médio. AC subtrai do AO sua média curta para realçar mudança de impulso.",
+      "notes": {
+        "Origem": "Bill Williams.",
+        "No gráfico": "Histogramas em torno de zero. A cor informa mudança de altura, enquanto o sinal indica o lado do zero.",
+        "Cenário A": "AO acima de zero e crescendo combina diferencial positivo com aumento do impulso.",
+        "Cenário B": "AO ainda positivo e AC negativo indica perda de força relativa. Os sinais respondem a perguntas diferentes."
+      },
+      "sources": [
+        [
+          "MetaTrader · indicadores de Bill Williams",
+          "https://www.metatrader5.com/en/terminal/help/indicators/bw_indicators"
+        ]
+      ],
+      "family": "Momento",
+      "definitions": [
+        "momentum.ao_5_34",
+        "momentum.ao_5_34_slope_1",
+        "momentum.ao_5_34_acceleration_1",
+        "momentum.ao_5_34_zero_cross",
+        "momentum.ao_5_34_color",
+        "momentum.ac_5_34_5",
+        "momentum.ac_5_34_5_slope_1",
+        "momentum.ac_5_34_5_color"
+      ],
+      "example": "ao-ac"
+    },
+    {
+      "id": "er",
+      "title": "Efficiency Ratio de Kaufman",
+      "summary": "Divide o deslocamento absoluto pela soma dos movimentos absolutos do caminho. ER mede quão direto foi o trajeto.",
+      "notes": {
+        "Origem": "Perry J. Kaufman. O MT5X registra a variante de 20 barras.",
+        "No gráfico": "Painel entre 0 e 1 junto ao preço. Ler inclinação do preço à parte.",
+        "Cenário A": "Movimento quase monotônico produz ER alto, seja de alta ou de baixa.",
+        "Cenário B": "Idas e voltas com pouco deslocamento líquido produzem ER baixo."
+      },
+      "sources": [
+        [
+          "Perry Kaufman · Smarter Trading",
+          "https://c.mql5.com/3/133/Kaufman.Perry-Smarter.Trading.Improving.Performance.In.Changing.Markets.pdf"
+        ]
+      ],
+      "family": "Tendência / ruído",
+      "definitions": [
+        "trend.efficiency_ratio_20"
+      ],
+      "example": "er"
+    },
+    {
+      "id": "fractals",
+      "title": "Fractals confirmados",
+      "summary": "Um extremo central precisa ser estrito entre cinco barras. A confirmação só chega após fechar a segunda barra à direita.",
+      "notes": {
+        "Origem": "Família divulgada por Bill Williams. O MT5X explicita empate e disponibilidade.",
+        "No gráfico": "Marcar separadamente a barra do pivô e o momento da confirmação.",
+        "Cenário A": "Dois candles posteriores validam o candidato, que então pode alimentar uma regra.",
+        "Cenário B": "Empate ou extremo melhor na janela invalida a leitura estrita."
+      },
+      "sources": [
+        [
+          "MetaTrader · Fractals",
+          "https://www.metatrader5.com/en/terminal/help/indicators/bw_indicators/fractals"
+        ]
+      ],
+      "family": "Estrutura",
+      "definitions": [
+        "structure.fractals_5_strict_top",
+        "structure.fractals_5_strict_bottom",
+        "structure.fractals_5_strict_provisional"
+      ],
+      "example": "fractals"
+    },
+    {
+      "id": "zigzag",
+      "title": "ZigZag causal",
+      "summary": "Mantém um extremo provisório. Congela o pivô após desvio, profundidade e idade mínimos conforme o contrato.",
+      "notes": {
+        "Origem": "Família ZigZag. Esta variante causal do MT5X tem regra explícita de confirmação.",
+        "No gráfico": "Ligar pivôs confirmados e diferenciar o trecho provisório com traço distinto.",
+        "Cenário A": "Uma reversão confirmada permite usar o pivô a partir da confirmação.",
+        "Cenário B": "Um extremo provisório pode se mover. Usá-lo retrospectivamente como sinal altera o teste."
+      },
+      "sources": [
+        [
+          "Estrutura e dados do MT5X",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/dados/PLANO_ESTRUTURA_DADOS.md"
+        ]
+      ],
+      "family": "Estrutura",
+      "definitions": [
+        "structure.zigzag_causal_d12_pct1_b3_top",
+        "structure.zigzag_causal_d12_pct1_b3_bottom",
+        "structure.zigzag_causal_d12_pct1_b3_provisional"
+      ],
+      "example": "zigzag"
+    },
+    {
+      "id": "donchian",
+      "title": "Canal de Donchian",
+      "summary": "As bordas são máximas e mínimas da janela. O MT5X registra níveis incluindo a barra atual e níveis da janela anterior.",
+      "notes": {
+        "Origem": "Richard Donchian. A distinção entre as duas janelas pertence ao contrato local.",
+        "No gráfico": "Canal escalonado sobre o preço. Comparar o rompimento com o limite anterior congelado.",
+        "Cenário A": "Superar estritamente o teto anterior pode formar um candidato de compra.",
+        "Cenário B": "Tocar o teto ou comparar com o teto recalculado incluindo a própria barra muda a condição."
+      },
+      "sources": [
+        [
+          "Estratégias do MT5X",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/estrategias.md"
+        ]
+      ],
+      "family": "Rompimento",
+      "definitions": [
+        "channel.donchian_20_current_upper",
+        "channel.donchian_20_current_lower",
+        "channel.donchian_20_current_mid",
+        "channel.donchian_20_current_width",
+        "channel.donchian_20_current_position",
+        "channel.donchian_20_current_distance_upper",
+        "channel.donchian_20_current_distance_lower",
+        "channel.donchian_20_previous_upper",
+        "channel.donchian_20_previous_lower",
+        "channel.donchian_20_previous_mid",
+        "channel.donchian_20_previous_width",
+        "channel.donchian_20_previous_position",
+        "channel.donchian_20_previous_distance_upper",
+        "channel.donchian_20_previous_distance_lower"
+      ],
+      "example": "donchian"
+    },
+    {
+      "id": "volume",
+      "title": "Volume real e volume de ticks",
+      "summary": "Volume real representa quantidade informada pelo feed. Volume de ticks conta atualizações. O book contém ofertas em espera.",
+      "notes": {
+        "Origem": "Medidas de microestrutura definidas pelo feed e pelo instrumento.",
+        "No gráfico": "Usar histogramas separados, com unidade e fonte visíveis.",
+        "Cenário A": "Mais negócios podem ampliar o volume real, mesmo com quantidade de atualizações parecida.",
+        "Cenário B": "Sem volume real, a série fica ausente. O contador de ticks segue como medida própria."
+      },
+      "sources": [
+        [
+          "MetaQuotes · dados do tick",
+          "https://www.mql5.com/en/docs/constants/structures/mqltick"
+        ]
+      ],
+      "family": "Volume / atividade",
+      "definitions": [
+        "volume.real",
+        "volume.ticks"
+      ],
+      "example": "volume"
+    },
+    {
+      "id": "retornos",
+      "title": "Retorno por horizonte",
+      "summary": "Compara fechamentos separados por 1, 5 ou 20 barras, em fração do preço de origem.",
+      "notes": {
+        "Origem": "Medida de variação relativa. Horizonte e preço-base são escolhas da análise.",
+        "No gráfico": "Linha ou barras centradas em zero. Rotular o horizonte junto à unidade.",
+        "Cenário A": "Um avanço recente pode coexistir com retorno negativo numa janela longa.",
+        "Cenário B": "Uma lacuna ou troca de contrato pode alterar o retorno observado. Conferir a série antes de interpretar."
+      },
+      "sources": [],
+      "family": "Preço",
+      "definitions": [
+        "price.return_1",
+        "price.return_5",
+        "price.return_20"
+      ],
+      "example": "retornos"
+    },
+    {
+      "id": "estocastico",
+      "title": "Estocástico · %K e %D",
+      "summary": "%K posiciona o fechamento dentro da faixa recente. %D suaviza %K. A variante lenta também suaviza %K.",
+      "notes": {
+        "Origem": "Associado a George Lane. Conferir o suavizamento do perfil.",
+        "No gráfico": "Painel 0–100 com duas linhas. Distinguir cruzamento entre linhas e passagem por limiar.",
+        "Cenário A": "Cruzamento em faixa alta pode ser parte de uma regra de continuação.",
+        "Cenário B": "Em congestionamento o mesmo cruzamento pode se repetir muitas vezes."
+      },
+      "sources": [
+        [
+          "MetaTrader · Estocástico",
+          "https://www.metatrader5.com/en/terminal/help/indicators/oscillators/so"
+        ]
+      ],
+      "family": "Momento",
+      "definitions": [],
+      "example": "estocastico"
+    },
+    {
+      "id": "vwap",
+      "title": "VWAP e bandas",
+      "summary": "Preço médio ponderado por volume. A política de reset, o preço de referência e a fonte de volume definem a variante.",
+      "notes": {
+        "Origem": "Referência de execução por volume. O perfil nativo do MT5X tem contrato específico.",
+        "No gráfico": "Linha de referência sobre o preço com envelopes quando o perfil os publica.",
+        "Cenário A": "Uma distância grande pode fundamentar uma hipótese de retorno à referência.",
+        "Cenário B": "Persistência do preço fora da banda pode ser direcional. Reavaliar por regime e sessão."
+      },
+      "sources": [
+        [
+          "Perfil VWAP Bands",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/sdk/vwap_bands.md"
+        ]
+      ],
+      "family": "Volume / referência",
+      "definitions": [],
+      "example": "vwap"
+    },
+    {
+      "id": "super-atr",
+      "title": "Super ATR",
+      "summary": "Família do HADOUKEN que usa ATR para definir linhas de proteção e direção. Cada curva tem parâmetros e estado próprios.",
+      "notes": {
+        "Origem": "Implementação HADOUKEN descrita no SDK do projeto.",
+        "No gráfico": "Curvas sobre o preço. Ler a troca de lado apenas conforme o contrato de fechamento e confirmação.",
+        "Cenário A": "Em trecho direcional uma curva pode acompanhar o preço como referência de proteção.",
+        "Cenário B": "Em alternância curta podem ocorrer trocas frequentes. Confirmar TF e curva antes de comparar."
+      },
+      "sources": [
+        [
+          "SDK Super ATR",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/sdk/super_atr.md"
+        ]
+      ],
+      "family": "Volatilidade / proteção",
+      "definitions": [],
+      "example": "super-atr"
+    },
+    {
+      "id": "heiken-hilo",
+      "title": "Heiken-Ashi e HiLo Activator",
+      "summary": "Heiken-Ashi suaviza a representação OHLC. HiLo alterna referência superior ou inferior para acompanhar o lado.",
+      "notes": {
+        "Origem": "Métodos distintos. A composição HA + HiLo e seus parâmetros têm documentação própria.",
+        "No gráfico": "Candles sintéticos e linha HiLo sobreposta. A execução usa cotação do símbolo.",
+        "Cenário A": "Persistência da direção HA com HiLo no mesmo lado pode filtrar tendência.",
+        "Cenário B": "Troca de lado é um sinal. Reversão de posição só ocorre após confirmar a saída, se suportada."
+      },
+      "sources": [
+        [
+          "SDK HA + HiLo",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/sdk/ha_hilo.md"
+        ]
+      ],
+      "family": "Tendência / proteção",
+      "definitions": [],
+      "example": "heiken-hilo"
+    },
+    {
+      "id": "adx-cci",
+      "title": "ADX e CCI",
+      "summary": "ADX mede força do movimento direcional sem fornecer o lado. CCI mede afastamento do preço típico em relação à média e ao desvio médio.",
+      "notes": {
+        "Origem": "ADX por J. Welles Wilder Jr. (1978). CCI por Donald Lambert.",
+        "No gráfico": "ADX com +DI e −DI quando disponíveis. CCI em painel próprio com eixo centrado em zero.",
+        "Cenário A": "ADX pode subir numa queda forte. O lado vem da estrutura ou dos DIs.",
+        "Cenário B": "CCI extremo pode persistir. Compare cruzamento de retorno e permanência além do nível.",
+        "Exemplo complementar": "Selecione CCI · desvio relativo ao preço típico no gráfico interativo."
+      },
+      "sources": [
+        [
+          "J. Welles Wilder Jr., New Concepts in Technical Trading Systems (1978)",
+          "https://archive.org/details/newconceptsintec00wild"
+        ],
+        [
+          "MetaTrader · CCI",
+          "https://www.metatrader5.com/en/terminal/help/indicators/oscillators/cci"
+        ]
+      ],
+      "family": "Força / desvio",
+      "definitions": [],
+      "example": "adx-cci"
+    },
+    {
+      "id": "fluxo",
+      "title": "Book, agressão e desequilíbrio",
+      "summary": "Book é oferta pendente por nível. Agressão é negócio executado com lado identificado. Delta e CVD agregam esses negócios segundo janela e reset.",
+      "notes": {
+        "Origem": "Medidas de microestrutura. A origem e a cadência do feed determinam o que é observável.",
+        "No gráfico": "Book em barras horizontais por nível. Delta como série assinada no tempo.",
+        "Cenário A": "Bid profundo indica liquidez cotada naquele estado. Ela pode ser retirada antes de executar.",
+        "Cenário B": "Negócios com lado ausente, snapshots espaçados ou lacunas de feed limitam a hipótese."
+      },
+      "sources": [
+        [
+          "MetaQuotes · profundidade",
+          "https://www.mql5.com/en/book/automation/marketbook"
+        ]
+      ],
+      "family": "Microestrutura",
+      "definitions": [],
+      "example": "fluxo"
+    }
+  ],
+  "studies": [
+    {
+      "id": "gap-abertura",
+      "title": "Gap de Abertura",
+      "summary": "Hipótese a testar. Um deslocamento moderado após a abertura pode continuar; um extremo pode reverter.",
+      "notes": {
+        "Mecânica e sinal": "Medir 100 × (primeiro fechamento − fechamento anterior) ÷ fechamento anterior, com sessão definida. Na faixa estrita entre dois limiares, usar a direção do gap. Acima da faixa, estudar o sinal contrário. Igualdade fica sem sinal na regra da aula.",
+        "Referência operacional": "WIN M1. A aula exemplifica 0,10% e 0,50%, ordem a mercado após fechar a primeira barra, stop de 40 ticks e alvo de 20 ticks.",
+        "Experimento no Laboratório": "Manter o mesmo sinal ao comparar entradas e saídas suportadas. Depois comparar faixas, intervalos após a abertura e ativos com sessão equivalente. Medir continuação e retorno separadamente.",
+        "Evidência e dependências": "A regra de sinal cabe como extensão no ponto de estratégias. Verificar sessão anterior, virada de contrato, fechamento causal, ambas as direções e ausência de duplicação. O replay publicado mostra fills a favor."
+      },
+      "sources": [
+        [
+          "Aula · primeira barra",
+          "https://www.youtube.com/watch?v=fJnhvSg0jI8&t=253s"
+        ],
+        [
+          "Aula · automação",
+          "https://www.youtube.com/watch?v=fJnhvSg0jI8&t=1640s"
+        ]
+      ],
+      "example": "gap-abertura"
+    },
+    {
+      "id": "trader-xpert",
+      "title": "Trader Xpert · Renko",
+      "summary": "Hipótese de pesquisa. Remover a divisão por tempo pode facilitar a descrição de deslocamentos de preço.",
+      "notes": {
+        "Mecânica e sinal": "Reconstruir Renko 7R conforme a Nelogica, com corpo de seis ticks e regras próprias de continuação e reversão. O gatilho proprietário de entrada continua desconhecido.",
+        "Referência operacional": "WIN, 09:05–17:00, zeragem 17:15. Exemplo de alvo de 150 pontos, ajuste após 75 favoráveis, breakeven e trailing a cada tick.",
+        "Experimento no Laboratório": "Comparar tamanho do tijolo e políticas de proteção mantendo idênticos os sinais de uma regra publicada. Comparar preço do tijolo com bid/ask e preencher pela cotação executável.",
+        "Evidência e dependências": "T19.41 é dona do Renko. Trailing por barra e tick a tick são experimentos diferentes. Para equivalência faltam gatilho, SL inicial, distância, passo e referência do trailing."
+      },
+      "sources": [
+        [
+          "Vídeo · gestão",
+          "https://www.youtube.com/watch?v=dXE8jd4xi_A&t=211s"
+        ],
+        [
+          "Nelogica · Renko",
+          "https://ajuda.nelogica.com.br/hc/pt-br/articles/360050333071-Gr%C3%A1fico-Renko"
+        ]
+      ],
+      "example": "renko"
+    },
+    {
+      "id": "codigo-milhao",
+      "title": "Código do Milhão · canais WDO",
+      "summary": "Hipótese a testar. A região em que o primeiro negócio ocorre em relação aos extremos anteriores condiciona a reação da abertura.",
+      "notes": {
+        "Mecânica e sinal": "Canal superior da máxima anterior menos 7 até a máxima. Inferior da mínima anterior até mínima mais 7. Dentro do superior, observar venda acima e abaixo das bordas. No inferior, observar compra simétrica.",
+        "Referência operacional": "WDO, abertura após leilão, margem de 0,5 ponto nas bordas. A automação mostra duas pendentes de mesmo lado, com cancelamento da irmã após fill, e cota de uma operação por sessão.",
+        "Experimento no Laboratório": "Separar o evento de abertura dentro do canal da política que o executa. Comparar entrada única, confirmação e ordem pendente quando admitidas. Comparar largura, distância e saídas. Manter a variante de duas pendentes identificada.",
+        "Evidência e dependências": "Duas pendentes exigem reserva de ambas até o cancelamento confirmado, ensaio de fill duplo e qualificação da conta. Faltam regras dos outros padrões e a gestão completa de saídas."
+      },
+      "sources": [
+        [
+          "Vídeo · canais e pendentes",
+          "https://www.youtube.com/watch?v=_NderHuy6C8&t=310s"
+        ],
+        [
+          "Vídeo · suporte e resistência",
+          "https://www.youtube.com/watch?v=_NderHuy6C8&t=1135s"
+        ]
+      ],
+      "example": "codigo-milhao"
+    },
+    {
+      "id": "sniper-trend",
+      "title": "Sniper Trend · SMA e RSI",
+      "summary": "Hipótese de pesquisa. Alinhamento entre contexto de tendência e momento pode discriminar candidatos de continuação.",
+      "notes": {
+        "Mecânica e sinal": "SMA(21) e RSI(14) são observáveis. O autor mantém em sigilo a condição de compra e venda. Uma regra explícita de preço acima da SMA com RSI confirmando força é uma hipótese nova com identidade própria.",
+        "Referência operacional": "WIN M5, 10:30, até um ciclo por sessão, stop 800 e alvo 1.300 pontos. Fechamento de referência 17:30 com trava adicional às 17:40.",
+        "Experimento no Laboratório": "Usar 10:30 como comparador. Declarar janelas e limiares antes de testar. Cruzamento versus alinhamento persistente são sinais distintos. Congelar o sinal, comparar entradas, SL e TP e medir fora da amostra por ativo e horário.",
+        "Evidência e dependências": "O vídeo não fecha limiares, barra avaliada ou predicado proprietário. Uma faixa pode ser elegível em um símbolo e indisponível em outro."
+      },
+      "sources": [
+        [
+          "Vídeo · lógica ocultada e parâmetros",
+          "https://www.youtube.com/watch?v=lBT6xSZhHCo&t=44s"
+        ]
+      ],
+      "example": "rsi"
+    },
+    {
+      "id": "maxfluxo",
+      "title": "MaxFluxo B3 · força do book",
+      "summary": "Hipótese de pesquisa. Desequilíbrio da liquidez cotada pode ter relação com a próxima movimentação negociável.",
+      "notes": {
+        "Mecânica e sinal": "O vídeo relaciona dois sinais e força compradora ou vendedora no DOM. Falta a fórmula das linhas, o lado exato, a profundidade e a cadência. Agressão por negócio é uma hipótese de fonte diferente.",
+        "Referência operacional": "EA MT5 em WIN, WDO e futuro de Bitcoin. Exemplifica limites monetários diários por contrato e WDO em M5 com alvo de 0,5 ponto de preço.",
+        "Experimento no Laboratório": "Quando BD10 qualificar o feed, testar profundidade, persistência, lado e regimes. Manter custo e spread junto a alvos curtos. Comparar por ativo sem misturar escalas ou qualidade da amostra.",
+        "Evidência e dependências": "O Tester não fornece DOM histórico nativo. Exigir série gravada elegível e sem lacuna material. Sem definição dos sinais, cada fórmula transparente recebe identidade própria."
+      },
+      "sources": [
+        [
+          "Vídeo · força do book",
+          "https://www.youtube.com/watch?v=otOT6D9OrbA&t=169s"
+        ],
+        [
+          "MetaQuotes · DOM",
+          "https://www.mql5.com/en/book/automation/marketbook"
+        ]
+      ],
+      "example": "fluxo"
+    }
+  ],
+  "strategies": {
+    "python:ema_atr": {
+      "Premissa": "Persistência direcional após alinhamento de médias.",
+      "Sinal": "Cruzamento EMA rápida/lenta condicionado à tendência de fundo.",
+      "O que comparar": "Períodos, filtro e gestão ATR por regime."
+    },
+    "python:donchian": {
+      "Premissa": "Extremos superados podem acompanhar expansão direcional.",
+      "Sinal": "Rompimento do canal anterior com os filtros do perfil.",
+      "O que comparar": "Janela, confirmação, custo de falsos rompimentos."
+    },
+    "python:bb_rsi": {
+      "Premissa": "Excesso relativo de dispersão pode retornar ao centro em ambiente lateral.",
+      "Sinal": "Banda, RSI e filtro de força compõem o candidato.",
+      "O que comparar": "Lateral versus direcional, amplitude, tempo e custos."
+    },
+    "python:orb": {
+      "Premissa": "Ruptura da faixa inicial pode indicar expansão após a abertura.",
+      "Sinal": "O preço rompe o intervalo inicial já formado.",
+      "O que comparar": "Duração da faixa, sessão, confirmação e execução."
+    },
+    "python:pullback": {
+      "Premissa": "Um recuo dentro da tendência pode permitir continuação.",
+      "Sinal": "Contexto de tendência com recuo e nível de swing conforme o perfil.",
+      "O que comparar": "Filtro, recuo, confirmação e proteção por swing."
+    },
+    "python:squeeze": {
+      "Premissa": "Contração de volatilidade pode preceder expansão.",
+      "Sinal": "Compressão Bollinger/Keltner seguida do gatilho de rompimento.",
+      "O que comparar": "Duração, falsos disparos e sensibilidade do envelope."
+    },
+    "python:s09_reference": {
+      "Premissa": "Uma regra simples de cruzamento permite verificar paridade e gestão.",
+      "Sinal": "Cruzamento de médias em barras fechadas conforme a revisão S09.",
+      "O que comparar": "Paridade primeiro, depois sensibilidade de períodos e gestão."
+    },
+    "python:stoch_ema9": {
+      "Premissa": "Momento relativo à faixa pode confirmar uma direção filtrada por média.",
+      "Sinal": "Cruzamento %K/%D, limiar e lado em relação à EMA conforme o contrato.",
+      "O que comparar": "Limiar, períodos e taxa de cruzamentos sem continuidade."
+    },
+    "python:vwap_bands": {
+      "Premissa": "Desvio da referência ponderada por volume pode produzir retorno à média.",
+      "Sinal": "Evento nas bandas da VWAP com fonte de volume declarada.",
+      "O que comparar": "Reset, tipo de volume, distância de banda e custo."
+    },
+    "python:madrid": {
+      "Premissa": "A concordância de um leque de médias pode indicar tendência e contexto de retomada.",
+      "Sinal": "Alinhamento do leque e cruzamento de sua linha de referência no perfil.",
+      "O que comparar": "Espaçamento das médias, estabilidade do alinhamento e recuo."
+    },
+    "python:ha_hilo": {
+      "Premissa": "Filtro por candles suavizados pode combinar com proteção direcional.",
+      "Sinal": "Estado Heiken-Ashi e linha HiLo conforme a versão.",
+      "O que comparar": "Atraso, transições de lado e execução em preço negociável."
+    },
+    "mql5:hdk_hahilo": {
+      "Premissa": "Filtro por candles suavizados pode combinar com proteção direcional.",
+      "Sinal": "Estado Heiken-Ashi e linha HiLo conforme a versão.",
+      "O que comparar": "Atraso, transições de lado e execução em preço negociável."
+    },
+    "mql5:hdk_madrid": {
+      "Premissa": "A concordância de um leque de médias pode indicar tendência e contexto de retomada.",
+      "Sinal": "Alinhamento do leque e cruzamento de sua linha de referência no perfil.",
+      "O que comparar": "Espaçamento das médias, estabilidade do alinhamento e recuo."
+    },
+    "mql5:hdk_pullback_nativo": {
+      "Premissa": "Um recuo dentro da tendência pode permitir continuação.",
+      "Sinal": "Contexto de tendência com recuo e nível de swing conforme o perfil.",
+      "O que comparar": "Filtro, recuo, confirmação e proteção por swing."
+    },
+    "mql5:hdk_s09_referencia": {
+      "Premissa": "Uma regra simples de cruzamento permite verificar paridade e gestão.",
+      "Sinal": "Cruzamento de médias em barras fechadas conforme a revisão S09.",
+      "O que comparar": "Paridade primeiro, depois sensibilidade de períodos e gestão."
+    },
+    "mql5:hdk_stochema9": {
+      "Premissa": "Momento relativo à faixa pode confirmar uma direção filtrada por média.",
+      "Sinal": "Cruzamento %K/%D, limiar e lado em relação à EMA conforme o contrato.",
+      "O que comparar": "Limiar, períodos e taxa de cruzamentos sem continuidade."
+    },
+    "mql5:hdk_vwapbands": {
+      "Premissa": "Desvio da referência ponderada por volume pode produzir retorno à média.",
+      "Sinal": "Evento nas bandas da VWAP com fonte de volume declarada.",
+      "O que comparar": "Reset, tipo de volume, distância de banda e custo."
+    },
+    "mql5:hdk_accountguardian": {
+      "Premissa": "Gerir limites no escopo da conta para proteger exposição.",
+      "Sinal": "Eventos de estado e risco.",
+      "O que comparar": "Casos de pausa, violação de limites e gestão apenas de posições sob posse comprovada."
+    },
+    "mql5:hdk_hadouken_painel": {
+      "Premissa": "Operador escolhe a intenção e o painel aplica risco e gestão.",
+      "Sinal": "Ação manual no painel no percurso de referência.",
+      "O que comparar": "Sessões roteirizadas de entrada e saída e conciliação. O painel manual não gera amostra por si só."
+    }
+  },
+  "operations": {
+    "orientation": {
+      "title": "Orientação do sinal",
+      "summary": "Transforma a intenção antes de dimensionar. Uma posição existente tem ciclo de saída próprio.",
+      "modes": {
+        "normal": "Preserva o lado retornado pela estratégia.",
+        "inverted": "Inverte compra e venda quando o adaptador qualifica essa modalidade. Não reverte uma posição aberta."
+      }
+    },
+    "entry": {
+      "title": "Entradas",
+      "summary": "Separe o instante em que o sinal fica conhecido do evento que confirma o preenchimento.",
+      "modes": {
+        "market_next_open": "Solicita mercado após a decisão, no próximo evento executável do modelo. Pode sofrer spread e deslizamento.",
+        "limit": "Define preço máximo de compra ou mínimo de venda. O toque não prova o preenchimento.",
+        "stop": "Ativa a ordem após atingir um nível de disparo. Um salto pode executar a um preço pior."
+      }
+    },
+    "profit_exit": {
+      "title": "Alvo e realização",
+      "summary": "Escolha uma política de ganho por posição. Cada R tem âncora e instante definidos.",
+      "modes": {
+        "strategy_default": "Delega o alvo à estratégia.",
+        "fixed_r": "Alvo por múltiplo de risco inicial conforme o adaptador de pesquisa.",
+        "planned_r_v1": "Ancora o alvo no risco planejado antes do fill.",
+        "postfill_r_v1": "Recalcula com preenchimento e stop inicial confirmados no histórico.",
+        "fixed_points": "Distância fixa em pontos do símbolo, convertida ao incremento negociável.",
+        "dynamic_atr_v1": "Alvo virtual por ATR com limites em R e proteções físicas conforme o perfil."
+      }
+    },
+    "protection": {
+      "title": "Proteção, breakeven e trailing",
+      "summary": "O stop acompanha o ciclo da posição. Gestão qualificada só aperta a proteção, preservando a identidade da posição.",
+      "modes": {
+        "strategy_default": "Delega a proteção à estratégia.",
+        "fixed_points": "Define distância fixa do stop inicial.",
+        "managed_v1": "Combina SL inicial, trailing ou breakeven e saídas de gestão com os gatilhos suportados pelo perfil. Conferir a cadência por barra ou evento."
+      }
+    },
+    "sizing": {
+      "title": "Lote e risco por entrada",
+      "summary": "Especificação do símbolo, passo, margem e pior perda admissível fazem parte do cálculo.",
+      "modes": {
+        "risk_fraction": "Dimensiona pelo capital e risco no stop, respeitando limites e o passo de lote.",
+        "fixed_volume": "Solicita lote fixo dentro do orçamento e da margem. O executor ainda pode recusar."
+      }
+    },
+    "partial_exit_plan": {
+      "title": "Reduções parciais",
+      "summary": "Ação de redução voluntária e preenchimento parcial de uma ordem são eventos distintos.",
+      "modes": {
+        "strategy_default": "Mantém a gestão de parciais da estratégia.",
+        "fixed_r": "Reduz uma fração ao atingir o múltiplo de R configurado.",
+        "staged_lots": "Agenda quantidades em lotes por etapa.",
+        "staged_fraction": "Agenda frações por etapa, com base inicial ou saldo conforme configuração."
+      }
+    },
+    "conditional_policy": {
+      "title": "Saídas por tempo e contexto",
+      "summary": "O relógio e o preço de referência precisam estar definidos na evidência.",
+      "modes": {
+        "disabled": "Mantém desligada a política temporal adicional.",
+        "temporal_v1": "Usa prazos absolutos ou de progresso, ganho, perda e empate conforme a configuração.",
+        "temporal_er_v1": "Acrescenta o estado do Efficiency Ratio aos critérios temporais.",
+        "temporal_donchian_v1": "Usa renovação ou inatividade do canal na gestão temporal.",
+        "temporal_atr_v1": "Usa ATR para parametrizar a duração conforme a regra registrada."
+      }
+    },
+    "filters": {
+      "title": "Filtros de entrada",
+      "summary": "Filtros precedem o envio. Bloquear novas entradas preserva a gestão da exposição existente.",
+      "modes": {
+        "adx_min": "Admite o sinal a partir do limiar de força direcional configurado.",
+        "session_v1": "Aplica janela, dias, exclusão e cota de primeiros fills por sessão ancorada.",
+        "cooldown_v1": "Aguarda após fechamento final confirmado antes de admitir nova entrada."
+      }
+    }
+  },
+  "laboratory": [
+    {
+      "id": "lab-compor",
+      "title": "Formule e componha",
+      "summary": "Escolha o que deve ficar constante durante a comparação.",
+      "notes": {
+        "1 · Hipótese": "Declare mecanismo, condição observável e cenário em que espera falhar. Exemplo. O mesmo alinhamento SMA/RSI pode se comportar de forma diferente conforme a hora.",
+        "2 · Dados": "Fixe ativo, timeframe, calendário, janela, versão, fonte, unidade e disponibilidade histórica. Aqueça a fórmula antes do primeiro sinal.",
+        "3 · Grade": "Compare entradas, saídas, SL, TP e horários mantendo o sinal. Depois altere o sinal em um ensaio separado. Compare com a referência do vídeo e com uma referência simples.",
+        "4 · Pesquisa": "Reserve teste cronológico fora da amostra. Use custos, spread, deslizamento, quantidade de tentativas e sensibilidade em janelas vizinhas.",
+        "5 · Preset": "Preserve composição, revisão, contexto, custos e evidência. Uma escolha pode variar por símbolo, sessão, timeframe e objetivo. Resultado de pesquisa e autorização operacional têm estados distintos."
+      },
+      "sources": []
+    },
+    {
+      "id": "lab-series",
+      "title": "Séries, relações e defasagens",
+      "summary": "O Laboratório compara séries alinhadas e documenta qual informação estava disponível.",
+      "notes": {
+        "Correlação": "Leia método, amostra, cobertura, janela e defasagem. Associação não demonstra causalidade ou ganho de estratégia.",
+        "Cruzamento": "Exige estado anterior e atual. Diferencie toque, passagem e persistência após o limiar.",
+        "Reabertura": "Use os valores congelados do estudo e a versão de cada contrato. Uma recalculação é outra evidência."
+      },
+      "sources": [
+        [
+          "Laboratório de Séries",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/sdk/laboratorio_series.md"
+        ]
+      ]
+    },
+    {
+      "id": "lab-qualificar",
+      "title": "Qualifique antes de promover",
+      "summary": "Separe o ensaio que valida a lógica, a reprodução nativa por evento e a avaliação econômica.",
+      "notes": {
+        "Funcional": "Conferir sinal, decisão, pedido, ordem, deal, gestão e saída no MT5. Ticks, Renko e DOM exigem cobertura própria.",
+        "Econômico": "Comparar resultado líquido, número de trades, drawdown patrimonial, robustez e sensibilidade aos custos. Mostrar recortes inconclusivos.",
+        "Operacional": "Confirmar perfil, broker, símbolo, modalidade da conta, recuperação e guardas da composição. Evidência histórica não concede autorização de execução."
+      },
+      "sources": []
+    }
+  ],
+  "combinations": [
+    {
+      "id": "operacao-combinacoes",
+      "title": "Combinações e precedência",
+      "summary": "O contrato aceita um modo por papel. A matriz de capacidade do perfil decide se uma combinação pode ser executada.",
+      "notes": {
+        "Coerente, sujeito ao perfil": "Mercado + proteção inicial + alvo fixo. Uma parcial confirmada pode disparar breakeven, conservando um trailing mais protetor.",
+        "Alternativas do mesmo papel": "Stop, limite e mercado disputam o papel de entrada. Alvo em pontos, R planejado e R pós-fill são escolhas do mesmo papel.",
+        "Conflito de gestão": "Breakeven nunca pode afrouxar um trailing. Uma posição fechada por limite de risco não deve receber ajuste posterior.",
+        "Dependência de dados": "Renko e trailing por tick pedem sequência intrabar. DOM pede profundidade capturada. OHLC não resolve a ordem de dois eventos na mesma barra.",
+        "Pendente de aceite próprio": "Duas ordens vinculadas, grade, aumento de exposição e posição líquida compartilhada exigem reserva, posse, cancelamento e reconciliação."
+      },
+      "sources": [
+        [
+          "Composição",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/sdk/composicao.md"
+        ],
+        [
+          "Proteção",
+          "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/06b78eb/docs/sdk/protecao_inicial.md"
+        ]
+      ]
+    }
+  ],
+  "portfolio": [
+    {
+      "id": "carteira-limites",
+      "title": "Capital, margem e exposição",
+      "summary": "A perda potencial de um plano inclui posições e pendências. Limites individuais e coletivos têm escopos distintos.",
+      "notes": {
+        "Escopo": "Conta, ativo, grupo, robô e sessão. Calcular na moeda da conta e distinguir saldo realizado de patrimônio.",
+        "Concorrência": "Duas intenções podem ser admissíveis isoladamente e exceder a margem ou o risco juntas.",
+        "Reserva": "Manter o pior cenário até confirmação de fill, cancelamento ou expiração. A intenção de cancelar ainda não libera margem.",
+        "Fidelidade dos limites": "Trava monetária fixa, percentual de equity e orçamento por contrato são políticas diferentes. Conferir P&L líquido, realizado e flutuante."
+      },
+      "sources": []
+    },
+    {
+      "id": "carteira-posse",
+      "title": "Posse, recuperação e pausa",
+      "summary": "Associe cada pedido a conta, servidor, símbolo, sessão e contribuição ao histórico.",
+      "notes": {
+        "Netting e hedging": "Em netting há posição líquida do símbolo. Magic sozinho não demonstra a contribuição de cada robô.",
+        "Falha ou reinício": "Reconciliar antes de repetir. Resultado incerto mantém a proteção e a reserva até comprovação.",
+        "Pausa e zeragem": "Pausa bloqueia novas entradas. Zerar exige decisão própria, confirmação e atuação apenas sobre exposição pertencente à sessão."
+      },
+      "sources": []
+    }
+  ],
+  "reading": [
+    {
+      "id": "leitura-candles",
+      "title": "Candles, escala e tempo",
+      "summary": "O corpo liga abertura e fechamento. Os pavios chegam à máxima e à mínima. Leia unidade, fuso e origem do preço.",
+      "notes": {
+        "Compra e venda": "Bid e ask são preços distintos. A série Last pode ser útil para observar negócios, e a execução tem lado e preço próprios.",
+        "Formação": "Uma barra ainda aberta muda. Usar o fechamento somente após a barra terminar.",
+        "Gráfico sintético": "Renko e Heiken-Ashi transformam a observação. A ordem precisa de preço negociável."
+      },
+      "sources": []
+    },
+    {
+      "id": "leitura-evidencia",
+      "title": "Marcas, janelas e contexto",
+      "summary": "Confirme o que os eixos medem antes de comparar linhas ou interpretar um resultado.",
+      "notes": {
+        "Unidades": "Ponto do terminal, tick negociável, fração, moeda e R têm significados diferentes.",
+        "Marcas": "Um ponto de sinal, um pedido e um preenchimento podem ocorrer em horários e preços diferentes.",
+        "Escala": "Eixo de oscilador usa sua própria unidade. Cruzamento de linhas com escalas diferentes não define regra.",
+        "Relógio": "Explicite o horário da sessão e da corretora. Um pivô desenhado no passado só se torna utilizável após confirmar."
+      },
+      "sources": []
+    }
+  ],
+  "examples": [
+    {
+      "title": "Média móvel · cruzamento confirmado",
+      "caption": "Em B5 o fechamento passa de baixo para cima da SMA de três barras. A decisão fica disponível após B5. B6 já é outro evento, com outro preço.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8"
+      ],
+      "series": [
+        {
+          "name": "Fechamento",
+          "type": "line",
+          "values": [
+            102,
+            101,
+            100,
+            99,
+            100,
+            102,
+            104,
+            105
+          ]
+        },
+        {
+          "name": "SMA 3",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            101.0,
+            100.0,
+            99.67,
+            100.33,
+            102.0,
+            103.67
+          ]
+        }
+      ],
+      "id": "sma-ema"
+    },
+    {
+      "title": "Média móvel · congestão",
+      "caption": "Fechamentos alternam em torno da média. As passagens repetidas permitem estudar ruído e custo, com a mesma regra de cruzamento.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8"
+      ],
+      "series": [
+        {
+          "name": "Fechamento",
+          "type": "line",
+          "values": [
+            100,
+            101,
+            100,
+            101,
+            100,
+            101,
+            100,
+            101
+          ]
+        },
+        {
+          "name": "SMA 3",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            100.33,
+            100.67,
+            100.33,
+            100.67,
+            100.33,
+            100.67
+          ]
+        }
+      ],
+      "id": "congestao"
+    },
+    {
+      "title": "RSI · força persistente",
+      "caption": "Este painel ilustra valores de RSI acima de 70 em várias barras. O limiar é uma referência visual. A regra de venda precisaria de uma condição confirmada.",
+      "unit": "RSI",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8"
+      ],
+      "series": [
+        {
+          "name": "RSI ilustrativo",
+          "type": "line",
+          "values": [
+            48,
+            55,
+            65,
+            72,
+            78,
+            76,
+            74,
+            69
+          ]
+        },
+        {
+          "name": "Referência 70",
+          "type": "line",
+          "values": [
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70
+          ]
+        }
+      ],
+      "min": 0,
+      "max": 100,
+      "id": "rsi"
+    },
+    {
+      "title": "ATR · amplitude após um salto",
+      "caption": "A barra do salto tem True Range alto. A suavização reage mais devagar. A medida de amplitude não traz o lado da entrada.",
+      "unit": "Unidades de preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8"
+      ],
+      "series": [
+        {
+          "name": "True Range",
+          "type": "bar",
+          "values": [
+            2,
+            1,
+            2,
+            2,
+            11,
+            4,
+            3,
+            2
+          ]
+        },
+        {
+          "name": "ATR 3 ilustrativo",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            1.67,
+            1.78,
+            4.85,
+            4.57,
+            4.05,
+            3.37
+          ]
+        }
+      ],
+      "id": "atr"
+    },
+    {
+      "title": "Gap moderado · hipótese de continuidade",
+      "caption": "De 100 para 100,30 no primeiro fechamento, o deslocamento é +0,30%. Na faixa demonstrada de 0,10% a 0,50%, o sinal aponta para a direção do gap.",
+      "unit": "Preço",
+      "labels": [
+        "Fecho anterior",
+        "Abertura",
+        "1º fechamento",
+        "Evento seguinte"
+      ],
+      "series": [
+        {
+          "name": "Referência anterior",
+          "type": "line",
+          "values": [
+            100,
+            100,
+            100,
+            100
+          ]
+        },
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            100,
+            100.5,
+            100.3,
+            100.32
+          ]
+        }
+      ],
+      "id": "gap-abertura"
+    },
+    {
+      "title": "Gap extremo · hipótese de reversão",
+      "caption": "De 100 para 99,20 no primeiro fechamento, o deslocamento é −0,80%. Acima do limite em valor absoluto, o setup estudado aponta contra o gap. A saída é uma escolha separada.",
+      "unit": "Preço",
+      "labels": [
+        "Fecho anterior",
+        "Abertura",
+        "1º fechamento",
+        "Evento seguinte"
+      ],
+      "series": [
+        {
+          "name": "Referência anterior",
+          "type": "line",
+          "values": [
+            100,
+            100,
+            100,
+            100
+          ]
+        },
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            100,
+            99.12,
+            99.2,
+            99.24
+          ]
+        }
+      ],
+      "id": "gap-extremo"
+    },
+    {
+      "title": "WDO · abertura no canal superior",
+      "caption": "Máxima anterior em 100, faixa até 93. Abertura em 96. O modelo exemplifica duas vendas, 100,5 e 92,5. A segunda segue pendente até o cancelamento ser confirmado.",
+      "unit": "Preço",
+      "labels": [
+        "Abertura",
+        "Movimento 1",
+        "Movimento 2",
+        "Toque"
+      ],
+      "series": [
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            96,
+            98,
+            99,
+            100.5
+          ]
+        },
+        {
+          "name": "Borda alta",
+          "type": "line",
+          "values": [
+            100,
+            100,
+            100,
+            100
+          ]
+        },
+        {
+          "name": "Borda baixa",
+          "type": "line",
+          "values": [
+            93,
+            93,
+            93,
+            93
+          ]
+        }
+      ],
+      "id": "codigo-milhao"
+    },
+    {
+      "title": "Book · liquidez por nível",
+      "caption": "Os níveis são distâncias ao melhor preço de cada lado. O volume em oferta pode ser retirado sem negócio. Duas fotografias parecidas podem esconder mudanças entre capturas.",
+      "unit": "Quantidade ofertada",
+      "labels": [
+        "Nível 1",
+        "Nível 2",
+        "Nível 3",
+        "Nível 4"
+      ],
+      "series": [
+        {
+          "name": "Compra",
+          "type": "bar",
+          "values": [
+            45,
+            25,
+            50,
+            18
+          ]
+        },
+        {
+          "name": "Venda",
+          "type": "bar",
+          "values": [
+            19,
+            24,
+            12,
+            26
+          ]
+        }
+      ],
+      "min": 0,
+      "id": "fluxo"
+    },
+    {
+      "title": "OHLC · corpo e pavios",
+      "caption": "Cada linha da tabela tem abertura, fechamento, mínima e máxima, nessa ordem. Um candle informa os extremos alcançados. A sequência entre máxima e mínima exige dados intrabar.",
+      "unit": "Preço",
+      "labels": [
+        "Candle 1",
+        "Candle 2",
+        "Candle 3",
+        "Candle 4"
+      ],
+      "series": [
+        {
+          "name": "OHLC (A, F, mín., máx.)",
+          "type": "candlestick",
+          "values": [
+            [
+              100,
+              104,
+              98,
+              106
+            ],
+            [
+              104,
+              102,
+              101,
+              106
+            ],
+            [
+              102,
+              102,
+              99,
+              105
+            ],
+            [
+              102,
+              107,
+              100,
+              109
+            ]
+          ]
+        }
+      ],
+      "id": "ohlc"
+    },
+    {
+      "id": "bollinger",
+      "title": "Bollinger · faixa estreita e expansão",
+      "caption": "Esquema da faixa superior e inferior. A separação cresce com a dispersão. Tocar a banda superior pode acompanhar um avanço, mesmo sem reversão.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Fechamento",
+          "type": "line",
+          "values": [
+            100,
+            101,
+            100,
+            103,
+            106,
+            108
+          ]
+        },
+        {
+          "name": "Banda superior",
+          "type": "line",
+          "values": [
+            102,
+            102,
+            102,
+            104,
+            106,
+            109
+          ]
+        },
+        {
+          "name": "Banda inferior",
+          "type": "line",
+          "values": [
+            98,
+            98,
+            98,
+            97,
+            96,
+            96
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "keltner",
+      "title": "Keltner · centro e amplitude",
+      "caption": "O centro acompanha a direção suavizada. As bordas se afastam quando o ATR aumenta. O desenho ilustra o efeito geométrico do multiplicador.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Centro EMA",
+          "type": "line",
+          "values": [
+            100,
+            100.2,
+            100.4,
+            100.6,
+            100.8,
+            101
+          ]
+        },
+        {
+          "name": "Borda superior",
+          "type": "line",
+          "values": [
+            101,
+            101.2,
+            101.4,
+            103.6,
+            103.8,
+            104
+          ]
+        },
+        {
+          "name": "Borda inferior",
+          "type": "line",
+          "values": [
+            99,
+            99.2,
+            99.4,
+            97.6,
+            97.8,
+            98
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "macd",
+      "title": "MACD · cruzamento e histograma",
+      "caption": "Em B3 a linha MACD passa acima da linha de sinal. O histograma muda de negativo para positivo. Uma barra negativa que apenas encolhe ainda está abaixo de zero.",
+      "unit": "Unidades de preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "MACD",
+          "type": "line",
+          "values": [
+            -1.1,
+            -0.8,
+            -0.6,
+            0.05,
+            0.6,
+            0.7
+          ]
+        },
+        {
+          "name": "Sinal",
+          "type": "line",
+          "values": [
+            -0.7,
+            -0.72,
+            -0.696,
+            -0.547,
+            -0.318,
+            -0.114
+          ]
+        },
+        {
+          "name": "Histograma",
+          "type": "bar",
+          "values": [
+            -0.4,
+            -0.08,
+            0.096,
+            0.597,
+            0.918,
+            0.814
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "alligator",
+      "title": "Alligator · de entrelaçado a alinhado",
+      "caption": "No começo, as linhas se alternam. No fim, lábios acima dos dentes e da mandíbula identificam alinhamento. O exemplo usa valores no instante de cálculo.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Lábios",
+          "type": "line",
+          "values": [
+            100,
+            100.3,
+            100.1,
+            101,
+            102.5,
+            104
+          ]
+        },
+        {
+          "name": "Dentes",
+          "type": "line",
+          "values": [
+            100.1,
+            100.2,
+            100.2,
+            100.7,
+            101.5,
+            102.4
+          ]
+        },
+        {
+          "name": "Mandíbula",
+          "type": "line",
+          "values": [
+            100.2,
+            100.2,
+            100.3,
+            100.5,
+            101,
+            101.8
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "ao-ac",
+      "title": "AO e AC · direção e aceleração",
+      "caption": "O AO permanece acima de zero no fim. O AC cruza para baixo. Uma perda de impulso pode coexistir com diferencial positivo.",
+      "unit": "Unidades de preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "AO",
+          "type": "bar",
+          "values": [
+            -1,
+            -0.2,
+            0.9,
+            1.7,
+            1.4,
+            1.1
+          ]
+        },
+        {
+          "name": "AC",
+          "type": "line",
+          "values": [
+            -0.4,
+            0.2,
+            0.6,
+            0.8,
+            0.2,
+            -0.3
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "er",
+      "title": "Kaufman ER · caminho e deslocamento",
+      "caption": "Duas trajetórias partem de 100 e chegam a 105. Na primeira, o caminho soma 5 e ER = 1. Na segunda, os movimentos somam 23 e ER ≈ 0,22.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Direto",
+          "type": "line",
+          "values": [
+            100,
+            101,
+            102,
+            103,
+            104,
+            105
+          ]
+        },
+        {
+          "name": "Com recuos",
+          "type": "line",
+          "values": [
+            100,
+            104,
+            99,
+            107,
+            103,
+            105
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "fractals",
+      "title": "Fractal · barra de origem e confirmação",
+      "caption": "B3 é o maior ponto entre B1 e B5. A condição fica conhecida após o fechamento de B5. A marca em B3 indica origem visual.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Máxima",
+          "type": "line",
+          "values": [
+            101,
+            103,
+            108,
+            104,
+            103,
+            106
+          ]
+        },
+        {
+          "name": "Pivô visual",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            108,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "Confirmação",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            108,
+            null
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "zigzag",
+      "title": "ZigZag · extremo provisório",
+      "caption": "Na subida, o extremo candidato muda quando surge uma máxima melhor. As observações posteriores só confirmam o pivô se cumprirem os limiares da variante.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Preço",
+          "type": "line",
+          "values": [
+            100,
+            102,
+            104,
+            106,
+            103,
+            101
+          ]
+        },
+        {
+          "name": "Candidato durante a subida",
+          "type": "line",
+          "values": [
+            null,
+            102,
+            104,
+            106,
+            null,
+            null
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "donchian",
+      "title": "Donchian · nível anterior e toque",
+      "caption": "Em B4 o preço toca o nível anterior. Em B5 o ultrapassa. Um predicado estrito distingue esses eventos.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            100,
+            101,
+            102,
+            103,
+            104,
+            102
+          ]
+        },
+        {
+          "name": "Teto anterior",
+          "type": "line",
+          "values": [
+            103,
+            103,
+            103,
+            103,
+            103,
+            104
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "volume",
+      "title": "Volume · negócios e atualizações",
+      "caption": "Exemplo de duas janelas com diferentes contagens. Os volumes são medidas de naturezas distintas. Consulte o rótulo e a fonte de cada série.",
+      "unit": "Contagem no feed ilustrativo",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Unidades negociadas",
+          "type": "bar",
+          "values": [
+            40,
+            64,
+            73,
+            50,
+            61,
+            68
+          ]
+        },
+        {
+          "name": "Atualizações",
+          "type": "bar",
+          "values": [
+            18,
+            21,
+            35,
+            31,
+            26,
+            32
+          ]
+        }
+      ],
+      "min": 0,
+      "max": null
+    },
+    {
+      "id": "retornos",
+      "title": "Retorno · horizontes diferentes",
+      "caption": "Em B6 o retorno recente aparece positivo enquanto o retorno longo continua negativo. Os valores são didáticos, em porcentagem.",
+      "unit": "Retorno (%)",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Horizonte curto",
+          "type": "line",
+          "values": [
+            -0.2,
+            -0.8,
+            -0.2,
+            0.1,
+            0.3,
+            0.4
+          ]
+        },
+        {
+          "name": "Horizonte longo",
+          "type": "line",
+          "values": [
+            -1.1,
+            -1.3,
+            -1.6,
+            -1.55,
+            -1.3,
+            -1
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "estocastico",
+      "title": "Estocástico · cruzamento entre linhas",
+      "caption": "O %K cruza o %D para cima em B3. Os níveis do oscilador e a tendência do preço são condições que o Expert precisa declarar separadamente.",
+      "unit": "Oscilador 0–100",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "%K",
+          "type": "line",
+          "values": [
+            20,
+            25,
+            39,
+            62,
+            71,
+            63
+          ]
+        },
+        {
+          "name": "%D",
+          "type": "line",
+          "values": [
+            28,
+            27,
+            31,
+            43,
+            57,
+            64
+          ]
+        }
+      ],
+      "min": 0,
+      "max": 100
+    },
+    {
+      "id": "vwap",
+      "title": "VWAP · distância à referência",
+      "caption": "A linha ponderada pode reagir pouco a um negócio isolado de baixo volume. O preço pode retornar à referência ou manter o afastamento.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            100,
+            101,
+            103,
+            106,
+            105,
+            104
+          ]
+        },
+        {
+          "name": "VWAP ilustrativa",
+          "type": "line",
+          "values": [
+            100,
+            100.7,
+            101.3,
+            102.2,
+            102.7,
+            103
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "super-atr",
+      "title": "Super ATR · linha de proteção",
+      "caption": "Em avanço, a linha inferior acompanha o preço. Quando o preço perde a referência, uma nova linha pode surgir acima conforme a política da variante. O esquema não calcula o indicador.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            101,
+            104,
+            106,
+            107,
+            102,
+            100
+          ]
+        },
+        {
+          "name": "Proteção inferior",
+          "type": "line",
+          "values": [
+            98,
+            100,
+            102,
+            103,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "Proteção superior",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            107,
+            105
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "heiken-hilo",
+      "title": "HiLo · referência do lado ativo",
+      "caption": "O esquema alterna entre a referência inferior e superior. A posição e o fill dependem dos preços executáveis e da confirmação do sinal.",
+      "unit": "Preço",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "Fechamento",
+          "type": "line",
+          "values": [
+            101,
+            104,
+            105,
+            104,
+            101,
+            100
+          ]
+        },
+        {
+          "name": "HiLo inferior",
+          "type": "line",
+          "values": [
+            98,
+            99,
+            101,
+            102,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "HiLo superior",
+          "type": "line",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            106,
+            105
+          ]
+        }
+      ],
+      "min": null,
+      "max": null
+    },
+    {
+      "id": "adx-cci",
+      "title": "ADX · força com lado separado",
+      "caption": "O ADX sobe enquanto −DI fica acima de +DI. Força crescente pode ocorrer em um movimento de baixa. O CCI usa outra escala e deve ser exibido em outro painel.",
+      "unit": "Indicadores direcionais",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "ADX",
+          "type": "line",
+          "values": [
+            15,
+            19,
+            23,
+            28,
+            31,
+            35
+          ]
+        },
+        {
+          "name": "+DI",
+          "type": "line",
+          "values": [
+            20,
+            19,
+            17,
+            15,
+            15,
+            14
+          ]
+        },
+        {
+          "name": "−DI",
+          "type": "line",
+          "values": [
+            24,
+            27,
+            29,
+            34,
+            35,
+            39
+          ]
+        }
+      ],
+      "min": 0,
+      "max": 50
+    },
+    {
+      "id": "cci",
+      "title": "CCI · desvio relativo ao preço típico",
+      "caption": "O CCI passa acima de +100 e depois volta. A passagem de ida e o retorno são eventos diferentes, que podem ser comparados no Laboratório.",
+      "unit": "CCI",
+      "labels": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6"
+      ],
+      "series": [
+        {
+          "name": "CCI ilustrativo",
+          "type": "line",
+          "values": [
+            10,
+            57,
+            115,
+            152,
+            88,
+            30
+          ]
+        },
+        {
+          "name": "Referência +100",
+          "type": "line",
+          "values": [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        },
+        {
+          "name": "Referência −100",
+          "type": "line",
+          "values": [
+            -100,
+            -100,
+            -100,
+            -100,
+            -100,
+            -100
+          ]
+        }
+      ],
+      "min": -180,
+      "max": 180
+    },
+    {
+      "id": "renko",
+      "title": "Renko · preço observado e tijolo confirmado",
+      "unit": "Ticks de preço",
+      "caption": "Exemplo esquemático de continuidade em 7R. O preço pode mudar várias vezes enquanto o último fechamento do tijolo fica fixo. O fill usa a cotação negociável no evento.",
+      "labels": [
+        "Início",
+        "Tick A",
+        "Tick B",
+        "Tick C",
+        "Tick D",
+        "Tick E",
+        "Tick F",
+        "Tick G"
+      ],
+      "series": [
+        {
+          "name": "Preço observado",
+          "type": "line",
+          "values": [
+            100,
+            101,
+            103,
+            102,
+            104,
+            105,
+            106,
+            107
+          ]
+        },
+        {
+          "name": "Referência confirmada",
+          "type": "line",
+          "values": [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            107
+          ]
+        }
+      ]
+    }
+  ],
+  "native_guides": {
+    "HDK_ColorMACDCross": {
+      "reference": "macd",
+      "summary": "Colore candles com a leitura do MACD. Diferencie a cor de estado do evento de cruzamento.",
+      "source_sha256": "54c05b1346e94dce0d42c54fa66618f4a44734b3b5a39f4fc0e44af450e7f37c"
+    },
+    "HDK_MACD": {
+      "reference": "macd",
+      "summary": "Expõe linha principal, sinal e histograma em três buffers.",
+      "source_sha256": "1408ef2eb7b0854940e26012b852736596b26cafd4b5c05fdd9230f4e2279c3f"
+    },
+    "HDK_MomentumCustom": {
+      "reference": "ao-ac",
+      "summary": "Mede o fechamento em relação a uma referência construída com faixa e média. É uma variante do momentum de Squeeze.",
+      "source_sha256": "9d674fa2b9a2db1d74dd561594d59562d58f11ed558de45369d94f69ada77b81"
+    },
+    "HDK_StochDynLevels": {
+      "reference": "estocastico",
+      "summary": "Calcula níveis do Estocástico dependentes do contexto. Leia os níveis juntamente com o oscilador da mesma configuração.",
+      "source_sha256": "dd5bb2ff7c8312af68feb95f1d5b54e9dfc3232c2bc232470f8082a85301df4f"
+    },
+    "HDK_TakashiWaveState": {
+      "reference": "heiken-hilo",
+      "summary": "Usa HiLo para representar estado ou violação de uma onda. Identifique o evento que confirma a mudança.",
+      "source_sha256": "b53bce9021310fead17f2c253dc6090d97040aa7be24ea91643b946c72bdeb0a"
+    },
+    "HDK_Trix": {
+      "reference": "sma-ema",
+      "summary": "TRIX lê a taxa de variação de uma média com três suavizações exponenciais. A linha cruza zero quando a taxa muda de sinal.",
+      "source_sha256": "633651f52c7dbfda80d91db2a9f442372069e38ea50100624604006e75c4f90b"
+    },
+    "HDK_Trix_Manual": {
+      "reference": "sma-ema",
+      "summary": "Variante de TRIX que calcula a suavização diretamente. Conferir inicialização ao comparar com outra implementação.",
+      "source_sha256": "95fb6bf1863fba3391ba469811ddedeee97b6e6ad2da3ce9b9f326f5ce9e4403"
+    },
+    "HDK_ColorDisplacedEMACross": {
+      "reference": "sma-ema",
+      "summary": "Sobrepõe EMAs deslocadas e colore candles. O deslocamento é parte da configuração da variante.",
+      "source_sha256": "a9975498c7b4f3c25217b8ae9db6f3965cf64e2a4930efb22cd60e174f747140"
+    },
+    "HDK_ColorPriceEMA": {
+      "reference": "sma-ema",
+      "summary": "Cor dos candles usa máxima e mínima em relação à EMA. Cruzamento do fechamento é outra condição.",
+      "source_sha256": "3db869ee7cc08a9384a1bd3d7e50a712df8915e26d1142c078c229d62a18386d"
+    },
+    "HDK_JMA": {
+      "reference": "er",
+      "summary": "Aproximação de JMA via KAMA no fonte. Compare resposta em caminho direto e em trajetória com recuos.",
+      "source_sha256": "8cae7cea0c473f9c324b2b1cdb9a9d20bd3202b5bfceaf61076e238b4236acd4"
+    },
+    "HDK_TilsonT3": {
+      "reference": "sma-ema",
+      "summary": "Média suavizada T3 sobre o preço. Compare atraso e resposta em avanço e congestão.",
+      "source_sha256": "550deac84273903d54d15ee249ec64f32f29c20d2f4e71ff1ac9bc409e68bc96"
+    },
+    "HDK_ArqVoltBolt": {
+      "reference": "atr",
+      "summary": "Exibe setas candidatas do Arqueiro Alta Voltagem e usa SupTend como estado intermediário. Seta representa sinal.",
+      "source_sha256": "dc6fc6a8a0bc4003fc94b444262ed5cdda8b86624300acc8e16ea99229adec28"
+    },
+    "HDK_DistanciaPerc": {
+      "reference": "retornos",
+      "summary": "Mede distância percentual do fechamento à referência. Conferir o denominador e o sentido antes de comparar ativos.",
+      "source_sha256": "e9d67293238ef8cd6ac738ced749396a5dc1a2e538930c4aedd960a98f68e667"
+    },
+    "HDK_FairValueGapEntry": {
+      "reference": "fractals",
+      "summary": "Marca lacunas de estrutura e níveis candidatos. A confirmação depende do método selecionado e das barras disponíveis.",
+      "source_sha256": "020b8fcaf1a31829cc9dc50653796c253bc7f4c3843a9749cb67457a77c4117f"
+    },
+    "HDK_StudyCandles": {
+      "reference": "leitura-candles",
+      "summary": "Apresenta candles de um estudo. A sequência e a janela pertencem à evidência importada.",
+      "source_sha256": "c19129c7bb54e6cc588260a52f17914a1dffe3f70c049b04bf777de970e9cde3"
+    },
+    "HDK_StudySeries": {
+      "reference": "lab-series",
+      "summary": "Apresenta séries de um estudo. Usar unidade, versão e origem congeladas no pacote.",
+      "source_sha256": "b69df6db071ed4482da133f221cc60e3dce577b4911b960c36366a4c347dc1fd"
+    },
+    "HDK_SuperATR": {
+      "reference": "super-atr",
+      "summary": "Desenha dez curvas de proteção com fechamento, ATR e atualização em catraca.",
+      "source_sha256": "ccbaad5d427e92f1b7684ab861c64790df77454a34e38c573a310cdb188536fc"
+    },
+    "ArqueiroOmegaTrend": {
+      "reference": "sma-ema",
+      "summary": "Conversão NTSL com linha principal colorida e canais. Leia estado e posição do preço junto às bordas.",
+      "source_sha256": "6bb35ba4aa93076a59a3ac74532165682e853797fd2bc996dc0040391da92e4b"
+    },
+    "HDK_DynamicLineArranque": {
+      "reference": "donchian",
+      "summary": "Traça extremo da faixa conforme a posição do preço em relação à EMA10. Troca de lado muda a referência.",
+      "source_sha256": "ad09f4a225441b6e360a9cd149e42df5ceeb1b2cf7fdd3d7a54cd5b23f1476e7"
+    },
+    "HDK_HiloActivator": {
+      "reference": "heiken-hilo",
+      "summary": "Linha de acompanhamento por médias de máximas e mínimas. A posição e cor mostram o lado ativo.",
+      "source_sha256": "7726ca681ef42956e3600390214674982116824a288cd6191438f3cce9c1f205"
+    },
+    "HDK_HiloActivator_B": {
+      "reference": "heiken-hilo",
+      "summary": "Variante nativa HiLo. Conferir os buffers desta variante antes de usar a troca de lado.",
+      "source_sha256": "a7438bf574690732cd69b6203b869b060b1b6f7d3058576f2a6b198e742748b4"
+    },
+    "HDK_SupTend": {
+      "reference": "super-atr",
+      "summary": "Suporte e resistência dinâmicos a partir de ATR. Leia posição e atualização da referência conforme o perfil.",
+      "source_sha256": "79d573f01ea81680385cec934247c04f892f9e17c37f3dbbfba6ad4200673173"
+    },
+    "HDK_SupTendIndicator": {
+      "reference": "super-atr",
+      "summary": "Exposição gráfica da família SupTend. A linha é referência direcional calculada com amplitude.",
+      "source_sha256": "f6c9d313bd59887d5a55a165ff35d9a1ccfb92bd860b614b1d80b3047cd2e450"
+    },
+    "HDK_WapTend": {
+      "reference": "vwap",
+      "summary": "Sobrepõe referências e marca o alvo da variante. Preço desenhado deve ser conferido com sinal e execução.",
+      "source_sha256": "8d6d9aacca09242933520eb2e4ccf454d876aec5a74259dd67d99f87d6b7d31c"
+    },
+    "HDK_BollingerPercentB": {
+      "reference": "bollinger",
+      "summary": "Mostra posição dentro das bandas. Na fórmula normalizada, 0 e 1 correspondem às bordas.",
+      "source_sha256": "2e151c0a5ffce5ed5853f78cbc43b63a363001daf2a865d60bf816cc212eba0a"
+    },
+    "HDK_CanalVWap": {
+      "reference": "vwap",
+      "summary": "Combina VWAP, SupTend, Keltner e marcas de gatilho, proteção e alvo. Cada elemento tem papel próprio.",
+      "source_sha256": "85b5dd45ec236f95780209110ce7ae24be229e7a667b4d31c7f5bb21bff850df"
+    },
+    "HDK_DispersionEvent": {
+      "reference": "bollinger",
+      "summary": "Marca eventos de dispersão conforme a janela e limiar. Uma marca exige comparar valor e referência.",
+      "source_sha256": "01720149d612a66cdd33d73e72f295bc74b3274cd80719fe6ec08e990c1f1de2"
+    },
+    "HDK_HistoricalVolatility": {
+      "reference": "atr",
+      "summary": "Volatilidade histórica anualizada por retornos. Esta escala difere da amplitude em preço do ATR.",
+      "source_sha256": "53da1f8a43bf9446d178d8d507f380b1a821015c48cc6fa888363646f28446f4"
+    },
+    "HDK_KGChannel": {
+      "reference": "keltner",
+      "summary": "Aproximação do canal KG por bandas em percentual da EMA central. Compare largura percentual e deslocamento do centro.",
+      "source_sha256": "2564b5794d037c2f3b002f937c7a830ac2d8c0bbd906a0733f041c09078a6909"
+    },
+    "HDK_KeltnerChannel": {
+      "reference": "keltner",
+      "summary": "Expõe centro e bordas do Keltner. Confira período, preço base e largura desta variante.",
+      "source_sha256": "53fe55d81cd3125eb3a39b975a718f4d07af3eea3e7bd6491cb399947fcac3d1"
+    },
+    "HDK_SqueezeMomentumVis": {
+      "reference": "keltner",
+      "summary": "Linha zero indica o estado do Squeeze e histograma mostra o momentum customizado. Leia estado e direção separadamente.",
+      "source_sha256": "ec7ccb909130e626da7a2afa3bc005ab1771316e271d4f0f891dfba2917b8f91"
+    },
+    "HDK_SqueezeMonitor": {
+      "reference": "bollinger",
+      "summary": "Codifica o estado da relação Bollinger/Keltner. Compressão é uma condição de regime.",
+      "source_sha256": "c725640e8d4b4c1d0b242f4621e80f919f85d55a8aeb13c7cf598294959a3cc4"
+    },
+    "HDK_AggrBB": {
+      "reference": "fluxo",
+      "summary": "Aplica bandas ao saldo de volume calculado internamente. Identifique a fonte do saldo antes de interpretar a faixa.",
+      "source_sha256": "3fe648ec76e15c7074e005a467971d0eebdcd74e836fcc31b19ef5ef0a20b7ec"
+    },
+    "HDK_AggrVolBalance": {
+      "reference": "fluxo",
+      "summary": "Estima saldo de volume com métodos sobre a barra. Tratar como estimativa, com a variante identificada.",
+      "source_sha256": "d7bb0f1b98b55a7c6a130b7370c03f255e62642f110d7347bfa085de6ad98286"
+    },
+    "HDK_AggressionDifference": {
+      "reference": "fluxo",
+      "summary": "Proxy de diferença percentual de agressão a partir de volume e candle. Lado real exige dados de negócio.",
+      "source_sha256": "c9a9493b7954add2db23587772e8dcea288562e865e7f0671900e43963fd07bc"
+    },
+    "HDK_BookDifference": {
+      "reference": "fluxo",
+      "summary": "Lê diferença de volume cotado no book conforme os níveis consumidos. Compare liquidez cotada, horário e cobertura.",
+      "source_sha256": "fab38a756922fa2de930967f576fe7a085309aa4e992cae67e73143a2fed20f9"
+    },
+    "HDK_FluxoFinanceiro": {
+      "reference": "fluxo",
+      "summary": "Proxy de fluxo financeiro por barra. Leia variação e volume de entrada segundo o método do fonte.",
+      "source_sha256": "a45a3149b29be02b1b61f9839360a4c25aeb7394a5228b13a8cca86e6406440e"
+    },
+    "HDK_LineFlow": {
+      "reference": "sma-ema",
+      "summary": "Linha adaptativa baseada no fechamento em relação às médias de máxima e mínima.",
+      "source_sha256": "6edd73ca171447a4bac2e29c2643b5bff22351a8bfe1eb2912de9d1663b5fd9b"
+    },
+    "HDK_VWAP_Bands": {
+      "reference": "vwap",
+      "summary": "Calcula VWAP diária com cinco níveis de bandas ATR. Sessão e base de volume definem a leitura.",
+      "source_sha256": "f0d1dff44e1b8522521cd2839d2304f683b20c7f5111963d6970582b4389fc50"
+    }
+  },
+  "reviewed_contracts": {
+    "indicators": "34eb8f0a94b9782c2ea51eeca76972ca4ba4369c726cd4425ad864582324e010",
+    "operations": "622c57924a7d694b8495b5ee58500a88bbf7146c1ebe6014bf0713f085dd5757",
+    "strategies": "fcbe4f38bf153403736437e0ca9fd55246cb6b6e63ec647f24034ada7668fce4"
+  }
+}

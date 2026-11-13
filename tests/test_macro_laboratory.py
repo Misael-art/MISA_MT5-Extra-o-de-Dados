@@ -25,7 +25,7 @@ def phase(db,monkeypatch):
     market=service.capture_selection(db,symbol='X',timeframes_selected=['D1'])
     link=dict(snapshot=snap,features=source['features'],target_symbol='X',relationship='QA: fase econômica EUA associada explicitamente a preço sintético X')
     def analyze(basis='publication',cut=None):return service.analyze(market,feature_ids=['price.return_1'],linked_sources=[link],
-        timeline_basis=basis,as_of=cut or pd.Timestamp.now(tz='UTC').isoformat())
+        timeline_basis=basis,as_of=cut or pd.Timestamp.now(tz='UTC').isoformat(),max_memory_mb=budget)
     return analyze
 
 
@@ -56,3 +56,14 @@ def test_source_citation_and_periods_survive_frozen_report(phase):
     assert 'id="citations"' in html and 'Federal Reserve Bank of St. Louis' in html
     assert 'https://fred.stlouisfed.org/series/USREC' in html
     assert 'R.source_periods' in html
+
+
+def test_macro_analysis_reuses_declared_budget_and_keeps_upper_bound(monkeypatch, request):
+    # Simula o RSS residual da suíte, sem reservar essa memória no host.
+    monkeypatch.setattr(producer_jobs, 'current_rss_bytes', lambda: 1536 * 1024**2)
+    analyze = request.getfixturevalue('phase')
+    report = analyze()
+    assert next(c for c in report['channels'] if c.get('linked_source'))['values'] == [None] * 95
+    monkeypatch.setattr(producer_jobs, 'current_rss_bytes', lambda: 2048 * 1024**2)
+    with pytest.raises(MemoryError):
+        analyze()

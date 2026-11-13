@@ -1,0 +1,1060 @@
+{
+ "schema_version": 1,
+ "task": "T16.14/T16.15/T19.52a",
+ "date": "2026-11-10",
+ "host": "Linux, launcher oficial ./run.sh --cli (classe local, sem ponte MT5)",
+ "base": "QA isolada fora do repositório; barras EURUSD M15 copiadas somente leitura da base local (6.443 barras, 22/07–23/10/2026)",
+ "controlled_inputs": {
+  "contract": "EURUSD declarado para QA: point 1e-5, tick_value 1.0, lote mínimo 0.01 (não lido da corretora)",
+  "slippage_points": 5,
+  "commission_per_lot": 3.5,
+  "spread": "coluna das barras (≈0)"
+ },
+ "level": "re-simulação em barras (classe D); não é MT5/Tester, DEMO nem conta real",
+ "fidelity": "D",
+ "recovery": {
+  "donchian": {
+   "run_id": "5f90127827af4440b5a8b785c7fb6b4b",
+   "protocol": {
+    "zone_r": 0.6,
+    "signals": [
+     "rsi",
+     "bollinger",
+     "estrutura",
+     "falso_rompimento",
+     "exaustao"
+    ],
+    "min_signals": 1,
+    "decision": "fechamento da barra; execução na abertura seguinte",
+    "stress_slippage_r": 0.05,
+    "holdout_cases": 35,
+    "min_interventions": 30,
+    "signal_bars": {
+     "1": 1103,
+     "-1": 1033
+    },
+    "data_provenance_status": "frozen_reference"
+   },
+   "excursions": {
+    "basis": "ohlc_bars_intrabar_order_unknown",
+    "margin": "indisponível: a especificação não traz margem",
+    "winners": {
+     "n": 49,
+     "mae_r_p50": 0.36713797700308826,
+     "mae_r_p90": 0.8200415572146232,
+     "mfe_r_p50": 2.6143229096619223,
+     "mfe_r_p90": 7.110883026289939,
+     "bars_to_mae_p50": 1.0,
+     "bars_to_mfe_p50": 26.0,
+     "capture_p50": 0.4189944134077309,
+     "floating_min_worst": -1097.8950000001296
+    },
+    "losers": {
+     "n": 122,
+     "mae_r_p50": 1.0407954763100373,
+     "mae_r_p90": 1.0796019908133279,
+     "mfe_r_p50": 0.34394304082699767,
+     "mfe_r_p90": 1.6719630150788884,
+     "bars_to_mae_p50": 6.0,
+     "bars_to_mfe_p50": 2.0,
+     "capture_p50": -2.027153611334363,
+     "floating_min_worst": -1724.085000000209
+    }
+   },
+   "variants": {
+    "H0": {
+     "mode": "ponto_fixo",
+     "net": -9527.344725628613,
+     "profit_factor": 0.9135364490816897,
+     "max_drawdown_pct": 0.26263485438091383,
+     "n": 171,
+     "n_intervened": 0,
+     "recovered": 0,
+     "aggravated": 0,
+     "diff_net": 0.0,
+     "diff_ci90": [
+      0.0,
+      0.0
+     ],
+     "diff_holdout_mean": 0.0,
+     "diff_net_stress": 0.0,
+     "pnl_p05": -1249.0720690885698,
+     "pnl_worst": -1755.270000000209,
+     "floating_min_worst": -1724.085000000209,
+     "max_volume": 21.03,
+     "verdict": "base",
+     "reasons": []
+    },
+    "H1": {
+     "mode": "saida_antecipada",
+     "net": -9527.344725628613,
+     "profit_factor": 0.9135364490816897,
+     "max_drawdown_pct": 0.26263485438091383,
+     "n": 171,
+     "n_intervened": 0,
+     "recovered": 0,
+     "aggravated": 0,
+     "diff_net": 0.0,
+     "diff_ci90": [
+      0.0,
+      0.0
+     ],
+     "diff_holdout_mean": 0.0,
+     "diff_net_stress": 0.0,
+     "pnl_p05": -1249.0720690885698,
+     "pnl_worst": -1755.270000000209,
+     "floating_min_worst": -1724.085000000209,
+     "max_volume": 21.03,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "0 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H2": {
+     "mode": "recuperacao_unica",
+     "net": -9256.807654206035,
+     "profit_factor": 0.9157848898220408,
+     "max_drawdown_pct": 0.24966448738109798,
+     "n": 171,
+     "n_intervened": 6,
+     "recovered": 2,
+     "aggravated": 4,
+     "diff_net": 270.5370714225767,
+     "diff_ci90": [
+      -13.947159193049872,
+      20.015341700057494
+     ],
+     "diff_holdout_mean": -12.364147173516123,
+     "diff_net_stress": -69.78322754054534,
+     "pnl_p05": -1288.250117681666,
+     "pnl_worst": -1755.270000000209,
+     "floating_min_worst": -1724.085000000209,
+     "max_volume": 25.42,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "6 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H3": {
+     "mode": "recuperacao_proporcional",
+     "net": -11107.162902553491,
+     "profit_factor": 0.9006239065469517,
+     "max_drawdown_pct": 0.255122614270685,
+     "n": 171,
+     "n_intervened": 6,
+     "recovered": 2,
+     "aggravated": 4,
+     "diff_net": -1579.8181769248797,
+     "diff_ci90": [
+      -32.44562620581519,
+      14.781766569076682
+     ],
+     "diff_holdout_mean": -24.728294347032243,
+     "diff_net_stress": -2341.5925159396575,
+     "pnl_p05": -1288.250117681666,
+     "pnl_worst": -2261.164621914829,
+     "floating_min_worst": -2127.709621914829,
+     "max_volume": 38.13,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "6 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H4": {
+     "mode": "recuperacao_gerida",
+     "net": -8980.637654206666,
+     "profit_factor": 0.9183857053386342,
+     "max_drawdown_pct": 0.24725576906016666,
+     "n": 171,
+     "n_intervened": 6,
+     "recovered": 2,
+     "aggravated": 4,
+     "diff_net": 546.7070714219467,
+     "diff_ci90": [
+      -13.899487901751007,
+      23.822556196476864
+     ],
+     "diff_holdout_mean": -12.364147173516123,
+     "diff_net_stress": 49.15716302672081,
+     "pnl_p05": -1288.250117681666,
+     "pnl_worst": -1755.270000000209,
+     "floating_min_worst": -1724.085000000209,
+     "max_volume": 25.42,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "6 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H5": {
+     "mode": "gradiente_dinamico",
+     "net": -27923.8580334425,
+     "profit_factor": 0.8333375043082696,
+     "max_drawdown_pct": 0.4010504561563933,
+     "n": 171,
+     "n_intervened": 128,
+     "recovered": 26,
+     "aggravated": 102,
+     "diff_net": -18396.513307813893,
+     "diff_ci90": [
+      -209.97691170948414,
+      32.364746155142186
+     ],
+     "diff_holdout_mean": 81.64047059134468,
+     "diff_net_stress": -25108.735056586047,
+     "pnl_p05": -2006.0371797123794,
+     "pnl_worst": -3078.166919363949,
+     "floating_min_worst": -3015.796919363949,
+     "max_volume": 42.06,
+     "verdict": "reprovada",
+     "reasons": [
+      "O intervalo de 90% da diferença média por caso não fica acima de zero.",
+      "Com custo estressado a diferença líquida não é positiva.",
+      "A cauda de perdas (p5) piora em relação à base.",
+      "A queda máxima piora em relação à base."
+     ]
+    },
+    "H6": {
+     "mode": "reversao_independente",
+     "net": -8998.357405860736,
+     "profit_factor": 0.9179432382851878,
+     "max_drawdown_pct": 0.2539937321663351,
+     "n": 171,
+     "n_intervened": 6,
+     "recovered": 2,
+     "aggravated": 4,
+     "diff_net": 528.9873197678774,
+     "diff_ci90": [
+      -5.3534289637352375,
+      12.992020780972533
+     ],
+     "diff_holdout_mean": -4.37142857143399,
+     "diff_net_stress": 66.96640917077457,
+     "pnl_p05": -1262.635884392616,
+     "pnl_worst": -1755.270000000209,
+     "floating_min_worst": -1724.085000000209,
+     "max_volume": 21.03,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "6 caso(s) com intervenção; o mínimo é 30."
+     ]
+    }
+   }
+  },
+  "bb_rsi": {
+   "run_id": "ddeb78026108491a818f9f4431ccc0c3",
+   "protocol": {
+    "zone_r": 0.6,
+    "signals": [
+     "rsi",
+     "bollinger",
+     "estrutura",
+     "falso_rompimento",
+     "exaustao"
+    ],
+    "min_signals": 1,
+    "decision": "fechamento da barra; execução na abertura seguinte",
+    "stress_slippage_r": 0.05,
+    "holdout_cases": 35,
+    "min_interventions": 30,
+    "signal_bars": {
+     "1": 1103,
+     "-1": 1033
+    },
+    "data_provenance_status": "frozen_reference"
+   },
+   "excursions": {
+    "basis": "ohlc_bars_intrabar_order_unknown",
+    "margin": "indisponível: a especificação não traz margem",
+    "winners": {
+     "n": 69,
+     "mae_r_p50": 0.42019815167902125,
+     "mae_r_p90": 0.7729588738365681,
+     "mfe_r_p50": 0.9075403938382018,
+     "mfe_r_p90": 1.8179235815390653,
+     "bars_to_mae_p50": 0.0,
+     "bars_to_mfe_p50": 4.0,
+     "capture_p50": 0.6181818181816463,
+     "floating_min_worst": -778.5750000001503
+    },
+    "losers": {
+     "n": 106,
+     "mae_r_p50": 1.0705918436011728,
+     "mae_r_p90": 1.0988384482384401,
+     "mfe_r_p50": 0.22008564547047377,
+     "mfe_r_p90": 0.7798430621809092,
+     "bars_to_mae_p50": 3.0,
+     "bars_to_mfe_p50": 1.0,
+     "capture_p50": -2.6052870829374384,
+     "floating_min_worst": -1126.3350341675819
+    }
+   },
+   "variants": {
+    "H0": {
+     "mode": "ponto_fixo",
+     "net": -44131.74245001836,
+     "profit_factor": 0.451236644635996,
+     "max_drawdown_pct": 0.44456407751351973,
+     "n": 175,
+     "n_intervened": 0,
+     "recovered": 0,
+     "aggravated": 0,
+     "diff_net": 0.0,
+     "diff_ci90": [
+      0.0,
+      0.0
+     ],
+     "diff_holdout_mean": 0.0,
+     "diff_net_stress": 0.0,
+     "pnl_p05": -1116.7568498225244,
+     "pnl_worst": -1181.4881010716563,
+     "floating_min_worst": -1126.3350341675819,
+     "max_volume": 22.62,
+     "verdict": "base",
+     "reasons": []
+    },
+    "H1": {
+     "mode": "saida_antecipada",
+     "net": -46377.998486459546,
+     "profit_factor": 0.4255624899174614,
+     "max_drawdown_pct": 0.4670266378779313,
+     "n": 175,
+     "n_intervened": 37,
+     "recovered": 27,
+     "aggravated": 10,
+     "diff_net": -2246.2560364411775,
+     "diff_ci90": [
+      -37.281469811863396,
+      9.41782258157249
+     ],
+     "diff_holdout_mean": 1.755189072112377,
+     "diff_net_stress": -2246.2560364411765,
+     "pnl_p05": -1102.603975257327,
+     "pnl_worst": -1169.791966578564,
+     "floating_min_worst": -1107.6319665785638,
+     "max_volume": 22.62,
+     "verdict": "reprovada",
+     "reasons": [
+      "O intervalo de 90% da diferença média por caso não fica acima de zero.",
+      "Com custo estressado a diferença líquida não é positiva.",
+      "A queda máxima piora em relação à base."
+     ]
+    },
+    "H2": {
+     "mode": "recuperacao_unica",
+     "net": -46366.21068307727,
+     "profit_factor": 0.43772654761215096,
+     "max_drawdown_pct": 0.4669087598441086,
+     "n": 175,
+     "n_intervened": 9,
+     "recovered": 2,
+     "aggravated": 7,
+     "diff_net": -2234.4682330589094,
+     "diff_ci90": [
+      -23.686788726670432,
+      -3.132251898132113
+     ],
+     "diff_holdout_mean": -7.888168015844897,
+     "diff_net_stress": -2741.1409601039486,
+     "pnl_p05": -1152.0506260054053,
+     "pnl_worst": -1627.549015894274,
+     "floating_min_worst": -1513.029015894274,
+     "max_volume": 35.64,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "9 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H3": {
+     "mode": "recuperacao_proporcional",
+     "net": -45275.724868466496,
+     "profit_factor": 0.4435926595511793,
+     "max_drawdown_pct": 0.4560039016980009,
+     "n": 175,
+     "n_intervened": 9,
+     "recovered": 4,
+     "aggravated": 5,
+     "diff_net": -1143.9824184481276,
+     "diff_ci90": [
+      -29.132425600756772,
+      14.619651233432908
+     ],
+     "diff_holdout_mean": -14.379193174537795,
+     "diff_net_stress": -6029.848312384856,
+     "pnl_p05": -1145.511534664445,
+     "pnl_worst": -2179.5635238413306,
+     "floating_min_worst": -2007.7835238413306,
+     "max_volume": 53.46,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "9 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H4": {
+     "mode": "recuperacao_gerida",
+     "net": -46327.499551157794,
+     "profit_factor": 0.4397465940652188,
+     "max_drawdown_pct": 0.46652164852491396,
+     "n": 175,
+     "n_intervened": 9,
+     "recovered": 3,
+     "aggravated": 6,
+     "diff_net": -2195.7571011394334,
+     "diff_ci90": [
+      -22.187023232937722,
+      -4.2873130799174834
+     ],
+     "diff_holdout_mean": -7.888168015844897,
+     "diff_net_stress": -2851.1571152415563,
+     "pnl_p05": -1152.0506260054053,
+     "pnl_worst": -1627.549015894274,
+     "floating_min_worst": -1513.029015894274,
+     "max_volume": 35.64,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "9 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H5": {
+     "mode": "gradiente_dinamico",
+     "net": -65356.62166024883,
+     "profit_factor": 0.42845468129627534,
+     "max_drawdown_pct": 0.6535662166024884,
+     "n": 175,
+     "n_intervened": 115,
+     "recovered": 28,
+     "aggravated": 87,
+     "diff_net": -21224.879210230465,
+     "diff_ci90": [
+      -159.34108782721037,
+      -81.12759076061757
+     ],
+     "diff_holdout_mean": -72.31664432633339,
+     "diff_net_stress": -25514.545755723142,
+     "pnl_p05": -1640.6045899567994,
+     "pnl_worst": -1831.6774680958597,
+     "floating_min_worst": -1673.3374680958598,
+     "max_volume": 45.24,
+     "verdict": "reprovada",
+     "reasons": [
+      "O intervalo de 90% da diferença média por caso não fica acima de zero.",
+      "Na reserva final a diferença não é positiva.",
+      "Com custo estressado a diferença líquida não é positiva.",
+      "A cauda de perdas (p5) piora em relação à base.",
+      "A queda máxima piora em relação à base."
+     ]
+    },
+    "H6": {
+     "mode": "reversao_independente",
+     "net": -45984.20928157266,
+     "profit_factor": 0.43976373200556557,
+     "max_drawdown_pct": 0.46308874582906245,
+     "n": 175,
+     "n_intervened": 9,
+     "recovered": 1,
+     "aggravated": 8,
+     "diff_net": -1852.466831554295,
+     "diff_ci90": [
+      -19.12334121680905,
+      -3.1597162278668405
+     ],
+     "diff_holdout_mean": -8.976000000011139,
+     "diff_net_stress": -2479.2725664579484,
+     "pnl_p05": -1145.511534664445,
+     "pnl_worst": -1353.6545079475623,
+     "floating_min_worst": -1296.3945079475623,
+     "max_volume": 22.62,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "9 caso(s) com intervenção; o mínimo é 30."
+     ]
+    }
+   }
+  },
+  "ema_atr": {
+   "run_id": "329230aac32946a88dff0f523372e67c",
+   "protocol": {
+    "zone_r": 0.6,
+    "signals": [
+     "rsi",
+     "bollinger",
+     "estrutura",
+     "falso_rompimento",
+     "exaustao"
+    ],
+    "min_signals": 1,
+    "decision": "fechamento da barra; execução na abertura seguinte",
+    "stress_slippage_r": 0.05,
+    "holdout_cases": 15,
+    "min_interventions": 30,
+    "signal_bars": {
+     "1": 1103,
+     "-1": 1033
+    },
+    "data_provenance_status": "frozen_reference"
+   },
+   "excursions": {
+    "basis": "ohlc_bars_intrabar_order_unknown",
+    "margin": "indisponível: a especificação não traz margem",
+    "winners": {
+     "n": 25,
+     "mae_r_p50": 0.3352918710847138,
+     "mae_r_p90": 0.8233660918053776,
+     "mfe_r_p50": 2.534412084375541,
+     "mfe_r_p90": 8.085093132575794,
+     "bars_to_mae_p50": 1.0,
+     "bars_to_mfe_p50": 21.0,
+     "capture_p50": 0.28026238290349803,
+     "floating_min_worst": -1014.9450000000821
+    },
+    "losers": {
+     "n": 49,
+     "mae_r_p50": 0.9279472151904733,
+     "mae_r_p90": 1.0624078488593214,
+     "mfe_r_p50": 0.42902442139790953,
+     "mfe_r_p90": 1.4308008037192184,
+     "bars_to_mae_p50": 7.0,
+     "bars_to_mfe_p50": 3.0,
+     "capture_p50": -2.2835027343020524,
+     "floating_min_worst": -1213.6930504976413
+    }
+   },
+   "variants": {
+    "H0": {
+     "mode": "ponto_fixo",
+     "net": 2936.528203418238,
+     "profit_factor": 1.0692125742940886,
+     "max_drawdown_pct": 0.14458612505606813,
+     "n": 74,
+     "n_intervened": 0,
+     "recovered": 0,
+     "aggravated": 0,
+     "diff_net": 0.0,
+     "diff_ci90": [
+      0.0,
+      0.0
+     ],
+     "diff_holdout_mean": 0.0,
+     "diff_net_stress": 0.0,
+     "pnl_p05": -1182.5111859750427,
+     "pnl_worst": -1265.4477100023435,
+     "floating_min_worst": -1213.6930504976413,
+     "max_volume": 18.59,
+     "verdict": "base",
+     "reasons": []
+    },
+    "H1": {
+     "mode": "saida_antecipada",
+     "net": 3645.618287396113,
+     "profit_factor": 1.087385964927341,
+     "max_drawdown_pct": 0.13964140469561817,
+     "n": 74,
+     "n_intervened": 5,
+     "recovered": 4,
+     "aggravated": 1,
+     "diff_net": 709.0900839778761,
+     "diff_ci90": [
+      2.046424641629425,
+      18.95616841918319
+     ],
+     "diff_holdout_mean": 12.827595279819077,
+     "diff_net_stress": 709.090083977877,
+     "pnl_p05": -1182.5111859750427,
+     "pnl_worst": -1265.4477100023435,
+     "floating_min_worst": -1213.6930504976413,
+     "max_volume": 18.59,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "5 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H2": {
+     "mode": "recuperacao_unica",
+     "net": -3347.8730955547367,
+     "profit_factor": 0.9236370777938872,
+     "max_drawdown_pct": 0.15583995492271457,
+     "n": 74,
+     "n_intervened": 7,
+     "recovered": 0,
+     "aggravated": 7,
+     "diff_net": -6284.401298972975,
+     "diff_ci90": [
+      -216.48817258307855,
+      -12.822085525119126
+     ],
+     "diff_holdout_mean": -314.16157427409206,
+     "diff_net_stress": -6659.217386669857,
+     "pnl_p05": -1245.1603922764411,
+     "pnl_worst": -1516.0139662335955,
+     "floating_min_worst": -1465.0539662335955,
+     "max_volume": 24.58,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "7 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H3": {
+     "mode": "recuperacao_proporcional",
+     "net": -4761.809250336856,
+     "profit_factor": 0.8947795320444191,
+     "max_drawdown_pct": 0.16574070942376615,
+     "n": 74,
+     "n_intervened": 7,
+     "recovered": 0,
+     "aggravated": 7,
+     "diff_net": -7698.337453755094,
+     "diff_ci90": [
+      -234.58417366686552,
+      -23.820129293124822
+     ],
+     "diff_holdout_mean": -314.16157427407524,
+     "diff_net_stress": -8543.351579333937,
+     "pnl_p05": -1265.6935115018425,
+     "pnl_worst": -1904.4575149926177,
+     "floating_min_worst": -1811.7409493503712,
+     "max_volume": 36.87,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "7 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H4": {
+     "mode": "recuperacao_gerida",
+     "net": -3650.1130955549074,
+     "profit_factor": 0.9181426475971411,
+     "max_drawdown_pct": 0.15935751091931372,
+     "n": 74,
+     "n_intervened": 7,
+     "recovered": 0,
+     "aggravated": 7,
+     "diff_net": -6586.641298973144,
+     "diff_ci90": [
+      -207.37535606052288,
+      -18.16431530200723
+     ],
+     "diff_holdout_mean": -284.34157427411736,
+     "diff_net_stress": -7101.883439198319,
+     "pnl_p05": -1298.3170115016226,
+     "pnl_worst": -1516.0139662335955,
+     "floating_min_worst": -1465.0539662335955,
+     "max_volume": 24.58,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "7 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H5": {
+     "mode": "gradiente_dinamico",
+     "net": -3339.4687269454653,
+     "profit_factor": 0.9468104438854553,
+     "max_drawdown_pct": 0.1945653652685031,
+     "n": 74,
+     "n_intervened": 55,
+     "recovered": 11,
+     "aggravated": 44,
+     "diff_net": -6275.9969303637035,
+     "diff_ci90": [
+      -221.55125865527523,
+      98.93991132848359
+     ],
+     "diff_holdout_mean": 214.20967486437996,
+     "diff_net_stress": -9111.459364277613,
+     "pnl_p05": -1875.1712036482518,
+     "pnl_worst": -2025.6715650035069,
+     "floating_min_worst": -1920.6715650035069,
+     "max_volume": 36.94,
+     "verdict": "reprovada",
+     "reasons": [
+      "O intervalo de 90% da diferença média por caso não fica acima de zero.",
+      "Com custo estressado a diferença líquida não é positiva.",
+      "A cauda de perdas (p5) piora em relação à base.",
+      "A queda máxima piora em relação à base."
+     ]
+    },
+    "H6": {
+     "mode": "reversao_independente",
+     "net": -3797.2119407744835,
+     "profit_factor": 0.9142666291419277,
+     "max_drawdown_pct": 0.15577256828122218,
+     "n": 74,
+     "n_intervened": 7,
+     "recovered": 0,
+     "aggravated": 7,
+     "diff_net": -6733.7401441927195,
+     "diff_ci90": [
+      -235.0156118489358,
+      -10.551102251095358
+     ],
+     "diff_holdout_mean": -346.1115742741122,
+     "diff_net_stress": -7251.629157168113,
+     "pnl_p05": -1245.1603922764411,
+     "pnl_worst": -1335.3491716644107,
+     "floating_min_worst": -1292.3341716644109,
+     "max_volume": 18.59,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "7 caso(s) com intervenção; o mínimo é 30."
+     ]
+    }
+   }
+  },
+  "ha_hilo": {
+   "run_id": "4051c713abe34a8ca0dd9f39f115bfca",
+   "protocol": {
+    "zone_r": 0.6,
+    "signals": [
+     "rsi",
+     "bollinger",
+     "estrutura",
+     "falso_rompimento",
+     "exaustao"
+    ],
+    "min_signals": 1,
+    "decision": "fechamento da barra; execução na abertura seguinte",
+    "stress_slippage_r": 0.05,
+    "holdout_cases": 129,
+    "min_interventions": 30,
+    "signal_bars": {
+     "1": 1103,
+     "-1": 1033
+    },
+    "data_provenance_status": "frozen_reference"
+   },
+   "excursions": {
+    "basis": "ohlc_bars_intrabar_order_unknown",
+    "margin": "indisponível: a especificação não traz margem",
+    "winners": {
+     "n": 139,
+     "mae_r_p50": 0.40540540540525943,
+     "mae_r_p90": 0.8191426940913611,
+     "mfe_r_p50": 2.765399737876334,
+     "mfe_r_p90": 7.289426310244309,
+     "bars_to_mae_p50": 0.0,
+     "bars_to_mfe_p50": 13.0,
+     "capture_p50": 0.38164251207715816,
+     "floating_min_worst": -866.8600000004742
+    },
+    "losers": {
+     "n": 504,
+     "mae_r_p50": 1.0757006175246446,
+     "mae_r_p90": 1.1790907699375388,
+     "mfe_r_p50": 0.32917455842813115,
+     "mfe_r_p90": 1.399773452785285,
+     "bars_to_mae_p50": 2.0,
+     "bars_to_mfe_p50": 1.0,
+     "capture_p50": -1.9882352941172237,
+     "floating_min_worst": -1466.080000001427
+    }
+   },
+   "variants": {
+    "H0": {
+     "mode": "ponto_fixo",
+     "net": -95735.02700008002,
+     "profit_factor": 0.3766183345834463,
+     "max_drawdown_pct": 0.9599702194769271,
+     "n": 643,
+     "n_intervened": 0,
+     "recovered": 0,
+     "aggravated": 0,
+     "diff_net": 0.0,
+     "diff_ci90": [
+      0.0,
+      0.0
+     ],
+     "diff_holdout_mean": 0.0,
+     "diff_net_stress": 0.0,
+     "pnl_p05": -1027.1688000002318,
+     "pnl_worst": -1654.730000001427,
+     "floating_min_worst": -1466.080000001427,
+     "max_volume": 53.9,
+     "verdict": "base",
+     "reasons": []
+    },
+    "H1": {
+     "mode": "saida_antecipada",
+     "net": -95735.02700008002,
+     "profit_factor": 0.3766183345834463,
+     "max_drawdown_pct": 0.9599702194769271,
+     "n": 643,
+     "n_intervened": 0,
+     "recovered": 0,
+     "aggravated": 0,
+     "diff_net": 0.0,
+     "diff_ci90": [
+      0.0,
+      0.0
+     ],
+     "diff_holdout_mean": 0.0,
+     "diff_net_stress": 0.0,
+     "pnl_p05": -1027.1688000002318,
+     "pnl_worst": -1654.730000001427,
+     "floating_min_worst": -1466.080000001427,
+     "max_volume": 53.9,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "0 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H2": {
+     "mode": "recuperacao_unica",
+     "net": -96355.57900008062,
+     "profit_factor": 0.37510264082522754,
+     "max_drawdown_pct": 0.9657509025832338,
+     "n": 643,
+     "n_intervened": 3,
+     "recovered": 1,
+     "aggravated": 2,
+     "diff_net": -620.5520000005818,
+     "diff_ci90": [
+      -2.9444092478561665,
+      0.07027206680728368
+     ],
+     "diff_holdout_mean": 0.1311627906979028,
+     "diff_net_stress": -724.3025000001508,
+     "pnl_p05": -1027.1688000002318,
+     "pnl_worst": -1854.4640000009977,
+     "floating_min_worst": -1727.6940000009977,
+     "max_volume": 53.9,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "3 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H3": {
+     "mode": "recuperacao_proporcional",
+     "net": -97002.35100008122,
+     "profit_factor": 0.3735358345380749,
+     "max_drawdown_pct": 0.9718599423483248,
+     "n": 643,
+     "n_intervened": 3,
+     "recovered": 1,
+     "aggravated": 2,
+     "diff_net": -1267.324000001197,
+     "diff_ci90": [
+      -5.922083204936328,
+      0.05485942804058045
+     ],
+     "diff_holdout_mean": 0.059069767442054714,
+     "diff_net_stress": -1476.8053000003274,
+     "pnl_p05": -1027.1688000002318,
+     "pnl_worst": -2491.9360000016086,
+     "floating_min_worst": -2301.7810000016093,
+     "max_volume": 54.33,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "3 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H4": {
+     "mode": "recuperacao_gerida",
+     "net": -96334.18900008063,
+     "profit_factor": 0.3752413619522391,
+     "max_drawdown_pct": 0.9655431013761858,
+     "n": 643,
+     "n_intervened": 3,
+     "recovered": 1,
+     "aggravated": 2,
+     "diff_net": -599.1620000005948,
+     "diff_ci90": [
+      -2.912218011596538,
+      0.13995771859238504
+     ],
+     "diff_holdout_mean": 0.2969767441861734,
+     "diff_net_stress": -704.892800000147,
+     "pnl_p05": -1027.1688000002318,
+     "pnl_worst": -1854.4640000009977,
+     "floating_min_worst": -1727.6940000009977,
+     "max_volume": 53.9,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "3 caso(s) com intervenção; o mínimo é 30."
+     ]
+    },
+    "H5": {
+     "mode": "gradiente_dinamico",
+     "net": -117065.07412632919,
+     "profit_factor": 0.3961147905316011,
+     "max_drawdown_pct": 1.1511048336822998,
+     "n": 643,
+     "n_intervened": 407,
+     "recovered": 53,
+     "aggravated": 354,
+     "diff_net": -21330.047126249134,
+     "diff_ci90": [
+      -54.85065447159594,
+      -8.713510158088246
+     ],
+     "diff_holdout_mean": -5.532975738736683,
+     "diff_net_stress": -27696.711626222866,
+     "pnl_p05": -1320.4785208366404,
+     "pnl_worst": -1729.9786754950526,
+     "floating_min_worst": -1649.6901417160334,
+     "max_volume": 79.98,
+     "verdict": "reprovada",
+     "reasons": [
+      "O intervalo de 90% da diferença média por caso não fica acima de zero.",
+      "Na reserva final a diferença não é positiva.",
+      "Com custo estressado a diferença líquida não é positiva.",
+      "A cauda de perdas (p5) piora em relação à base.",
+      "A queda máxima piora em relação à base."
+     ]
+    },
+    "H6": {
+     "mode": "reversao_independente",
+     "net": -96049.2020000804,
+     "profit_factor": 0.3758494366597175,
+     "max_drawdown_pct": 0.9628933051058908,
+     "n": 643,
+     "n_intervened": 3,
+     "recovered": 0,
+     "aggravated": 3,
+     "diff_net": -314.1750000003791,
+     "diff_ci90": [
+      -1.4433344438290694,
+      0.0
+     ],
+     "diff_holdout_mean": -0.04887596899222487,
+     "diff_net_stress": -420.8959499999328,
+     "pnl_p05": -1027.1688000002318,
+     "pnl_worst": -1654.730000001427,
+     "floating_min_worst": -1466.080000001427,
+     "max_volume": 53.9,
+     "verdict": "amostra insuficiente",
+     "reasons": [
+      "3 caso(s) com intervenção; o mínimo é 30."
+     ]
+    }
+   }
+  }
+ },
+ "router": {
+  "status": "sem candidato elegível",
+  "reasons": [
+   "Nenhum setup lucrativo com ao menos 30 operações em algum contexto da procura."
+  ],
+  "min_profit_factor": 2.0,
+  "policy_id": "dfc11a9bee14d093160a81e88d9c277d7a153562f321ffe3c26c85b75aaa1145",
+  "rules": {},
+  "segments": {
+   "search": {
+    "n_signals": 805,
+    "policy": {
+     "n": 0,
+     "win_rate": 0.0,
+     "profit_factor": null,
+     "profit_factor_status": "no_trades",
+     "expectancy": 0.0,
+     "net": 0.0,
+     "max_drawdown_pct": 0.0
+    },
+    "static_best": {
+     "setup": "python:ema_atr",
+     "n": 42,
+     "win_rate": 0.30952380952380953,
+     "profit_factor": 0.9958680624518865,
+     "profit_factor_status": "defined",
+     "expectancy": -2.4283378092674885,
+     "net": -101.99018798923453,
+     "max_drawdown_pct": 0.10208403586468194
+    },
+    "accept_all": {
+     "n": 328,
+     "win_rate": 0.23780487804878048,
+     "profit_factor": 0.4877275513717687,
+     "profit_factor_status": "defined",
+     "expectancy": -234.41752540109812,
+     "net": -76888.94833156018,
+     "max_drawdown_pct": 0.7929633371993012
+    },
+    "oracle_not_executable": {
+     "n": 37,
+     "win_rate": 0.5945945945945946,
+     "profit_factor": 3.8900968546983923,
+     "profit_factor_status": "defined",
+     "expectancy": 998.1065179435644,
+     "net": 36929.941163911884,
+     "max_drawdown_pct": 0.031168534965501496
+    }
+   },
+   "validation": {
+    "n_signals": 266,
+    "policy": {
+     "n": 0,
+     "win_rate": 0.0,
+     "profit_factor": null,
+     "profit_factor_status": "no_trades",
+     "expectancy": 0.0,
+     "net": 0.0,
+     "max_drawdown_pct": 0.0
+    },
+    "static_best": {
+     "setup": "python:ema_atr",
+     "n": 14,
+     "win_rate": 0.2857142857142857,
+     "profit_factor": 1.0365995947213618,
+     "profit_factor_status": "defined",
+     "expectancy": 20.27390026473592,
+     "net": 283.8346037063029,
+     "max_drawdown_pct": 0.04728587409803746
+    },
+    "accept_all": {
+     "n": 127,
+     "win_rate": 0.28346456692913385,
+     "profit_factor": 0.537691382245171,
+     "profit_factor_status": "defined",
+     "expectancy": -49.07071257805124,
+     "net": -6231.980497412508,
+     "max_drawdown_pct": 0.06967790497412032
+    },
+    "oracle_not_executable": {
+     "n": 34,
+     "win_rate": 0.4117647058823529,
+     "profit_factor": 1.4354219818280878,
+     "profit_factor_status": "defined",
+     "expectancy": 74.26468559648565,
+     "net": 2524.999310280512,
+     "max_drawdown_pct": 0.014608685761270116
+    }
+   },
+   "holdout": {
+    "n_signals": 270,
+    "policy": {
+     "n": 0,
+     "win_rate": 0.0,
+     "profit_factor": null,
+     "profit_factor_status": "no_trades",
+     "expectancy": 0.0,
+     "net": 0.0,
+     "max_drawdown_pct": 0.0
+    },
+    "static_best": {
+     "setup": "python:ema_atr",
+     "n": 18,
+     "win_rate": 0.4444444444444444,
+     "profit_factor": 1.2757673477753166,
+     "profit_factor_status": "defined",
+     "expectancy": 153.0379882056204,
+     "net": 2754.683787701167,
+     "max_drawdown_pct": 0.05027455391117061
+    },
+    "accept_all": {
+     "n": 95,
+     "win_rate": 0.24210526315789474,
+     "profit_factor": 1.5456812520543926,
+     "profit_factor_status": "defined",
+     "expectancy": 94.68757527188004,
+     "net": 8995.319650828604,
+     "max_drawdown_pct": 0.04880499935167547
+    },
+    "oracle_not_executable": {
+     "n": 32,
+     "win_rate": 0.40625,
+     "profit_factor": 2.531675653393163,
+     "profit_factor_status": "defined",
+     "expectancy": 495.4974593155418,
+     "net": 15855.918698097337,
+     "max_drawdown_pct": 0.03376009033578712
+    }
+   }
+  }
+ }
+}

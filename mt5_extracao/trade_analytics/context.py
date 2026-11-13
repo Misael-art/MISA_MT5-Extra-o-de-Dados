@@ -14,6 +14,12 @@ def population(lab, initial_equity=100_000.0):
     def column(name):
         return lab[name] if name in lab else pd.Series(index=lab.index, dtype=object)
     runs = column("run_id").dropna().unique()
+    repeats = lab.attrs.get("repeated_runs") or {}
+    groups = repeats.get("groups") or {}
+    visible = {str(run): int(count) for run, count in column("run_id").value_counts().items()}
+    repeated_runs = sum(len(aliases) for run, aliases in groups.items() if run in visible)
+    repeated_trades = sum(visible.get(run, 0) * len(aliases) for run, aliases in groups.items())
+    unqualified = sum(run in visible for run in repeats.get("unqualified") or [])
     refs = sorted(str(v) for v in column("time_ref").dropna().unique())
     starts, ends = [], []
     for _, group in lab.groupby("run_id", sort=False) if "run_id" in lab else []:
@@ -37,6 +43,8 @@ def population(lab, initial_equity=100_000.0):
     except (TypeError, ValueError):
         capital = None
     return {"version": 1, "n": n, "runs": len(runs),
+            "repeated_runs_excluded": repeated_runs, "repeated_trades_excluded": repeated_trades,
+            "unqualified_python_runs": unqualified, "include_repeated_runs": repeats.get("include_repeated_runs", False),
             "missing_run_id": int(column("run_id").isna().sum()),
             "partial": int(column("completeness").eq("parcial").sum()),
             "missing_entry": int(column("entry_time").isna().sum()),
@@ -61,6 +69,14 @@ def temporal_label(refs):
 
 def summary(context):
     parts = []
+    if context.get("repeated_runs_excluded"):
+        parts.append(f"{context['repeated_runs_excluded']} execuções repetidas agrupadas "
+                     f"({context['repeated_trades_excluded']} operações).")
+    if context.get("unqualified_python_runs"):
+        parts.append(f"{context['unqualified_python_runs']} execuções Python com identidade incompleta. "
+                     "A equivalência dessas execuções permanece desconhecida.")
+    if context.get("include_repeated_runs"):
+        parts.append("Consulta completa inclui todas as execuções guardadas.")
     if context["runs"] > 1:
         parts.append(f"{context['runs']} execuções: agregação descritiva, não carteira executável.")
     if context["missing_entry"]:

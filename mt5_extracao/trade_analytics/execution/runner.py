@@ -114,9 +114,15 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
     quality = data.get("data_quality")
     if quality is not None and not quality["eligibility"]["eligible"]:
         raise ValueError("Dados incompatíveis com a re-simulação: " + " ".join(quality["eligibility"]["reasons"]))
+    signals = None
+    if policy.recovery is not None:
+        if data.get("signals") is None:       # sinais padrão; `compare`/`study.run` podem ter escolhido outros
+            from mt5_extracao.trade_analytics.execution import reversal
+            data["signals"] = reversal.compute(data["bars"])
+        signals = data["signals"]
     result = engine.simulate(data["trades"], data["bars"], data["spec"], data["cfg"], policy, data["atr"],
                              cashflows=data.get("cashflows"),
-                             observation_timeframe=data["timeframe"] if save else None)
+                             observation_timeframe=data["timeframe"] if save else None, signals=signals)
     result.valuation["cashflow_source"] = data.get("cashflow_source", "unspecified")
     result.valuation["data_quality"] = quality
     if result.valuation["cashflow_source"] in ("legacy_unknown", "unspecified"):

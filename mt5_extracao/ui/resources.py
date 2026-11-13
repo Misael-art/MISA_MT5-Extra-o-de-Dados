@@ -24,6 +24,11 @@ hb = storage.human_bytes
 TICK_MS = 60_000            # o agendador confere a cada minuto se um ciclo está vencido
 DIRECTORY_SCAN_SECONDS = 1  # leitura opcional da tela; não limita SQLite nem ações de manutenção
 CHECK_ON, CHECK_OFF = "☑", "☐"
+RESTORE_STATE_LABELS = {
+    "prepared": "preparada", "applying": "em andamento", "running": "em andamento",
+    "succeeded": "confirmada", "uncertain": "resultado incerto", "unknown": "resultado indisponível",
+    "failed": "falha antes da troca", "recovered": "estado anterior recuperado",
+}
 
 SPACE_COLUMNS = ("Tabela", "Tipo", "Ativo", "Timeframe", "Linhas", "Tamanho", "% da base", "Última barra")
 SPACE_WIDTHS = (190, 70, 90, 90, 90, 90, 80, 110)
@@ -293,14 +298,20 @@ class ResourcesPanel:
         self.backup_button = ttk.Button(row, text="Fazer cópia agora", style="Accent.TButton", command=self.backup)
         self.backup_button.pack(side=tk.LEFT)
         Tooltip(self.backup_button, "Cópia conferida da base inteira, feita com ela em uso. Para voltar a uma cópia: "
-                                    "feche o programa e copie o arquivo por cima da base.", self.ui.theme)
+                                    "selecione-a na lista e use Voltar a esta cópia.", self.ui.theme)
         ttk.Button(row, text="Abrir pasta das cópias", command=self.open_backup_dir).pack(side=tk.LEFT, padx=(8, 0))
         self.back_button = ttk.Button(row, text="Voltar a esta cópia...", command=self.restore_backup)
         self.back_button.pack(side=tk.LEFT, padx=(8, 0))
         self.files_button = ttk.Button(row, text="Apagar arquivos antigos", command=self.clean_files)
         self.files_button.pack(side=tk.RIGHT)
-        self.files_summary = ttk.Label(tab, text="", style="Muted.TLabel", wraplength=760, justify=tk.LEFT)
-        self.files_summary.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        summary_row = ttk.Frame(tab, style="Surface.TFrame")
+        summary_row.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        self.check_restore_button = ttk.Button(summary_row, text="Conferir restauração", command=self.check_restore)
+        self.check_restore_button.pack(side=tk.RIGHT, padx=(8, 0))
+        self.check_backup_button = ttk.Button(summary_row, text="Conferir retenção", command=self.check_backup)
+        self.check_backup_button.pack(side=tk.RIGHT, padx=(8, 0))
+        self.files_summary = ttk.Label(summary_row, text="", style="Muted.TLabel", wraplength=600, justify=tk.LEFT)
+        self.files_summary.pack(fill=tk.X, side=tk.LEFT, expand=True)
         frame, self.backup_tree = scrolled_tree(tab, ("Cópia", "Tamanho", "Criada em"), (420, 100, 140),
                                                 ("w", "e", "w"), height=10)
         frame.pack(fill=tk.BOTH, expand=True)
@@ -315,6 +326,11 @@ class ResourcesPanel:
         size = sum(f["bytes"] for f in self.old_files)
         text = (f"{len(self.backups)} cópia(s), {hb(sum(b['bytes'] for b in self.backups))}. " if self.backups
                 else "Nenhuma cópia de segurança ainda. ")
+        unmanaged = sum(not item.get("managed", False) for item in self.backups)
+        if unmanaged:
+            text += f"{unmanaged} preservada(s) sem recibo válido da base atual. "
+        if any(item.get("retention_state") == "pruning" for item in self.backups):
+            text += "Retenção incerta. Use Conferir retenção. "
         if not self.old_files_complete:
             text += "Leitura de arquivos antigos incompleta; limpeza indisponível nesta leitura."
         else:
@@ -332,9 +348,31 @@ class ResourcesPanel:
         def done(result):
             if result["ok"]:
                 self.ui.log(f"Recursos: cópia de segurança criada em {result['path']} ({hb(result['bytes'])}).")
+                if result.get("preserved"):
+                    self.ui.log(f"Recursos: {len(result['preserved'])} arquivo(s) preservado(s) pela conferência "
+                                "de posse, conteúdo ou recuperação.")
+                if result.get("retention_state") == "uncertain":
+                    messagebox.showerror("Retenção de cópias", result["error"], parent=self.frame)
             else:
                 messagebox.showerror("Cópia de segurança", result["error"], parent=self.frame)
         self._run_action("copiando a base", lambda: files.backup(db, config, "ui"), done)
+
+    def check_backup(self):
+        db, config = self._db(), self._config()
+        if not db:
+            return
+
+        def done(result):
+            if result["ok"]:
+                messagebox.showinfo("Retenção de cópias", "Consulta concluída. A consulta preservou as cópias existentes.", parent=self.frame)
+            else:
+                text = result.get("error") or "Resultado ainda incerto. Preserve os arquivos e confira os recibos."
+                unknown = result.get("unrecognized_receipts", [])
+                if unknown:
+                    text += "\n\nRecibos indisponíveis\n" + "\n".join(unknown[:10])
+                messagebox.showerror("Retenção de cópias", text, parent=self.frame)
+
+        self._run_action("conferindo retenção", lambda: files.backup_status(db, config), done)
 
     def clean_files(self):
         db, config = self._db(), self._config()
@@ -365,14 +403,53 @@ class ResourcesPanel:
                 "nada muda).\n\nPare extrações e backtests antes de continuar.", icon="warning", parent=self.frame):
             return
 
-        def done(result):
-            if result["ok"]:
-                self.ui.log(f"Recursos: base trocada pela cópia {Path(path).name}; estado anterior em "
-                            f"{result['safety_copy']}.")
-                self.ui.refresh_inventory()
+        self._run_action("voltando à cópia", lambda: files.restore_backup(db, config, path, "ui"),
+                         lambda result: self._restore_finished(path, result))
+
+    def _restore_finished(self, path, result):
+        operation_id = result.get("operation_id") or "indisponível"
+        state = result.get("state", "unknown")
+        state_label = RESTORE_STATE_LABELS.get(state, state)
+        self.ui.log(f"Recursos: restauração {operation_id}, estado {state_label}.")
+        if result["ok"]:
+            self.ui.log(f"Recursos: base trocada pela cópia {Path(path).name}; estado anterior em "
+                        f"{result['safety_copy']}.")
+            self.ui.refresh_inventory()
+        else:
+            messagebox.showerror("Voltar a uma cópia",
+                                 f"Operação {operation_id}\nEstado {state_label}\n{result['error']}\n\n"
+                                 "Use Conferir restauração para consultar o resultado e a recuperação disponível.",
+                                 parent=self.frame)
+
+    def check_restore(self):
+        db, config = self._db(), self._config()
+        if db is None:
+            return
+
+        def done(report):
+            if not report["ok"]:
+                messagebox.showerror("Conferir restauração", report["error"], parent=self.frame)
+                return
+            operations = report["operations"]
+            if not operations:
+                messagebox.showinfo("Conferir restauração", "Nenhuma intenção de restauração registrada.", parent=self.frame)
+                return
+            result = next((item for item in operations if item["state"] in {"uncertain", "running"}), operations[0])
+            state_label = RESTORE_STATE_LABELS.get(result["state"], result["state"])
+            summary = f"Operação {result['operation_id']}\nEstado {state_label}"
+            if result["state"] == "uncertain" and result["safety_copy_available"]:
+                if messagebox.askyesno("Recuperar restauração",
+                                       summary + "\n\nRetornar à cópia de segurança anterior?\n" + result["safety_copy"] +
+                                       "\n\nO conteúdo será conferido antes da troca. Pare extrações e backtests.",
+                                       icon="warning", parent=self.frame):
+                    path = result["safety_copy"]
+                    self._run_action("recuperando estado anterior",
+                                     lambda: files.restore_backup(db, config, path, "ui",
+                                                                  recovery_of=result["operation_id"]),
+                                     lambda restored: self._restore_finished(path, restored))
             else:
-                messagebox.showerror("Voltar a uma cópia", result["error"], parent=self.frame)
-        self._run_action("voltando à cópia", lambda: files.restore_backup(db, config, path, "ui"), done)
+                messagebox.showinfo("Conferir restauração", summary, parent=self.frame)
+        self._run_action("consultando restaurações", lambda: files.restore_status(db, config), done)
 
     def trim_selected(self):
         db, config = self._db(), self._config()
@@ -500,7 +577,7 @@ class ResourcesPanel:
         state = ["disabled"] if busy else ["!disabled"]
         for button in (self.refresh_button, self.vacuum_button, self.archive_button, self.orphans_button,
                        self.restore_button, self.cycle_button, self.backup_button, self.files_button, self.trim_button,
-                       self.back_button):
+                       self.back_button, self.check_restore_button, self.check_backup_button):
             button.state(state)
         if busy:
             self.progress.pack(side=tk.RIGHT, padx=(0, 10))

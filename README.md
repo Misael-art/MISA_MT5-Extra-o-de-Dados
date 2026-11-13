@@ -1,5 +1,21 @@
 # MT5 Extração de Dados
 
+## Composição conferida em 13/11/2026
+
+A PR308 reúne dados públicos, Laboratório, Dashboard, Drive e Recursos das
+frentes revisadas. O código composto `0e4f4c6` passou nos seis jobs de produto,
+incluindo Linux 4.636/473 e Windows 4.904/205 aprovados/não executados. A prévia
+do atalho e menu é `2b3b274`, com 365 arquivos de execução idênticos por hash.
+GUI XWayland visível e launcher oficial foram exercitados em dados próprios.
+
+A fila tem 20 itens, com 14 concluídos e seis bloqueados. A observação controlada
+de 30 min foi aprovada com solicitações instrumentadas. Entrada física,
+acessibilidade, login, integração nativa e qualificação financeira possuem
+aceites próprios.
+Pacotes/reunião e proteção da base principal dependem das decisões registradas.
+A causa dos reinícios do host permanece indeterminada. A fonte de continuidade
+reúne owners, SHAs, recibos, limites e próximos passos. [Continuidade](CONTINUAR_AQUI.md)
+
 ## Estado conferido — 07/11/2026
 
 Prévia efetiva conferida em 07/11: `650656fac67d` (PR300), 354 hashes sem divergência; retorno `57d13ee` preservado. O atalho não foi atualizado neste lote. HADOUKEN `d4d389e` preservado em branch; Safety `27b8599` detached.

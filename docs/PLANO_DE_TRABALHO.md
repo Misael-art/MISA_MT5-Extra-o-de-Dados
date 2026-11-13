@@ -1,5 +1,24 @@
 # Plano de trabalho detalhado
 
+## Reconferência do diagnóstico em 13/11/2026
+
+Código composto `0e4f4c6` na PR308 com seis jobs de produto aprovados. A prévia
+`2b3b274` conserva 365 hashes idênticos ao runtime publicado. A fila de 20 itens
+tem 14 concluídos e seis bloqueados, com owners, evidências,
+SHAs e critérios registrados. A observação de 30 min foi
+aprovada sob orçamento próprio. PR302 está integrada no master `09a618c` e as
+contas múltiplas da PR303 estão na composição testada. Os registros anteriores
+de 07/08 de novembro representam os estados daquelas datas. [Continuidade](../CONTINUAR_AQUI.md)
+
+A ordem vigente segue pacotes/reunião após a decisão de destino, depois o
+consentimento e o percurso real do proprietário. O snapshot canônico conserva
+blocos tipados. O exportador OHLCV projeta oito campos e a importação grava o
+store de snapshots. A preservação de todas as colunas brutas/legadas e a
+reconstituição das tabelas exigem o contrato do pacote. BD03 mantém uma base
+lógica por banco/schema. A proteção independente atual da base principal
+possui aceite de destino/política. CI e GUI controlada possuem escopos técnicos.
+Os aceites físicos, nativos e financeiros seguem seus critérios próprios.
+
 ## T20.30-HOST1-DRIVE — correção CI de 08/11/2026
 
 Owner **Recursos/Dados**. CI anterior da PR302 (`9d55fb5`, run `42400089570`): testes Ubuntu e Windows falharam por ambiente/launcher e nome SQLite incompatível com Windows; PostgreSQL, lint e instaladores passaram. O corretivo prepara `.venv` e configuração no job de testes, usa o launcher oficial de cada plataforma e um nome SQLite portátil com conferência do conteúdo. No Linux, as duas regressões diretamente alteradas passaram em 08/11; a regressão anterior de sete módulos (`104 passed`), ShellCheck e doctor offline permanece como evidência histórica. O CI do commit corretivo e o transporte de parâmetros pelo `cmd.exe` dependem de execução no Windows CI; não inferir aceite. Preservar os demais WIPs e pins. Próxima PR após estabilização: múltiplas contas com identidade/cofre isolados e escolha explícita, somente com fixtures sintéticas.
@@ -17,6 +36,25 @@ O proprietário fará login e testes reais depois da composição sintética apr
 Documento operacional para agentes (humanos ou IA, inclusive de menor capacidade)
 implementarem o [ROADMAP](ROADMAP.md) **sem ambiguidade**. Antes de qualquer
 tarefa, leia [AGENTS.md](../AGENTS.md) (regras obrigatórias).
+
+## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+
+Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
+1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
+verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
+A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
+receber o valor padrão. O incremento propaga o orçamento existente à análise.
+O serviço de produção mantém seu contrato de memória e o cenário conserva o
+mesmo teto entre etapas.
+
+Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
+análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
+do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
+passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
+Os valores do sampler representam simulação, com memória física limitada ao
+processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
+validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
+runtime. Logs e falhas anteriores permanecem como evidência.
 
 ## Como usar este plano
 
@@ -281,7 +319,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
-| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
+| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | PR306 em validação. Agrupamento qualificado, livro integral preservado e leitura legada reutilizada. Lotes finais 9/26 aprovados, incluindo os 14 casos de amostra; contexto/roteador 14 aprovados antes do ajuste de leitura. QA por launcher CLI/GUI sintéticos registrada. CI da nova ponta e próxima prévia pendentes |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
 | T16.6 | Laboratório: motor de re-simulação de execução com paridade com o backtester (seis estratégias) | T16.5 | ✅ concluída |
@@ -291,6 +329,10 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
 | T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
+| T16.13 | Laboratório: auditoria de código/base e especificação das quatro frentes (exposição, fidelidade de ticks, recuperação condicional, coesão com o Ultra) em `docs/propostas/ANALYTICS_OPERACOES.md` §11.9–11.13 | T16.12 | ✅ documental (10/11/2026); auditoria do vídeo e confronto com o Tester pendentes |
+| T16.14 | Laboratório: classe de fidelidade A–E e auditoria da sequência de ticks (`analytics/tick_fidelity.py`, `mt5x trades fidelity`) | T20.6 | Auditoria v2 em revisão na PR304, com diagnóstico de flags/seq/point inválidos e certificação intrabarra condicionada à auditoria. Regressões Linux aprovadas. CI da ponta e QA CLI/GUI específicos pendentes |
+| T16.15 | Laboratório: recuperação condicional H1–H4/H6 no motor, sinais causais de reversão, excursões e exposição por caso, estudo pareado com parecer (`mt5x trades recovery`) | T16.8, T16.14 | ✅ concluída no Linux (só estudo; launcher em base de QA); no host: amostra insuficiente ou reprovada, nenhum modo aprovado; H7 e margem não modeladas |
+| T19.52a | Ultra, primeiro recorte de estudo: política condicional sobre o livro com posição única e piso de fator de lucro 2 na validação e na reserva (`presets/conditional_policy.py`, `mt5x trades router`) | T16.4; contrato de T19.52 | ✅ recorte de estudo no Linux; no host: sem candidato elegível; não gera `.set` nem substitui T19.52–54 |
 | T17.1 | Sistema visual: tokens, tipografia, temas e contraste mensurável | F7 | ✅ concluída no Linux; Windows pendente |
 | T17.2 | Componentes de apresentação reutilizáveis, extraídos de usos reais | T17.1 | ✅ concluída no Linux; Windows pendente |
 | T17.3 | Laboratório e gráficos: hierarquia, estados de qualidade, amostra e legibilidade | T17.1, T17.2, T16.11a, T16.11b | ✅ concluída no Linux; Windows pendente |
@@ -4643,3 +4685,186 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+
+## Reconferência de composição em12/11/2026
+
+Composição revisável na branch `codex/composicao-diagnostico-20261112`,
+com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidências
+e próximos passos estão na fila de [continuidade](../CONTINUAR_AQUI.md). Prévia identificada
+pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
+OAuth real, entrada física e observação prolongada conservam aceites próprios.
+
+
+## Composição de diagnóstico em12/11/2026
+
+A branch `codex/composicao-diagnostico-20261112` reúne as fontes públicas
+revisadas de configuração, dados, Laboratório, Drive e restauração. A fila
+com owners, SHAs, evidências e próximos passos está em [continuidade](../CONTINUAR_AQUI.md).
+O destino efetivo de `app-development` e o `mt5x-release.json` identificam
+a prévia usada pelo atalho. A conferência do artefato e os checks se referem
+à fonte publicada. Retorno, ambiente e dados são preservados.
+
+A restauração inclui intenção durável, consulta e recuperação explícita.
+Teve31 regressões focadas, seis casos existentes em lote próprio, CLI oficial
+e GUI XWayland em SQLite sintético, com preferências isoladas. O CI do SHA
+publicado e os aceites de hardware, entrada física, login, falha de energia
+e operação nativa têm registros próprios. Seções datadas anteriores conservam
+suas fotografias históricas.
+
+
+## DIAG-LEASE-REBOOT — identidade e retomada em 12/11/2026
+
+O helper comum preserva o digest legado e passa a registrar boot e namespace
+Linux com a identidade de processos novos. Um boot anterior só prova término
+quando o digest confirma a mesma máquina, o UUID/namespace são válidos e o
+processo é anterior ao boot atual. Host estrangeiro, namespace divergente no
+mesmo boot, identidade parcial, erro de leitura e registro legado sem essa
+prova continuam preservados. O protocolo Windows conserva seu escopo existente.
+
+Foram reproduzidas retomadas indevidas com identidade ausente/incompleta,
+estado desconhecido e histórico de job corrompido. A fila existente agora
+revalida a identidade do solicitante, estado, tempo e histórico antes do CAS,
+na mesma transação. Consulta sem claim continua disponível. A recuperação do
+produtor e o lease de Recursos usam o mesmo helper. Nenhum scheduler foi criado.
+
+Validação local em Python 3.11.15, um processo e BLAS/OMP em um thread. Lotes
+focados reuniram 43 casos distintos aprovados, com sobreposição entre lotes.
+Os três casos finais de posse ativa, publicação interrompida e histórico de
+falha passaram em 5,76 s. O launcher oficial criou uma cópia SQLite própria,
+gravou evidência de boot e liberou o lease. Doctor offline teve 16 OK, dois
+avisos e zero falhas. Recibos locais estão em
+`state/qa-tmp/diagnostico-20261112/lease-*.xml` e `lease-launcher/proof.json`
+da composição. VM alheia preservada; RAM disponível observada próxima de
+6 GiB, sem ensaio de carga, alteração de serviços ou dados do proprietário.
+
+Aceites restantes incluem CI do SHA publicado, Windows físico e reinício
+físico em janela autorizada. Os metadados de boot das regressões são
+controlados. A trava real inspecionada já estava liberada, sem reparo manual.
+As evidências desta correção não diagnosticam a causa dos reinícios do host.
+
+
+## DIAG-RETENCAO — cópias com proveniência, 12/11/2026
+
+O expurgo global de `*.db` apagou um arquivo desconhecido no ensaio anterior
+à correção. O produtor existente agora grava recibos privados `mt5x-backup/v1`
+ao lado das cópias, com ID estável, identidade física da origem/artefato, bytes
+e SHA-256. O nome novo inclui UUID e prefixo limitado para conservar identidade
+entre solicitações. Legado sem recibo, cópia de outra base, link, conteúdo
+alterado e schema ilegível/desconhecido são preservados. A leitura de cópia
+recente usa a proveniência registrada. O hash integral é reconferido no expurgo.
+
+`backup_keep` conta cópias reconhecidas da base atual. Intenções de retenção
+são sincronizadas no recibo antes de cada exclusão. Resultado incerto bloqueia
+novo expurgo. `resources backup-status --operation-id ID` consulta/reconcilia
+presença e identidade, sem repetir exclusões. Ausência é registrada como
+`absent`. Conteúdo conhecido presente recebe `not_applied`. Conteúdo alterado
+continua pendente. Os recibos persistem após expirar o arquivo SQLite, mantendo
+o resultado consultável. Recibos são privados, limitados a 256 KiB cada.
+A GUI mostra arquivos preservados e solicita Conferir retenção pelo worker.
+
+Validação final local teve 22 regressões novas aprovadas em 6,49 s. Um lote
+anterior de 27 casos, sobreposto, passou em 7,03 s com identidade/restauração.
+Dois casos existentes de cópia/CLI foram reexecutados separadamente. O lote
+integrado inicial foi interrompido por orçamento após 31 aprovados em 101,74 s,
+com recibo e resultados parciais preservados. O maior processo observado nesse
+lote teve cerca de 155 MiB RSS, com RAM disponível acima de 6 GiB e 48 °C na
+medição. A estimativa de duração desse lote foi excedida e o restante foi
+dividido. Doctor offline teve 16 OK, dois avisos e zero falhas.
+
+Launcher oficial em quatro chamadas próprias confirmou retenção, arquivo
+desconhecido com valor 7 preservado, recibo conservado e consulta do ID expirado.
+Outro ensaio CLI com falha controlada após excluir retornou código 1/estado
+incerto e a consulta reconciliou ausência. Recibos locais em
+`state/qa-tmp/diagnostico-20261112/retention-*`. Os bancos dos ensaios são
+descartáveis. QA gráfico do artefato final aguarda capacidade do host, ocupado
+pela VM alheia. CI do SHA publicado, Windows físico e perda de energia possuem
+aceites próprios. A causa dos reinícios do host continua sem diagnóstico.
+
+
+## DIAG-RETENCAO — fronteiras ampliadas em 12/11/2026
+
+A primeira revisão deixou passar a perda de um recibo pendente. As duas
+regressões seguintes reproduziram exclusão de outra cópia quando o recibo
+ficou ausente ou corrompido. O produtor agora conserva todos os possíveis
+alvos diante de recibo desconhecido/incompleto e de marcador de cópia sem
+recibo. Recibos válidos de outras bases conservam seu isolamento. Restauração
+pendente também impede expurgo. A consulta informa os recibos indisponíveis
+na CLI e na GUI, com cópia nova e resultado da retenção em estados próprios.
+
+Outra regressão reproduziu troca da identidade da origem após o snapshot com
+sucesso indevido. A identidade é fixada antes do lease e reconferida depois
+do snapshot/hash, incluindo a identidade do artefato. A falha conserva o ID
+da solicitação e evita auditar uma base que substituiu a origem escolhida.
+
+Quatro ensaios próprios reproduziram a limpeza genérica apagando cópia, base
+ativa, arquivo e controle quando as pastas se sobrepunham. O leitor de
+candidatos agora protege os diretórios de dados/controle, arquivos SQLite,
+recibos e arquivos auxiliares da base ativa. Referências positivas dos recibos
+de restauração conservam origem e cópia de segurança após mudar backup_dir.
+O teste de mudança de pasta demonstrou preservação dessas referências e
+remoção de um CSV próprio elegível. A guarda de referências continua no
+serviço existente, sem catálogo ou mecanismo de limpeza paralelo.
+
+Validação final com sete fontes registradas e hashes idênticos antes/depois
+teve 44 aprovados em 9,75 s, incluindo 35 casos novos e nove de restauração/
+identidade. Guardas existentes tiveram 28 aprovados e um caso gráfico sem
+DISPLAY em 7,36 s. Dois casos de limpeza/CLI passaram em 2,52 s. Doctor
+offline teve 16 OK, dois avisos e zero falhas. Resultados intermediários foram
+repetidos após a estabilização das fontes. Nenhum gate foi afrouxado.
+
+Quatro chamadas do launcher oficial com dados próprios produziram saídas
+0/1/1/1. Após perder um recibo pendente, o ciclo conservou as cópias anteriores
+e a consulta confirmou a pendência sem solicitar exclusão. Evidências em
+`retention-unknown-launcher/proof.json`, `retention-frozen-final.xml`,
+`retention-existing-frozen.xml` e `retention-final-frozen-sources.json`.
+O artefato 2066 preparado anteriormente foi marcado como superado antes de
+qualquer ativação. Publicação e composição desta revisão exigem nova
+conferência de SHA, CI e QA gráfico do artefato exato.
+
+
+## DIAG-RETENCAO — leitura completa do controle em 12/11/2026
+
+Reprodução em árvores SQLite próprias mostrou que a enumeração de arquivos podia
+ocultar uma falha de leitura e esquecer uma intenção pendente. Recursos agora
+materializa a leitura e propaga a falha antes de qualquer expurgo. A cópia já
+conferida permanece disponível, com retenção incerta e consulta explícita.
+
+No Linux, 45 regressões de cópia/restauração passaram em 10,15 s e 29 de
+proteção, sessões e leitura parcial passaram em 13,31 s. O caso Tk antes
+adiado também executou no compositor real. Sete hashes de fontes foram
+conferidos antes e depois. Doctor offline teve 16 OK, 2 avisos e zero falhas.
+Um processo, BLAS/OMP com um thread, sem suíte completa local. Falhas originais
+foram preservadas. CI deste incremento e GUI do artefato composto seguem
+pendentes. Entrada física e interrupção de energia têm aceites próprios.
+
+
+## DIAG-RESTORE — contrato de relógio após a troca em 12/11/2026
+
+Duas falhas reproduzidas mostraram que a validação de relógio da sessão anterior
+continuava em cache após restaurar uma base UTC ou com outro fuso. A restauração
+agora invalida essa validação junto ao cache de tabelas, inclusive se o efeito
+terminar incerto. A próxima gravação passa pelo validador canônico existente.
+
+Seis casos cobrem relógio e fuso divergentes, compatibilidade e resultado
+interrompido após a cópia. O lote integrado de restauração e tempo teve 39
+aprovados em 14,20 s no Linux, com dados próprios, um processo e um thread.
+A reprodução anterior teve duas falhas e um caso compatível aprovado. CI deste
+SHA e QA do artefato composto permanecem em validação.
+
+
+## DIAG-LEASE — leitura do teste sob bloqueio em 12/11/2026
+
+A tentativa Windows1 foi cancelada prematuramente por esta tarefa após mais
+de duas horas. O log arquivado mostrou avanço até98% e uma falha anterior no
+caso de reconciliação do lease. A tentativa2 no mesmo SHA foi solicitada antes
+da leitura dessa falha. O teste abria outro descritor para ler o byte que
+mantinha bloqueado. O contrato do Windows recusa esse acesso pelo segundo
+descritor no mesmo processo. [Fonte primária](https://learn.microsoft.com/en-us/windows/win32/fileio/locking-and-unlocking-byte-ranges-in-files).
+
+Uma reprodução local com leitura externa recusada teve1 falha/1 aprovado.
+O teste passou a observar o descritor que adquiriu o lease e conserva as
+assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
+O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
+em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
+precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.

@@ -7,7 +7,7 @@ name = "mt5-extracao"
 version = "0.3.0"
 description = "Construtor de bases de dados do MetaTrader 5 (Windows e Linux)"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 keywords = ["metatrader5", "mt5", "trading", "b3", "dados", "ohlcv"]
 # Mantenha igual a requirements.txt (tests/test_packaging.py verifica)
@@ -46,4 +46,4 @@ mt5x = "mt5_extracao.cli:main"
 include = ["mt5_extracao*"]
 
 [tool.setuptools.package-data]
-mt5_extracao = ["assets/*", "robots/*.json", "robots/templates/*.tmpl", "trade_analytics/mql5/*.mq5", "automation/*.mqh", "dashboard/templates/*.html", "dashboard/templates/sections/*.html", "dashboard/static/css/*.css", "dashboard/static/js/*.js", "dashboard/static/js/charts/*.js", "dashboard/static/vendor/*"]
+mt5_extracao = ["assets/*", "robots/*.json", "robots/templates/*.tmpl", "trade_analytics/mql5/*.mq5", "automation/*.mqh", "dashboard/library_content.json", "dashboard/templates/*.html", "dashboard/templates/sections/*.html", "dashboard/static/css/*.css", "dashboard/static/js/*.js", "dashboard/static/js/charts/*.js", "dashboard/static/vendor/*"]

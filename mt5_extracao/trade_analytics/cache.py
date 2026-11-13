@@ -15,6 +15,7 @@ import json
 import logging
 import platform
 import threading
+from contextlib import nullcontext
 from pathlib import Path
 import numpy as np
 from typing import Optional
@@ -31,7 +32,7 @@ TABLE, RUNS = "_trade_features", "_trade_features_runs"
 CACHE_VERSION = 2
 _SCHEMA_LOCK = threading.RLock()
 _CODE_FILES = (Path(__file__), Path(enrich.__file__), Path(timeframes.__file__),
-               Path(enrich.indicators.__file__))
+               Path(enrich.indicators.__file__), Path(enrich.backtester.__file__), Path(enrich.specs.__file__))
 _INTEGERS = {"seq", "direction", "bars", "feature_version", "day_of_week", "day_of_month",
              "week_of_month", "month", "is_month_end", "hour", "event_impact", "win_flag"}
 _FLOATS = {"minutes_from_open", "minutes_to_event", "event_surprise", "entry_volume", "volume_rank",
@@ -121,14 +122,16 @@ def _freeze(db, part, snapshot):
     return _Inputs(bars, specs, events), source
 
 
-def _run_part(db, part):
+def _run_part(db, part, *, connection=None):
     """Inclui custos/parâmetros/protocolo já declarados, sem criar outro contrato."""
-    if not inspect(db.engine).has_table("_robot_runs"):
+    target = connection if connection is not None else db.engine
+    if not inspect(target).has_table("_robot_runs"):
         return []
-    existing = {col["name"] for col in inspect(db.engine).get_columns("_robot_runs")}
-    cols = [col for col in ("run_id", "source", "params_json", "metrics_json", "valuation_json") if col in existing]
+    existing = {col["name"] for col in inspect(target).get_columns("_robot_runs")}
+    cols = [col for col in ("run_id", "robot_key", "symbol", "timeframe", "source",
+                           "params_json", "metrics_json", "valuation_json") if col in existing]
     result = []
-    with db.engine.connect() as conn:
+    with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
         for ident in sorted(part.run_id.unique()):
             row = conn.execute(text(f"SELECT {', '.join(cols)} FROM _robot_runs WHERE run_id=:r"), {"r": ident}).mappings().first()
             if row is not None:

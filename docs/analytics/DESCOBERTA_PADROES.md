@@ -674,3 +674,26 @@ marco. Não reutilizar holdout para fabricar confirmação ou aliviar gates.
 Os limites de piloto, interfaces, decomposição em fichas e escolhas de protocolo
 deste documento são propostas de engenharia do estudo, sujeitas aos testes e
 à calibração descritos; não foram extraídos como fatos financeiros das fontes.
+
+## Qualificação M1 em dados reais — 06/11/2026
+
+Cadeia catálogo → qualificação → snapshot → campanha → eventos → validação → simulação →
+recibo → consulta, pela CLI oficial (`run.sh --cli`), em EURUSD H1 da MetaQuotes-Demo copiado
+somente leitura para bases de QA descartáveis (SQLite e schema PostgreSQL 16 isolado). Sem ordens
+nem terminal ao vivo. [Recibo](../evidencias/T134_M1_EURUSD_H1_QA_20261106.json).
+
+- Qualificação: `reversal` e `breakout_failure` limitadas; `continuation_time` e `gap` bloqueadas
+  por falta de revisão derivada correspondente às barras.
+- A série inteira foi recusada na avaliação: 6 barras H1 sem sessão observada única (primeira
+  barra antes do início do M1; dias em que a sessão M1 abre às 21:01Z e a barra H1 às 21:00Z).
+  O contrato não infere sessão; o recorte coberto (23/07–15/10, 1.464 barras) foi avaliado.
+- Treino (768 oportunidades): `reversal` 0 eventos, `breakout_failure` 2. Nenhuma aprovação
+  estatística ou econômica. SQLite e PostgreSQL deram contagens iguais.
+- Simulação econômica bloqueada pelo contrato: o modelo de custo hipotético foi declarado na
+  execução, depois do período; não se retrodatou a calibração.
+- CLI, SDK, Laboratório (`pattern-evaluation`) e Dashboard apresentaram os mesmos recibos.
+
+Resultado: aceite técnico da cadeia com zero padrões aprovados e motivos registrados. O aceite
+integrado com simulação econômica real continua pendente: exige modelo de custo conhecido antes
+de uma janela prospectiva (ou custo observado anterior ao período), plano P04 congelado para
+validação/holdout e decisão sobre barras H1 que começam antes da abertura M1 observada.

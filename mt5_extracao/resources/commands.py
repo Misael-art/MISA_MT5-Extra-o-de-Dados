@@ -30,9 +30,16 @@ def add_parser(sub) -> None:
     q = rs.add_parser("backup", help="cópia de segurança conferida da base (SQLite), guardando as mais novas")
     q.add_argument("--yes", action="store_true")
     rs.add_parser("backups", help="lista as cópias de segurança")
+    q = rs.add_parser("backup-status", help="consulta e reconcilia retenção incerta sem repetir exclusões")
+    q.add_argument("--operation-id", help="ID retornado por backup ou backups")
     q = rs.add_parser("restore-backup", help="volta a base inteira a uma cópia (guarda antes o estado atual)")
     q.add_argument("path")
     q.add_argument("--yes", action="store_true")
+    restore_mode = q.add_mutually_exclusive_group()
+    restore_mode.add_argument("--operation-id", help="consulta o resultado de um ID existente")
+    restore_mode.add_argument("--recover-operation", help="retorna à cópia de segurança vinculada ao ID incerto")
+    q = rs.add_parser("restore-status", help="consulta intenções e resultados de restauração sem repetir a troca")
+    q.add_argument("--operation-id", help="ID retornado por restore-backup")
     q = rs.add_parser("trim", help="apara séries: arquiva e retira as linhas mais velhas que --days (reversível)")
     q.add_argument("tables", nargs="*", help="tabelas; sem nomes, usa a retenção de [RESOURCES]")
     q.add_argument("--days", type=int, help="manter os últimos N dias")
@@ -48,7 +55,9 @@ def add_parser(sub) -> None:
     q = rs.add_parser("drive", help="vínculo com o Google Drive: status, connect (abre o navegador), verify, disconnect")
     q.add_argument("action", nargs="?", default="status",
                    choices=("status", "connect", "verify", "disconnect", "key", "confirm-key", "restore-key", "send",
-                            "list", "drill", "download-plan"))
+                            "list", "drill", "download-plan", "accounts", "select-folder"))
+    q.add_argument("--account", help="identidade da conta autorizada (veja accounts)")
+    q.add_argument("--folder-id", help="ID ou link de pasta privada concedida ao App")
     q.add_argument("--scope", default="ativa", choices=("ativa", "pesquisa", "qa"), help="escopo da base enviada")
     q.add_argument("--source", help="base SQLite a enviar (padrão: a base configurada)")
     q.add_argument("--file-id", help="cópia do Drive para o ensaio (padrão: a mais nova)")
@@ -74,15 +83,20 @@ def reject_drive_secret_arguments(argv) -> None:
             raise ValueError("Códigos do Drive só podem ser digitados na interface ou em terminal privado, sem --code.")
 
 
+def _drive_private_terminal():
+    import sys
+    from mt5_extracao.resources.cloud_drive import DriveError
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        raise DriveError("private_terminal", "Abra Recursos → Google Drive ou execute este comando em terminal "
+                         "interativo, sem redirecionar a entrada ou a saída de erro.")
+
+
 def _drive_private_key(action, keys) -> dict:
     import getpass
     import sys
     import warnings
     from mt5_extracao.resources.cloud_drive import DriveError
-
-    if not sys.stdin.isatty() or not sys.stderr.isatty():
-        raise DriveError("private_terminal", "Abra Recursos → Google Drive ou execute este comando em terminal "
-                         "interativo, sem redirecionar a entrada ou a saída de erro.")
+    _drive_private_terminal()
     if action == "key":
         state = keys.ensure()
         # Exibição explícita ao proprietário; nunca usa o coletor JSON/log da CLI.
@@ -106,11 +120,45 @@ def _drive_private_key(action, keys) -> dict:
 def _drive(args, cli, ctx) -> int:
     from mt5_extracao.resources import cloud_drive, drive_backup
     out, data, err = cli._print, cli._data, cli._err
-    link = cloud_drive.DriveLink()
+    manager = cloud_drive.DriveAccounts()
+    try:
+        if args.action in ("key", "confirm-key", "restore-key"):
+            _drive_private_terminal()
+        if args.client_file:
+            manager.use_client_file(args.client_file)
+        if args.action == "connect":
+            out("Abrindo o navegador para o consentimento do Google (até 5 min)...")
+            result = manager.connect(account_id=args.account, folder_id=args.folder_id)
+        elif args.action == "status":
+            result = manager.status(args.account)
+        elif args.action == "accounts":
+            accounts = manager.accounts()
+            for account in accounts:
+                out(f"{account['account_id']}\t{account.get('account')}\t{account['state']}\t"
+                    f"{storage.human_bytes(account.get('free_bytes'))} livres (última conferência)")
+            result = {"state": "accounts", "accounts": accounts}
+        elif args.action == "select-folder":
+            if not args.folder_id:
+                err("informe --folder-id")
+                return cli.EXIT_USAGE
+            selected = manager.link(args.account).store.account_id
+            result = manager.select_folder(selected, args.folder_id)
+        else:
+            return _drive_account(args, cli, ctx, manager.link(args.account))
+    except cloud_drive.DriveError as exc:
+        err(exc.message)
+        data(state="error", code=exc.code, message=exc.message)
+        return cli.EXIT_FAIL
+    out(result.get("message") or f"Google Drive: {result['state']}")
+    data(**result)
+    return cli.EXIT_OK if result.get("ok", True) else cli.EXIT_FAIL
+
+
+def _drive_account(args, cli, ctx, link) -> int:
+    from mt5_extracao.resources import cloud_drive, drive_backup
+    out, data, err = cli._print, cli._data, cli._err
     backup = drive_backup.DriveBackup(link)
     try:
-        if args.client_file:
-            link.use_client_file(args.client_file)
         if args.action in ("key", "confirm-key", "restore-key"):
             result = _drive_private_key(args.action, backup.keys)
         elif args.action == "send":
@@ -135,15 +183,10 @@ def _drive(args, cli, ctx) -> int:
             result = backup.drill(args.file_id, downloaded_file=args.downloaded_file)
             result["message"] = ("Ensaio de restauração OK: " if result["ok"] else "Ensaio FALHOU: ") + \
                 f"{result['name']} ({result['tables']} tabelas, integridade {result['integrity']})."
-        elif args.action == "connect":
-            out("Abrindo o navegador para o consentimento do Google (até 5 min)...")
-            result = link.connect()
         elif args.action == "verify":
             result = link.verify()
         elif args.action == "disconnect":
             result = link.disconnect()
-        else:
-            result = link.status()
     except cloud_drive.DriveError as exc:
         err(exc.message)
         data(state="error", code=exc.code, message=exc.message)
@@ -153,6 +196,7 @@ def _drive(args, cli, ctx) -> int:
         out("Destino conferido: " + ("OK" if result["ok"] else "; ".join(result["problems"])))
     if result.get("warning"):
         err(result["warning"])
+    result["account_id"] = getattr(link.store, "account_id", None)
     for cand in result.get("candidates", []):
         out("  credencial encontrada: " + cand["path"])
     data(**result)
@@ -317,16 +361,45 @@ def run(args: argparse.Namespace, ctx) -> int:
             else f"Cópia não feita: {result['error']}")
         for old in result["pruned"]:
             out(f"Cópia antiga apagada: {old}")
+        if result.get("preserved"):
+            out(f"{len(result['preserved'])} arquivo(s) preservado(s) pela conferência de posse, conteúdo ou recuperação.")
+        if result.get("retention_state") == "uncertain":
+            err(result["error"])
+        data(**result)
+        return cli.EXIT_OK if result["ok"] and result.get("retention_state") != "uncertain" else cli.EXIT_FAIL
+
+    if command == "backup-status":
+        result = files.backup_status(db, config, args.operation_id)
+        for item in result.get("backups", []):
+            out(f"{item['backup_id']}\t{item['state']}\t{item['path']}")
+        for path in result.get("unrecognized_receipts", []):
+            err(f"Recibo de cópia indisponível: {path}. Preserve os arquivos e recupere o recibo antes do expurgo.")
+        if result.get("error"):
+            err(result["error"])
         data(**result)
         return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
 
+    if command == "restore-status":
+        result = files.restore_status(db, config, args.operation_id)
+        for item in result.get("operations", [result]):
+            out(f"{item.get('operation_id') or 'indisponível'}\t{item['state']}")
+        if result.get("error"):
+            err(result["error"])
+        data(**result)
+        return cli.EXIT_OK if result.get("ok") else cli.EXIT_FAIL
+
     if command == "restore-backup":
-        if not args.yes:
+        if not args.yes and not args.operation_id:
             err("nada foi alterado: confirme com --yes (pare extrações e backtests antes)")
             return cli.EXIT_USAGE
-        result = files.restore_backup(db, config, args.path, origin="cli")
-        out(f"Base trocada pela cópia. Estado anterior guardado em {result['safety_copy']}." if result["ok"]
-            else f"Nada foi trocado: {result['error']}")
+        result = files.restore_backup(db, config, args.path, origin="cli", operation_id=args.operation_id,
+                                      recovery_of=args.recover_operation)
+        if args.operation_id:
+            out(f"Resultado registrado: {result['state']}.")
+        else:
+            out(f"Base trocada pela cópia. Estado anterior guardado em {result['safety_copy']}." if result["ok"]
+                else f"Resultado da restauração: {result['state']}. {result['error']}")
+        out(f"Operação: {result['operation_id'] or 'indisponível'}; estado: {result['state']}.")
         data(**result)
         return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
 
@@ -357,8 +430,10 @@ def run(args: argparse.Namespace, ctx) -> int:
     if command == "backups":
         items = files.list_backups(db, config)
         for b in items:
-            out(f"{b['path']}\t{hb(b['bytes'])}\t{b['created_at']:%Y-%m-%d %H:%M}")
-        out(f"\n{len(items)} cópia(s). Para voltar a uma delas: feche o programa e copie o arquivo por cima da base.")
+            provenance = "recibo da base atual" if b.get("managed") else "preservada sem recibo válido da base atual"
+            out(f"{b['path']}\t{hb(b['bytes'])}\t{b['created_at']:%Y-%m-%d %H:%M}\t{provenance}\t"
+                f"{b.get('backup_id') or ''}\t{b.get('retention_state') or 'unknown'}")
+        out(f"\n{len(items)} cópia(s). Para voltar: resources restore-backup CAMINHO --yes.")
         data(backups=items)
         return cli.EXIT_OK
 

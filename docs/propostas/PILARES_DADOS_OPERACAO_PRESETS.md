@@ -729,6 +729,18 @@ efetivamente reproduzidas em OOS de explicações retrospectivas. Nenhuma reotim
 ou troca automática do arquivo de política faz parte do padrão: atualização exige nova versão,
 validação e o fluxo de revisão existente. Implementação em T19.52–T19.54.
 
+**Adendo de 10/11/2026 — carteira de setups, gestão por sinal validado e piso de PF.** O pedido
+do proprietário explicita que o Ultra não executa um único setup por ativo: cada oportunidade
+pode vir de um setup diferente (o prioritário do contexto), outro sinal historicamente validado
+pode mudar o alvo ou antecipar a saída durante a posição, e a política só é emitida com fator
+de lucro mínimo de 2. Isso cabe no contrato acima sem exceções: seletor por contexto com
+prioridade congelada, gestão intraposição como capacidade específica e **PF ≥ 2,0 como piso de
+elegibilidade** medido na validação e confirmado na reserva final (nunca garantia, nunca obtido
+removendo perdas depois de vê-las). O primeiro recorte de estudo (T19.52a,
+`presets/conditional_policy.py`, `mt5x trades router`) e os candidatos de gestão intraposição
+(T16.15) estão em [ANALYTICS_OPERACOES §11.11–11.12](ANALYTICS_OPERACOES.md); não geram `.set`
+nem dispensam T19.52–54.
+
 ## 9. Pilar estratégico e HADOUKEN
 
 O [catálogo](CATALOGO_F19_INDICADORES_SETUPS.md) cobre todos os itens do segundo estudo.

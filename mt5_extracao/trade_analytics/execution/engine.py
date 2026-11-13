@@ -5,6 +5,9 @@ refaz a gestão da posição barra a barra, com as MESMAS regras de execução d
 - ordem dentro da barra: saída por sinal na abertura → stop → parcial → alvo → no fechamento: trailing, tempo, fim do
   dia. Com stop e alvo na mesma barra, o stop vem primeiro (conservador);
 - gap: stop preenchido na abertura quando ela já passou do nível;
+- recuperação condicional (T16.15): com `ExitPolicy.recovery` e os sinais causais de `reversal.compute`, decide no
+  fechamento da barra e executa na abertura seguinte (saída antecipada, adição perto do stop ou reentrada
+  independente); cada caso sai em `SimResult.cases` com excursões e exposição;
 - compra fecha no bid, venda no ask; spread por barra (`execution_spreads`), escorregamento e comissão do
   `BacktestConfig`; swap pelo `SymbolSpec`.
 
@@ -29,6 +32,8 @@ from mt5_extracao.strategies.equity import cashflow_values, floating_metrics, un
 _PRICE_EXITS = {EXIT_REASONS[k] for k in ("stop", "breakeven", "trailing", "target")}
 _OPEN_EXITS = {EXIT_REASONS[k] for k in ("signal","time_absolute","time_progress","time_gain","time_loss","time_tie","time_er","time_donchian","time_atr")}                         # saem na abertura da barra
 _CLOSE_EXITS = {EXIT_REASONS[k] for k in ("time", "eod", "end")}   # saem no fechamento da barra
+RECOVERY_ACTIONS = ("saida", "adicao", "independente")
+RECOVERY_EXITS = ("equilibrio", "entrada", "escalonada", "original")
 
 
 @dataclass
@@ -53,6 +58,14 @@ class ExitPolicy:
     grid_lot_factor: float = 1.0                   # lote de cada nível = lote inicial × fator
     grid_max_volume: Optional[float] = None        # teto de exposição (lotes somados)
     grid_trail_stop: bool = False                  # piramidação: o stop do conjunto sobe para a entrada anterior
+    # Recuperação condicional (T16.15): decisão no FECHAMENTO da barra, ordem na abertura seguinte. Exige `signals`
+    recovery: Optional[str] = None                 # "saida" (H1), "adicao" (H2–H4) ou "independente" (H6)
+    recovery_zone_r: float = 0.6                   # zona: perda no fechamento ≥ z × R e < 1 R
+    recovery_lot_factor: float = 1.0               # lote da adição = lote inicial × fator
+    recovery_max_adds: int = 1
+    recovery_max_volume: Optional[float] = None    # teto de exposição (lotes somados)
+    recovery_exit: str = "equilibrio"              # "equilibrio", "entrada", "escalonada" ou "original"
+    recovery_invalidate: bool = False              # fechamento além do extremo da barra do sinal zera na abertura
 
     temporal: Optional[TemporalPolicy] = None
 
@@ -87,6 +100,7 @@ class SimResult:
     metrics: dict = field(default_factory=dict)
     valuation: dict = field(default_factory=dict)
     trajectory: dict = field(default_factory=dict)
+    cases: List[dict] = field(default_factory=list)   # excursões e exposição por caso (mesma ordem de `trades`)
 
 
 def _bar_index(times: pd.Series, when) -> Optional[int]:
@@ -96,7 +110,7 @@ def _bar_index(times: pd.Series, when) -> Optional[int]:
 
 def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: BacktestConfig,
              policy: ExitPolicy, atr: Optional[pd.Series] = None, cashflows=None,
-             observation_timeframe=None) -> SimResult:
+             observation_timeframe=None, signals: Optional[dict] = None) -> SimResult:
     """Re-simula cada operação (independentes: o motor não abre posição nova, só gere as que o run abriu)."""
     from mt5_extracao.analytics.instruments import require_supported_spec
     require_supported_spec(spec)
@@ -122,7 +136,21 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
         if temporal.enabled and (observation_timeframe is None or policy.grid_levels):
             raise ValueError("Política temporal requer timeframe explícito e ciclo sem gradiente neste recorte.")
         from mt5_extracao.trade_analytics.trajectories.clocks import bar_end_in_source
+    recovery = policy.recovery
+    if recovery is not None:
+        if recovery not in RECOVERY_ACTIONS or policy.recovery_exit not in RECOVERY_EXITS:
+            raise ValueError("Recuperação condicional com ação ou saída desconhecida; confira o modo.")
+        if signals is None or any(len(signals[kind][side]) != len(data) for kind in ("reversal", "continuation")
+                                  for side in (1, -1)):
+            raise ValueError("Recuperação condicional exige sinais causais alinhados às barras (reversal.compute).")
+        if policy.grid_levels or (temporal is not None and temporal.enabled):
+            raise ValueError("Recuperação condicional não combina com gradiente nem política temporal neste "
+                             "recorte; compare os modos separadamente.")
+        if not (0 < policy.recovery_zone_r < 1 and policy.recovery_lot_factor > 0 and policy.recovery_max_adds >= 1):
+            raise ValueError("Recuperação condicional exige zona entre 0 e 1 R, fator de lote positivo e ao menos "
+                             "uma adição permitida.")
     out: List[Trade] = []
+    cases: List[dict] = []
     source_seqs = []
     skipped = approximate = adds = capped = 0
     stats_volume = [0.0]
@@ -153,10 +181,28 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
             target = float(t.target_price)
         else:
             target = None
+        initial_target = target
         exit_orig = _bar_index(times, t.exit_time) if not pd.isna(t.exit_time) else None
         reason_orig = t.exit_reason
         pos = {"stop": stop, "kind": "stop", "remaining": volume, "pnl": -cfg.commission_per_lot * volume,
-               "partial": False, "be": False, "lots": [[entry, volume, i0]], "next_level": 1}
+               "partial": False, "be": False, "lots": [[entry, volume, i0]], "next_level": 1,
+               "adds": 0, "added": 0.0, "signal_bar": None, "pending_signal": None, "be_level": None,
+               "intervention": None, "intervention_bar": None, "target_kind": "target"}
+        exc = {"mae": 0.0, "mfe": 0.0, "mae_bar": None, "mfe_bar": None, "rebound": 0.0, "rebound_ref": None,
+               "float_min": pos["pnl"], "float_max": pos["pnl"]}
+
+        def observe(i, worst_px, best_px):
+            """Excursões desde a entrada original (lente de volume constante) e PnL flutuante do conjunto."""
+            adverse, favorable = (entry - worst_px) * d, (best_px - entry) * d
+            if adverse > exc["mae"]:
+                exc.update(mae=adverse, mae_bar=i, rebound=0.0, rebound_ref=worst_px)
+            elif exc["rebound_ref"] is not None:
+                exc["rebound"] = max(exc["rebound"], (best_px - exc["rebound_ref"]) * d)
+            if favorable > exc["mfe"]:
+                exc.update(mfe=favorable, mfe_bar=i)
+            for px, key, pick in ((worst_px, "float_min", min), (best_px, "float_max", max)):
+                exc[key] = pick(exc[key], pos["pnl"] + sum((px - price) * d * ppu * vol
+                                                           for price, vol, _opened in pos["lots"]))
         grid = policy.grid_levels > 0
         spacing = None
         if grid:
@@ -230,14 +276,27 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
 
         def close_all(i, price, reason, phase=None):
             pos["peak_volume"] = max(volume, stats_volume_trade[0])
+            observe(i, price, price)       # na barra de saída só o preço executado: ordem intrabarra desconhecida
             phase = phase or ("open" if reason == "signal" else "close" if reason in ("time", "eod", "end") else "intrabar")
             close_part(pos["remaining"], price, i, "exit", phase)
             out.append(Trade(direction=d, entry_time=times.iloc[i0], exit_time=times.iloc[i], entry_price=entry,
                              exit_price=float(price), volume=float(pos["peak_volume"]), pnl=float(pos["pnl"]),
                              r_multiple=float(pos["pnl"] / (risk_px * ppu * volume)), bars=i - i0 + 1,
                              exit_reason=EXIT_REASONS[reason], equity_before=float("nan"), stop_price=stop,
-                             target_price=target))
+                             target_price=initial_target))
             source_seqs.append(getattr(t, "seq", None))
+            cases.append({
+                "seq": getattr(t, "seq", None), "mae_price": float(exc["mae"]), "mfe_price": float(exc["mfe"]),
+                "mae_r": float(exc["mae"] / risk_px), "mfe_r": float(exc["mfe"] / risk_px),
+                "bars_to_mae": None if exc["mae_bar"] is None else int(exc["mae_bar"] - i0),
+                "bars_to_mfe": None if exc["mfe_bar"] is None else int(exc["mfe_bar"] - i0),
+                "rebound_after_mae_price": float(exc["rebound"]),
+                "floating_min": float(exc["float_min"]), "floating_max": float(exc["float_max"]),
+                "capture": float(pos["pnl"] / (exc["mfe"] * ppu * volume)) if exc["mfe"] > 0 else None,
+                "peak_volume": float(pos["peak_volume"]), "added_volume": float(pos["added"]),
+                "intervention": pos["intervention"],
+                "intervention_bar": None if pos["intervention_bar"] is None else int(pos["intervention_bar"] - i0),
+                "excursion_basis": "ohlc_bars_intrabar_order_unknown"})
             balances[i] += pos["pnl"]
             floating[i] += pos["pnl"]
             closed_changes[i + 1] += pos["pnl"]
@@ -250,6 +309,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                            direction=d,
                            source_seq=getattr(t, "seq", None), fill_price=entry, fill_volume=volume)
         pending_temporal=None
+        pending_recovery = None
         for i in range(i0, n):
             if pending_temporal:
                 op=o[i]+(spr_open[i] if d<0 else 0)
@@ -263,6 +323,50 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 close_all(i, fill_exit(o[i], spr_open[i]), kind,"open")
                 closed = True
                 break
+            if pending_recovery:
+                action, pending_recovery = pending_recovery, None
+                op_close = o[i] + (spr_open[i] if d < 0 else 0.0)        # lado que fecha a posição
+                if not ((op_close <= pos["stop"]) if d > 0 else (op_close >= pos["stop"])):   # gap no stop: vale o stop
+                    if action in ("saida", "invalidation"):
+                        pos["intervention"] = pos["intervention"] or "saida"
+                        pos["intervention_bar"] = i if pos["intervention_bar"] is None else pos["intervention_bar"]
+                        close_all(i, fill_exit(o[i], spr_open[i]), "early" if action == "saida" else "invalidation",
+                                  "open")
+                        closed = True
+                        break
+                    lot = volume * policy.recovery_lot_factor
+                    held = 0.0 if action == "independente" else pos["remaining"]
+                    if policy.recovery_max_volume and held + lot > policy.recovery_max_volume + 1e-12:
+                        capped += 1
+                        pos["adds"] = policy.recovery_max_adds          # teto atingido: não tenta de novo
+                    else:
+                        price = o[i] + (spr_open[i] if d > 0 else 0.0) + d * slip     # compra no ask, venda no bid
+                        basis = pos["lots"] + [[price, lot, i]]          # inclui o lote original mesmo se H6 o fecha
+                        total = sum(vol for _price, vol, _opened in basis)
+                        level = sum(p * vol for p, vol, _opened in basis) / total \
+                            + d * 2 * cfg.commission_per_lot / ppu       # equilíbrio líquido no lado que fecha
+                        if action == "independente":
+                            close_part(pos["remaining"], fill_exit(o[i], spr_open[i]), i, "partial", "open")
+                        pos["lots"].append([price, lot, i])
+                        pos["remaining"] = round(pos["remaining"] + lot, 8)
+                        pos["pnl"] -= cfg.commission_per_lot * lot
+                        pos["adds"] += 1
+                        pos["added"] += lot
+                        adds += 1
+                        pos["signal_bar"], pos["intervention"] = pos["pending_signal"], action
+                        pos["intervention_bar"] = i if pos["intervention_bar"] is None else pos["intervention_bar"]
+                        stats_volume[0] = max(stats_volume[0], pos["remaining"])
+                        stats_volume_trade[0] = max(stats_volume_trade[0], pos["remaining"])
+                        if journal is not None:
+                            journal.record(len(out), i, "add", "open", pos["remaining"], pos["pnl"],
+                                           source_seq=getattr(t, "seq", None), fill_price=price, fill_volume=lot,
+                                           direction=d)
+                        if policy.recovery_exit == "equilibrio":
+                            target, pos["target_kind"] = level, "recovery"
+                        elif policy.recovery_exit == "entrada":
+                            target, pos["target_kind"] = entry, "recovery"
+                        elif policy.recovery_exit == "escalonada":
+                            target, pos["target_kind"], pos["be_level"] = entry, "recovery", level
             lo, hi, op = (l[i], h[i], o[i]) if d > 0 else (l[i] + spr[i], h[i] + spr[i], o[i] + spr[i])
             if grid and sign < 0:
                 add_levels(i, lo, hi, op)       # contra: assume o pior caso (o nível enche antes do stop)
@@ -292,11 +396,16 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                     pos["be"] = True
                     if (entry > pos["stop"]) if d > 0 else (entry < pos["stop"]):
                         pos["stop"], pos["kind"] = entry, "breakeven"
+            if pos["be_level"] is not None and ((hi >= pos["be_level"]) if d > 0 else (lo <= pos["be_level"])):
+                if (pos["be_level"] > pos["stop"]) if d > 0 else (pos["be_level"] < pos["stop"]):
+                    pos["stop"], pos["kind"] = pos["be_level"], "breakeven"     # vale a partir da barra seguinte
+                pos["be_level"] = None
             if target is not None and ((hi >= target) if d > 0 else (lo <= target)):
-                close_all(i, max(op, target) if d > 0 else min(op, target), "target",
+                close_all(i, max(op, target) if d > 0 else min(op, target), pos["target_kind"],
                           "open" if (op >= target if d > 0 else op <= target) else "intrabar")
                 closed = True
                 break
+            observe(i, lo if d > 0 else hi, hi if d > 0 else lo)
             # no fechamento
             new = None
             if policy.trailing_atr and np.isfinite(atr_v[i]):
@@ -320,6 +429,20 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 close_all(i, fill_exit(c[i], spr_close[i]), kind)
                 closed = True
                 break
+            if recovery is not None and i < n - 1:
+                mark = c[i] + (spr_close[i] if d < 0 else 0.0)
+                adverse = (entry - mark) * d
+                if pos["signal_bar"] is not None and policy.recovery_invalidate:
+                    k = pos["signal_bar"]
+                    if (mark < l[k]) if d > 0 else (mark > h[k] + spr[k]):
+                        pending_recovery = "invalidation"
+                elif (pos["adds"] < policy.recovery_max_adds and pos["kind"] == "stop"
+                      and policy.recovery_zone_r * risk_px <= adverse < risk_px):
+                    if recovery == "saida":
+                        if signals["continuation"][d][i]:
+                            pending_recovery = "saida"
+                    elif signals["reversal"][d][i]:
+                        pending_recovery, pos["pending_signal"] = recovery, i
             if temporal is not None and temporal.enabled:
                 available=bar_end_in_source(times.iloc[i],observation_timeframe)
                 age=source_age_ms(times.iloc[i0],available)
@@ -363,4 +486,4 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                      metrics={**floating_metrics(performance, cfg.initial_equity),
                               "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
                      valuation=valuation_metadata(spec, cfg),
-                     trajectory=trajectory)
+                     trajectory=trajectory, cases=cases)

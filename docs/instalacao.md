@@ -17,7 +17,7 @@ O instalador:
 
 | Etapa | O que acontece |
 |---|---|
-| Python | Procura um Python 3.9–3.13 com tkinter. Se não houver, instala o Python 3.11 via `winget`; se o winget não existir, usa o instalador oficial do python.org (somente para o usuário atual) |
+| Python | Procura um Python 3.11–3.13 com tkinter (CI cobre 3.11; 3.12 e 3.13 são aceitos sem cobertura do CI). Se não houver, instala o Python 3.11 via `winget`; se o winget não existir, usa o instalador oficial do python.org (somente para o usuário atual) |
 | Dependências | Cria `.venv` e instala `requirements.txt` (inclui o pacote `MetaTrader5`) |
 | MetaTrader 5 | Procura instalações existentes, incluindo as de corretoras. Se não houver, baixa o `mt5setup.exe` oficial e instala em modo automático (`/auto`) |
 | Configuração | Gera `config\config.ini`, `config\default_symbols.json` e, se você quiser, o `.env` com as credenciais |

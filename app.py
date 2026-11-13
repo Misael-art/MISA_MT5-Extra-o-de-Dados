@@ -263,7 +263,6 @@ class MT5Extracao:
 
     def load_config_and_db(self):
         """Carrega configurações e inicializa o DatabaseManager."""
-        self.config = configparser.ConfigParser()
         config_path = self.config_path
         self.config_path = config_path
 
@@ -275,7 +274,7 @@ class MT5Extracao:
             return False # Indica falha
 
         try:
-            self.config.read(config_path)
+            self.config = services.load_config(config_path)
             logging.info(f"Configuração lida de {config_path}")
 
             # Obter configurações do banco de dados

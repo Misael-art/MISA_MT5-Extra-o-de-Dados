@@ -99,3 +99,22 @@ em DataFrame para devolver1; depois, nenhuma leitura `read_sql` de toda a seleç
 campos do envelope conferem, exceto o cursor atualizado. É uma medição local com a carga deste
 host; não promete ganho universal nem mede a memória interna do banco. Recibos locais em
 `state/qa-tmp/query-pagination/`, com bancada anterior reutilizada e sem dados privados.
+
+## Medição reproduzível da paginação — 06/11/2026
+
+[`scripts/benchmark_bd18a_pagination.py`](../../scripts/benchmark_bd18a_pagination.py) semeia uma
+característica sintética em banco novo (SQLite temporário ou schema PostgreSQL isolado via
+`MT5X_TEST_PG_URL`) e mede a primeira página, a página seguinte pelo cursor e o pico de alocações
+Python. Página de 500, medianas de 3–5 chamadas aquecidas, Python 3.11, este host; PostgreSQL 16 no
+contêiner de QA local.
+
+| Fatos na seleção | SQLite 1ª / próxima (ms) | PostgreSQL 1ª / próxima (ms) | Pico Python |
+|---:|---:|---:|---:|
+| 5.000 | 125 / 125 | 131 / 131 | ≈1,36 MB |
+| 50.000 | 1.131 / 1.175 | 948 / 964 | ≈1,36 MB |
+| 200.000 | 4.738 / 4.805 | 3.745 / 3.817 | ≈1,37 MB |
+
+A latência cresce linearmente com a seleção inteira (≈20–24 ms por mil fatos), igual na primeira
+página e nas seguintes, porque cada chamada recalcula o fingerprint de todos os fatos no corte. A
+memória Python fica constante. Uma otimização (por exemplo, fingerprint persistido por recorte)
+precisa conservar o corte temporal e a recusa `STALE_CURSOR`; não foi feita nesta medição.

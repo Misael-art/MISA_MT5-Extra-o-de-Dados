@@ -42,7 +42,7 @@ def configured_port(config):
     return port
 
 
-def create_app(key, port, snapshot=None):
+def create_app(key, port, snapshot=None, *, config=None):
     app = Flask(__name__)
     app.config.update(MAX_CONTENT_LENGTH=1024, TRUSTED_HOSTS=[HOST, "localhost"])
     document = None
@@ -79,7 +79,15 @@ def create_app(key, port, snapshot=None):
             return Response(document[0], content_type="text/html; charset=utf-8",
                             headers={"Content-Security-Policy": document[1] + "; frame-ancestors 'none'"})
         return render_template("index.html", css_url=url_for("static", filename="css/dashboard.css", k=key),
-                               snapshot=snapshot)
+                               library_url=url_for("library", k=key), snapshot=snapshot)
+
+    @app.route("/biblioteca")
+    def library():
+        from .document import library_context
+
+        return render_template("library.html", dashboard_url=url_for("index", k=key),
+                               asset=lambda name: url_for("static", filename=name, k=key),
+                               **library_context(config))
 
     @app.route("/health")
     def health():
@@ -105,7 +113,7 @@ class DashboardServer:
             from .generator import validate, _json
             import json
             snapshot = json.loads(_json(validate(snapshot)))
-        self.app = create_app(self._key, lambda: self.port, snapshot)
+        self.app = create_app(self._key, lambda: self.port, snapshot, config=config)
 
     @property
     def port(self):

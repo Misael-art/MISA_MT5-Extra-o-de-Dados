@@ -7,6 +7,7 @@ import threading
 import pytest
 from sqlalchemy import text
 
+from mt5_extracao import process_owner
 from mt5_extracao.bootstrap.config_builder import DEFAULTS
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.robots import backtest, budget, catalog, runner, store
@@ -172,9 +173,10 @@ def test_crash_after_publication_recovers_run_without_reexecution(local, monkeyp
     first = budget.Budget(db, sample=sample)
     results = run(local, first)
     # Simula processo encerrado entre commit do resultado e atualização final do lote.
+    interrupted_owner = {**process_owner.current(), "pid": 999999999}
     with db.engine.begin() as conn:
         conn.execute(text("UPDATE _robot_batch_queue SET status='running', owner_json=:o WHERE batch_id=:b"),
-                     dict(o=json.dumps(dict(host=__import__('socket').gethostname(), pid=999999999, started=0)), b=first.batch_id))
+                     dict(o=json.dumps(interrupted_owner), b=first.batch_id))
     import sys
     code = backtest.run_python.__code__
     def observe(frame, event, arg):

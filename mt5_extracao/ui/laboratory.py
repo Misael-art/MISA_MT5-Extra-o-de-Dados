@@ -222,9 +222,15 @@ class LaboratoryPanel:
         news = ttk.Checkbutton(news_cell, text="Ocultar notícias de impacto alto", variable=self.hide_news,
                                style="Surface.TCheckbutton",
                                command=self.apply_filters)
-        news.pack(side=tk.LEFT)
+        news.pack(anchor="w")
         Tooltip(news, "Tira as operações com evento de impacto alto na janela de [TRADE_ANALYTICS] "
                       "event_window_before_min / after_min. Calendário: mt5x trades calendar import.", self.theme)
+        self.include_repeated_runs = tk.BooleanVar(value=False)
+        repeated = ttk.Checkbutton(news_cell, text="Incluir execuções repetidas", variable=self.include_repeated_runs,
+                                   style="Surface.TCheckbutton", command=self.load_lab)
+        repeated.pack(anchor="w")
+        Tooltip(repeated, "Mostra todas as execuções guardadas. A consulta padrão agrupa repetições comprovadas "
+                          "pelos dados, parâmetros, código e operações.", self.theme)
 
         self._filter_columns = None
         bar.bind("<Configure>", self._layout_filters, add="+")
@@ -399,11 +405,12 @@ class LaboratoryPanel:
         self._request += 1
         request = self._request
         lens = self.lens.get()
+        include_repeated = self.include_repeated_runs.get()
         from mt5_extracao.trade_analytics import aggregate
 
         def work():
             filters = {"robot_key": choice} if lens == LENS_ROBOT else {"symbol": choice}
-            return aggregate.frame(db, config, **filters)
+            return aggregate.frame(db, config, include_repeated_runs=include_repeated, **filters)
 
         def done(lab, error):
             if request != self._request:
