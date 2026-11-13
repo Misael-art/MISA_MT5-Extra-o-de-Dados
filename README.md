@@ -1,18 +1,20 @@
 # MT5 Extração de Dados
 
-## Composição de diagnóstico em 12/11/2026
+## Composição conferida em 13/11/2026
 
-A branch `codex/composicao-diagnostico-20261112`, PR308, reúne as fontes
-revisadas de configuração, dados, Laboratório, Drive e Recursos. Inclui
-consulta/recuperação de restauração da PR307, prova de posse da PR309 e
-retenção com proveniência/intenção durável da PR310. A fila com owners, SHAs,
-evidências e próximos passos está em [continuidade](CONTINUAR_AQUI.md).
+A PR308 reúne dados públicos, Laboratório, Dashboard, Drive e Recursos das
+frentes revisadas. O código composto `0e4f4c6` passou nos seis jobs de produto,
+incluindo Linux 4.636/473 e Windows 4.904/205 aprovados/não executados. A prévia
+do atalho e menu é `2b3b274`, com 365 arquivos de execução idênticos por hash.
+GUI XWayland visível e launcher oficial foram exercitados em dados próprios.
 
-A prévia efetiva do atalho continua em `650656f`. O candidato publicado exige
-QA do artefato exato e conferência dos checks antes da troca. A VM alheia está
-em execução no host. Entrada física, acessibilidade, login, perda de energia,
-observação prolongada, OAuth real e integração nativa possuem aceites próprios.
-Seções datadas anteriores conservam suas fotografias históricas.
+A fila tem 20 itens, com 14 concluídos e seis bloqueados. A observação controlada
+de 30 min foi aprovada com solicitações instrumentadas. Entrada física,
+acessibilidade, login, integração nativa e qualificação financeira possuem
+aceites próprios.
+Pacotes/reunião e proteção da base principal dependem das decisões registradas.
+A causa dos reinícios do host permanece indeterminada. A fonte de continuidade
+reúne owners, SHAs, recibos, limites e próximos passos. [Continuidade](CONTINUAR_AQUI.md)
 
 ## Estado conferido — 07/11/2026
 

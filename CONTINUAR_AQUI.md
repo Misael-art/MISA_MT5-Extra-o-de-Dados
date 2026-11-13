@@ -1,205 +1,138 @@
 # Retomar MT5X em um host limpo
 
-## Fila de diagnóstico e correções — 12/11/2026
+## Fila de diagnóstico e correções — 13/11/2026
 
-Owner escritor desta passagem: **Codex, diagnóstico/integração**. Checkout único
-`repos/app`, branch `codex/launcher-classes`, HEAD `550b6d5`; índice principal e
-WIPs anteriores preservados. Inspeção de processos encontrou esta sessão Codex,
-sem outra suíte ou escritor MT5X identificado. Isso não presume abandono de frentes.
-Publicação de correções usa índice separado sobre a ponta da PR correspondente,
-sem trocar a branch nem transportar WIP alheio. Sem merge/release/DEMO.
+Codex assumiu a escrita desta passagem no checkout canônico `repos/app`, em
+`codex/launcher-classes`, HEAD `550b6d5`. O índice principal e os WIPs anteriores
+foram preservados. As correções publicadas usam índice separado sobre cada PR.
+Os owners e as dependências ficam na fila abaixo. A retomada deve conferir
+working tree, PR e owner atual antes de assumir qualquer item.
 
-Reconferência de 12/11. Master remoto `09a618c` integrou PR302 (`f60832c`).
-PR293–300, PR303, PR304 e PR306 tiveram seus seis jobs de produto aprovados
-nas pontas registradas abaixo. PR307 `9c2c7eb` também passou nos seis jobs,
-antes do novo corretivo `c296538`, ainda em validação. PR309 `2a5638d` teve
-cinco aprovados e Windows em curso na última consulta. Na execução anterior `061e061`, Windows
-reprovou em `test_partial_product_resource_guard_and_cancel_resume_exactly_once[cancel]`.
-Prévia efetiva `650656f`: 354 hashes aprovados; retorno `57d13ee`: 341 hashes
-aprovados. `state/development-preview.json` foi reconciliado com o destino efetivo
-`650656f`; o recibo anterior está preservado na pasta privada de QA. HADOUKEN `d4d389e`
-limpo em branch; Safety `27b8599` limpo detached. Não foram repinados.
+O código composto `0e4f4c6869eaaf7ad2b0345db0e23c108802a7d4`, PR308, passou
+nos seis jobs de produto. Windows teve 4.904 aprovados e 205 não executados,
+com 78% de cobertura do núcleo. Linux teve 4.636 aprovados e 473 não executados,
+com 81%. PostgreSQL, instaladores Linux/Windows e lint passaram. Os casos de
+cancelamento, clique/transporte Node, lease e cenário macro executaram e passaram
+no Windows. As PRs307 `c296538`, 309 `d0e97d6`, 310 `97da399` e 311 `cb02d78`
+também passaram nos seis jobs. A documentação desta fotografia é conferida
+pelo diff e pelas fontes citadas. O CI da ponta da composição está na PR308.
 
-| ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
-|---|---|---|---|---|
-| DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | concluído | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados; Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. A tentativa diagnóstica 2 do mesmo SHA passou nos seis jobs, incluindo Windows. As falhas da primeira tentativa continuam preservadas; o timeout do compilador não foi reproduzido |
-| DIAG-EXCURSOES | MAE/MFE disponíveis nas lentes e custo ask em vendas / Dados/Laboratório | concluído | PR305 `38304e0`, `codex/lab-excursoes` | Publicado e PR criada. 38 testes de excursões/enriquecimento/agregação e 21 de cache/livro/importação/CLI aprovados em lotes separados. Lote final 13 aprovados/1 PG sem servidor. Inclui legado, preservação do livro, point inválido e spread calibrado. QA por launcher CLI em base sintética confirmou ask e estado. GUI real XWayland pelo launcher aprovada em janela própria, com MAE 4/MFE 2 e ask declarados. Seis jobs de produto aprovados, incluindo Windows e PG, no SHA `38304e0`. Integração em master e na próxima prévia pertencem à composição |
-| DIAG-PROTECAO-WIP | Proteção independente do resgate anterior e do checkpoint atual / integrador | concluído | página privada existente, recibo local `private-checkpoint/remote-read-proof.json` | Acesso reconferido via Pages, sem compartilhamentos. ZIP 489.138 B/1 parte, SHA `c4f843f78d979ff6aab6f79299e1151a6ed88a29897a158eac48513b806450fd`. Parte relida integralmente; texto e ZIP decodificado conferidos. Recuperador oficial validou 19 arquivos e o WIP anterior teve seus 24 hashes conferidos. Conteúdo guarda checkpoint parcial de amostra; base principal tem proteção e aceite próprios |
-| DIAG-IDENTIDADE | Marcação de ativos pela identidade registrada / App/Dados | concluído | fluxo já integrado no App | Hipótese funcional descartada por inspeção do caminho ativo. `UIManager.refresh_inventory` lê `data_inventory` em `run_bg`, e `_inventory_loaded` agrupa por símbolo registrado. O método chamado pela rotina antiga que divide nomes é vazio. Nenhuma correção funcional necessária neste recorte |
-| DIAG-CI304 | Reproduzir travamento de cancelamento/retomada / Execução App | bloqueado | PR304 `dc17f49`, seis jobs de produto aprovados | Ocorrência antiga no Windows 130029697303 e COMMIT de presets preservados. Regressões Linux passaram; ponta atual passou no Windows completo. Lock retido continua hipótese. Dependência exata é uma reprodução Windows com captura das conexões/leases no ponto do timeout; recorrência ausente nos SHAs recentes. Retomar instrumentação quando a falha reaparecer |
-| DIAG-TICKS | Auditoria tolerante a metadados inválidos, sem certificação indevida / Dados | concluído | PR304 `dc17f49` | Auditoria v2 publicada. 15 falhas reproduzidas; lote integrado 80 aprovados e lote final 34 aprovados, sobrepostos. Launcher `--cli trades fidelity` em 3 ticks próprios com flag infinita retorna JSON finito, classe D e intrabarra recusada. Seis jobs de produto aprovados no SHA `dc17f49`, incluindo Windows/PG. Aceites operacionais ficam separados |
-| DIAG-AMOSTRA | Repetição do mesmo backtest não aumenta amostra nas lentes / Laboratório | concluído | PR306 `060afab`, `codex/lab-amostra-execucoes`, dependente da PR304 | Deduplicação qualificada por identidade do produtor e livro, com consulta integral explícita. Três backtests do produtor em 600 barras próprias guardaram 9 operações; launcher CLI e GUI XWayland mostraram 3/9. Lotes focados aprovados, inclusive leitura legada sem releitura redundante. Seis jobs de produto aprovados no SHA final. Aceites nativos/financeiros continuam próprios |
-| DIAG-RESTORE | Identidade, conteúdo e relógio da cópia restaurada / Recursos | em validação | PR307 `c296538`, `codex/restore-backup-integridade` | URI com # corrigida, mesma fotografia e inventário conferidos. Duas falhas adicionais reproduzidas após trocar relógio/fuso, corrigidas pela invalidação do cache do validador existente. Seis novos casos cobrem resultado normal/incerto e compatibilidade; lote integrado de 39 aprovados em 14,20 s. A ponta anterior 9c passou nos seis jobs. CI do novo SHA e GUI da composição pendentes |
-| DIAG-RESTORE-RECUP | Intenção durável, resultado consultável e recuperação explícita / Recursos | concluído | PR307 `c296538`, núcleo validado em `9c2c7eb` | Produtor/lease existentes, recibos privados e identidade física. Interrupção abrupta própria com saída 17, consulta incerta, hardlink e diretório alterado bloqueados; rollback explícito 42. GUI oficial visível em XWayland provou 7→99, 18 pulsos e intervalo máximo 0,581 s, zero erros inesperados. 31 casos finais aprovados. Pico GUI 270,2 MiB, mínimo disponível 7,96 GiB, máximo 68 °C. Seis jobs passaram em 9c; o corretivo de relógio possui validação própria na linha anterior. Energia/reinício físico exigem janela própria |
-| DIAG-LAUNCHER-LOCAL | Recursos e fontes públicas abrem sem Wine / integração App | concluído | composição PR308 `f6b6274` | Recursos/B3/crypto integrados à política única após três falhas reproduzidas. Lotes de 24 e 10 casos aprovados, com ponte controlada e extração preservada na classe nativa. Publicado e integrado na composição; prévia ainda depende do QA do artefato exato |
-| DIAG-LEASE-REBOOT | Reconciliação de lease após reinício com prova da mesma máquina / Execução App | em validação | PR309 `2a5638d`, `codex/lease-apos-reinicio` | 43 casos distintos aprovados em lotes sobrepostos. Reprodução de posse indevida com identidade incompleta, estado desconhecido e histórico corrompido. Helper comum verifica máquina/boot/namespace e cronologia; fila valida antes do CAS na transação. Launcher oficial com cópia própria confirmou lease liberado e metadados de boot. Doctor 16/2/0. SHA remoto/PR confirmados; CI em curso. Reinício físico e Windows físico pendentes; trava real já estava liberada |
-| DIAG-RETENCAO | Retenção conserva artefatos sem prova de posse / Recursos | em validação | PR310 `fdbe0d9`, `codex/backup-retencao-posse`, depende da PR307 | Recibos perdidos/corrompidos, troca de fonte, sobreposição de pastas e leitura incompleta reproduzidos em árvores próprias. Intenção durável, identidade/hash no ato, controle preservado, referências de restauração e SQLite protegidos. 45 casos focados passaram em 10,15 s; 29 de proteção/sessões/leitura parcial em 13,31 s, com Tk no compositor real. Sete fontes estáveis conferidas por hash. Launcher CLI confirma retenção, interrupção, consulta, perda de recibo e histórico. Lote antigo interrompido após 31 aprovados em 101,74 s, evidência retida. CI e GUI do artefato exato pendentes |
-| DIAG-COMPOSICAO | Composição publicada, prévia e proteção reconciliadas / integrador | em validação | PR308 `b6c56e7`, próximo incremento com PR307/310; prévia efetiva `650656f` | PR309/310 integradas. 337 arquivos de runtime do checkout idênticos ao Git publicado. Artefato 2066 com 365 hashes/6.374.036 B conferidos, ambiente/dados ligados aos destinos existentes, QA preparado com assert de origem dos módulos. Recibo administrativo corrigido para a prévia efetiva 650/354 hashes, registro anterior preservado. VM alheia ocupa host; GUI do artefato e troca do link aguardam margem. CI final em curso. Retorno 57 preservado |
-| ACEITE-NATIVO | MT5/Tester, DEMO, netting e Windows físico / operacional | bloqueado | pins H `d4d389e`, Safety `27b8599` | Sem autorização vigente de negociação nem Windows físico; conta netting e ensaio de falhas contra broker próprios. CI/mocks não substituem esses alvos |
-| ACEITE-DRIVE | OAuth real, proteção independente, pacotes por ativo e reunião / Recursos/Dados | bloqueado | PR302 integrada; PR303 `37cf1a3` com seis jobs aprovados | Inventário só de schema conferiu 30 tabelas, 7 séries registradas e 23 internas conhecidas. Snapshot canônico transporta projeção de oito campos OHLCV e famílias tipadas, sem reconstituir toda a base bruta. BD03 fixa uma base lógica por banco/schema. Solicitada decisão objetiva entre pasta QA com origens separadas e base QA única, necessária para semântica de conflito e gravação. Nenhum dado privado usado como fixture. Próximo após resposta é pacote/inventário por owner e reunião no destino escolhido; OAuth/envio do proprietário permanecem posteriores ao aceite sintético conjunto |
-| ACEITE-UI | Launcher, compositor, acessibilidade, entrada física, login/soak / App | livre | prévia `650656f` | Exercitar janela própria e orçamento; entrada física/login/tempo contínuo exigem evidência específica, sem interferir em aplicações alheias |
+A prévia efetiva do atalho e menu é `development-2b3b274da6de`, com 365 arquivos
+idênticos ao código composto por hash. O retorno imediato `650656f` tem 354 arquivos
+conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os dois
+atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
+`27b8599` está limpo detached, conforme os pins existentes.
 
-O backlog completo continua no painel de `docs/PLANO_DE_TRABALHO.md` e nos
-contratos Dados/LAB/F19/F20. Esta fila é o recorte de coordenação da passagem,
-não uma declaração de que fichas planejadas ou aceites anteriores foram concluídos.
-Recursos medidos antes dos ensaios: aproximadamente 8 GiB disponíveis na medição inicial, 60 GiB
-livres no destino na reconferência de 12/11, swap sem atividade nas duas amostras finais; uma operação
-por vez, orçamento inicial por ensaio até 512 MiB e 60 s, sem suíte ampla concorrente.
-
-
-### Orçamento e recibos da passagem de 12/11
-
-As suítes locais usam um processo e BLAS/OMP limitados a um thread. A suíte
-completa fica no CI. Nas amostras observadas, ACPI ficou entre 53 e 66 °C,
-com trip passivo de 100 °C e crítico de 105 °C. Não houve swap-in/out nas
-janelas medidas. A VM de outro projeto voltou a executar com cerca de 2 GiB
-às 12h26 locais. Suítes e novo QA do App foram adiados após a detecção.
-A queda de RAM disponível foi conferida, sem encerrar processos alheios.
-Essas medições não diagnosticam a causa dos reinícios.
-
-Recibos locais ficam em `state/qa-tmp/diagnostico-20261112/` da raiz MT5X.
-`excursions-gui.json`, `sample-cli-proof.json`, `sample-gui.json` e
-`cancel-tests.json` registram os percursos próprios. O primeiro comando de
-backtest de QA foi recusado por usar `--offline --cli`, reservado ao Drive
-na versão atual do wrapper. A preparação foi feita pelo produtor oficial
-`robots.backtest.run_python` e os relatórios por `run.sh --cli`, classificados
-como locais. A primeira sonda GUI falhou por faltar o caminho do App no
-PYTHONPATH e a janela própria terminou no timeout de 35 s. A repetição com
-instrumentação corrigida abriu a janela e confirmou a alternância 3/9.
-A sonda observa a interface e solicita ações pelo controlador existente.
-Não substitui entrada física, acessibilidade, login ou observação prolongada.
-
-
-### Composição e roteiro da passagem atual
-
-A PR308 reúne patches revisados das PR293,294,296,297,298,299,300,303,304,305,
-306 e307. O recibo de composição mantém o SHA original e o commit aplicado
-para cada origem. A sequência é linear e conserva as referências originais.
-HADOUKEN `d4d389e` e Safety `27b8599` mantêm seus pins. O checkout único, seu
-HEAD `550b6d5` e o índice principal permanecem preservados. A composição é
-publicada em sua branch de revisão, com o estado efetivo do atalho no manifesto
-da prévia e no recibo local `state/development-preview.json`.
-
-O ciclo da restauração foi exercitado em janela real XWayland, guia/botão
-visíveis, com falha controlada e retorno7→99. O controlador invocou os botões.
-Foram31 testes focados no último lote, com sobreposição aos lotes anteriores.
-Os seis casos existentes de backup passaram separadamente. CI do SHA final
-qualifica a árvore publicada. A atualização da prévia exige hashes/links,
-launcher do próprio artefato e consulta dos checks. Retorno650656f e retorno
-histórico57d13ee permanecem preservados. O artefato8129262 foi preparado antes
-da recuperação e deve ser substituído pelo artefato da ponta atual.
-
-Os próximos incrementos independentes são a prova de boot anterior no lease
-e a verificação da posse das cópias na retenção, conforme os IDs da fila.
-Drive por ativo e reunião mantêm os contratos de Recursos/Dados. O marco M1
-e os aceites financeiros e nativos seguem com seus próprios resultados.
-A base principal permanece fora das fixtures e sua política de proteção exige
-seleção privada de conta/pasta/bases pelo proprietário após o aceite sintético.
-# Retomar MT5X em um host limpo
-
-## Fila de diagnóstico e correções — 12/11/2026
-
-Owner escritor desta passagem: **Codex, diagnóstico/integração**. Checkout único
-`repos/app`, branch `codex/launcher-classes`, HEAD `550b6d5`; índice principal e
-WIPs anteriores preservados. Inspeção de processos encontrou esta sessão Codex,
-sem outra suíte ou escritor MT5X identificado. Isso não presume abandono de frentes.
-Publicação de correções usa índice separado sobre a ponta da PR correspondente,
-sem trocar a branch nem transportar WIP alheio. Publicação limitada à revisão e à prévia de desenvolvimento autorizada.
-
-Reconferência de 12/11. Master remoto `09a618c` integrou PR302 (`f60832c`).
-PR296 `0285bd4`, PR300 `650656f` e PR303 `37cf1a3` têm seis jobs de produto
-aprovados. PR305 `38304e0` e PR304 `dc17f49` têm seis jobs de produto aprovados.
-PR299 `d0ea937` mantém Windows em diagnóstico. PR306 `060afab` tem quatro
-jobs aprovados e Ubuntu/Windows em curso. PR307 `a48b279` foi publicada. Na execução anterior `061e061`, Windows
-reprovou em `test_partial_product_resource_guard_and_cancel_resume_exactly_once[cancel]`.
-Prévia efetiva `650656f`: 354 hashes aprovados; retorno `57d13ee`: 341 hashes
-aprovados. `state/development-preview.json` existe, mas ainda declara `784a252`;
-o manifesto da release e o destino efetivo do link prevalecem. HADOUKEN `d4d389e`
-limpo em branch; Safety `27b8599` limpo detached. Não foram repinados.
+A fila tem 20 itens, com 14 concluídos e seis bloqueados.
+Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
 |---|---|---|---|---|
-| DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | em validação | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados; Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. Investigar compilador e acompanhar tentativa diagnóstica sem mudar limites |
+| DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | concluído | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados. Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. A tentativa diagnóstica 2 do mesmo SHA passou nos seis jobs, incluindo Windows. As falhas da primeira tentativa continuam preservadas. O timeout do compilador não foi reproduzido |
 | DIAG-EXCURSOES | MAE/MFE disponíveis nas lentes e custo ask em vendas / Dados/Laboratório | concluído | PR305 `38304e0`, `codex/lab-excursoes` | Publicado e PR criada. 38 testes de excursões/enriquecimento/agregação e 21 de cache/livro/importação/CLI aprovados em lotes separados. Lote final 13 aprovados/1 PG sem servidor. Inclui legado, preservação do livro, point inválido e spread calibrado. QA por launcher CLI em base sintética confirmou ask e estado. GUI real XWayland pelo launcher aprovada em janela própria, com MAE 4/MFE 2 e ask declarados. Seis jobs de produto aprovados, incluindo Windows e PG, no SHA `38304e0`. Integração em master e na próxima prévia pertencem à composição |
-| DIAG-PROTECAO-WIP | Proteção independente do resgate anterior e do checkpoint atual / integrador | concluído | página privada existente, recibo local `private-checkpoint/remote-read-proof.json` | Acesso reconferido via Pages, sem compartilhamentos. ZIP 489.138 B/1 parte, SHA `c4f843f78d979ff6aab6f79299e1151a6ed88a29897a158eac48513b806450fd`. Parte relida integralmente; texto e ZIP decodificado conferidos. Recuperador oficial validou 19 arquivos e o WIP anterior teve seus 24 hashes conferidos. Conteúdo guarda checkpoint parcial de amostra; base principal tem proteção e aceite próprios |
+| DIAG-PROTECAO-WIP | Proteção independente do resgate anterior e do checkpoint atual / integrador | concluído | página privada existente, recibo local `private-checkpoint/remote-read-proof.json` | Acesso reconferido via Pages, sem compartilhamentos. ZIP 489.138 B/1 parte, SHA `c4f843f78d979ff6aab6f79299e1151a6ed88a29897a158eac48513b806450fd`. Parte relida integralmente. Texto e ZIP decodificado conferidos. Recuperador oficial validou 19 arquivos e o WIP anterior teve seus 24 hashes conferidos. Conteúdo guarda checkpoint parcial de amostra. Base principal tem proteção e aceite próprios |
 | DIAG-IDENTIDADE | Marcação de ativos pela identidade registrada / App/Dados | concluído | fluxo já integrado no App | Hipótese funcional descartada por inspeção do caminho ativo. `UIManager.refresh_inventory` lê `data_inventory` em `run_bg`, e `_inventory_loaded` agrupa por símbolo registrado. O método chamado pela rotina antiga que divide nomes é vazio. Nenhuma correção funcional necessária neste recorte |
-| DIAG-CI304 | Reproduzir travamento de cancelamento/retomada / Execução App | bloqueado | PR304 `dc17f49`, seis jobs de produto aprovados | Ocorrência antiga no Windows 130029697303 e COMMIT de presets preservados. Regressões Linux passaram; ponta atual passou no Windows completo. Lock retido continua hipótese. Dependência exata é uma reprodução Windows com captura das conexões/leases no ponto do timeout; recorrência ausente nos SHAs recentes. Retomar instrumentação quando a falha reaparecer |
-| DIAG-TICKS | Auditoria tolerante a metadados inválidos, sem certificação indevida / Dados | concluído | PR304 `dc17f49` | Auditoria v2 publicada. 15 falhas reproduzidas; lote integrado 80 aprovados e lote final 34 aprovados, sobrepostos. Launcher `--cli trades fidelity` em 3 ticks próprios com flag infinita retorna JSON finito, classe D e intrabarra recusada. Seis jobs de produto aprovados no SHA `dc17f49`, incluindo Windows/PG. Aceites operacionais ficam separados |
-| DIAG-AMOSTRA | Repetição do mesmo backtest não aumenta amostra nas lentes / Laboratório | concluído | PR306 `060afab`, `codex/lab-amostra-execucoes`, dependente da PR304 | Deduplicação qualificada por identidade do produtor e livro, com consulta integral explícita. Três backtests do produtor em 600 barras próprias guardaram 9 operações; launcher CLI e GUI XWayland mostraram 3/9. Lotes focados aprovados, inclusive leitura legada sem releitura redundante. Seis jobs de produto aprovados no SHA final. Aceites nativos/financeiros continuam próprios |
-| DIAG-RESTORE | Identidade e conteúdo da cópia restaurada / Recursos | em validação | PR307 `9c2c7eb`, `codex/restore-backup-integridade` | Falha pública em nome com # reproduzida em árvore própria. URI codificada, mesma fotografia e inventário corrigidos. Lotes de 51/24 casos sobrepostos e 31 finais aprovados. Launcher CLI e GUI real XWayland confirmaram conteúdo, falha controlada e recuperação. Cinco jobs de produto aprovados; Windows em curso |
-| DIAG-LAUNCHER-LOCAL | Recursos e fontes públicas abrem sem Wine / integração App | concluído | composição PR308 `f6b6274` | Recursos/B3/crypto integrados à política única após três falhas reproduzidas. Lotes de 24 e 10 casos aprovados, com ponte controlada e extração preservada na classe nativa. Publicado e integrado na composição; prévia ainda depende do QA do artefato exato |
-| DIAG-COMPOSICAO | Composição publicada, prévia e proteção reconciliadas / integrador | em validação | PR308 `f6b6274`, PR295 `8b5c857`; prévia efetiva `650656f` | Composição linear preserva SHAs originais e pins. Candidato f6 preparado com 365 hashes/6.357.807 B, dados/ambiente compartilhados e retorno 650/57 preservados. QA do checkout real passou; admissão do GUI do artefato recusada antes de iniciar porque a VM alheia retornou. Integrar PR309, conferir CI e executar launcher do artefato exato com margem antes de trocar o link. Recibo do atalho continua desatualizado até a troca |
-| ACEITE-NATIVO | MT5/Tester, DEMO, netting e Windows físico / operacional | bloqueado | pins H `d4d389e`, Safety `27b8599` | Sem autorização vigente de negociação nem Windows físico; conta netting e ensaio de falhas contra broker próprios. CI/mocks não substituem esses alvos |
-| ACEITE-DRIVE | OAuth real, proteção independente, pacotes por ativo e reunião / Recursos/Dados | livre | PR302 integrada; PR303 aberta `37cf1a3` | Reconciliar primeiro o mecanismo sintético e o escopo dos pacotes existentes; consentimento/envio privado só pelo proprietário após aceite sintético; não usar base privada como fixture |
-| ACEITE-UI | Launcher, compositor, acessibilidade, entrada física, login/soak / App | livre | prévia `650656f` | Exercitar janela própria e orçamento; entrada física/login/tempo contínuo exigem evidência específica, sem interferir em aplicações alheias |
+| DIAG-CI304 | Reproduzir travamento de cancelamento/retomada / Execução App | bloqueado | PR304 `dc17f49`, seis jobs de produto aprovados | Ocorrência antiga no Windows 130029697303 e COMMIT de presets preservados. Regressões Linux passaram. Ponta atual passou no Windows completo. Lock retido continua hipótese. Dependência exata é uma reprodução Windows com captura das conexões/leases no ponto do timeout. Recorrência ausente nos SHAs recentes. Retomar instrumentação quando a falha reaparecer |
+| DIAG-TICKS | Auditoria tolerante a metadados inválidos, sem certificação indevida / Dados | concluído | PR304 `dc17f49` | Auditoria v2 publicada. 15 falhas reproduzidas. Lote integrado 80 aprovados e lote final 34 aprovados, sobrepostos. Launcher `--cli trades fidelity` em 3 ticks próprios com flag infinita retorna JSON finito, classe D e intrabarra recusada. Seis jobs de produto aprovados no SHA `dc17f49`, incluindo Windows/PG. Aceites operacionais ficam separados |
+| DIAG-AMOSTRA | Repetição do mesmo backtest não aumenta amostra nas lentes / Laboratório | concluído | PR306 `060afab`, `codex/lab-amostra-execucoes`, dependente da PR304 | Deduplicação qualificada por identidade do produtor e livro, com consulta integral explícita. Três backtests do produtor em 600 barras próprias guardaram 9 operações. Launcher CLI e GUI XWayland mostraram 3/9. Lotes focados aprovados, inclusive leitura legada sem releitura redundante. Seis jobs de produto aprovados no SHA final. Aceites nativos/financeiros continuam próprios |
+| DIAG-RESTORE | Identidade, conteúdo e relógio da cópia restaurada / Recursos | concluído | PR307 `c296538`, `codex/restore-backup-integridade` | URI com # corrigida, mesma fotografia e inventário conferidos. Duas falhas adicionais reproduzidas após trocar relógio/fuso, corrigidas pela invalidação do cache do validador existente. Seis novos casos cobrem resultado normal/incerto e compatibilidade. Lote integrado de 39 aprovados em 14,20 s. A ponta anterior 9c passou nos seis jobs. Seis jobs de produto aprovados em c296538. GUI XWayland da composição 2b confirma troca de relógio, incerteza e recuperação em dados próprios |
+| DIAG-RESTORE-RECUP | Intenção durável, resultado consultável e recuperação explícita / Recursos | concluído | PR307 `c296538`, núcleo validado em `9c2c7eb` | Produtor/lease existentes, recibos privados e identidade física. Interrupção abrupta própria com saída 17, consulta incerta, hardlink e diretório alterado bloqueados. Rollback explícito 42. GUI oficial visível em XWayland provou 7→99, 18 pulsos e intervalo máximo 0,581 s, zero erros inesperados. 31 casos finais aprovados. Pico GUI 270,2 MiB, mínimo disponível 7,96 GiB, máximo 68 °C. Seis jobs passaram em 9c. O corretivo de relógio possui validação própria na linha anterior. Energia/reinício físico exigem janela própria |
+| DIAG-LAUNCHER-LOCAL | Recursos e fontes públicas abrem sem Wine / integração App | concluído | composição PR308 `f6b6274` | Recursos/B3/crypto integrados à política única após três falhas reproduzidas. Lotes de 24 e 10 casos aprovados, com ponte controlada e extração preservada na classe nativa. Publicado e integrado na composição. Prévia ainda depende do QA do artefato exato |
+| DIAG-LEASE-REBOOT | Reconciliação de lease após reinício com prova da mesma máquina / Execução App | concluído | PR309 `d0e97d6`, runtime `2a5638d` | 66 testes de lease/fila passaram em 39,14 s. Primeira tentativa Windows 2a foi cancelada prematuramente a98% e continha falha do teste que lia outro descritor sob bloqueio. Leitura agora usa o descritor do lease e conserva os estados ativo/liberado, com recusa externa controlada. 7df corrigiu a leitura do lease no Windows. Sua única falha foi o prazo Node. D0e97d6 incorpora orçamento macro e corrige a origem registrada, Seis jobs de produto aprovados em d0e97d6, incluindo Windows 4705/195 e teste do descritor ativo/liberado. Fonte, controles e gates preservados. Reinício físico tem aceite próprio |
+| DIAG-CI-MACRO | Propagar orçamento já declarado no cenário macro / QA/Dados | concluído | PR311 `cb02d78`. Integrado PR309 `d0e97d6` e PR308 `0e4f4c6` | Falha reproduzida com sampler1536 MiB, sem alocação equivalente. A análise recebe o orçamento já medido da coleta. 5 casos passaram em 8,40 s, incluindo recusa de 2048 MiB acima do teto 1792 MiB. Gates de memória/tempo e assertivas gráficas mantidos. Runtime2b/365 arquivos idêntico ao fonte 18fe por hash. Seis jobs de produto aprovados em cb02d78, incluindo Windows 4664/195. A composição0e também executou o cenário gráfico aprovado |
+| DIAG-CI-NODE | Distinguir prazo de execução e captura Node no Windows / QA | bloqueado | PR301 `28e4c17`, proposta de outro agente preservada | Windows 7df/job131581528852 teve somente TimeoutExpired10 s no teste de clique de volume, com 4703 aprovados e195 não executados. O traceback aguarda a thread de captura stdout. Isso não prova a causa. PR301 altera10→45 e passou nos seis jobs, sem integração nesta composição. Nenhum limite foi aumentado nesta passagem. As três pontas atuais executaram e aprovaram o caso no Windows com 10 s. Causa permanece sem reprodução instrumentada no runner Windows. Próximo é capturar estado/saída do processo antes de uma recorrência. Alteração de mecanismo exige reprodução pertinente |
+| DIAG-RETENCAO | Retenção conserva artefatos sem prova de posse / Recursos | concluído | PR310 `97da399`, `codex/backup-retencao-posse`, depende da PR307 | Recibos perdidos/corrompidos, troca de fonte, sobreposição de pastas e leitura incompleta reproduzidos em árvores próprias. Intenção durável, identidade/hash no ato, controle preservado, referências de restauração e SQLite protegidos. 45 casos focados passaram em 10,15 s. 29 de proteção/sessões/leitura parcial em 13,31 s, com Tk no compositor real. Sete fontes estáveis conferidas por hash. Launcher CLI confirma retenção, interrupção, consulta, perda de recibo e histórico. Lote antigo interrompido após 31 aprovados em 101,74 s, evidência retida. 51 casos finais em 14,75 s, com oito hashes estáveis. Seis jobs de produto aprovados em 97da399. GUI XWayland do artefato2b confirmou cópia e consulta no worker, preservando arquivo sem proveniência |
+| DIAG-COMPOSICAO | Composição publicada, prévia e proteção reconciliadas / integrador | concluído | PR308 `0e4f4c6`. Prévia efetiva `2b3b274` | Seis jobs de produto aprovados no código 0e4f4c6. Windows 4904/205, Linux 4636/473, cobertura do núcleo78%/81%. 336 arquivos runtime idênticos ao checkout, run.bat equivalente por CRLF e 365 hashes do artefato. Ativação a674860c por link atômico aprovada, dois atalhos conferidos, pico 23,3 MiB. Launcher estável consultou cópias próprias com saída0, valor99, pico 134,6 MiB e mínimo 8,21 GiB. Estado de símbolos padrão ausente preservado. Método de produção idêntico validou fallback em ambos os artefatos. Após a reconciliação, novo QA pelo launcher estável abriu janela visível, confirmou ausência do arquivo de símbolos, restauração incerta7→recuperação99 e consulta no worker. Pico 273,2 MiB, mínimo 8,30 GiB e máximo 65 °C. Quatro estados de preferência por hash/existência preservados nessa janela isolada. Observação180 s no runtime 561 byte a byte igual. Retornos650/57 preservados. Aguardar Windows e registrar os estados terminais |
+| ACEITE-NATIVO | MT5/Tester, DEMO, netting e Windows físico / operacional | bloqueado | pins H `d4d389e`, Safety `27b8599` | Sem autorização vigente de negociação nem Windows físico. Conta netting e ensaio de falhas contra broker próprios. CI/mocks não substituem esses alvos |
+| ACEITE-DRIVE | OAuth real, proteção independente, pacotes por ativo e reunião / Recursos/Dados | bloqueado | PR302 integrada. PR303 `37cf1a3` com seis jobs aprovados | Inventário só de schema conferiu 30 tabelas, 7 séries registradas e 23 internas conhecidas. Snapshot canônico transporta projeção de oito campos OHLCV e famílias tipadas, sem reconstituir toda a base bruta. BD03 fixa uma base lógica por banco/schema. Solicitada decisão objetiva entre pasta QA com origens separadas e base QA única, necessária para semântica de conflito e gravação. Nenhum dado privado usado como fixture. Próximo após resposta é pacote/inventário por owner e reunião no destino escolhido. OAuth/envio do proprietário permanecem posteriores ao aceite sintético conjunto |
+| ACEITE-UI | Entrada física, acessibilidade, login e observação prolongada / App | bloqueado | artefato PR308 `561152b` | Janela real XWayland e observação controlada de 180 s aprovadas, com solicitações instrumentadas e preferências de QA. Entrada física/monitor-dock-DPI exigem operador e periféricos. Acessibilidade exige percurso com tecnologia assistiva. Login exige janela exclusiva da sessão. Observação controlada de 30 min está no item independente abaixo. Esses aceites continuam específicos, sem qualificação por mocks/CI |
+| ACEITE-OBSERVACAO | Observação contínua controlada de 30 min / App QA | concluído | runtime PR308 `2b3b274`, código `0e4f4c6` | Launcher estável, SQLite própria, XWayland visível e controladores instrumentados. Duração 1.800,015 s, 41.495 heartbeats, intervalo máximo 0,820 s, 59 atualizações e 30 trocas de tema, zero erros de callback. Pico 273,1 MiB, mínimo 7,85 GiB disponível e máximo 66 °C. Quatro estados de preferências por hash/existência preservados. Recibos em preview-stable-observation/proof.json e resources.json. Entrada física e tecnologia assistiva pertencem ao ACEITE-UI |
+| ACEITE-M1 | Qualificação estatística/econômica prospectiva / Dados e pesquisa | bloqueado | PR297 `a87dd76`, evidência pública T134_M1_EURUSD_H1_QA_20261106.json | Recibo já publicado tem zero padrões aprovados, 0/2 eventos e contrato de custo bloqueado por calibração posterior ao período. P04 exige plano temporal e suporte pareado congelados. Depende de modelo de custos elegível antes do período e histórico compatível com sessões/derivações para nova validação prospectiva. Usar dados autorizados, com acesso/extração no aceite nativo |
 
-O backlog completo continua no painel de `docs/PLANO_DE_TRABALHO.md` e nos
-contratos Dados/LAB/F19/F20. Esta fila é o recorte de coordenação da passagem,
-não uma declaração de que fichas planejadas ou aceites anteriores foram concluídos.
-Recursos medidos antes dos ensaios: aproximadamente 8 GiB disponíveis na medição inicial, 60 GiB
-livres no destino na reconferência de 12/11, swap sem atividade nas duas amostras finais; uma operação
-por vez, orçamento inicial por ensaio até 512 MiB e 60 s, sem suíte ampla concorrente.
+### Arquitetura e configuração conferidas
 
+O launcher classifica consultas locais antes de iniciar a ponte. `app.py` e a
+CLI constroem os serviços comuns. `UIManager.run_bg` encaminha I/O ao worker.
+`DatabaseManager` mantém SQLite/PostgreSQL, relógio e controles. Dados publica
+identidades, revisões e snapshots pelo serviço canônico. Laboratório e Analytics
+os consomem. Recursos reutiliza snapshot SQLite, lease e recibos privados para
+cópia, consulta e recuperação. App compõe HADOUKEN e Safety fixados, com
+execução e risco nos donos existentes. O master remoto conferido é `09a618c`.
+A composição de revisão e a prévia possuem as identidades registradas acima.
 
-### Orçamento e recibos da passagem de 12/11
+Os defaults ficam em `mt5_extracao/bootstrap/config_builder.py` e no exemplo de configuração.
+O launcher recebe a configuração explícita, e a configuração privada permanece
+fora do Git. O `.venv` único pertence ao App e é compartilhado pela prévia.
+Base ativa, pesquisa e QA mantêm seus escopos. A identidade BD03 pertence ao
+conteúdo de cada banco/schema, com namespace e linhagem transportados pelos
+snapshots. O plano de pacotes deve conservar os escritores/leitores canônicos.
 
-As suítes locais usam um processo e BLAS/OMP limitados a um thread. A suíte
-completa fica no CI. Nas amostras observadas, ACPI ficou entre 53 e 66 °C,
-com trip passivo de 100 °C e crítico de 105 °C. Não houve swap-in/out nas
-janelas medidas. A VM de outro projeto voltou a executar com cerca de 2 GiB
-às 12h26 locais. Suítes e novo QA do App foram adiados após a detecção.
-A queda de RAM disponível foi conferida, sem encerrar processos alheios.
-Essas medições não diagnosticam a causa dos reinícios.
+### Evidências, orçamento e limites
 
-Recibos locais ficam em `state/qa-tmp/diagnostico-20261112/` da raiz MT5X.
-`excursions-gui.json`, `sample-cli-proof.json`, `sample-gui.json` e
-`cancel-tests.json` registram os percursos próprios. O primeiro comando de
-backtest de QA foi recusado por usar `--offline --cli`, reservado ao Drive
-na versão atual do wrapper. A preparação foi feita pelo produtor oficial
-`robots.backtest.run_python` e os relatórios por `run.sh --cli`, classificados
-como locais. A primeira sonda GUI falhou por faltar o caminho do App no
-PYTHONPATH e a janela própria terminou no timeout de 35 s. A repetição com
-instrumentação corrigida abriu a janela e confirmou a alternância 3/9.
-A sonda observa a interface e solicita ações pelo controlador existente.
-Não substitui entrada física, acessibilidade, login ou observação prolongada.
+Os recibos locais ficam em `state/qa-tmp/diagnostico-20261112/` na raiz MT5X.
+O lote final de retenção/restauração teve 51 casos aprovados em 14,75 s, com oito
+hashes de fontes estáveis. Lease/fila teve 66 aprovados em 39,14 s. Macro teve
+cinco aprovados em 8,40 s com RSS simulado, inclusive recusa acima do orçamento
+já declarado. Os lotes anteriores de 39 e29 casos possuem sobreposição.
+Doctor offline do artefato teve 16 OK, dois avisos e zero falhas.
 
+`preview-stable-final-qa/proof.json` registra GUI visível XWayland pelo launcher
+estável, controladores instrumentados e SQLite própria. A restauração incerta
+retornou7 e a recuperação explícita99. Cópia/consulta rodaram no worker. Após
+reconciliar a ausência de `config/default_symbols.json`, a GUI final confirmou
+esse estado. Pico273,2 MiB, mínimo 8,30 GiB disponível e máximo 65 °C. Os quatro
+estados de preferências por hash/existência foram preservados nessa janela.
+A observação anterior de 180 s teve 4.168 heartbeats e intervalo máximo 0,571 s.
+A observação final de 30 min teve 41.495 heartbeats, intervalo máximo 0,820 s,
+59 atualizações, 30 trocas de tema e zero erros de callback. O pico foi
+273,1 MiB, com mínimo 7,85 GiB disponível e máximo 66 °C. O recibo
+`preview-stable-observation/proof.json` delimita esse percurso controlado.
 
-### Composição para a prévia de desenvolvimento
+Os ensaios usam um processo e um thread de BLAS/OMP. A reserva operacional é
+4,5 GiB, acima do mínimo 4 GiB do host. O orçamento da observação é1800 s,
+768 MiB de RSS e32 MiB de saída, com telemetria20 s e guardas2 s. A medição de
+04h28 UTC teve 8,25 GiB disponíveis, PSI de memória0 e64 °C. O trip passivo
+ACPI é100 °C e o crítico105 °C. Contadores Btrfs acumulados têm6.741 erros de
+corrupção, com zero erros de leitura/escrita/flush/geração, iguais à referência.
+A janela observada de 30 min do kernel teve zero avisos. A causa dos reinícios
+continua indeterminada. Os dados globais de swap variaram entre janelas.
 
-Branch `codex/composicao-diagnostico-20261112`, base master `09a618c`
-e PR304/306. Patches revisados das PRs293,294,296,297,298,299,300,303,305
-e307 foram reconciliados em histórico linear próprio. Os SHAs originais
-permanecem nas branches e PRs de origem. O mapa de origem/aplicação fica no
-recibo local e no manifesto da prévia. HADOUKEN/Safety mantêm os pins atuais.
+A base principal configurada teve tamanho603.648.000B e mtime preservados
+nas conferências por metadados, com arquivos auxiliares ausentes. O QA usou
+bases sintéticas próprias. O checkpoint privado foi relido e recuperado pelo
+helper existente, conforme a fila. A proteção externa atual da base principal
+possui dependência de destino e política do proprietário.
 
-A integração acrescenta Recursos/B3/crypto à política local única do launcher.
-Três falhas foram reproduzidas com processos/ponte próprios. O lote final
-launcher/identidade teve24 aprovados em11,06s. B3/crypto/configuração/Biblioteca
-tiveram24 aprovados em7,64s. Recursos/identidade tiveram51 aprovados em31,32s,
-com sobreposição. Doctor offline16/2/0. A suíte ampla executa no CI do SHA
-publicado, com os limites originais. O WIP alheio de timeout Node45s permanece
-no checkout e na PR301 correspondente, fora desta composição.
+Cinco artefatos intermediários próprios foram removidos após conferir os1.825
+hashes, a ancestralidade no Git e as referências de processos visíveis. O recibo
+`unused-artifacts-cleanup.json` conserva os manifestos e a intenção durável
+08360e5a. Foram31.827.463B em 0,41 s. Prévia ativa, retornos650/57 e artefato
+744 de outro trabalho foram preservados.
 
-Aceites externos continuam no quadro acima. A base principal tem603.648.000B
-e a listagem do destino local configurado encontrou zero cópias. Essa observação
-cobre somente esse destino. Sua ativação em backup remoto depende da seleção
-privada de conta/pasta/bases e política pelo proprietário, após o aceite sintético.
-A recuperação independente do WIP foi provada por hash e pelo recuperador oficial.
+### Roteiro e critérios de aceite
 
-Pacotes por ativo e reunião em QA continuam no contrato de Recursos/Dados.
-O inventário de schema da base principal foi consultado em modo somente leitura,
-com30 tabelas, sete séries registradas e23 tabelas internas reconhecidas na fonte,
-sem ler conteúdo das séries. Um snapshot de revisão OHLCV não cobre automaticamente
-todas as famílias e colunas legadas. A especificação executável desses pacotes
-precisa preservar o inventário, as revisões e as relações dos produtores oficiais.
+| Prioridade | Próxima ação e dono | Dependência e aceite |
+|---|---|---|
 
-A prévia nova é identificada pelo `mt5x-release.json`. O link estável será
-trocado somente após conferência de hashes/links e QA da própria release.
-Os recibos discriminam fonte do checkout composto, artefato exato, CI,
-compositor real e controladores instrumentados. Entrada física, acessibilidade,
-login, MT5/Tester, DEMO e observação contínua têm resultados próprios.
+| P0 | Definir destino dos pacotes/reunião / proprietário e Recursos/Dados | A pergunta existente distingue coleção QA com origens separadas e base QA única. BD03 fixa uma base lógica por banco/schema. O contrato do destino orienta conflitos, namespace e importação. Inventário já conferiu30 tabelas, sete séries e23 controles conhecidos. O aceite exige todas as famílias/colunas legadas/revisões, relógio, hashes e dependências, plano só leitura e nova QA idempotente pelos consumidores existentes |
+| P1 | Login Drive e proteção externa da base principal / proprietário e Recursos | Destino, conta, política e código de recuperação independentes autorizados, depois dos pacotes/reunião sintéticos. Exercitar renovação/revogação, retomada, checksum e recuperação própria pelo fluxo oficial |
+| P1 | Interface e alvo nativo / operador e owners App/HADOUKEN/Safety | Janela exclusiva, periféricos e tecnologia assistiva para entrada física/acessibilidade/login/dock/DPI. MT5/Tester/DEMO/netting/Windows físico requerem acesso e autorização próprios. Evidência por alvo e percurso com proteção de processos/dados |
+| P1 | Capturar recorrências Windows / Execução App e QA | Locks de cancelamento e prazo Node passaram nas pontas atuais. A causa de cada ocorrência anterior depende da captura de conexões/leases ou estado/saída do processo no momento da falha. A PR301 de outro agente conserva a proposta45 s. A composição usa10 s |
+| P2 | Qualificação M1 / Dados e pesquisa | Modelo de custo conhecido antes do período, suporte pareado e plano P04 congelados, histórico elegível com sessões/derivações. O recibo publicado tem zero padrões aprovados |
 
-# Retomar MT5X em um host limpo
+### Ocorrências da investigação
+
+Uma execução Windows foi cancelada prematuramente quando ainda progredia a98%.
+O log foi preservado e a repetição do mesmo SHA revelou as falhas de lease e
+orçamento macro, corrigidas e validadas nas pontas atuais. A atribuição anterior
+da falha macro a7df foi corrigida após ler o log completo. A ocorrência foi em 2a.
+O baseline de preferências começou nas sondas finais e a preservação foi comprovada
+nessas janelas isoladas. Uma inspeção inicial exibiu uma URL de autorização na
+saída da ferramenta. As inspeções posteriores passaram a filtrar URLs e argumentos
+sensíveis. A recuperação privada e os recibos conservaram suas restrições de acesso.
+
+O backlog completo permanece em `docs/PLANO_DE_TRABALHO.md` e nos contratos
+Dados/LAB/F19/F20. Seções anteriores conservam suas fotografias datadas.
 
 ## Exposição, fidelidade de ticks e recuperação condicional — 10/11/2026
 

@@ -1,5 +1,24 @@
 # Plano de trabalho detalhado
 
+## Reconferência do diagnóstico em 13/11/2026
+
+Código composto `0e4f4c6` na PR308 com seis jobs de produto aprovados. A prévia
+`2b3b274` conserva 365 hashes idênticos ao runtime publicado. A fila de 20 itens
+tem 14 concluídos e seis bloqueados, com owners, evidências,
+SHAs e critérios registrados. A observação de 30 min foi
+aprovada sob orçamento próprio. PR302 está integrada no master `09a618c` e as
+contas múltiplas da PR303 estão na composição testada. Os registros anteriores
+de 07/08 de novembro representam os estados daquelas datas. [Continuidade](../CONTINUAR_AQUI.md)
+
+A ordem vigente segue pacotes/reunião após a decisão de destino, depois o
+consentimento e o percurso real do proprietário. O snapshot canônico conserva
+blocos tipados. O exportador OHLCV projeta oito campos e a importação grava o
+store de snapshots. A preservação de todas as colunas brutas/legadas e a
+reconstituição das tabelas exigem o contrato do pacote. BD03 mantém uma base
+lógica por banco/schema. A proteção independente atual da base principal
+possui aceite de destino/política. CI e GUI controlada possuem escopos técnicos.
+Os aceites físicos, nativos e financeiros seguem seus critérios próprios.
+
 ## T20.30-HOST1-DRIVE — correção CI de 08/11/2026
 
 Owner **Recursos/Dados**. CI anterior da PR302 (`9d55fb5`, run `42400089570`): testes Ubuntu e Windows falharam por ambiente/launcher e nome SQLite incompatível com Windows; PostgreSQL, lint e instaladores passaram. O corretivo prepara `.venv` e configuração no job de testes, usa o launcher oficial de cada plataforma e um nome SQLite portátil com conferência do conteúdo. No Linux, as duas regressões diretamente alteradas passaram em 08/11; a regressão anterior de sete módulos (`104 passed`), ShellCheck e doctor offline permanece como evidência histórica. O CI do commit corretivo e o transporte de parâmetros pelo `cmd.exe` dependem de execução no Windows CI; não inferir aceite. Preservar os demais WIPs e pins. Próxima PR após estabilização: múltiplas contas com identidade/cofre isolados e escolha explícita, somente com fixtures sintéticas.
