@@ -904,3 +904,457 @@ Doctor offline aprovado com 16 OK e dois avisos. Launcher oficial CLI com SQLite
 sintético confirmou MAE 4, MFE 2 e `ask_bar_envelope`, conservando o livro.
 CI do novo SHA, PostgreSQL real, Windows físico e percurso GUI desta correção
 permanecem pendentes. Evidência local em `state/qa-tmp/diagnostico-20261112`.
+
+## Vídeos complementares
+
+Análise de 13/11/2026 solicitada pelo proprietário. Sete anexos correspondem
+a seis vídeos. Os dois relatórios Linda são idênticos por SHA-256
+`bd54c2917e904d44fe1e01b151619fc4277a9c9899aea1e349587fcd309a7d60`.
+As descrições e reconstruções de código são evidência fornecida pelo agente
+que examinou os vídeos. Fonte original completo, capturas binárias, ticks e
+livros das demonstrações continuam ausentes. Esta passagem conferiu código do
+projeto e documentação oficial, com ensaios pequenos em memória.
+
+### Correções prioritárias adicionais
+
+Os dois itens abaixo entram em P0, antes dos novos Experts que dependam
+desses cálculos. Estado, posse, branch/PR e SHA ficam na fila única do handoff.
+A implementação e a publicação corretivas permanecem pendentes.
+
+#### IND-CCI-01 · Desvio absoluto médio e aquecimento do CCI
+
+- **Owner de componente** Dados e indicadores App, com integração aos consumidores.
+- **Fonte** `mt5_extracao/advanced_indicators.py`, método `AdvancedIndicators.cci`.
+  A média móvel de `abs(tp - sma_tp)` reúne desvios calculados contra médias
+  diferentes. O desvio da referência usa a mesma média da janela em avaliação.
+- **Reprodução executada** no `.venv` existente, Python com `-B`, um processo e
+  `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1`. OHLC
+  sintético com27 barras, close1…27, high=close+0,5, low=close−0,5 e período14.
+  O método atual retornou66,6666666667 no último ponto. O desvio absoluto
+  médio da janela final é3,5, com referência123,8095238095. O primeiro valor
+  atual surge no índice26, enquanto a janela de14 barras fica completa no13.
+  O caso muda a comparação do indicador com o nível100.
+- **Alcance conferido** `EnhancedIndicatorCalculator.calculate_all_indicators`
+  chama esse método; `DataCollector` usa o calculador e salva o resultado.
+  `app.py` instancia e inicia esse coletor. O módulo da prévia
+  `development-2b3b274da6de` é idêntico ao fonte por hash. A coleta e a base
+  pessoal ficaram fora do ensaio. A quantidade de dados afetados exige inventário.
+- **Próxima ação** regressão de fórmula/aquecimento, correção no calculador
+  canônico e reconciliação de consumidores, versões, caches e materializações.
+  Preservar resultados históricos/snapshots e planejar recomputação aditiva
+  identificada pelo produtor existente, com posse do pilar de Dados.
+- **Aceite** referência independente, série constante/ausente/insuficiente,
+  subida/queda, janela parcial, limiares e atualização incremental. Validar
+  saída do calculador integrado e percurso de coleta com QA própria. A
+  paridade com iCCI/Profit demanda valores e execução nativa próprios.
+
+Reprodução mínima do método, com dados sintéticos, a partir da raiz do App
+
+```bash
+rtk env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -B - <<'PY'
+import pandas as pd
+from mt5_extracao.advanced_indicators import AdvancedIndicators
+close = pd.Series(range(1, 28), dtype=float)
+actual = AdvancedIndicators().cci(close + 0.5, close - 0.5, close, period=14)
+window = close.iloc[-14:]
+center = window.mean()
+reference = (close.iloc[-1] - center) / (0.015 * (window - center).abs().mean())
+print(actual.iloc[-1], reference, actual.first_valid_index())
+PY
+```
+
+#### IND-AGGR-01 · Índices incrementais do AggrVolBalance
+
+- **Owner de componente** indicadores HADOUKEN, com composição pelo integrador.
+- **Fonte** `Indicators/HADOUKEN/Volume/HDK_AggrVolBalance.mq5` configura
+  buffers e arrays como `AS_SERIES=true`. A atualização usa
+  `start_bar=prev_calculated-1` e laço crescente até `rates_total`.
+- **Reprodução** inspeção estática e ensaio aritmético dos índices. Com
+  rates_total100/prev_calculated100, visita apenas99. Com101/100, visita99 e100.
+  A barra corrente é0. A execução MQL nativa e o alcance no artefato instalado
+  permanecem por qualificar. A infraestrutura de sinais contém consumidores
+  desse buffer, cujo vínculo no perfil efetivo exige conferência.
+- **Próxima ação** reproduzir no indicador, corrigir a seleção incremental e
+  comparar com reconstrução completa sobre os mesmos dados, preservando o
+  contrato e reconciliando os pins por incremento revisado.
+- **Aceite** primeiro cálculo, tick na mesma barra, nova barra, histórico
+  expandido/revisado, dados inválidos e leitura por consumidor. Resultados
+  incrementais devem corresponder à reconstrução no mesmo corte.
+
+O indicador existente calcula uma aproximação por candle/volume. O novo
+fluxo com direção observada por flags exige contrato e qualidade próprios.
+Os rótulos e o registry devem preservar essa distinção de origem e fórmula.
+
+### Avaliação dos seis vídeos e encaixe no projeto
+
+| Referência | Incremento aproveitável | Reuso e lacunas | Aceite proposto |
+|---|---|---|---|
+| CCI/SMA9/21/ATR10, `_glnf5eXLuM` | Uma entrada por episódio direcional, filtro de distância e SL/TP por volatilidade, com sinais visuais | SMA/EMA/ATR, scaffold, risco e painel existem. Gerador declarado aceita SMA/EMA/RSI; CCI/filtro de distância e estado de rearme precisam de extensão tipada após IND-CCI-01. ATR do relato usa média aritmética | Sequências com sinal persistente, retirada do sinal, reinício, recusa/incerteza e stop. Definir snapshot ATR versus atualização e medir custos. |
+| Pressão de agressão, `g7xWx5n0WhQ` | Indicador de pressão e variação em janela curta, cobertura de ticks e cooldown | Captura/auditoria de ticks e indicadores de aproximação já existem. Pressão observada por flags, sua série temporal e consumidor exigem produtor qualificado | Janela completa W+intervalo comparado, unidade de volume fixa, limites de leitura diagnosticados, ticks repetidos/fora de ordem e sinais simultâneos. Paridade incremental/lote antes de avaliar mérito econômico. |
+| Pullback atribuído a Linda Raschke, `Oj_YwoevrnE` | Regime→rompimento→pullback→ordem, validade e invalidação visíveis | Donchian/EMA/ADX e políticas temporais existem; sua presença não comprova o setup. ADX com dois períodos exige equivalência definida | Ordem temporal estrita, expiração, referência de candle/plano versionada, cancelamento observado, corrida cancelamento/fill e recuperação. |
+| GradienteFull3.9, `roUb-meZZjI` | Exportação diária com extrema/horários/custos, atalhos com prévia, distância ATR congelada e filtros de regime | Ledger/exportação, pendentes Safety e gradientes de pesquisa existem. Simulação em QA segue os gates de risco vigentes | Exportação idempotente, bloqueio de arquivo diagnosticado, revalidação de atalhos, exposição executada+reservada e estudo pareado com custos. |
+| Renko embarcado, `Sg2zQZdw6vI` | Série derivada causal de ticks, seed/gap explícitos, timestamp e sequência de boxes, visual opcional | Composition atualmente exige timeframe MT5 e declara Renko como contrato próprio. Usar o pilar de Dados e motor financeiro existentes | Convenção de tamanho/reversão/pavios/fonte, múltiplos boxes por tick, lacunas, corte as-of, restart e paridade de série/eventos, com negociação em cotações executáveis. |
+| Vela de volume, `rqkVwLhvLFc` | Zonas de volume financeiro com proveniência e validade, candidato a estudo de breakout/reteste | Volume real/tick já tem unidades e ausência explícitas no registry. Volume financeiro equivalente ao Profit precisa de contrato. A entrega relatada é indicador | Recorde conhecido em cada instante, revisão de zonas, sessões, dia atual/empates/ausência, índices válidos e comparação fora da amostra com referências simples. |
+
+### Ajustes críticos na interpretação dos relatórios
+
+1. **Extremos diários e suas horas são insuficientes para otimizar travas.**
+   Ensaio em memória com curvas A=`[0,100,-100,200,-200,50]` e
+   B=`[0,-100,100,200,-200,50]` tem máximo200 no índice3, mínimo−200 no4
+   e fechamento50 em ambas. Com gain/loss80, A toca gain primeiro e B toca
+   loss primeiro. A curva/eventos com cobertura qualificada e o encerramento
+   contrafactual precisam ser reavaliados no motor existente. O serviço de
+   trajetórias atual já identifica os limites de cruzamento absoluto.
+2. **Offset e desvio de execução têm contratos distintos.** Stop-limit pode
+   continuar sem execução após o disparo. A propriedade deviation do MT5
+   depende do modo de execução. Qualificar parcial, recusa e cancelamento.
+   DAY/GTC tratam validade de ordem; zeragem é um processo observado.
+3. **Variação de pressão é uma diferença finita.** Definir comparação fixa,
+   extremo na janela ou taxa por segundo. Expiração de vendas antigas pode
+   elevar compra60%→100% com zero compras novas. A sequência50→70→60 e
+   comparação contra mínimos da janela produz impulso10p.p. nos dois lados.
+   A prioridade do sinal e os filtros de quantidade/liquidez exigem contrato.
+4. **Estado de estratégia e efeito no broker exigem vínculos.** O reset da
+   flag Linda no código reconstruído não apresenta cancelamento explícito
+   da ordem. O trecho combina Close corrente com referências[1], e pode
+   registrar rompimento e aproveitar pullback anterior na mesma avaliação.
+   LastBarOnChart identifica a última barra; a política de fechamento é própria.
+   Definir referência fixa ou móvel e custo/risco reais após os fills.
+5. **Portabilidade de volume e Renko exige equivalência.** Volume financeiro
+   do Profit, volume de contratos e contagem de ticks têm unidades distintas.
+   Sufixo.TR e seleção de ticks reais no Tester exigem prova de origem/cobertura.
+   Convenção20R=19ticks é específica do relato. Vários boxes gerados por um
+   tick compartilham o evento e o preço executável. A hipótese de atuação
+   institucional e a alegação de aderência100% permanecem sem prova abrangente.
+6. **O código reconstruído das zonas tem inconsistência de limites.** Arrays
+   Max/Min/MaiorVolume/Hora são declarados1…50 e o loop percorre0…50. Omitir
+   a plotagem0 deixa esse acesso a investigar no original. Maior candle do dia
+   só pode orientar decisões depois de conhecido. Preservar zonas históricas
+   e versões evita inserir o vencedor retrospectivo no começo da sessão.
+7. **Preço médio, martingale e compressão de alvo exigem avaliação conjunta
+   de cauda, capital, risco e custos.** Acerto100% em fechamentos apresentados
+   deixa em aberto exposição e perdas flutuantes. O perfil do vídeo com SL0
+   conflita com os gates atuais. Os modos e H0–H6 existentes dão o caminho
+   de pesquisa. Seu ganho incremental depende de teste pareado elegível.
+
+### Painel, operação e método
+
+- **Painel por capacidades** reutilizar PanelHost/GuardianPanel, explicando
+  variante/preset, fonte/unidade/cobertura, barra ou box confirmado, estado
+  de rearme/etapa/expiração e pedido/fill/cancelamento observados. DPI,
+  contraste, teclado e sobreposição de rótulos têm aceite físico próprio.
+- **Atalhos e controle manual** aproveitar a boleta/PlacePending/ModifyPending
+  e validações existentes. Prévia, foco/armamento, repetição de tecla, idade
+  do cursor/cotação e risco precisam de revalidação. Pausar entradas, cancelar
+  pendentes e zerar possuem ações e acompanhamento identificados.
+- **Proteção financeira** definir escopo/custos/âncora e fórmula de retenção
+  de lucro, incluindo a diferença entre percentual protegido e devolução
+  permitida. A zeragem permanece sujeita ao mercado e à reconciliação.
+- **Exportação** derivar do ledger/journal e manter schema, run, conta/servidor
+  saneados, Magic integral, símbolo/contrato, revisão, moeda e estado provisório
+  ou final. Um arquivo comum resultado_diario.csv exige isolamento por execução
+  e tratamento de concorrência. Conferir lock, interrupção e retomada com QA própria.
+- **Desempenho** leituras incrementais, buffers limitados com truncamento
+  diagnosticado, atualização visual desacoplada e objetos próprios. CopyTicks
+  pode aguardar sincronização no EA; callbacks exigem medição e limites.
+  As três bandas/produtores/visuais compartilham contratos, assim como as
+  novas séries; estudo e execução consomem o cálculo canônico qualificado.
+- **Experimentos** corrigir cálculos primeiro, qualificar dados/custos,
+  comparar componentes sob condições iguais, congelar regras, registrar
+  tentativas e reservar período fora da amostra. Replay, compilação e alguns
+  trades demonstrados têm alcance próprio. IA reutiliza schema/compiler/
+  scaffold e contratos existentes, com ferramentas nas permissões vigentes.
+- **Sequência sugerida** P0 atuais e novos, Triplo já priorizado, capacidades
+  de rearme/estados/inspeção, candidatos CCI e pullback, zonas de volume,
+  fluxo e Renko após suas dependências de dados. Configurador/dashboard
+  mantêm prioridade Alta após operações funcionais, com arquitetura futura
+  avaliada no marco já definido pelo proprietário.
+
+Esta passagem fez análise, registro local e ensaios em memória, incluindo
+execução do método CCI atual. Antes desse ensaio, MemAvailable7285MiB e PSI
+de memória0 foram observados. As amostras têm27 barras e curvas sintéticas,
+com um processo e OPENBLAS/OMP/MKL configurados para1. Correções do
+produto, regressões permanentes, CI, Tester, conta e observação prolongada dos
+incrementos continuam pendentes. A análise não qualifica rentabilidade.
+
+Fontes dos vídeos
+
+- [CCI e volatilidade](https://www.youtube.com/watch?v=_glnf5eXLuM).
+- [Pressão de agressão](https://www.youtube.com/watch?v=g7xWx5n0WhQ).
+- [Setup atribuído a Linda Raschke](https://www.youtube.com/watch?v=Oj_YwoevrnE).
+- [Gradiente Linear](https://www.youtube.com/watch?v=roUb-meZZjI).
+- [Renko integrado](https://www.youtube.com/watch?v=Sg2zQZdw6vI).
+- [Zonas de volume financeiro](https://www.youtube.com/watch?v=rqkVwLhvLFc).
+
+Referências primárias para contratos e cálculos
+
+- [CCI e fórmula](https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/cci).
+- [Manual NTSL](https://downloadserver-cdn.nelogica.com.br/content/profit/manual_ntsl/ManualNTSL.pdf).
+- [CopyTicks](https://www.mql5.com/en/docs/series/copyticks).
+- [Dados e flags MqlTick](https://www.mql5.com/en/docs/constants/structures/mqltick).
+- [Indexação AS_SERIES](https://www.mql5.com/en/docs/array/arraysetasseries).
+- [Solicitação e desvio de preço](https://www.mql5.com/en/docs/constants/structures/mqltraderequest).
+- [Execução e Stop Offset](https://ajuda.nelogica.com.br/hc/pt-br/articles/360053623191-Compreendendo-o-Pulo-de-Ordens).
+- [Corrida de execução/cancelamento OCO](https://ajuda.nelogica.com.br/hc/pt-br/articles/360041299231-Ordens-OCO-Editor-de-Estrat%C3%A9gias-de-Negocia%C3%A7%C3%A3o).
+- [Ticks reais e gerados](https://www.metatrader5.com/en/terminal/help/algotrading/tick_generation).
+
+## Triagem de canais e auditoria do relatório
+
+Registro de análise em 13/11/2026, a partir do relatório entregue pelo
+proprietário sobre 28 vídeos distintos de dez canais. SHA256 do anexo
+`cd486221cb5bd09ddcaac1fb28fc674a2bf0560a67afaa61e12bf2e3d924802d`.
+O relatório declara acesso a transcrições e metadados e ausência de acesso
+ao repositório. Seus exemplos são material de pesquisa com autoria técnica
+a esclarecer. Faltam evidências visuais, intervalos de cobertura, timestamps
+por afirmação, código original e separação entre observação e reconstrução.
+
+Uma consulta leve ao oEmbed oficial do YouTube confirmou título e canal de
+VYRyK6SoaaM, NLBXgSmRBgU, Ls1-_SpEfmo e LNNQ1t2bsGk. Datas, durações,
+fórmulas e fidelidade das descrições seguem dependentes da inspeção do conteúdo.
+A conferência local usou App `550b6d5`, HADOUKEN `d4d389e` e Safety `27b8599`.
+As alterações locais preexistentes foram preservadas. Esta passagem acrescenta
+análise documental e exemplos aritméticos pequenos ao registro existente.
+
+### Prioridade e reconciliação com a fila
+
+A ordem corretiva vigente continua E14-CALC-01 → IND-CCI-01 → IND-AGGR-01 →
+E14-METRIC-01 → E14-SCOPE-01 → E14-EXEC-01. Depois vêm SA-01-CONTRATO e
+SA-01-PLOT. Os achados de cálculo já reproduzidos precisam de regressão,
+correção, identificação dos resultados afetados e qualificação dos consumidores
+antes das comparações financeiras dependentes. A fila de continuidade mantém
+seus 28 itens e seus estados. Este estudo fornece propostas e critérios para
+os responsáveis existentes. [Fila única](../../CONTINUAR_AQUI.md).
+
+| ID citado no relatório | Responsabilidade canônica | Destino da proposta externa |
+|---|---|---|
+| E14-CALC-01 | Comissões, fills, parciais e contagem de ciclos | Permutação/Martin Ratio entram como proposta metodológica de F13/F19, após dados e métricas elegíveis |
+| E14-SCOPE-01 | Escopos de conta/Magic/símbolo em métricas, travas e zeragem | ONNX fica como evolução futura com contrato e owner próprios |
+| E14-EXEC-01 | Intenção durável, parcial, resultado incerto, reinício e reversão nos consumidores vigentes | A proposta de parcial deve qualificar o fluxo existente e seus perfis de conta |
+
+E14-CALC-01b, E14-RISK-01 e E14-PANEL-01 são rótulos sugeridos pelo relatório.
+Sua eventual adoção exige reconciliação com a fila e com os componentes já
+presentes. O configurador guiado e o dashboard consolidado mantêm prioridade
+Alta após as correções aplicáveis e as operações funcionais do Expert.
+A avaliação futura da arquitetura da interface permanece no marco registrado.
+
+### Correções necessárias no material recebido
+
+1. **Parcial em netting e confirmação.** O relatório recomenda
+   `CTrade::PositionClosePartial` para netting. A documentação oficial define
+   ambas as sobrecargas para hedging. O retorno booleano confirma verificações
+   básicas e exige consulta do resultado. O exemplo ainda move SL mesmo quando
+   o volume parcial é inviável ou a solicitação falha, e mantém conclusão em
+   uma flag volátil. A fonte atual oferece NativePartialPolicy → ReduceOwn →
+   SafeExecutor, com intenção, persistência, comparação de volume/histórico
+   e BE condicionado à confirmação persistida. O perfil atual bloqueia
+   netting/exchange em NativeBaseAdapter, SafeExecutor e suas operações de
+   gestão enquanto a posse por contribuição estiver sem qualificação.
+   Compatibilidade B3 netting depende de contrato de contribuição, escopo e
+   recuperação em E14-SCOPE-01/E14-EXEC-01. Preservar esse guarda durante a
+   investigação. Uma ordem oposta pendente também exige reserva, reconciliação
+   e tratamento de corrida para impedir redução excessiva ou inversão.
+   [Contrato de PositionClosePartial](https://www.mql5.com/en/docs/standardlibrary/tradeclasses/ctrade/ctradepositionclosepartial).
+2. **Lote mínimo pode exceder o orçamento.** O helper externo devolve lote
+   mínimo quando faltam especificações e eleva volumes pequenos ao mínimo.
+   Com orçamento1, risco100 por lote, mínimo0,1 e passo0,01, o volume calculado
+   0,01 vira0,1 e o risco sobe para10. Esse é um contraexemplo do snippet
+   externo. HDK_RiskGuard já valida especificações, usa OrderCalcProfit na
+   moeda da conta, rejeita lote abaixo do mínimo e recalcula risco final.
+   Reutilizar esse caminho, acrescentando os cenários pertinentes à sua
+   qualificação. Casas decimais fixas, moedaBRL presumida e arredondamento
+   posterior ao limite máximo exigem correção no exemplo.
+3. **Preço, envio e resultado possuem contratos distintos.** Fallback para
+   dígitos com tick desconhecido deixa sem prova a validade do preço.
+   A normalização precisa considerar lado, tipo da operação, distância e risco
+   depois do ajuste. Tipo de preenchimento depende da especificação do símbolo
+   e do modo de execução. OrderCheck e um código de retorno isolado deixam
+   pendente a reconciliação de fills, volume e resultado final. OnTradeTransaction
+   pode entregar várias transações por pedido, com ordem de chegada variável.
+   O handler precisa ser curto e apoiar a consulta/recuperação persistida.
+   [Transações de negociação](https://www.mql5.com/en/docs/event_handlers/ontradetransaction).
+4. **APTR exige calendário de sessões.** Multiplicar índices por24h/TF
+   pressupõe barras contínuas durante todo o dia. Barras ausentes, sessões,
+   feriados, DST e contratos impedem assumir o mesmo minuto do pregão.
+   Definir timezone, sessão, referência de fechamento, tratamento de gaps,
+   amostra mínima e cobertura. Zero e média parcial silenciosa tornam o
+   resultado ambíguo. APTR é uma hipótese adicional de volatilidade, com
+   versão própria e comparação pareada. O relato de diferença de volatilidade
+   em ordens de grandeza e os horários fixos carecem de evidência específica
+   do ativo e período. O calendário e os produtores existentes são os pontos
+   de integração. A referência sazonal de volume já registrada em
+   indicator_registry.py ajuda a reutilizar relógios e disponibilidade.
+5. **Permutação precisa de hipótese nula e p-valor válido.** O helper externo
+   retorna p=0 com zero excedências e100 sorteios. Uma estimativa conservadora
+   usual para o teste aleatório inclui a observação e usa(b+1)/(N+1), dando
+   1/101 nesse exemplo. Empates, repetições e desenho do sorteio exigem
+   definição. Scores ausentes, NaN ou infinitos precisam de estado inválido
+   explícito. Com score real NaN e scores permutados finitos, as comparações
+   do helper são falsas e também produzem p=0. A permutação externa preserva
+   colunas derivadas antigas
+   em df.copy(), enquanto modifica OHLC, e sorteia gaps e intrabarras
+   separadamente. Recalcular features/sinais e justificar dependências,
+   sessões, volume, spread e custos sob a hipótese nula. Reexecutar seleção e
+   otimização em cada amostra quando a pergunta envolver viés da seleção.
+   Um parâmetro congelado responde a uma pergunta diferente. O Monte Carlo
+   atual de strategies/validation.py já reamostra retornos com reposição.
+   Registrar separadamente a permutação proposta, com seed, universo de
+   tentativas, incerteza e período reservado. Os limites0,01/0,05 e N100
+   permanecem propostas a justificar metodologicamente. [Phipson e Smyth](https://gksmyth.github.io/pubs/PermPValuesPreprint.pdf).
+6. **ONNX depende do schema real do modelo.** O snippet supõe três saídas e
+   usa vector double com conversão desabilitada. É preciso conferir quantidade,
+   nomes, dtypes, shapes, ordem de features, normalização treinada, operadores
+   suportados e valores finitos. Um modelo float requer tensores compatíveis.
+   Registrar versão/hash, paridade de decisão Python/MQL5, falhas e orçamento
+   de tempo/memória antes de integrar ao filtro de entrada. Latência<1ms
+   precisa de medição no modelo e hardware escolhidos. O operador matricial@
+   consta na documentação atual, com tipos e dimensões compatíveis. Sua adoção
+   exige medir o benefício sobre o cálculo concreto. [OnnxRun](https://www.mql5.com/en/docs/onnx/onnxrun), [produto matricial](https://www.mql5.com/en/docs/basis/operators/matmul).
+7. **Timer, renderização e handles já têm integração.** PanelHost já evita
+   criar o painel na otimização, e StrategyRobot possui OnTimer. A fila de
+   eventos de cada programa serializa os callbacks. Migrar trabalho pesado
+   para OnTimer continua consumindo essa fila e pode descartar novos eventos
+   de timer. Medir duração, limitar trabalho e consumir snapshots existentes.
+   Handles precisam de ownership e ciclo de vida explícitos. IndicatorRelease
+   tem uma exceção documentada no Strategy Tester, onde sua execução é
+   suprimida. O ganho fixo2,5x proposto precisa de benchmark pareado.
+   [OnTimer](https://www.mql5.com/en/docs/event_handlers/ontimer), [IndicatorRelease](https://www.mql5.com/en/docs/series/indicatorrelease).
+8. **Regimes e portabilidade precisam de evidência causal.** As regras
+   ATR/EMA e slope descritas ainda exigem fonte para a classificação como
+   modelo de Markov. Limiar1,8/0,6, sessões e faixa de pullback são hipóteses
+   de estratégia. Já existe market_regimes.py com estados confirmados,
+   duração, aquecimento UNCERTAIN e disponibilidade por barra fechada.
+   Aproveitar esse catálogo para comparar variantes. MQL5 ter MTF/book/ticks
+   oferece APIs, e cada uso ainda precisa provar cobertura, relógio e
+   disponibilidade. Sinal+1/0/−1 exige estado inválido separado, timestamp,
+   revisão e distinção entre estado persistente e novo evento. Extremos
+   confirmados exigem atraso explícito e available_at.
+
+### Aproveitamento por área e aceites propostos
+
+As linhas abaixo são propostas de integração. Os responsáveis devem ligá-las
+às tarefas oficiais quando houver escopo executável, conservando ID, estado,
+dependências e evidência na fila única.
+
+| Área / responsável | Integração e benefício concreto | Dependências e aceite |
+|---|---|---|
+| Painel / Expert e F19 | Estender PanelHost/GuardianPanel com variante, revisão, qualidade/frescor do dado, motivo de bloqueio, sinal, solicitação e fill observado. Tornar o plot opcional uma apresentação do mesmo cálculo consumido pelo Expert | E14-METRIC/SCOPE/EXEC e SA-01-PLOT. Comparar decisões/journal com visual habilitado e desabilitado. Conferir leitura, foco, teclado, DPI e acessibilidade em interface real |
+| Configurador guiado / presets e interface | Explicar unidade, intervalo válido, dependência entre campos e impacto no risco. Exibir comparação da revisão anterior, resumo e validação antes de aplicar | Operações funcionais e contratos de preset. Valores antigos continuam legíveis. Aplicação tem intenção estável, estado observado e recuperação. Arquitetura futura da interface é decisão do marco existente |
+| Qualidade de operação / Expert e Safety | Reutilizar pausa, cancelamento e encerramento com escopo visível, pedido acompanhado e motivo de estado incerto. Mostrar contribuição compartilhada ou perfil de conta sem qualificação | E14-SCOPE/EXEC. Ensaios próprios de timeout, fill parcial, reinício e mudança de conta. Nenhum efeito fora do mandato e nenhuma repetição cega após resultado desconhecido |
+| Expert e indicadores / HADOUKEN e Dados | Fechar primeiro Stop ATR Triplo, seed, fórmulas, entrada/saída, rearme e compatibilidade de proteção. Qualificar handles, CopyBuffer completo e disponibilidade MTF. Reutilizar HDK_StrategyRobot, NativeBaseAdapter e produtor SuperATR do header fixado | P0, SA-01-CONTRATO/PLOT e composição revisada. Regressores de limites, paridade temporal e ensaio nativo próprio com perfil autorizado. Revisões dos pins exigem reconciliação correspondente |
+| Metodologia e otimização / F13 e F19 | Acrescentar permutação como experimento registrado e Martin/Ulcer como métricas complementares. Preservar walk-forward, custos, janelas causais, universo histórico e histórico de tentativas | Correções contábeis/indicadores e dados elegíveis. Definir hipótese nula e estatística, tratar denominador zero, reotimização, múltiplas tentativas e incerteza. Usar amostras pequenas para validar o método antes de orçamento maior |
+| APTR e regimes / Dados e indicadores | Registrar nova feature/produtor com referência por sessão anterior, amostra/cobertura e parâmetros versionados. Comparar contra o cálculo de referência nas mesmas condições | Calendário, timezone, preço anterior, fonte e revisão. Provar ausência de futuro, reação a faltantes e igualdade temporal entre consumidores. Benefício financeiro depende de avaliação fora da amostra |
+| Dashboard e inspetor / F19 e Analytics | Reunir líquido, drawdown, exposição, MAE/MFE e distribuições com filtros compartilhados por ativo, período e revisão. Permitir inspecionar sinal, confirmações, entrada, parcial, stop e saída com seus motivos | P0 e operação funcional. Derivar do ledger, trajetórias e journal oficiais. Distinguir provisório/final e frescor. Extremos diários isolados deixam sem prova a ordem intradiária de gatilhos. Conferir seleção e navegação na interface real |
+| ONNX e matrizes / pesquisa e integração | Investigar inferência nativa como extensão futura do fluxo oficial, com modelo reproduzível, explicação do filtro e orçamento medido | Dados/execução qualificados, features causais e pipeline versionado. Paridade de transformação e decisão, testes de corrupção/schema/falha, medição no alvo e integração do resultado indisponível |
+
+### Próxima coleta de evidências
+
+Priorizar a inspeção completa dos vídeos de APTR, permutação, parcial/eventos
+e regimes. Para cada regra, trazer URL com início/fim, transcrição curta,
+captura relevante de fórmula/parâmetros/painel e vínculo ao código original
+com versão/licença. Rotular observação visual, declaração do autor, inferência
+e proposta do agente. Explicitar trechos sem cobertura e divergências entre
+tela, fala e exemplo. Para ONNX, acrescentar modelo, schema, dtype e requisitos
+de runtime. Esse material permite fechar contratos e aceites com procedência.
+
+A revisão local confirmou ausência dos seis basenames principais propostos
+no conjunto de arquivos rastreados do App. Os caminhos oficiais inspecionados
+incluem robots/super_atr_research.py, analytics/super_atr.py,
+strategies/validation.py, analytics/market_regimes.py, indicator_registry.py
+e os módulos HADOUKEN acima. HDK_SuperATR.mq5 declara dez buffers/plots.
+A conferência do projeto deve prevalecer sobre as contagens hipotéticas do relatório.
+
+Os únicos ensaios novos foram aritmética em memória do snippet de lote e do
+p-valor, com biblioteca padrão no ambiente existente. A qualificação desta
+proposta depende das regressões, CI, interface real, Tester, conta, sessões
+e observação prolongada aplicáveis a cada incremento. Os cinco pregões e
+os horários fixos do checklist externo seguem como sugestões a dimensionar
+pelo cenário e pelo orçamento do host. Fonte inspecionada e documentação
+oficial sustentam os contratos apontados. Mérito financeiro de APTR, regimes,
+parciais ou ONNX permanece uma hipótese a avaliar.
+
+## Encaminhamento para atuação e cruzamentos
+
+Pedido do proprietário em 13/11/2026 para preservar todos os achados e
+incrementos discutidos nesta análise e permitir atuação coordenada dos agentes.
+O mapa abaixo vincula os temas às fichas existentes. A atribuição de uma ficha
+identifica o ponto de integração e o responsável por área. O estado efetivo
+de cada capacidade exige conferir fonte, composição e evidência atuais.
+Posse, estado, branch/PR, SHA, bloqueio e próxima ação continuam na fila de
+CONTINUAR_AQUI. Os temas futuros devem ampliar suas fichas quando assumidos,
+conservando o histórico e os aceites já demonstrados.
+
+### Mapa de atuação por capacidade
+
+| Tema | Ficha e responsável por área | Próxima investigação, implementação ou aceite |
+|---|---|---|
+| Comissões, taxas, fills, parciais e ciclos | E14-CALC-01, T20.2 / HADOUKEN e Analytics | Reproduzir o custo de entrada repetido, fixar atribuição por fill/ciclo e reconciliar resultado líquido, PF, contagem e curvas nos consumidores |
+| Fórmula e aquecimento do CCI | IND-CCI-01, T19.3/21 / Dados e indicadores | Corrigir o desvio da mesma janela, provar aquecimento e fronteiras, inventariar cálculos e resultados derivados afetados e conferir paridade nativa |
+| Atualização incremental de agressão | IND-AGGR-01, T19.11 / indicadores HADOUKEN | Comparar lote/incremental com AS_SERIES, barra atual/nova barra e revisão de histórico, depois qualificar consumidores e artefato |
+| Histórico, frescor e ausência de métricas | E14-METRIC-01 / painel e Analytics | Reproduzir falha/leitura parcial, preservar estado explícito e cobertura, distinguir zero válido e indisponível e qualificar recuperação/cache |
+| Escopo de conta, Magic, símbolo e contribuição | E14-SCOPE-01, T19.23, T20.7 / Safety e Expert | Explicitar identidade e mandato de métricas, limites, cancelamento e encerramento. Para netting, qualificar posse por contribuição e interferência manual antes de ampliar o perfil |
+| Intenção durável, parcial, incerteza, reinício e reversão | E14-EXEC-01, T20.20 / Expert e Safety | Exercitar pedido aceito sem fill conhecido, reconciliação, repetição e recuperação. Ligar decisões e efeitos a IDs persistidos e proteger o saldo após parcial |
+| Lote, moeda, preço, margem e filling | T19.56, T20.5/8/9 / Safety e integração | Reutilizar RiskGuard/SafeExecutor. Cobrir mínimo maior que orçamento, passos arbitrários, tick ausente, arredondamento direcional e risco/margem depois da normalização |
+| SL/TP, BE, trailing e stop por barras | T19.19/57, T20.11 / Expert e pesquisa | Definir âncora e cadência, offset, prioridade e monotonicidade. Reconciliar SL observado, pedidos próprios e intervenção externa. Confirmar parcial antes da mudança dependente de stop |
+| Sessão, limite diário e retenção de lucro | T19.20/48, T20.3 / Safety, Dados e Analytics | Definir sessão/relógio, floating inicial, depósitos/saques, máximo observado e devolução permitida. Simular gatilhos sobre trajetórias com ordem temporal qualificada |
+| Stop ATR Triplo e plot opcional | SA-01-CONTRATO/PLOT / Expert, indicadores e painel | Fechar fórmula, seed, três bandas no mesmo TF ou variante contratada, consenso, rearme, saída e compatibilidade SL/TP. Comparar cálculo e decisões com plot habilitado/desabilitado |
+| CCI com médias e filtro de distância | T19.17/21 / Expert e indicadores | Depois de IND-CCI-01, especificar episódio direcional, retirada do sinal, cooldown, snapshot ATR e uma entrada por evento, incluindo recusa e reinício |
+| Setup sequencial de rompimento/pullback | T19.17/21, T20.11 / Expert e pesquisa | Definir regime, rompimento, pullback, plano pendente, expiração e invalidação em ordem estrita. Testar corrida cancelamento/fill e recuperação do plano |
+| Pressão, derivada, CVD e book | T19.11/12/13, T20.6 / Dados e fluxo | Qualificar unidade, flags/proxy, janela W+intervalo, fonte, disponibilidade e truncamento. Expiração de negócios antigos precisa de tratamento distinto de agressão nova. Conferir lote/incremental |
+| Gradiente, grid, preço médio e martingale | T19.22/43/56, T20.8/9 / pesquisa e Safety | Medir exposição executada/reservada, risco agregado, margem, perdas abertas e cauda. Fixar distância ATR e contrato dos níveis. A hipótese fica sujeita aos gates do módulo e à comparação elegível |
+| Renko derivado de ticks | T19.41, T20.5/6 / Dados e integração | Definir box, reversão, pavio, seed, gaps e sequência por tick. Preservar relógios e preços executáveis quando um evento gera vários boxes. Provar retomada e paridade |
+| Zonas de volume financeiro | T19.3/17, T20.4/5 / Dados e indicadores | Confirmar equivalência da unidade ao relato, regra de recorde, empates e validade. Preservar o que era conhecido em cada instante e revisar limites dos arrays do exemplo original |
+| APTR por horário/sessão | T19.3, T20.5 / Dados e indicadores | Alinhar observações por sessão anterior elegível, declarar amostra/cobertura e fechar a referência do true range. Comparar com ATR sob os mesmos dados, custos e risco |
+| Regimes, volatilidade e sazonalidade | T13.3, T19.21 / Analytics e indicadores | Reutilizar o catálogo de regimes, declarar atraso/histerese/estado incerto e avaliar ATR_ratio/slope como variantes. Justificar limiares e rótulo Markov com fonte e método |
+| Contrato de sinal, MTF e handles | T19.2/3/33, T20.26 / SDK, Dados e Expert | Versionar buffers e estados, barra confirmada, available_at, revisão, evento consumido e disponibilidade. Conferir CopyBuffer completo, ownership de handles e liberação no ciclo suportado |
+| Walk-forward, permutação e seleção | T19.27, T20.12/13/14/15 / pesquisa | Congelar hipótese nula, universo, tentativas, custos e holdout. Tratar NaN/denominadores/empates, reexecutar seleção quando pertinente e medir incerteza. Acrescentar Martin/Ulcer como métricas definidas |
+| Viés temporal, sobrevivência e frequência | T20.4/5/12/13, T19.20 / Dados e pesquisa | Versionar universo histórico, contratos e ajustes conhecidos à época. Especificar custo/preço de execução, instante do sinal e cooldown. Verificar causalidade além do shift aplicado ao retorno |
+| ONNX, modelos e matrizes | T19.2/23, T20.26/27 / pesquisa e integração | Tratar como evolução futura. Validar artefato/licença, schema, dtype/shape, feature order, transformações treinadas, hash e runtime. Medir latência/memória e conferir decisão indisponível e paridade |
+| Painel operacional e desempenho visual | E14-METRIC-01, SA-01-PLOT, T19.34 / painel e Expert | Reutilizar PanelHost/GuardianPanel e bypass do otimizador. Mostrar frescor, motivo de bloqueio, revisão e resultado observado. Medir callbacks e equivalência das decisões com renderização opcional |
+| Atalhos, boleta e controle manual | T19.30, T20.20/22 / interface e Safety | Definir foco/armamento, prévia, repetição de tecla, cotação/cursor válidos e revalidação no ato. Acompanhar pausa, cancelamento, encerramento e resultado incerto no mesmo protocolo |
+| Configurador guiado | LAB-09, T19.25/26/30 / presets e interface | Prioridade Alta após operações funcionais. Exibir unidades, limites, campos condicionais, explicação de efeito, comparação de revisão e resumo. Conferir inputs salvos, compilados e observados no EA |
+| Dashboard consolidado e inspetor | LAB-05/06, T20.22/23 / Analytics e interface | Prioridade Alta após operações funcionais. Compartilhar filtros e seleção temporal, líquido/DD/exposição/MAE/MFE/distribuições. Navegar da operação até sinal, confirmação, pedido, fill, proteção e saída com motivos |
+| Exportação e pacote reproduzível | T16.12, T20.16/25 / Analytics e presets | Exportar pelo ledger/journal, com schema, identidade saneada, revisão, moeda e estado provisório/final. Qualificar concorrência, lock, interrupção, retomada e retenção do arquivo |
+| Recursos, cache e cancelamento | T20.24/25 / donos dos produtores e integração | Reutilizar fila/cache, invalidar por revisão, limitar buffers com diagnóstico e permitir cancelamento acompanhado. Medir orçamento antes de cargas e manter uma carga pesada por vez |
+| Desenvolvimento assistido e artefatos de terceiros | T19.2/23, T20.26/27 / engenharia e integrador | Especificar casos e limites antes da geração, revisar código/licença/origem, qualificar integração CLI/GUI e manter permissões e evidências por composição |
+| Aceites operacionais e gráficos futuros | ACEITE-NATIVO/UI/M1, LAB-10 / QA, operador e integração | Separar compilação, simulação, compositor real, entrada física, acessibilidade, login, MT5/Tester, DEMO e observação. Registrar dependência exata. Avaliar arquitetura gráfica no marco posterior solicitado |
+
+As fichas e seus contratos permanecem nas fontes de planejamento existentes.
+Os detalhes dos achados ficam nas seções anteriores deste documento e no
+complemento do Super ATR. [F19](PLANO_F19_PILARES_PRESETS.md),
+[F20](PLANO_F20_ROBUSTEZ.md),
+[backlog Super ATR](LAB_SUPER_ATR_PENDENCIAS_20261024.md).
+
+### Cruzamentos de análise a preservar
+
+| Cruzamento | Pergunta e comparação requeridas | Evidência para interpretar o resultado |
+|---|---|---|
+| Contabilidade × gestão × excursões | Como parcial, BE, trailing, custos e lote alteram líquido, DD e MAE/MFE por ciclo? | Mesmo conjunto de operações/dados elegíveis, custos por fill reconciliados, trajetórias e ordem dos gatilhos conhecidas ou limitação explícita |
+| ATR/Triplo/APTR × regime × sessão | Qual componente acrescenta informação depois de controlar horário, volatilidade, spread e risco? | Banda isolada, pares e triplo, depois variante sazonal e filtro, por ablação com protocolo/holdout congelados |
+| Fluxo × volume × liquidez × latência | A variação de pressão acompanha negócios novos, janela expirada ou mudança de cobertura? | Fonte e unidade fixas, janela completa, eventos repetidos/fora de ordem diagnosticados e preço executável observável |
+| Setup × MTF/Renko × relógios | O sinal já estava disponível quando o plano ou a ordem foi produzido? | event_time, available_at, observado em, revisão e ID do evento/box ligados ao pedido, incluindo múltiplos boxes no mesmo tick |
+| Gradiente/parciais × conta compartilhada × risco | Que exposição e reserva permanecem após fills, cancelamentos ou interferência de outro owner? | Escopo de conta/Magic/símbolo/contribuição, posição e pendentes reconciliados, margem/custos elegíveis e recuperação de incerteza |
+| Preset × otimização × múltiplas tentativas | O resultado sobrevive à seleção, ao período reservado e à comparação com referências simples? | Todas as tentativas registradas, p-valor/metodologia válidos, custos, incerteza, estabilidade e benefício incremental fora da amostra |
+| Painel/plot × executor × journal | O que o usuário vê corresponde ao parâmetro aplicado, ao sinal consumido e ao efeito observado? | Mesmo run/revisão/ID, teste pareado com visual ligado/desligado e estados de pedido/fill/falha/recuperação verificáveis |
+| Recursos × cobertura × confiança | Truncamento, atraso ou cancelamento afetaram o dado e a decisão? | Orçamento e retenção medidos, cobertura/frescor explícitos, invalidade propagada e replay da primeira divergência com insumos preservados |
+
+### Protocolo de assunção e encerramento
+
+1. Ler a fila única, conferir owner, fonte efetiva, pins e PR. Escolher a ficha
+   correspondente e registrar estado, branch/PR e próximo passo antes da escrita.
+2. Distinguir falha reproduzida no produto, hipótese, erro de exemplo externo
+   e capacidade já presente. Registrar comando, ambiente, insumos saneados,
+   resultado esperado/observado, alcance e aceite pertinente ao recorte.
+3. Integrar a menor correção ou extensão aos produtores, contratos, serviços,
+   CLI/GUI e executor oficiais afetados. Acrescentar regressão do limite e
+   verificar dependências e resultados antigos que precisam de requalificação.
+4. Validar em lotes proporcionais e sequenciais. Revisar arquivos, segredos,
+   diff e documentação. Publicar commit/PR com SHA remoto confirmado e
+   evidências associadas. Atualizar estado e próximo passo na fila.
+5. Quando faltar conta, hardware, sessão ou dados, registrar bloqueio preciso
+   e avançar no recorte independente. Um item concluído precisa de evidência
+   correspondente ao seu aceite e de publicação conferida.
+
+Esta demanda publica o registro de auditoria e desenvolvimento futuro. Os oito
+itens corretivos/contratuais conservam seus estados atuais na fila. Os
+demais temas ampliam as fichas por capacidade quando assumidos. Resultados
+financeiros e prontidão operacional exigem as evidências dos marcos respectivos.

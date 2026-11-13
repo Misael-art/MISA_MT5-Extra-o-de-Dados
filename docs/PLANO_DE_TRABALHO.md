@@ -1,16 +1,40 @@
 # Plano de trabalho detalhado
 
+## Correções prioritárias de cálculo e confiabilidade — 13/11/2026
+
+O proprietário definiu atuação corretiva prioritária para os achados da
+análise do Stop ATR Triplo e dos vídeos complementares. Executar E14-CALC-01 →
+IND-CCI-01 → IND-AGGR-01 → E14-METRIC-01 → E14-SCOPE-01 → E14-EXEC-01
+em prioridade **P0**, com reprodução, regressão,
+correção no caminho oficial e validação pertinente. Depois seguem
+SA-01-CONTRATO e SA-01-PLOT em P1. As ampliações de presets, Expert e interface
+desta demanda dependem dos aceites corretivos aplicáveis.
+
+Os detalhes executáveis e limites de evidência ficam no
+[backlog existente](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md#correções-prioritárias).
+Registrar posse, estado, branch/PR e SHA na
+[fila única](../CONTINUAR_AQUI.md). Esses oito itens estão livres para assunção
+após conferir o owner e a ponta atuais. A documentação registra a demanda.
+A correção do produto e os aceites nativos continuam pendentes.
+Os dois achados de indicadores e a análise crítica dos seis vídeos têm
+[reprodução e aceites próprios](propostas/ANALYTICS_OPERACOES.md#vídeos-complementares).
+O [mapa de atuação e cruzamentos](propostas/ANALYTICS_OPERACOES.md#encaminhamento-para-atuação-e-cruzamentos)
+reconcilia os demais aperfeiçoamentos com as fichas F19/F20, seus responsáveis,
+dependências e aceites. Conferir a fonte e registrar a posse na fila antes da
+implementação de cada recorte.
+
 ## Reconferência do diagnóstico em 13/11/2026
 
 Código composto `0e4f4c6` na PR308 com seis jobs de produto aprovados. A prévia
-`2b3b274` conserva 365 hashes idênticos ao runtime publicado. A fila de 20 itens
-tem 14 concluídos e seis bloqueados, com owners, evidências,
+`2b3b274` conserva 365 hashes idênticos ao runtime publicado. A fila de 28 itens
+tem 14 concluídos, seis bloqueados e oito livres, com owners, evidências,
 SHAs e critérios registrados. A observação de 30 min foi
 aprovada sob orçamento próprio. PR302 está integrada no master `09a618c` e as
 contas múltiplas da PR303 estão na composição testada. Os registros anteriores
 de 07/08 de novembro representam os estados daquelas datas. [Continuidade](../CONTINUAR_AQUI.md)
 
-A ordem vigente segue pacotes/reunião após a decisão de destino, depois o
+Na frente independente de Recursos/Dados, pacotes/reunião seguem após a
+decisão de destino, depois o
 consentimento e o percurso real do proprietário. O snapshot canônico conserva
 blocos tipados. O exportador OHLCV projeta oito campos e a importação grava o
 store de snapshots. A preservação de todas as colunas brutas/legadas e a
