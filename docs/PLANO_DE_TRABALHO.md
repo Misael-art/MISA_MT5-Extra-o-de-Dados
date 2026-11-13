@@ -4643,3 +4643,22 @@ revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem int
 Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
 250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
 qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.
+
+
+## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+
+Windows7df/131581528852 reprovou o cenário macro por RSS do processo acima de
+1024MiB. A repetição anterior2a/131574907486 confirmou a mesma ocorrência.
+A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
+receber o valor padrão. O incremento propaga o orçamento existente à análise.
+O serviço de produção mantém seu contrato de memória e o cenário conserva o
+mesmo teto entre etapas.
+
+Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
+análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
+do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
+passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
+Os valores do sampler representam simulação, com memória física limitada ao
+processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
+validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
+runtime. Logs e falhas anteriores permanecem como evidência.
