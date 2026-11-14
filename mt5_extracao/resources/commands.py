@@ -10,6 +10,8 @@ def add_parser(sub) -> None:
                                          "reversível e automação opt-in")
     rs = p.add_subparsers(dest="resources_command", required=True)
     rs.add_parser("status", help="tamanho da base, das tabelas, disco livre, crescimento e alertas")
+    q = rs.add_parser("package-plan", help="inventário de schema e plano de pacotes/reunião; não exporta nem altera a origem")
+    q.add_argument("--symbols", required=True, help="identidades registradas, separadas por vírgula")
     q = rs.add_parser("scan", help="séries candidatas a sair da base (sem lucro, sem estudo, obsoletas, vazias)")
     q.add_argument("--rules", default="", help="limita às regras, separadas por vírgula")
     q.add_argument("--selected", default="", help="ativos na seleção (protegidos), separados por vírgula")
@@ -208,6 +210,19 @@ def run(args: argparse.Namespace, ctx) -> int:
     out, data, err = cli._print, cli._data, cli._err
     if args.resources_command == "drive":
         return _drive(args, cli, ctx)
+    if args.resources_command == "package-plan":
+        from .. import services
+        from . import package_plan
+        check = storage.scan_deadline(15)
+        db = services.create_db_manager(ctx.config, args.db, read_only=True)
+        try:
+            result = package_plan.plan(db, cli._parse_symbols(args.symbols), check=check, statement_timeout_ms=15000)
+        finally:
+            db.close()
+        out(f"Plano de leitura: {len(result['inventory']['tables'])} tabelas; origem BD03 separada na coleção QA.")
+        out("Schema inventariado; seletores por família, dependências lógicas e payload ainda exigem conferência.")
+        data(**result)
+        return cli.EXIT_OK
     db, config = ctx.db, ctx.config
     policy = policy_mod.load(config)
     for message in policy.errors:
