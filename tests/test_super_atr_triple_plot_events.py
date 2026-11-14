@@ -55,6 +55,18 @@ def test_pair_compares_activity_decisions_sizing_and_closed_fills_without_claimi
     assert not result["same_observed_decisions_and_closed_fills"] and result["first_difference"]["section"]=="ledger"
 
 
+def test_pair_compares_fill_links_across_different_tester_tickets(example):
+    on, off = pair(example)
+    for fill in on["deals"]:
+        for field in ("deal", "order", "position", "order_position"):
+            fill[field] += 1000
+    assert events.compare_presentation_pair(on, off)["same_observed_decisions_and_closed_fills"]
+
+    on["deals"][1]["order_position"] += 1
+    difference = events.compare_presentation_pair(on, off)["first_difference"]
+    assert difference["section"] == "deals" and difference["field"] == "order_position"
+
+
 @pytest.mark.parametrize("fault", ["empty", "params", "headless", "source", "failure", "toggle", "off_plot", "missing_binding"])
 def test_pair_does_not_promote_incompatible_or_unobserved_runs(example,fault):
     on,off=pair(example)

@@ -1,5 +1,14 @@
 # Plano de trabalho detalhado
 
+## T19.29 / SA-01-PLOT — comparação de fills entre sessões
+
+Comparação de Tester e Replay normaliza os tickets locais mantendo os
+vínculos entre ordens, posições e negócios. O perfil Triplo 1.02 usa a
+conferência específica de fills e do journal. A regressão do comparador de
+plot confirma igualdade com tickets diferentes e detecta vínculo alterado.
+Foram aprovados 75 testes focados no Linux. O ensaio pareado, a aparência e
+os estados de dados no MT5/Wine continuam em qualificação.
+
 ## T20.30-HOST1-DRIVE — campanhas e validações no pacote SQLite
 
 Exporta campanhas de padrões quando o recorte contém todo o roster e seus

@@ -1,5 +1,24 @@
 # Retomar MT5X em um host limpo
 
+## Tester e Replay no Wine — 14/11/2026
+
+- A reconferência da prévia `6e48e9010e38` e do retorno `3d2447243704`
+  validou 370 hashes em cada instalação, os dois atalhos e os pins
+  HADOUKEN `d3dd3a5` e Safety `27b8599`. A ponta `ac0ab478` da PR329
+  só altera este handoff. O doctor de desenvolvimento da prévia registrou
+  16 OK, dois avisos e zero falhas.
+- A conferência de fills do Tester e Replay passa a comparar os vínculos
+  entre ordens e posições mesmo quando os tickets mudam entre sessões.
+  Alterar o vínculo de uma ordem continua produzindo uma divergência.
+  Triplo 1.02 usa a própria conferência do journal e dos fills uma única vez.
+  Foram aprovados 75 testes focados no Linux com entradas sintéticas.
+- Próximo ensaio nativo: usar os pacotes Default/Manual e a Session versionada
+  para Triplo 1.02 e S09 2.18, medir a cópia do perfil, rodar Tester e Replay
+  serializados e conferir diário, fills, caixa, plot, recursos e estados do
+  painel. A sessão visual copia o runtime Wine e usa histórico próprio. Sua
+  execução depende de folga no host. Preservar separadamente as provas de
+  `iCCI` e `CopyBuffer`, os resultados anteriores e o estado dos rascunhos.
+
 ## Validação Linux dos corretivos e dos pacotes — 14/11/2026
 
 - As PRs 319 e 320 passaram nos seis checks de produto. A compilação no
