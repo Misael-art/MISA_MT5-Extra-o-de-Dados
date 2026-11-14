@@ -31,7 +31,8 @@ def cci(df: pd.DataFrame, n: int = 20) -> pd.Series:
 
     Requires n consecutive finite, ordered HLC observations. A complete flat
     window returns zero (the MetaQuotes example convention); missing data does
-    not. Scaling before centering keeps finite large prices from overflowing.
+    not. Centering preserves small movements on large prices; scaling is used
+    only when intermediate arithmetic would overflow or underflow.
     """
     if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
         raise ValueError("O período do CCI precisa ser um inteiro positivo.")
@@ -39,16 +40,41 @@ def cci(df: pd.DataFrame, n: int = 20) -> pd.Series:
               for name in ("high", "low", "close")}
     high, low, close = (values[name] for name in ("high", "low", "close"))
     valid = np.isfinite(high) & np.isfinite(low) & np.isfinite(close) & high.ge(low)
-    typical = (high / 3.0 + low / 3.0 + close / 3.0).where(valid)
+    def typical_price(h, l, c):
+        try:
+            return math.fsum((h, l, c)) / 3.0
+        except OverflowError:
+            scale = max(abs(h), abs(l), abs(c))
+            return math.fsum((h / scale, l / scale, c / scale)) / 3.0 * scale
+
+    typical = pd.Series((typical_price(float(h), float(l), float(c)) if ok else np.nan
+                         for h, l, c, ok in zip(high, low, close, valid)), index=df.index, dtype=float)
+    minimum_normal = np.finfo(float).tiny
+
+    def result(values):
+        mean = math.fsum(values) / len(values)
+        deviation = math.fsum(abs(v - mean) for v in values) / len(values)
+        numerator = values[-1] - mean
+        if not all(math.isfinite(v) for v in (mean, deviation, numerator)):
+            raise OverflowError("CCI intermediate arithmetic overflow")
+        if not deviation:
+            return 0.0
+        denominator = .015 * deviation
+        if denominator < minimum_normal:
+            raise OverflowError("CCI intermediate arithmetic underflow")
+        return numerator / denominator
 
     def window_cci(window):
+        centered = [float(v) - float(window[0]) for v in window]
+        if all(math.isfinite(v) for v in centered):
+            try:
+                return result(centered)
+            except OverflowError:
+                pass
         scale = max(abs(float(v)) for v in window)
         if scale == 0:
             return 0.0
-        scaled = [float(v) / scale for v in window]
-        mean = math.fsum(scaled) / len(scaled)
-        deviation = math.fsum(abs(v - mean) for v in scaled) / len(scaled)
-        return (scaled[-1] - mean) / (.015 * deviation) if deviation else 0.0
+        return result([float(v) / scale for v in window])
 
     result = typical.rolling(n, min_periods=n).apply(window_cci, raw=True)
     if "_cci_reset_before" in df:

@@ -16,7 +16,7 @@
     "native_iCCI_executed": false
   },
   "validation": {
-    "unique_tests_passed": 62,
+    "unique_tests_passed": 63,
     "first_broad_batch": {
       "passed": 44,
       "failed": 9,
@@ -63,5 +63,26 @@
     "native iCCI parity",
     "Windows physical: future qualified host"
   ],
-  "accepted_operationally": false
+  "accepted_operationally": false,
+  "previous_runtime_qualification": {
+    "artifact_sha": "276e4792f8c49b6fd8efd1732697a41c64d8c663",
+    "algorithm_version": "2.0+7c3446445e1b",
+    "gui_XWayland": "passed for stored selection, states, worker and expand/restore; owner preferences unchanged",
+    "max_heartbeat_gap_seconds": 2.183,
+    "note": "first-render gaps are observed; responsiveness/physical UI acceptance is not approved by this probe",
+    "finding": "near-constant values exposed roundoff through automatic axis scaling; precision regression reproduced24 distinct float values in mathematically constant CCI"
+  },
+  "precision_followup": {
+    "status": "local numerical tests passed; launcher/preview in validation",
+    "algorithm": "compensated typical-price sum; center window; rescale only on overflow/underflow; no rounding or quantization",
+    "tests_final_focused_passed": 19,
+    "unique_tests_across_batches": 63,
+    "additional_cases": [
+      "exact constant output on linear price path",
+      "translation by2**40",
+      "overflow of typical-price sums and deviations",
+      "subnormal prices and cancellation"
+    ],
+    "old_versions_preserved": true
+  }
 }

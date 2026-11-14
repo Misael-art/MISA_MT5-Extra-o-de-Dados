@@ -101,8 +101,9 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
-IND-CCI-01 em validação: fórmula/consumidores/contratoBD06 e materialização
-aditiva2.0 implementados;62 testes únicos e doctor16/2/0 offline aprovados.
+IND-CCI-01 em validação: fórmula/consumidores/BD06/materialização2.0 e precisão
+por soma compensada/centralização implementados;63 testes únicos,19 finais e
+doctor16/2/0 offline aprovados. Launcher/GUI da precisão aguardam recursos.
 Launcher oficial aprovou materialize/context/export em QA sintética. Prévia, CI e
 paridade iCCI têm gates próprios.
 

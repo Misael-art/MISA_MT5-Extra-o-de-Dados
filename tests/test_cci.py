@@ -34,6 +34,16 @@ def test_original_increasing_series_and_first_eligible_bar():
     assert actual.iloc[-1] == pytest.approx(123.80952380952381)
 
 
+def test_translation_precision_and_exact_flat_output_for_linear_prices():
+    from mt5_extracao.strategies.indicators import cci
+    plain = bars(np.arange(60, dtype=float) / 8)
+    shifted = plain + 2**40
+    np.testing.assert_allclose(cci(shifted, 14), cci(plain, 14), rtol=1e-13, atol=1e-11)
+    # A constant CCI should not turn roundoff into a spurious oscillating trace.
+    values = cci(bars(range(100, 160)), 20).dropna()
+    assert values.nunique() == 1
+
+
 @pytest.mark.parametrize("values", [list(range(27, 0, -1)), [5.] * 30,
                                   [0.] * 30, [3., 1., 4., 1., 5., 9.] * 8])
 def test_known_paths_and_prefix_equivalence(values):
@@ -78,6 +88,12 @@ def test_empty_short_large_and_threshold_values():
     assert cci(bars(range(13)), 14).isna().all()
     huge = pd.DataFrame({name: [1e308] * 14 for name in ("high", "low", "close")})
     assert cci(huge, 14).iloc[-1] == 0
+    alternating = pd.DataFrame({"high": [1.7e308] * 14, "low": [-1.7e308] * 14,
+                                "close": [1.7e308, -1.7e308] * 7})
+    assert cci(alternating, 14).iloc[-1] == pytest.approx(-100 / 1.5)
+    tiny = pd.DataFrame({"high": [1., 2.5e-310, 2e-310], "low": [-1., 2.5e-310, 2e-310],
+                         "close": [1e-310, 2.5e-310, 2e-310]})
+    assert cci(tiny, 3).iloc[-1] == pytest.approx(reference([1/3, 2.5, 2], 3)[-1])
     positive, negative = cci(bars(range(14)), 14).iloc[-1], cci(bars(range(14, 0, -1)), 14).iloc[-1]
     assert positive > 100 and negative < -100
 
