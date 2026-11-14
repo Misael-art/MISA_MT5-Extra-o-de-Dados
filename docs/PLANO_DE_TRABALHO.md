@@ -1,5 +1,15 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — estudos, snapshots e presets no pacote SQLite
+
+A seleção inclui fatos e revisões analíticas, suas definições referenciadas,
+snapshots e blocos compartilhados, notas e capturas de gráfico e presets com
+seleções/importações associadas. O pacote falha quando faltam blocos ou revisões
+selecionadas. O manifesto enumera os donos restantes. Ledger, campanhas e
+relações multissímbolo continuam a exigir vínculos próprios. Regressões de
+pacotes, inventário e Drive sintético: 47 aprovadas.
+
+
 
 ## T20.30-HOST1-DRIVE — reunião em coleção local de QA
 
