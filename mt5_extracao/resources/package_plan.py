@@ -94,51 +94,55 @@ def _read_plan(db, selected, check, statement_timeout_ms):
         if connection.dialect.name == "postgresql" and statement_timeout_ms is not None:
             connection.execute(text("SELECT set_config('statement_timeout', :timeout, true)"),
                                {"timeout": str(statement_timeout_ms)})
-        tables,views=_schema(connection,check)
-        by_name={t["table"]:t for t in tables}
-        try:
-            identity=datasets.identity(db,connection=connection) if "_dataset_origin" in by_name else None
-        except KeyError as exc:
-            raise ValueError("Identidade BD03 incompleta; preserve a origem e reconcilie pelo owner Dados.") from exc
-        if identity is not None and not identity.get("namespace"):
-            raise ValueError("Identidade BD03 incompleta; preserve a origem e reconcilie pelo owner Dados.")
-        registered=[]
-        if "_symbol_tables" in by_name:
-            registered=[dict(row) for row in connection.execute(text(
-                "SELECT symbol,timeframe,table_name FROM _symbol_tables ORDER BY symbol,timeframe,table_name LIMIT :limit"),
-                {"limit":MAX_REGISTRATIONS+1}).mappings()]
-            if len(registered)>MAX_REGISTRATIONS:
-                raise ValueError("Registro excede10000 séries; escolha recorte validado antes de planejar.")
-        by_table={}
-        for row in registered:
-            check()
-            if row["table_name"] in by_table:
-                raise ValueError("Tabela registrada para mais de uma identidade; não deduzir posse pelo nome.")
-            by_table[row["table_name"]]=row
-        missing=[row for row in registered if row["table_name"] not in by_name]
-        for table in tables:
-            registration=by_table.get(table["table"])
-            table["registration"]=registration
-            table["selection"]=("selected" if registration["symbol"] in selected else "other_registered_asset") if registration else "requires_owner_scope"
-            table["row_count"]=None;table["data_sha256"]=None
-            table["clock_basis"]="not_established_by_schema"
+        return _inventory(db, connection, selected, check)
+
+
+def _inventory(db, connection, selected, check):
+    tables,views=_schema(connection,check)
+    by_name={t["table"]:t for t in tables}
+    try:
+        identity=datasets.identity(db,connection=connection) if "_dataset_origin" in by_name else None
+    except KeyError as exc:
+        raise ValueError("Identidade BD03 incompleta; preserve a origem e reconcilie pelo owner Dados.") from exc
+    if identity is not None and not identity.get("namespace"):
+        raise ValueError("Identidade BD03 incompleta; preserve a origem e reconcilie pelo owner Dados.")
+    registered=[]
+    if "_symbol_tables" in by_name:
+        registered=[dict(row) for row in connection.execute(text(
+            "SELECT symbol,timeframe,table_name FROM _symbol_tables ORDER BY symbol,timeframe,table_name LIMIT :limit"),
+            {"limit":MAX_REGISTRATIONS+1}).mappings()]
+        if len(registered)>MAX_REGISTRATIONS:
+            raise ValueError("Registro excede10000 séries; escolha recorte validado antes de planejar.")
+    by_table={}
+    for row in registered:
         check()
-        unavailable=[s for s in selected if not any(r["symbol"]==s and r["table_name"] in by_name for r in registered)]
-        schema=dict(tables=tables,views=views)
-        payload=dict(schema_version=1,kind="asset_package_reunion_plan",destination="collection_separate_origins",
-            base=identity,requested_symbols=selected,inventory=schema,inventory_sha256=_hash(schema),
-            missing_registrations=unavailable,orphan_registrations=missing,
-            scope="schema and existing identity/registry only; no market rows scanned",
-            dependencies="declared foreign keys only; logical producer/consumer dependencies require owner validation",
-            transfer=dict(snapshot="datasets.export_snapshot/import_snapshot: selected typed projection; not full raw database",
-                          full_sqlite="resources.files.consistent_snapshot: full logical base; not an asset-filtered package"),
-            state="planning_only",export_ready=False,reunion_ready=False,source_written=False,
-            remaining=["family owner selectors and dependency closure for every table/view",
-                       "lossless columns/revisions/clock/source hashes and payload validation",
-                       "durable operation, revalidation, budget/cancellation and idempotent QA transport",
-                       "owner destination/consent before private-data or external transport"])
-        payload["plan_sha256"]=_hash(payload)
-        return payload
+        if row["table_name"] in by_table:
+            raise ValueError("Tabela registrada para mais de uma identidade; não deduzir posse pelo nome.")
+        by_table[row["table_name"]]=row
+    missing=[row for row in registered if row["table_name"] not in by_name]
+    for table in tables:
+        registration=by_table.get(table["table"])
+        table["registration"]=registration
+        table["selection"]=("selected" if registration["symbol"] in selected else "other_registered_asset") if registration else "requires_owner_scope"
+        table["row_count"]=None;table["data_sha256"]=None
+        table["clock_basis"]="not_established_by_schema"
+    check()
+    unavailable=[s for s in selected if not any(r["symbol"]==s and r["table_name"] in by_name for r in registered)]
+    schema=dict(tables=tables,views=views)
+    payload=dict(schema_version=1,kind="asset_package_reunion_plan",destination="collection_separate_origins",
+        base=identity,requested_symbols=selected,inventory=schema,inventory_sha256=_hash(schema),
+        missing_registrations=unavailable,orphan_registrations=missing,
+        scope="schema and existing identity/registry only; no market rows scanned",
+        dependencies="declared foreign keys only; logical producer/consumer dependencies require owner validation",
+        transfer=dict(snapshot="datasets.export_snapshot/import_snapshot: selected typed projection; not full raw database",
+                      full_sqlite="resources.files.consistent_snapshot: full logical base; not an asset-filtered package"),
+        state="planning_only",export_ready=False,reunion_ready=False,source_written=False,
+        remaining=["family owner selectors and dependency closure for every table/view",
+                   "lossless columns/revisions/clock/source hashes and payload validation",
+                   "durable operation, revalidation, budget/cancellation and idempotent QA transport",
+                   "owner destination/consent before private-data or external transport"])
+    payload["plan_sha256"]=_hash(payload)
+    return payload
 
 
 def validate_plan(value):

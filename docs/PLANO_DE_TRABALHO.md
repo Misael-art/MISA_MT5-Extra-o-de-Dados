@@ -1,5 +1,21 @@
 # Plano de trabalho detalhado
 
+
+## T20.30-HOST1-DRIVE — transporte de séries SQLite registradas
+
+`resources package-export --symbols ATIVO[,ATIVO] --out NOVO_DIRETÓRIO`
+exporta barras, ticks e book registrados, colunas legadas, índices suportados,
+logs e revisões de aquisição, calendário, barras derivadas e fatos de
+instrumento disponíveis. O SQLite é criado em estágio privado e publicado após
+verificar integridade, chaves e hash. O manifesto registra namespace, relógio
+persistido, contagens e tabelas/views excluídas.
+
+O recorte inclui somente famílias com seletores definidos. Views, triggers,
+tabelas sem escopo registrado, snapshots, relações, estudos, presets e ledger
+precisam de seus próprios seletores e dependências. O PostgreSQL tem inventário
+somente leitura e ainda exige transporte próprio.
+
+
 ## T20.30-HOST1-DRIVE — inventário de pacotes por ativo
 
 O comando `resources package-plan --symbols ATIVO[,ATIVO]` inventaria tabelas,
