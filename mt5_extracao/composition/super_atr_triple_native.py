@@ -18,6 +18,9 @@ HADOUKEN_REVISION = "42793107df40118080936e63196ad152f2bfb930"
 PLOT_ROBOT_VERSION = "1.01"
 PLOT_APPROVED_FINGERPRINT = "fa4219764fd15a3c"
 PLOT_HADOUKEN_REVISION = "566c8e32278141f5ee9476176a0cb384ba4edc25"
+PANEL_SCOPE_FIX_ROBOT_VERSION = "1.02"
+PANEL_SCOPE_FIX_FINGERPRINT = "91317797e3c1fa74"
+PANEL_SCOPE_FIX_HADOUKEN_REVISION = "d3dd3a5e9a680d0c97d58cf160c60c4e58e88a3f"
 UNCONFIGURED_SEED = "1970-01-01T00:00"  # representação explícita do datetime0 do código
 STRATEGY_INPUTS = {
     "seed_start_broker": ("InpSeedStart", "datetime"),
@@ -59,11 +62,18 @@ def coerce_parameters(values, *, strategy_key=None):
     return result
 
 
+def source_profile(version):
+    return {
+        ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
+        PLOT_ROBOT_VERSION: (PLOT_APPROVED_FINGERPRINT, PLOT_INPUT_TYPES, 2, PLOT_HADOUKEN_REVISION),
+        PANEL_SCOPE_FIX_ROBOT_VERSION: (PANEL_SCOPE_FIX_FINGERPRINT, PLOT_INPUT_TYPES, 3,
+                                        PANEL_SCOPE_FIX_HADOUKEN_REVISION),
+    }.get(version)
+
+
 def require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
-    profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
-                PLOT_ROBOT_VERSION: (PLOT_APPROVED_FINGERPRINT, PLOT_INPUT_TYPES, 2, PLOT_HADOUKEN_REVISION)}
-    profile = profiles.get(robot.version)
+    profile = source_profile(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY
             or profile is None or catalog.fingerprint(robot) != profile[0]
             or actual != profile[1] or len(robot.inputs) != len(profile[1])
@@ -74,7 +84,7 @@ def require_robot(robot):
 
 def default_composition(robot, *, symbol, timeframe):
     profile = require_robot(robot)
-    return base_composition("super_atr_triple_plot" if profile[2] == 2 else "super_atr_triple", symbol=symbol, timeframe=timeframe, risk_fraction=.005)
+    return base_composition("super_atr_triple_plot" if profile[2] >= 2 else "super_atr_triple", symbol=symbol, timeframe=timeframe, risk_fraction=.005)
 
 
 @dataclass(frozen=True)
@@ -90,7 +100,7 @@ class SuperATRTripleNativeAdapter:
     def _validate(self):
         profile = require_robot(self.robot)
         data = self.composition.to_dict()
-        strategy_key = "super_atr_triple_plot" if profile[2] == 2 else "super_atr_triple"
+        strategy_key = "super_atr_triple_plot" if profile[2] >= 2 else "super_atr_triple"
         if data["strategy"]["key"] != strategy_key:
             raise ValueError("Triplo exige o contrato super_atr_triple.")
         p = data["strategy"]["params"]
@@ -116,7 +126,7 @@ class SuperATRTripleNativeAdapter:
     def describe(self, preset_id):
         data, seed, ready = self._validate()
         fingerprint, types, level, revision = require_robot(self.robot)
-        strategy_inputs = PLOT_STRATEGY_INPUTS if level == 2 else STRATEGY_INPUTS
+        strategy_inputs = PLOT_STRATEGY_INPUTS if level >= 2 else STRATEGY_INPUTS
         receipt_fields = {name: "datetime" if kind == "datetime" else "int" if kind in ("int", "long")
                           else "number" if kind == "double" else "bool" if kind == "bool" else "token"
                           for name, kind in types.items()}
@@ -155,7 +165,7 @@ class SuperATRTripleNativeAdapter:
                 "restart": "entry episode must confirm after instance start; old consensus does not rearm",
                 "exit": "opposite three-curve closed consensus; existing account risk has priority"},
             "modality": "native_tester_demo_only", "operational_acceptance": False}
-        if level == 2:
+        if level >= 2:
             result["presentation"] = {"initially_visible_input": "InpPlotEnabled", "panel_toggle": True,
                 "source": "same confirmed CHDKSuperATRTriple points and closed prefix", "segments_per_curve": 256,
                 "maximum_objects": 768, "headless": "no plot objects", "changes_decisions": False,

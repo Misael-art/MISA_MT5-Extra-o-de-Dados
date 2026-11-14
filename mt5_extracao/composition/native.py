@@ -146,6 +146,9 @@ PRESENTATION_API_ROBOT_VERSION="2.17"
 PRESENTATION_API_APPROVED_FINGERPRINT="d59b9d01b8cde747"
 PRESENTATION_API_HADOUKEN_REVISION="566c8e32278141f5ee9476176a0cb384ba4edc25"
 PRESENTATION_API_INPUT_TYPES=CONSENSUS_API_INPUT_TYPES
+PANEL_SCOPE_FIX_ROBOT_VERSION="2.18"
+PANEL_SCOPE_FIX_FINGERPRINT="9b713160bbc64ac7"
+PANEL_SCOPE_FIX_HADOUKEN_REVISION="d3dd3a5e9a680d0c97d58cf160c60c4e58e88a3f"
 
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
@@ -165,12 +168,14 @@ def _require_robot(robot):
                 POSTFILL_AUDIT_ROBOT_VERSION:(POSTFILL_AUDIT_APPROVED_FINGERPRINT,POSTFILL_AUDIT_INPUT_TYPES,15,POSTFILL_AUDIT_HADOUKEN_REVISION),
                 RECOVERY_ROBOT_VERSION:(RECOVERY_APPROVED_FINGERPRINT,RECOVERY_INPUT_TYPES,16,RECOVERY_HADOUKEN_REVISION),
                 CONSENSUS_API_ROBOT_VERSION:(CONSENSUS_API_APPROVED_FINGERPRINT,CONSENSUS_API_INPUT_TYPES,17,CONSENSUS_API_HADOUKEN_REVISION),
-                PRESENTATION_API_ROBOT_VERSION:(PRESENTATION_API_APPROVED_FINGERPRINT,PRESENTATION_API_INPUT_TYPES,18,PRESENTATION_API_HADOUKEN_REVISION)}
+                PRESENTATION_API_ROBOT_VERSION:(PRESENTATION_API_APPROVED_FINGERPRINT,PRESENTATION_API_INPUT_TYPES,18,PRESENTATION_API_HADOUKEN_REVISION),
+                PANEL_SCOPE_FIX_ROBOT_VERSION:(PANEL_SCOPE_FIX_FINGERPRINT,PRESENTATION_API_INPUT_TYPES,19,PANEL_SCOPE_FIX_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
+    standard_includes = PANEL_STANDARD_INCLUDES if profile and profile[2] >= 10 else set()
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
             or len(robot.inputs) != len(profile[1])
-            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION,CONSENSUS_API_ROBOT_VERSION,PRESENTATION_API_ROBOT_VERSION) else set())):
+            or set(robot.missing_includes) - standard_includes):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
     if profile[3] is None:
@@ -184,7 +189,7 @@ def runtime_binding_required(robot):
         from .super_atr_triple_native import require_robot
         require_robot(robot)
         return True
-    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION,CONSENSUS_API_ROBOT_VERSION,PRESENTATION_API_ROBOT_VERSION):
+    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION,CONSENSUS_API_ROBOT_VERSION,PRESENTATION_API_ROBOT_VERSION,PANEL_SCOPE_FIX_ROBOT_VERSION):
         return False
     _require_robot(robot)
     return True

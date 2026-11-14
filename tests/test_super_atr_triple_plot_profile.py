@@ -50,6 +50,17 @@ def test_old_profile_keeps_frozen_inputs_pin_and_no_presentation_migration(robot
         InpDeviation1="1.0",InpDeviation2="2.0",InpDeviation3="3.0",InpInitialSide="1",InpEntriesEnabled="false")
 
 
+def test_corrected_panel_keeps_triple_plot_binding_with_a_new_source_identity(robot, monkeypatch):
+    fixed = replace(robot, version=triple.PANEL_SCOPE_FIX_ROBOT_VERSION)
+    monkeypatch.setattr(triple, "PANEL_SCOPE_FIX_FINGERPRINT", catalog.fingerprint(fixed))
+    comp = native.default_composition(fixed, symbol="EURUSD", timeframe="M5")
+    result = native.native_adapter(comp, fixed).describe("panel_scope_fix")
+    assert result["profile_version"] == 3
+    assert result["hadouken_revision"] == triple.PANEL_SCOPE_FIX_HADOUKEN_REVISION
+    assert result["expected_native_inputs"]["InpPlotEnabled"] is False
+    assert set(result["expected_native_inputs"]) == set(triple.PLOT_INPUT_TYPES)
+
+
 def test_ui_plot_checkbox_saves_and_reopens_without_enabling_fixed_lots_or_partials(view):
     assert view.triplo and len(view.fields)==9 and not view.lots_enabled and not view.partials_enabled
     assert not view.fields["plot_enabled"].get()

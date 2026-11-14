@@ -280,10 +280,14 @@ def compare_presentation_pair(visible, hidden):
                  "par exige dois replays DEMO ativos e conciliados")
         values = proof["inputs"]["values"]
         _require(set(values)==set(profile.PLOT_INPUT_TYPES) and values.get("InpPlotEnabled") is expected)
-        _require(proof.get("source")==dict(key=profile.ROBOT_KEY,version=profile.PLOT_ROBOT_VERSION,fingerprint=profile.PLOT_APPROVED_FINGERPRINT))
+        source = proof.get("source", {})
+        version = source.get("version")
+        native = profile.source_profile(version) if isinstance(version, str) else None
+        _require(native is not None and native[2] >= 2 and
+                 source == dict(key=profile.ROBOT_KEY, version=version, fingerprint=native[0]))
         reference = proof["strategy_reference"]
         _require(reference.get("source_conformity") is True and reference.get("contract")=="super_atr_triple_closed/1")
-        _require(reference.get("source",{}).get("framework_commit")==profile.PLOT_HADOUKEN_REVISION
+        _require(reference.get("source",{}).get("framework_commit")==native[3]
                  and reference["source"].get("qualification")=="PINNED_TRIPLE_HEADER_CPP_ADAPTER")
         presentation = reference.get("presentation",{})
         _require(not presentation.get("failures"), "par contém falha visual")
