@@ -66,7 +66,7 @@ conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os do
 atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
 `27b8599` está limpo detached, conforme os pins existentes.
 
-A fila tem 28 itens: 14 concluídos, seis bloqueados, dois livres e seis em validação. Reavaliar os aceites de cada alvo pela evidência própria.
+A fila tem 28 itens: 14 concluídos, seis bloqueados, um livre e sete em validação. Reavaliar os aceites de cada alvo pela evidência própria.
 Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
@@ -77,7 +77,7 @@ Os aceites possuem escopo explícito e dependências próprias.
 | E14-METRIC-01 | P0 · Indisponibilidade, frescor e cobertura / Codex nesta tarefa, painel HADOUKEN/Analytics | em validação | HADOUKEN PR87, pin231343f; App `codex/e14-metric-integracao` | CI reproduziu total parcial8 substituindo28; correção passou181 testes e checker171. Estados explícitos, último snapshot válido, idade/recortes, DTO/painel e leitor ativo de marcações qualificados. O pin final rejeita EMPTY_VALUE e passou181 testes no CI43581200274. MetaEditor/GUI/prévia aguardam recursos; Windows físico aguarda host qualificado |
 | E14-SCOPE-01 | P0 · Escopos de métricas, risco e zeragem / Codex nesta tarefa, Safety/painel/Analytics | em validação | HADOUKEN PR88 `4982259`; App `codex/e14-scope-integracao` | Duas falhas reproduzidas em182 testes. Correção final passou184 testes/checker171 em CI. Snapshot vincula conta/servidor/moeda; painel explicita bases patrimoniais, Magic/todos os ativos e contribuição netting não qualificada. Zeragem exige inventário legível; executor revalida posse/tipo/símbolo/volume e preserva alheios. Native/GUI/prévia aguardam recursos; Windows físico aguarda host |
 | E14-EXEC-01 | P0 · Intenção, parcial, incerteza e reinício / Codex nesta tarefa, Expert/Safety | em validação | HADOUKEN PR89 `95af71a`; App `codex/e14-exec-integracao` | Duas falhas reproduzidas em185 testes; correção passou185/checker171. Journal impede reentrada na barra do fechamento após reinício. Sem vínculo só pesquisa Tester DEMO; painel propaga recusa. S09 2.14/perfil16 exige fingerprint/revisão próprios e não herda aceite2.13. Fonte instalada passou gate leve; mapper/Session CI e QA nativa/prévia pendentes de recursos. Windows físico aguarda host |
-| SA-01-CONTRATO | P1 · Contrato Triplo e compatibilidade SL/TP / Expert, Dados e integração, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Relato descreve três bandas no mesmo TF20/fatores1/2/3, fonte atual usa multi-TF e saída diferente. Fórmula/seed/reentrada continuam abertas. Adaptador vinculado exige SL/TP positivos. Próximo é fechar a variante e dependências P0 aplicáveis |
+| SA-01-CONTRATO | P0 · Fórmula, três curvas e consumidor / Codex nesta tarefa, HADOUKEN/App | em validação | HADOUKEN PR90 `42793107`; App `codex/sa01-triplo-integracao` | Contrato1/Expert1.00: consenso fechado, SL absoluto curva1, TP0, episódios e rearmamento após início. 192 testes framework/CI; pacote/UI/trace-journal-fills integrados, App CI e QA nativa pendentes. SA-REF-01 congelado; equivalência externa não comprovada; Windows físico aguarda host |
 | SA-01-PLOT | P1 · Plot opcional com parâmetros/seed efetivos / Expert e painel, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Catálogo atual chama indicador pelos defaults e exibe dez curvas. Depende de SA-01-CONTRATO. Próximo é vincular as três curvas ao mesmo cálculo e qualificar visual ligado/desligado, preservando estudos alheios |
 | DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | concluído | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados. Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. A tentativa diagnóstica 2 do mesmo SHA passou nos seis jobs, incluindo Windows. As falhas da primeira tentativa continuam preservadas. O timeout do compilador não foi reproduzido |
 | DIAG-EXCURSOES | MAE/MFE disponíveis nas lentes e custo ask em vendas / Dados/Laboratório | concluído | PR305 `38304e0`, `codex/lab-excursoes` | Publicado e PR criada. 38 testes de excursões/enriquecimento/agregação e 21 de cache/livro/importação/CLI aprovados em lotes separados. Lote final 13 aprovados/1 PG sem servidor. Inclui legado, preservação do livro, point inválido e spread calibrado. QA por launcher CLI em base sintética confirmou ask e estado. GUI real XWayland pelo launcher aprovada em janela própria, com MAE 4/MFE 2 e ask declarados. Seis jobs de produto aprovados, incluindo Windows e PG, no SHA `38304e0`. Integração em master e na próxima prévia pertencem à composição |
@@ -1390,3 +1390,38 @@ A reserva medida do host adiou compilação e GUI finais, sem encerrar processos
 alheios. A prévia habitual continua2b;d136 está preparado, sem ativação e anterior
 a este pin. Próximo desenvolvimento: SA-01-CONTRATO, mantendo a QA pendente.
 Recibo: docs/evidencias/E14_EXEC_INTEGRACAO_20261114.json.
+
+
+## SA-01-CONTRATO · integração Triplo em validação — 14/11/2026
+
+O contrato `super_atr_triple_closed/1` compõe três instâncias do kernel existente,
+no mesmo TF/prefixo/seed: período20, SMA e desvios1/2/3 por padrão, configuráveis.
+Unanimidade inicial da seed não é entrada. Um episódio novo exige retorno ao
+consenso após desacordo; stop ou reinício não rearma um consenso antigo.
+O Expert exige pacote vinculado ao Tester DEMO, seed broker positiva/alinhada,
+risco composto até0,5%, uma posição, SL absoluto da curva1 arredondado para fora,
+TP zero e nenhuma parcial/BE/trailing. Saída oposta precede entrada e mantém a
+barreira existente contra reversão na mesma barra. Não há executor/store novo.
+
+O App oferece Default desarmado e não configurado; um Manual exige primeira
+barra real explícita, sem conversão para o fuso do host. Pacote/UI usam os13
+inputs tipados e o mesmo Session/binding. Conferência cruza prefixo observado,
+header MQL original, episódio, plano/risco/margem, bytes do journal canônico e
+SL/TP lossless da ordem/deal, fills, custos e livro. Ausência não vira zero.
+Trace alterado após reinício, tentativa parcial/incerta e efeito não conciliado
+recusam qualificação; não autorizam reenvio. A fórmula Python antiga e SA-REF-01
+permanecem byte a byte preservadas; equivalência externa continua hipótese.
+
+HADOUKEN PR90 fixa42793107 (implementação03e6a9a):192 testes, checker e sintaxe
+passaram no CI43608990320. Triplo1.00/perfil1 usa fingerprint802c44f481a9bb8a,
+13 inputs/50 fontes. S09 usa nova identidade2.16/perfil17/a9379fff9788159b por
+mudança legítima da closure compartilhada;2.14 anterior mantém sua identidade.
+Safety27b8599 permanece intacto. O gate leve local aceitou fontes exatas e
+recusou rótulo antigo/inputs incompletos (22MiB); isso não é mapper/Session/GUI.
+
+Testes App, doctor, compilação nativa, replay e GUI finais aguardam seus gates:
+a admissão local recusou a suíte por reserva de RAM, sem iniciar um compilador
+nem encerrar trabalho alheio. Prévia habitual ainda2b; nenhuma ativação nova.
+CI Linux/Windows, preview coerente, QA nativa e SA-01-PLOT seguem pendentes;
+Windows físico requer host qualificado futuro. `operational_acceptance=false`.
+Recibo: docs/evidencias/SA01_TRIPLO_INTEGRACAO_20261114.json.

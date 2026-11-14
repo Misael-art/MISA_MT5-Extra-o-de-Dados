@@ -137,6 +137,12 @@ RECOVERY_APPROVED_FINGERPRINT="9a6b5b468cd4d7c3"
 RECOVERY_HADOUKEN_REVISION="95af71ab5a3411bffe8a9c90845cf6d3a10e4a4d"
 RECOVERY_INPUT_TYPES=POSTFILL_AUDIT_INPUT_TYPES
 
+# API compartilhada de SL absoluto/TP0 é opt-in do Triplo; S09 mantém seus padrões.
+CONSENSUS_API_ROBOT_VERSION="2.16"
+CONSENSUS_API_APPROVED_FINGERPRINT="a9379fff9788159b"
+CONSENSUS_API_HADOUKEN_REVISION="42793107df40118080936e63196ad152f2bfb930"
+CONSENSUS_API_INPUT_TYPES=RECOVERY_INPUT_TYPES
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
@@ -153,12 +159,13 @@ def _require_robot(robot):
                 PROTECTION_ROBOT_VERSION:(PROTECTION_APPROVED_FINGERPRINT,PROTECTION_INPUT_TYPES,13,PROTECTION_HADOUKEN_REVISION),
                 POSTFILL_ROBOT_VERSION:(POSTFILL_APPROVED_FINGERPRINT,POSTFILL_INPUT_TYPES,14,POSTFILL_HADOUKEN_REVISION),
                 POSTFILL_AUDIT_ROBOT_VERSION:(POSTFILL_AUDIT_APPROVED_FINGERPRINT,POSTFILL_AUDIT_INPUT_TYPES,15,POSTFILL_AUDIT_HADOUKEN_REVISION),
-                RECOVERY_ROBOT_VERSION:(RECOVERY_APPROVED_FINGERPRINT,RECOVERY_INPUT_TYPES,16,RECOVERY_HADOUKEN_REVISION)}
+                RECOVERY_ROBOT_VERSION:(RECOVERY_APPROVED_FINGERPRINT,RECOVERY_INPUT_TYPES,16,RECOVERY_HADOUKEN_REVISION),
+                CONSENSUS_API_ROBOT_VERSION:(CONSENSUS_API_APPROVED_FINGERPRINT,CONSENSUS_API_INPUT_TYPES,17,CONSENSUS_API_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
             or len(robot.inputs) != len(profile[1])
-            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION) else set())):
+            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION,CONSENSUS_API_ROBOT_VERSION) else set())):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
     if profile[3] is None:
@@ -168,7 +175,11 @@ def _require_robot(robot):
 
 def runtime_binding_required(robot):
     """A mesma autoridade do mapper recusa execução avulsa do perfil vinculado."""
-    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION):
+    if robot.key=="mql5:hdk_superatrtriplo":
+        from .super_atr_triple_native import require_robot
+        require_robot(robot)
+        return True
+    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION,CONSENSUS_API_ROBOT_VERSION):
         return False
     _require_robot(robot)
     return True
@@ -176,6 +187,9 @@ def runtime_binding_required(robot):
 
 def default_composition(robot, *, symbol, timeframe):
     """Defaults efetivos do perfil nativo; não é persistência do preset Default."""
+    if robot.key=="mql5:hdk_superatrtriplo":
+        from .super_atr_triple_native import default_composition as triple_default
+        return triple_default(robot,symbol=symbol,timeframe=timeframe)
     if robot.key=="mql5:hdk_pullback_nativo":
         from .pullback_native import default_composition as pullback_default
         return pullback_default(robot,symbol=symbol,timeframe=timeframe)
@@ -465,6 +479,9 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
 
 
 def native_adapter(composition,robot):
+    if robot.key=="mql5:hdk_superatrtriplo":
+        from .super_atr_triple_native import SuperATRTripleNativeAdapter
+        return SuperATRTripleNativeAdapter(composition,robot)
     if robot.key=="mql5:hdk_pullback_nativo":
         from .pullback_native import PullbackNativeAdapter
         return PullbackNativeAdapter(composition,robot)

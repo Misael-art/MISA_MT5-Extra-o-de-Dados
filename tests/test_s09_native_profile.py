@@ -22,6 +22,18 @@ def composition():
     return base_composition("s09_reference",symbol="EURUSD",timeframe="M5",risk_fraction=.005)
 
 
+def test_consensus_shared_api_revision_has_separate_identity_and_keeps_recovery_frozen(robot,monkeypatch):
+    robot.version=native.CONSENSUS_API_ROBOT_VERSION
+    robot.inputs=[mql.MqlInput(name,kind,"0") for name,kind in native.CONSENSUS_API_INPUT_TYPES.items()]
+    monkeypatch.setattr(native,"CONSENSUS_API_APPROVED_FINGERPRINT",catalog.fingerprint(robot))
+    result=native.S09NativeAdapter(composition(),robot).describe("s09_shared_api")
+    assert result["profile_version"]==17 and result["runtime_binding_required"]
+    assert result["hadouken_revision"]==native.CONSENSUS_API_HADOUKEN_REVISION
+    assert native.CONSENSUS_API_ROBOT_VERSION=="2.16" and native.RECOVERY_ROBOT_VERSION=="2.14"
+    assert native.RECOVERY_APPROVED_FINGERPRINT=="9a6b5b468cd4d7c3"
+    assert not result["operational_acceptance"]
+
+
 def test_defaults_map_every_input_and_percent_conversion_without_changing_composition(robot):
     comp=native.default_composition(robot,symbol="EURUSD",timeframe="M5")
     before=comp.to_json();out=native.S09NativeAdapter(comp,robot).describe("manual_01")
