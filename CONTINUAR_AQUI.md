@@ -7,21 +7,25 @@
   O HADOUKEN `d3dd3a5` (PR92) corrigiu a classe. Painel 7.12, S09 2.18 e
   Triplo 1.02 compilaram com zero erros e avisos em perfil isolado. A PR322
   (`4fa0bd4`) acompanha o pin e as novas identidades de fonte.
-- O atalho e o menu usam a prévia `f2d1c9cd945d` (PR324), com 370 arquivos
-  verificados, HADOUKEN `d3dd3a5`, Safety `27b8599` e retorno `18fd5a76`.
+- O atalho e o menu usam a prévia `7fa98e64651e` (PR326), com 370 arquivos
+  verificados, HADOUKEN `d3dd3a5`, Safety `27b8599` e retorno `bbe8cf477b4d`.
   GUI Linux em Xvfb, CCI versionado, doctor offline e percurso de pacotes
   pelo launcher passaram. Os recibos estão em `state/qa-tmp/corretivos-20261113/`.
 - A PR321 (`a06836d`) publica `package-plan`, verificado em SQLite legado e
   PostgreSQL de QA. A PR323 (`1897e83`) publica exportação por ativo das famílias
   de mercado SQLite com seletores definidos. A PR324 (`f2d1c9c`) publica reunião
   em coleção local com origens separadas, integridade, conflito e repetição
-  idempotente. O próximo recorte cobre as famílias excluídas no manifesto e o
-  transporte PostgreSQL. Os checks de cada PR continuam vinculados ao SHA.
+  idempotente. A PR325 inclui fatos analíticos, snapshots, notas e presets
+  vinculados. A PR326 preserva execuções completas e ledger. Ainda faltam
+  transporte PostgreSQL, campanhas e relações multissímbolo. Os checks de
+  cada PR continuam vinculados ao SHA.
+- 195 testes do HADOUKEN, checker de 174 arquivos e 54 verificações de
+  Dashboard, configurador e campanhas passaram. Os testes do Dashboard e
+  do configurador exercitam dados controlados e os critérios cobertos.
 - Ainda precisam de evidência o Strategy Tester DEMO com vínculo e plot
   ligado/desligado, o aceite com dados elegíveis do M1, os percursos de
   configurador/dashboard e a custódia via Drive do proprietário. O aceite
   físico do Windows continua aguardando host qualificado.
-
 
 ## Prioridade corretiva definida pelo proprietário — 13/11/2026
 

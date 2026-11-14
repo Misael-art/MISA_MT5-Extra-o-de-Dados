@@ -56,7 +56,10 @@ _LINKED_FILTERS = {
                         "SELECT preset_id, revision FROM _preset_revisions WHERE symbol IN :selection"),
 }
 _REQUIRED_TABLES = {"_feature_values": "_feature_definitions", "_dataset_manifests": "_dataset_blocks",
-                    "_preset_selections": "_preset_revisions", "_preset_labels": "_preset_revisions"}
+                    "_preset_selections": "_preset_revisions", "_preset_labels": "_preset_revisions",
+                    "_dataset_references": "_dataset_manifests"}
+_RUN_DEPENDENCIES = ("_native_input_receipts", "_preset_native_runs", "_robot_checks", "_trade_features",
+                     "_trade_features_runs", "_trade_trajectories", "_dataset_references")
 
 
 def _quote(identifier):
@@ -72,7 +75,7 @@ def _sha_file(path, check):
     return digest.hexdigest()
 
 
-def _scope(plan):
+def _scope(plan, source, check):
     if plan["base"] is None:
         raise ValueError("A origem precisa de um namespace BD03 já registrado.")
     if plan["missing_registrations"] or any(
@@ -84,16 +87,37 @@ def _scope(plan):
     if registrations != selected:
         raise ValueError("Há séries selecionadas com uma família de dados ainda sem suporte ao transporte.")
     inventory = {table["table"]: table for table in plan["inventory"]["tables"]}
+    symbols = plan["requested_symbols"]
+    run_filters = _run_filters(source, inventory, symbols, check)
     applicable = {name for name, (owner, _, _) in _LINKED_FILTERS.items() if owner in inventory}
     included = {name: table for name, table in inventory.items()
-                if name in selected or name in _CONTROL_FILTERS or name in applicable}
+                if name in selected or name in _CONTROL_FILTERS or name in applicable or name in run_filters}
     for name, dependency in _REQUIRED_TABLES.items():
         if name in included and dependency not in included:
             raise ValueError(f"A família {name} requer a tabela de origem {dependency}.")
     for table in included.values():
         if table["cross_schema_dependencies"] or set(table["declared_dependencies"]) - included.keys():
             raise ValueError(f"Tabela {table['table']} depende de uma origem fora do pacote.")
-    return selected, included
+    return selected, included, run_filters
+
+
+def _run_filters(connection, inventory, symbols, check):
+    owners = [table for table in ("_robot_runs", "_trade_ledger") if table in inventory]
+    if not owners:
+        return {}
+    candidates = " UNION ".join(f"SELECT run_id FROM {table} WHERE symbol IN :selection" for table in owners)
+    if "_trade_ledger" in inventory:
+        mixed = text(f"SELECT 1 FROM _trade_ledger WHERE run_id IN ({candidates}) "
+                     "AND (symbol IS NULL OR symbol NOT IN :selection) LIMIT 1")
+        if connection.execute(mixed.bindparams(bindparam("selection", expanding=True)), {"selection": symbols}).first():
+            raise ValueError("Há execução de vários ativos ou com ativo desconhecido. Exporte o escopo completo da execução.")
+    if "_robot_runs" in inventory:
+        check()
+        mixed = text(f"SELECT 1 FROM _robot_runs WHERE run_id IN ({candidates}) AND symbol NOT IN :selection LIMIT 1")
+        if connection.execute(mixed.bindparams(bindparam("selection", expanding=True)), {"selection": symbols}).first():
+            raise ValueError("O ativo declarado pela execução diverge do escopo selecionado.")
+    return {table: (f"run_id IN ({candidates})", symbols) for table in (*owners, *_RUN_DEPENDENCIES)
+            if table in inventory}
 
 
 def _copy_table(source, target, name, selector, check):
@@ -134,7 +158,7 @@ def _write_payload(db, symbols, database, check):
     with db.consistent_read() as source:
         # Inventory and export use the same transaction and see the same schema and registry.
         plan = package_plan._inventory(db, source, symbols, check)
-        raw_tables, included = _scope(plan)
+        raw_tables, included, run_filters = _scope(plan, source, check)
         with closing(sqlite3.connect(database)) as target, target:
             target.execute("PRAGMA trusted_schema = OFF")
             target.set_progress_handler(lambda: _continue_sql(check), 10000)
@@ -142,7 +166,7 @@ def _write_payload(db, symbols, database, check):
             counts = {}
             for name in sorted(included):
                 check()
-                selector = _table_selector(name, symbols, raw_tables)
+                selector = run_filters.get(name) or _table_selector(name, symbols, raw_tables)
                 counts[name] = _copy_table(source, target, name, selector, check)
             _check_links(target, counts)
             if target.execute("PRAGMA foreign_key_check").fetchone() is not None:
@@ -189,6 +213,11 @@ def _table_selector(name, symbols, raw_tables):
 
 def _check_links(connection, tables):
     checks = {
+        "_dataset_references": """
+            SELECT 1 FROM _dataset_references AS ref
+            LEFT JOIN _dataset_manifests AS manifest ON ref.manifest_id = manifest.manifest_id
+            WHERE manifest.manifest_id IS NULL LIMIT 1
+        """,
         "_dataset_manifests": """
             SELECT 1 FROM _dataset_manifests AS manifest
             JOIN json_each(manifest.payload_json, '$.frames') AS frames
