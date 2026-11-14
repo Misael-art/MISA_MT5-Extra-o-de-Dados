@@ -271,7 +271,7 @@ def validate(directory, params, signals, ledger, *, timeframe, framework_root, j
 
 def compare_presentation_pair(visible, hidden):
     """Consulta de dois recibos existentes; não executa/importa/aprova negociação."""
-    from .execution import first_difference
+    from .execution import cash_difference, first_difference
     from ..composition import super_atr_triple_native as profile
     for proof, expected in ((visible, True), (hidden, False)):
         _require(proof.get("status")=="reconciled_replay" and proof.get("functional_native_activity") is True
@@ -304,6 +304,8 @@ def compare_presentation_pair(visible, hidden):
                                   deals=visible.get("deals"))
     if difference is None and semantic_reference(visible["strategy_reference"]) != semantic_reference(hidden["strategy_reference"]):
         difference=dict(section="strategy_reference",field="observed_context")
+    if difference is None:
+        difference = cash_difference(hidden, visible)
     return dict(schema_version=1,visible_run=visible["run_id"],hidden_run=hidden["run_id"],
         same_observed_decisions_and_closed_fills=difference is None, first_difference=difference,
         scope="observed fixed closed prefix and reconciled fills; not latency, display appearance or full tick history",

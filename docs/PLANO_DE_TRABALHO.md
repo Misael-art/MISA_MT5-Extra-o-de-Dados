@@ -1,5 +1,12 @@
 # Plano de trabalho detalhado
 
+## T20.11 — primeira divergência do Tester e Replay
+
+O comparador das sessões usa os instantes conhecidos do broker e confere
+separadamente moeda, lucro do livro e variação de caixa do relatório. Trinta
+e três testes focados passaram. O recorte cobre recibos de Tester e Replay.
+A paridade integral com Python segue pendente.
+
 ## T20.9 / T13.4-P05 — atraso e validade da entrada simulada
 
 O plano econômico congela atraso e espera máxima em milissegundos. A ordem

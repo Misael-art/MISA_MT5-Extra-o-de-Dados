@@ -125,7 +125,45 @@ def _semantic_signals(signals):
     return [{key:value for key,value in row.items() if key not in ("order_ticket","deal_ticket")} for row in signals]
 
 
+def _event_clock(section, row, field, signal_times):
+    """Relógio broker do evento. O livro tem resolução de segundo."""
+    if section == "ledger":
+        stamp = row.get("exit_time" if field in {"exit_time", "exit_price", "exit_reason", "pnl"} else "entry_time")
+        if isinstance(stamp, str):
+            try:
+                return calendar.timegm(datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S").timetuple()), 1, 0
+            except ValueError:
+                pass
+        return None
+    milliseconds = row.get("at_msc")
+    if type(milliseconds) is int and milliseconds >= 0:
+        seconds, within_second = divmod(milliseconds, 1000)
+        return seconds, 0, within_second
+    seconds = row.get("available_at", row.get("at"))
+    if section == "sizing":
+        seconds = signal_times.get(row.get("event_at"))
+    return (seconds, 0, 0) if type(seconds) is int and seconds >= 0 else None
+
+
+def _section_differences(section, expected, actual, old_signals, new_signals):
+    for index, (old, new) in enumerate(zip(expected, actual)):
+        if old == new:
+            continue
+        for field in sorted(set(old) | set(new)):
+            if old.get(field) != new.get(field):
+                clocks = (_event_clock(section, old, field, old_signals),
+                          _event_clock(section, new, field, new_signals))
+                yield min((clock for clock in clocks if clock is not None), default=(math.inf, 0, 0)), dict(
+                    section=section, index=index, field=field, expected=old.get(field), observed=new.get(field))
+    if len(expected) != len(actual):
+        index = min(len(expected), len(actual))
+        extra, times = (expected, old_signals) if len(expected) > len(actual) else (actual, new_signals)
+        clock = _event_clock(section, extra[index], "count", times)
+        yield clock or (math.inf, 0, 0), dict(section=section, field="count", expected=len(expected), observed=len(actual))
+
+
 def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None,channel=None,atr=None,session=None,cooldown=None,protection=None):
+    """Localiza a primeira divergência datada, com fallback para recibos sem relógio."""
     sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
     if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
     if partials is not None:sections.append(("partials",partial_events.semantic(reference.get("partials",[])),partial_events.semantic(partials)))
@@ -138,13 +176,17 @@ def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None
         from .protection_events import semantic
         sections.append(("protection_events",semantic(reference.get("protection_events",[])),semantic(protection)))
     if channel is not None:sections.append(("channel_observations",partial_events.semantic(reference.get("channel_observations",[])),partial_events.semantic(channel)))
-    for section,expected,actual in sections:
-        if len(expected)!=len(actual):
-            return dict(section=section,field="count",expected=len(expected),observed=len(actual))
-        for index,(old,new) in enumerate(zip(expected,actual)):
-            for field in sorted(set(old)|set(new)):
-                if old.get(field)!=new.get(field):
-                    return dict(section=section,index=index,field=field,expected=old.get(field),observed=new.get(field))
+    old_signals = {row.get("event_at"): row.get("available_at") for row in reference["signals"]}
+    new_signals = {row.get("event_at"): row.get("available_at") for row in signals}
+    differences = (difference for section, expected, actual in sections
+                   for difference in _section_differences(section, expected, actual, old_signals, new_signals))
+    return min(differences, key=lambda difference: difference[0], default=(None, None))[1]
+
+
+def cash_difference(reference, observed):
+    for field in ("currency", "net_profit", "native_cash_result"):
+        if reference.get(field) != observed.get(field):
+            return dict(section="cash", field=field, expected=reference.get(field), observed=observed.get(field))
     return None
 
 
@@ -439,6 +481,8 @@ class PresetExecution:
                 old_reference=semantic_reference(old_reference or {});new_reference=semantic_reference(new_reference or {})
             if old_reference!=new_reference:
                 difference=dict(section="strategy_reference",field="observed_context",expected=old_reference,observed=new_reference)
+        if prior is not None and difference is None:
+            difference=cash_difference(prior,m)
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")
