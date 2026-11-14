@@ -135,6 +135,11 @@ def test_scope_preserves_revision_definitions_snapshot_blocks_and_study_links(or
                 ('excluded','{"symbol":"OTHER","frames":{"bars":["shared","alone"]}}');
             CREATE TABLE _dataset_blocks(block_id TEXT PRIMARY KEY,payload_json TEXT);
             INSERT INTO _dataset_blocks VALUES ('used','selected'),('shared','common'),('alone','outside');
+            CREATE TABLE _dataset_references(run_id TEXT PRIMARY KEY,manifest_id TEXT);
+            INSERT INTO _dataset_references VALUES ('relation:pair:selected','selected'),('relation:other:excluded','excluded');
+            CREATE TABLE _feature_relations(analysis_id TEXT PRIMARY KEY,symbol TEXT,payload_json TEXT);
+            INSERT INTO _feature_relations VALUES ('pair','TEST','{"provenance":{"lineage_manifests":["selected"]}}'),
+                ('other','OTHER','{"provenance":{"lineage_manifests":["excluded"]}}');
             CREATE TABLE _chart_study_notes(note_id TEXT PRIMARY KEY,symbol TEXT,note_text TEXT);
             INSERT INTO _chart_study_notes VALUES ('n1','TEST','keep'),('n2','OTHER','outside');
             CREATE TABLE _chart_study_captures(note_id TEXT PRIMARY KEY,snapshot_json TEXT);
@@ -157,6 +162,7 @@ def test_scope_preserves_revision_definitions_snapshot_blocks_and_study_links(or
         with sqlite3.connect(target / asset_package.DATABASE) as db:
             assert db.execute("SELECT algorithm_version FROM _feature_definitions ORDER BY 1").fetchall() == [("1",), ("2",)]
             assert db.execute("SELECT block_id FROM _dataset_blocks ORDER BY 1").fetchall() == [("shared",), ("used",)]
+            assert db.execute("SELECT run_id FROM _dataset_references").fetchall() == [("relation:pair:selected",)]
             assert db.execute("SELECT note_id FROM _chart_study_captures").fetchall() == [("n1",)]
             assert db.execute("SELECT request_id FROM _chart_study_requests").fetchall() == [("r1",)]
             assert db.execute("SELECT revision FROM _preset_selections").fetchall() == [(2,)]
