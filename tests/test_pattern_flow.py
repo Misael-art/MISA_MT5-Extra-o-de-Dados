@@ -2,10 +2,12 @@
 
 from dataclasses import asdict
 
+import pandas as pd
 import pytest
+from sqlalchemy import text
 
 from mt5_extracao import experiments
-from mt5_extracao.analytics import datasets, feature_store
+from mt5_extracao.analytics import datasets, feature_store, resampling
 from mt5_extracao.analytics.pattern_families import compile_family
 from mt5_extracao.analytics.pattern_flow import evaluate_registered_attempt, snapshot_observations
 from mt5_extracao.database_manager import DatabaseManager
@@ -37,6 +39,43 @@ def test_snapshot_to_observations_keeps_source_and_explicit_clock_assumption(sou
     assert prepared["observations"][0]["bar_start_utc"] == "2025-01-06T09:00:00+00:00"
     assert prepared["observations"][0]["session_minute"] == 0
     assert prepared["backtest_bars"].source_namespace.nunique() == 1
+
+
+def test_opening_bucket_requires_matching_m1_derivation_to_join_observed_session(source):
+    db, _ = source
+    minutes = bars([[100, 101, 99, 100]] * 119, start="2025-01-06 09:01", freq="min")
+    minutes["tick_volume"], minutes["real_volume"] = 10, 0
+    db.save_ohlcv_data("QA", "1 minuto", minutes)
+    resampling.resample_symbol(db, "QA", ["H1"])
+    with db.engine.connect() as conn:
+        hours = pd.read_sql(text(
+            "SELECT bar_start_broker AS time,open,high,low,close,tick_volume,real_volume,spread_min AS spread "
+            "FROM _bars_derived WHERE symbol='QA' ORDER BY bar_start_utc"), conn)
+    hours["time"] = pd.to_datetime(hours.time)
+    db.save_ohlcv_data("QA", "1 hora", hours)
+    frozen = datasets.capture(db, "QA", "H1")
+    prepared = snapshot_observations(frozen)
+    opening, following = prepared["observations"]
+    assert opening["bar_start_utc"] == "2025-01-06T09:00:00+00:00"
+    assert opening["bar_end_utc"] == "2025-01-06T10:00:00+00:00"
+    assert opening["available_at_utc"] >= opening["bar_end_utc"]
+    assert (opening["session_minute"], following["session_minute"]) == (0, 59)
+    assert opening["session_id"] == following["session_id"]
+    assert frozen.quality["capabilities"]["observed_session_bars"]["state"] == "missing"
+
+    with db.engine.begin() as conn:
+        conn.execute(text("UPDATE _bars_derived SET coverage_ratio=0.5 WHERE symbol='QA'"))
+    incomplete = datasets.capture(db, "QA", "H1")
+    with pytest.raises(ValueError, match="sem sessão observada única"):
+        snapshot_observations(incomplete)
+
+    with db.engine.begin() as conn:
+        conn.execute(text("DELETE FROM _bars_derived WHERE symbol='QA'"))
+    unverified = datasets.capture(db, "QA", "H1")
+    with pytest.raises(ValueError, match="sem sessão observada única"):
+        snapshot_observations(unverified)
+    reopened = snapshot_observations(datasets.load(db, frozen.manifest_id))
+    assert reopened["observations"] == prepared["observations"]
 
 
 def test_four_family_campaign_can_finish_with_zero_approved(source):

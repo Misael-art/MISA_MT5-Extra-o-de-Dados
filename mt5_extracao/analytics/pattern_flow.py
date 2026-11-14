@@ -178,6 +178,16 @@ def snapshot_observations(snapshot, *, session_mode="observed"):
             raise ValueError("Barras derivadas divergem do OHLC congelado; não misture revisões.")
         if session_mode == "observed":
             found = [(ident, opened) for ident, opened, closed in session_rows if opened <= start < closed]
+            if not found and item is not None:
+                # A grade do timeframe pode iniciar antes do primeiro M1 da sessão.
+                overlaps = [(ident, opened, closed) for ident, opened, closed in session_rows
+                            if opened < end and start < closed]
+                if len(overlaps) == 1:
+                    ident, opened, closed = overlaps[0]
+                    if (item.session_id == ident and start < opened < end <= closed
+                            and _utc(item.bar_end_utc, "bar_end_utc") == end
+                            and item.quality_status == "PARTIAL" and item.coverage_ratio == 1):
+                        found = [(ident, opened)]
             if len(found) != 1:
                 raise ValueError("Barra sem sessão observada única no calendário congelado.")
             session_id, session_start = found[0]
@@ -185,7 +195,7 @@ def snapshot_observations(snapshot, *, session_mode="observed"):
             day = start.date().isoformat()
             session_start = synthetic_starts.setdefault(day, start)
             session_id = "synthetic_utc_day:" + day
-        minute = int((start - session_start) / pd.Timedelta(minutes=1))
+        minute = int((max(start, session_start) - session_start) / pd.Timedelta(minutes=1))
         revision = int(item.revision) if item is not None else 1
         source_revision = str(item.input_hash) if item is not None else snapshot.manifest_id
         base = {"source_namespace": manifest["source"]["namespace"], "symbol": manifest["symbol"],

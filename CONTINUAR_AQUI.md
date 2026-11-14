@@ -1,5 +1,17 @@
 # Retomar MT5X em um host limpo
 
+## Sessão observada na abertura da grade H1 — 14/11/2026
+
+O fluxo T13.4 reconhece a barra que começa antes do primeiro M1 da sessão
+quando a revisão derivada congelada confirma o mesmo OHLC, o fechamento da
+grade, a sessão única e a cobertura integral do intervalo observado. O preço
+e a data da barra conservam a grade original. O minuto de sessão conta a
+partir da primeira observação. A abertura continua classificada como parcial.
+A regressão reproduziu a recusa anterior e passou com a mesma base sintética,
+incluindo ausência de derivação, cobertura incompleta e reabertura do snapshot.
+A prova M1 com custos vigentes, plano temporal e suporte congelado continua
+pendente.
+
 ## Tester e Replay no Wine — 14/11/2026
 
 - A reconferência da prévia `6e48e9010e38` e do retorno `3d2447243704`
