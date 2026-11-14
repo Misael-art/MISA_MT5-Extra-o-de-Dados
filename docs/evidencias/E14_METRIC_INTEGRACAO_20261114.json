@@ -1,0 +1,33 @@
+{
+  "schema": "mt5x-e14-metric-integration/v1",
+  "base_app": "adf31e4fd11ec0dd387ca40975b866ab7e67dd59",
+  "app_branch": "codex/e14-metric-integracao",
+  "hadouken": {
+    "pin": "231343f0272f90eb64d35c19c8c7b72516528cc1",
+    "pr": 87,
+    "implementation_ci_sha": "68bb6b18177b20ee92931efb238859946120f380",
+    "ci_run": 43580757667,
+    "ci_job": 132404797202,
+    "tests_passed": 181,
+    "static_files": 171,
+    "sentinel_followup_ci": "success",
+    "final_ci": {
+      "sha": "231343f0272f90eb64d35c19c8c7b72516528cc1",
+      "run": 43581200274,
+      "job": 132406092815,
+      "tests_passed": 181,
+      "static_files": 171
+    }
+  },
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "active_preview": "development-2b3b274da6de",
+  "preview_activated": false,
+  "native_execution": false,
+  "remaining": [
+    "App CI by published SHA",
+    "local compiled tests and MetaEditor under host admission",
+    "controlled native/UI and preview",
+    "Windows physical: future qualified host"
+  ],
+  "accepted_operationally": false
+}

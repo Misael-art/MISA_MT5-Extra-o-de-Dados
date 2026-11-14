@@ -4913,3 +4913,13 @@ CI da implementação 461a067: 174 testes e 171 fontes aprovados; pin438e49e
 inclui somente o recibo adicional. Safety27b8599 preservado.
 MetaEditor, CopyBuffer e prévia dependem da admissão de recursos; Windows
 físico aguarda host qualificado. Não há aceite operacional implícito.
+
+
+### E14-METRIC-01 · integração de 14/11/2026
+
+Em validação: HADOUKEN PR87 e App `codex/e14-metric-integracao`. Snapshot válido
+é publicado somente após conciliação completa; falha preserva os últimos totais.
+Disponibilidade, idade, recorte e motivo chegam ao painel e ao leitor de marcas.
+A implementação68bb6b1 passou181 testes/171 fontes em CI Linux; pin231343f inclui
+o follow-up de sentinelas, com CI próprio aprovado. MetaEditor/GUI/prévia seguem
+admissão do host. Safety27b8599 preservado; nenhum aceite operacional implícito.
