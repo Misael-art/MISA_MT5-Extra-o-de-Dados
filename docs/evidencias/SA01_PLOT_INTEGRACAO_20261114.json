@@ -1,0 +1,65 @@
+{
+  "schema": "mt5x-sa01-plot-integration/v1",
+  "state": "em validação",
+  "hadouken": {
+    "pin": "566c8e32278141f5ee9476176a0cb384ba4edc25",
+    "implementation": "6175aba397d57cc74a6f76768c037a62b230966d",
+    "pr": 91,
+    "ci": 43611822450,
+    "tests_passed": 195,
+    "static_files": 174
+  },
+  "profile": {
+    "robot_version": "1.01",
+    "profile_version": 2,
+    "fingerprint": "fa4219764fd15a3c",
+    "inputs": 14,
+    "source_files": 51,
+    "strategy_key": "super_atr_triple_plot",
+    "old_1_00_13_inputs_unchanged": true
+  },
+  "s09": {
+    "robot_version": "2.17",
+    "profile_version": 18,
+    "fingerprint": "d59b9d01b8cde747",
+    "inputs": 59,
+    "source_files": 59,
+    "old_2_16_frozen": true
+  },
+  "presentation": {
+    "default_enabled": false,
+    "panel_toggle": true,
+    "same_calculated_closed_points": true,
+    "segments_per_curve": 256,
+    "maximum_objects": 768,
+    "other_studies_preserved": true,
+    "decision_dependence": false
+  },
+  "app_contract_ci": {
+    "initial_sha": "45186fd1f30754cbf17a4f255b1875e1bfc86631",
+    "initial_run": 43610229517,
+    "five_jobs": "success",
+    "windows": "4953 passed/205 skipped/1 fixture failure; unrelated packed risk entry had no grid row",
+    "corrected_sha": "3bca8c874850dbf53cb72a81ed420617e9291cde",
+    "corrected_run": 43626382246,
+    "corrected_ci": "pending"
+  },
+  "source_gate": {
+    "peak_kib": 22524,
+    "exact_sources_accepted": true,
+    "historical_labels_and_missing_inputs_refused": true,
+    "scope": "source gate/catalog only, not full mapper or runtime"
+  },
+  "synthetic_tests": "MQL actual renderer and paired OnTick/refresh tested in API simulation; App plot events/profile/pair regressions prepared, CI pending",
+  "local": "pytest deferred by measured RAM reserve; no local compiler/GUI started",
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "accepted_reference_changed": false,
+  "operational_acceptance": false,
+  "remaining": [
+    "App exact-SHA Linux/Windows checks",
+    "official launcher/doctor/GUI after resource admission",
+    "controlled MetaEditor/Wine and paired visual MT5 replay, appearance/latency and lifecycle",
+    "matching immutable preview activation",
+    "Windows physical: future qualified host"
+  ]
+}

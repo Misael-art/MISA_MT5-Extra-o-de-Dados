@@ -66,7 +66,7 @@ conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os do
 atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
 `27b8599` está limpo detached, conforme os pins existentes.
 
-A fila tem 28 itens: 14 concluídos, seis bloqueados, um livre e sete em validação. Reavaliar os aceites de cada alvo pela evidência própria.
+A fila tem 28 itens: 14 concluídos, seis bloqueados e oito em validação. Reavaliar os aceites de cada alvo pela evidência própria.
 Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
@@ -78,7 +78,7 @@ Os aceites possuem escopo explícito e dependências próprias.
 | E14-SCOPE-01 | P0 · Escopos de métricas, risco e zeragem / Codex nesta tarefa, Safety/painel/Analytics | em validação | HADOUKEN PR88 `4982259`; App `codex/e14-scope-integracao` | Duas falhas reproduzidas em182 testes. Correção final passou184 testes/checker171 em CI. Snapshot vincula conta/servidor/moeda; painel explicita bases patrimoniais, Magic/todos os ativos e contribuição netting não qualificada. Zeragem exige inventário legível; executor revalida posse/tipo/símbolo/volume e preserva alheios. Native/GUI/prévia aguardam recursos; Windows físico aguarda host |
 | E14-EXEC-01 | P0 · Intenção, parcial, incerteza e reinício / Codex nesta tarefa, Expert/Safety | em validação | HADOUKEN PR89 `95af71a`; App `codex/e14-exec-integracao` | Duas falhas reproduzidas em185 testes; correção passou185/checker171. Journal impede reentrada na barra do fechamento após reinício. Sem vínculo só pesquisa Tester DEMO; painel propaga recusa. S09 2.14/perfil16 exige fingerprint/revisão próprios e não herda aceite2.13. Fonte instalada passou gate leve; mapper/Session CI e QA nativa/prévia pendentes de recursos. Windows físico aguarda host |
 | SA-01-CONTRATO | P0 · Fórmula, três curvas e consumidor / Codex nesta tarefa, HADOUKEN/App | em validação | HADOUKEN PR90 `42793107`; App `codex/sa01-triplo-integracao` | Contrato1/Expert1.00: consenso fechado, SL absoluto curva1, TP0, episódios e rearmamento após início. 192 testes framework/CI; pacote/UI/trace-journal-fills integrados, App CI e QA nativa pendentes. SA-REF-01 congelado; equivalência externa não comprovada; Windows físico aguarda host |
-| SA-01-PLOT | P1 · Plot opcional com parâmetros/seed efetivos / Expert e painel, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Catálogo atual chama indicador pelos defaults e exibe dez curvas. Depende de SA-01-CONTRATO. Próximo é vincular as três curvas ao mesmo cálculo e qualificar visual ligado/desligado, preservando estudos alheios |
+| SA-01-PLOT | P1 · Plot opcional com parâmetros/seed efetivos / Codex nesta tarefa, HADOUKEN/App | em validação | HADOUKEN PR91 `566c8e32`; App `codex/sa01-plot-integracao` | Mesmos pontos fechados, plot limitado e alternância pelo painel; 195 testes/checker174 passaram em API simulada. Novo perfil14 inputs, trace e comparador de pares integrados; App CI, QA visual/nativa e preview pendentes. Objetos/estudos alheios preservados; sem aceite operacional |
 | DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | concluído | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados. Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. A tentativa diagnóstica 2 do mesmo SHA passou nos seis jobs, incluindo Windows. As falhas da primeira tentativa continuam preservadas. O timeout do compilador não foi reproduzido |
 | DIAG-EXCURSOES | MAE/MFE disponíveis nas lentes e custo ask em vendas / Dados/Laboratório | concluído | PR305 `38304e0`, `codex/lab-excursoes` | Publicado e PR criada. 38 testes de excursões/enriquecimento/agregação e 21 de cache/livro/importação/CLI aprovados em lotes separados. Lote final 13 aprovados/1 PG sem servidor. Inclui legado, preservação do livro, point inválido e spread calibrado. QA por launcher CLI em base sintética confirmou ask e estado. GUI real XWayland pelo launcher aprovada em janela própria, com MAE 4/MFE 2 e ask declarados. Seis jobs de produto aprovados, incluindo Windows e PG, no SHA `38304e0`. Integração em master e na próxima prévia pertencem à composição |
 | DIAG-PROTECAO-WIP | Proteção independente do resgate anterior e do checkpoint atual / integrador | concluído | página privada existente, recibo local `private-checkpoint/remote-read-proof.json` | Acesso reconferido via Pages, sem compartilhamentos. ZIP 489.138 B/1 parte, SHA `c4f843f78d979ff6aab6f79299e1151a6ed88a29897a158eac48513b806450fd`. Parte relida integralmente. Texto e ZIP decodificado conferidos. Recuperador oficial validou 19 arquivos e o WIP anterior teve seus 24 hashes conferidos. Conteúdo guarda checkpoint parcial de amostra. Base principal tem proteção e aceite próprios |
@@ -1437,3 +1437,42 @@ compara o botão Salvar com TODOS os campos da estratégia em grid. O gate e o
 formulário permanecem íntegros. A nova revisão exige CI por SHA próprio; não
 qualifica Windows físico, MT5, GUI local ou replay nativo. Admissão local repetida
 recusou pytest por reserva medida de RAM, sem iniciar a suíte.
+
+
+## SA-01-PLOT · integração da apresentação em validação — 14/11/2026
+
+HADOUKEN PR91/566c8e32 (implementação6175aba) desenha os pontos fechados do
+MESMO objeto CHDKSuperATRTriple e prefixo usados pelo Expert. Não há iCustom,
+nova fórmula ou dependência de decisão no renderer. InpPlotEnabled=false inicia
+a apresentação; Estudo no painel alterna só a visibilidade. A janela visual tem
+até256 ligações por curva (768 objetos), enquanto o cálculo conserva até20000
+barras da seed. Warmup/ausência não recebem linhas zero. Segmentos imutáveis
+são reaproveitados, antigos próprios são podados, e a remoção é conferida.
+Colisões/identidades alteradas/remoção recusada são preservadas com diagnóstico;
+nenhum estudo ou tema alheio é removido. Falha visual não bloqueia gestão.
+
+195 testes e174 arquivos MQL5 passaram no CI43611822450. O renderer real foi
+exercitado com API gráfica simulada (âncoras binary64, janela, alternância,
+falhas e ownership); OnTick/refresh reais receberam sequência pareada de plot
+desligado/ligado/falhando. Isso não certifica aparência, latência ou fills no MT5.
+
+O App oferece o checkbox na identidade Triplo1.01/perfil2,14 inputs/51 fontes,
+fingerprintfa4219764fd15a3c, estratégia nativa super_atr_triple_plot. O pacote
+Triplo1.00/13 inputs permanece com parâmetros/pin próprios, sem migração. S09
+recebe identidade2.17/perfil18/d59b9d01b8cde747 pela API compartilhada de painel;
+2.16 e anteriores ficam congelados. Safety27b8599 permanece fixo.
+
+Trace de plot cruza níveis com decisões confirmadas; alternância é auditada à
+parte. Comparador consultivo de pares exige dois replays DEMO ativos, conciliados,
+fonte/prefixo/modelo/inputs operacionais iguais e visibilidade constante oposta;
+compara decisões, risco e fills pelo protocolo existente. Seu recibo não confere
+aceite visual, latência ou autorização operacional. A GUI não oferece outro
+executor ou backtest Python. SA-REF-01 e produtor antigo permanecem intactos.
+
+A primeira PR319/45186fd1 teve cinco checks aprovados. Windows:4953 passaram,
+205 skips e uma falha da fixture de layout que usava o campo orçamento de outro
+contêiner;3bca8c87 corrige a conferência de TODOS os campos da estratégia e segue
+no CI43626382246. Novos checks App por SHA, doctor, launcher/GUI e MetaEditor/
+Wine/replay pareado ainda pendentes. Admissão local recusou pytest por reserva
+medida de RAM; sem interromper trabalho alheio. A prévia continua2b, sem ativação.
+Windows físico aguarda host qualificado. Recibo: docs/evidencias/SA01_PLOT_INTEGRACAO_20261114.json.

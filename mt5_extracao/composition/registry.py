@@ -93,12 +93,19 @@ STRATEGY_PARAMETERS = {
                 "stop_atr": ATR, "trail_atr": ATR},
 }
 
+STRATEGY_PARAMETERS["super_atr_triple_plot"] = {
+    **STRATEGY_PARAMETERS["super_atr_triple"], "plot_enabled": Parameter("bool", "boolean"),
+}
+
 # Contrato de parâmetros nativo; não registra sinais Python nem libera um
 # backtester substituto. A data zero do MQL é um Default desarmado/incompleto.
 NATIVE_STRATEGY_DEFAULTS = {
     "super_atr_triple": dict(seed_start_broker="1970-01-01T00:00", period=20, mean=0,
                              deviation1=1.0, deviation2=2.0, deviation3=3.0,
                              initial_side=1, entries_enabled=False),
+}
+NATIVE_STRATEGY_DEFAULTS["super_atr_triple_plot"] = {
+    **NATIVE_STRATEGY_DEFAULTS["super_atr_triple"], "plot_enabled": False,
 }
 
 # O schema pode representar rascunho indisponível. Só o modo base tem adaptador.
