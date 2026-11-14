@@ -133,6 +133,12 @@ def _donchian_definitions():
 
 
 _DEFINITIONS = (
+    {**_definition("momentum.cci_20", "CCI (20)", "momentum",
+                  "(TP-last_window_mean) / (0.015 * mean(abs(TP-window_mean))); TP=(high+low+close)/3",
+                  {"period": 20, "constant": 0.015, "flat_window": "zero",
+                   "missing_policy": "full_consecutive_finite_HLC_window; known_ineligible_bar_resets"},
+                  "cci_points", 20, "bars.high_low_close", ("high", "low", "close")),
+     "algorithm_version": "2.0"},
     _definition("momentum.rsi_14", "RSI (14)", "momentum", "Wilder RSI(14) applied to close",
                 {"period": 14, "method": "Wilder", "source": "close"}, "points_0_100", 15, "bars.close",
                 ("close",)),
@@ -250,6 +256,7 @@ def _legacy_calculated_series(bars):
     kc_width = kc["upper"] - kc["lower"]
     alligator = technical.alligator(ohlc)
     return {
+        "momentum.cci_20": technical.cci(bars.assign(high=high, low=low, close=close), 20),
         "momentum.rsi_14": rsi14,
         "momentum.rsi_14_slope_3": rsi14 - rsi14.shift(3),
         "volatility.atr_14": atr14,
@@ -476,6 +483,9 @@ def iter_core(bars, *, feature_ids=None):
             record = {"bar_index": bar_index, "feature_id": feature_id,
                       "algorithm_version": spec["algorithm_version"], "value": value, "state": state,
                       "reason": reason}
+            if feature_id == "momentum.cci_20":
+                record["window_metadata"] = {"source_scope": "causal_prefix_including_known_ineligible_bars",
+                                             "formula_revision": "IND-CCI-01/v2"}
             if feature_id.startswith("trend.alligator_"):
                 record["display_offset_bars"] = spec["parameters"]["plot_shift_bars"]
             yield record

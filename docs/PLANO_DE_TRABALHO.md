@@ -101,6 +101,12 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+IND-CCI-01 em validação: fórmula/consumidores/BD06/materialização2.0 e precisão
+por soma compensada/centralização implementados;63 testes únicos,19 finais e
+doctor16/2/0 offline aprovados. Launcher/GUI da precisão aguardam recursos.
+Launcher oficial aprovou materialize/context/export em QA sintética. Prévia, CI e
+paridade iCCI têm gates próprios.
+
 E14-CALC-01 em validação: HADOUKEN PR85/569718c,169 testes portáveis em lotes,
 compilação MetaEditor/Wine0/0 e25 testes App de pin/referência congelada aprovados.
 Pin App em reconciliação na PR313; prévia e aceites nativos têm gates próprios.

@@ -5,6 +5,8 @@ import traceback
 from scipy import stats
 from typing import Dict, List, Union, Optional, Tuple
 
+from mt5_extracao.strategies import indicators as technical
+
 # Configuração de logging
 log = logging.getLogger(__name__)
 
@@ -131,22 +133,7 @@ class AdvancedIndicators:
             Série com valores do CCI
         """
         try:
-            # Preço típico (TP)
-            tp = (high + low + close) / 3
-            
-            # Média móvel simples do preço típico
-            sma_tp = tp.rolling(window=period).mean()
-            
-            # Desvio absoluto médio
-            mad = abs(tp - sma_tp).rolling(window=period).mean()
-            
-            # Fator constante (tradicionalmente 0.015)
-            constant = 0.015
-            
-            # Cálculo do CCI
-            cci = (tp - sma_tp) / (constant * mad)
-            
-            return cci
+            return technical.cci(pd.DataFrame({"high": high, "low": low, "close": close}), period)
         except Exception as e:
             log.error(f"Erro ao calcular CCI: {str(e)}")
             log.debug(traceback.format_exc())

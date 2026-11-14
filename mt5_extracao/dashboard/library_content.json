@@ -1,5 +1,5 @@
 {
-  "revision": 1,
+  "revision": 2,
   "sectors": {
     "indicadores": "Indicadores",
     "experts": "Experts",
@@ -30,6 +30,28 @@
         "trend.ema20_distance_atr14"
       ],
       "example": "sma-ema"
+    },
+    {
+      "id": "cci",
+      "title": "CCI · desvio do preço típico",
+      "summary": "Compara o preço típico atual à média de 20 barras e divide pelo desvio absoluto médio dessa mesma janela, multiplicado por 0,015.",
+      "notes": {
+        "Origem": "CCI clássico; referência de implementação no exemplo CCI da MetaQuotes. A fórmula usada é (TP−média)/(0,015×MAD).",
+        "No gráfico": "Painel separado, sem escala limitada. +100/−100 são referências de leitura; a janela exige 20 observações consecutivas.",
+        "Cenário A": "CCI positivo expressa preço típico acima da média da janela. Ultrapassar 100 não demonstra retorno futuro nem confirma uma ordem.",
+        "Cenário B": "Janela constante completa produz 0. Aquecimento ou preço ausente produz lacuna; o cálculo retoma após nova janela completa."
+      },
+      "sources": [
+        [
+          "MetaQuotes · Commodity Channel Index, código de referência",
+          "https://www.mql5.com/en/code/18"
+        ]
+      ],
+      "family": "Momento",
+      "definitions": [
+        "momentum.cci_20"
+      ],
+      "example": "cci"
     },
     {
       "id": "rsi",
@@ -2328,7 +2350,7 @@
     }
   },
   "reviewed_contracts": {
-    "indicators": "34eb8f0a94b9782c2ea51eeca76972ca4ba4369c726cd4425ad864582324e010",
+    "indicators": "c5c4d11fb796cac1a12be1155d15cd4145983d6478d8659ea4dad4f6b20d30e3",
     "operations": "622c57924a7d694b8495b5ee58500a88bbf7146c1ebe6014bf0713f085dd5757",
     "strategies": "fcbe4f38bf153403736437e0ca9fd55246cb6b6e63ec647f24034ada7668fce4"
   }

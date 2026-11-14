@@ -26,6 +26,65 @@ def rma(series: pd.Series, n: int) -> pd.Series:
     return series.ewm(alpha=1.0 / n, adjust=False, min_periods=n).mean()
 
 
+def cci(df: pd.DataFrame, n: int = 20) -> pd.Series:
+    """CCI v2: each window uses its own typical-price mean and deviation.
+
+    Requires n consecutive finite, ordered HLC observations. A complete flat
+    window returns zero (the MetaQuotes example convention); missing data does
+    not. Centering preserves small movements on large prices; scaling is used
+    only when intermediate arithmetic would overflow or underflow.
+    """
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
+        raise ValueError("O período do CCI precisa ser um inteiro positivo.")
+    values = {name: pd.to_numeric(df[name], errors="coerce").astype(float)
+              for name in ("high", "low", "close")}
+    high, low, close = (values[name] for name in ("high", "low", "close"))
+    valid = np.isfinite(high) & np.isfinite(low) & np.isfinite(close) & high.ge(low)
+    def typical_price(h, l, c):
+        try:
+            return math.fsum((h, l, c)) / 3.0
+        except OverflowError:
+            scale = max(abs(h), abs(l), abs(c))
+            return math.fsum((h / scale, l / scale, c / scale)) / 3.0 * scale
+
+    typical = pd.Series((typical_price(float(h), float(l), float(c)) if ok else np.nan
+                         for h, l, c, ok in zip(high, low, close, valid)), index=df.index, dtype=float)
+    minimum_normal = np.finfo(float).tiny
+
+    def result(values):
+        mean = math.fsum(values) / len(values)
+        deviation = math.fsum(abs(v - mean) for v in values) / len(values)
+        numerator = values[-1] - mean
+        if not all(math.isfinite(v) for v in (mean, deviation, numerator)):
+            raise OverflowError("CCI intermediate arithmetic overflow")
+        if not deviation:
+            return 0.0
+        denominator = .015 * deviation
+        if denominator < minimum_normal:
+            raise OverflowError("CCI intermediate arithmetic underflow")
+        return numerator / denominator
+
+    def window_cci(window):
+        centered = [float(v) - float(window[0]) for v in window]
+        if all(math.isfinite(v) for v in centered):
+            try:
+                return result(centered)
+            except OverflowError:
+                pass
+        scale = max(abs(float(v)) for v in window)
+        if scale == 0:
+            return 0.0
+        return result([float(v) / scale for v in window])
+
+    result = typical.rolling(n, min_periods=n).apply(window_cci, raw=True)
+    if "_cci_reset_before" in df:
+        positions = np.arange(len(df))
+        resets = df["_cci_reset_before"].fillna(True).to_numpy(dtype=bool)
+        last_reset = np.maximum.accumulate(np.where(resets, positions, -n))
+        result = result.where(positions - last_reset + 1 >= n)
+    return result
+
+
 ALLIGATOR_LINES = (("jaw", 13, 8), ("teeth", 8, 5), ("lips", 5, 3))
 
 

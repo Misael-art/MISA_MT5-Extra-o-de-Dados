@@ -14,6 +14,33 @@
  },
  "items": [
   {
+   "id": "REG-CCI",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "IND-CCI-01",
+   "variant": "CCI típico20; MAD completo; constante0; reinicia após ausência",
+   "feature_ids": [
+    "momentum.cci_20"
+   ],
+   "stage": {
+    "contract": "IND-CCI-01/v2; momentum.cci_20, janela20, preço típico e MAD da mesma janela",
+    "implementation": "strategies/indicators.cci; registry e AdvancedIndicators delegam à mesma função",
+    "persistence": "indicator_materializer/feature_store existentes, versão2.0+hash; aditiva",
+    "query": "query_history/query_as_of e indicator_context existentes",
+    "consumers": [
+     "EnhancedIndicatorCalculator/data_collector",
+     "Lab Séries armazenado e calculado",
+     "trade_analytics.indicator_context",
+     "data_exporter",
+     "CLI features/indicators",
+     "Dashboard/Biblioteca"
+    ]
+   },
+   "gap": "paridade iCCI nativa e aceites físicos pendentes; colunas CCI antigas sem versão não são reinterpretadas",
+   "test_needed": "tests/test_cci.py: referência independente, aquecimento, ausências, prefixo, extremos e persistência incremental"
+  },
+  {
    "id": "REG-RSI",
    "kind": "registry_group",
    "class": "A",
@@ -1688,19 +1715,19 @@
    "parent": "AdvancedIndicators",
    "class": "A",
    "bd": "BD07",
-   "owner_task": "T4.5/T19.3",
+   "owner_task": "IND-CCI-01",
    "variant": "advanced_indicators.py",
    "stage": {
-    "contract": "não",
-    "implementation": "advanced_indicators.py",
+    "contract": "REG-CCI; período propagado por EnhancedIndicatorCalculator",
+    "implementation": "advanced_indicators.cci delega a strategies.indicators.cci",
     "persistence": "colunas legadas via data_collector",
     "query": "tabela legada",
     "consumers": [
      "data_collector (EnhancedIndicatorCalculator)"
     ]
    },
-   "gap": "sem contrato/versão/disponibilidade",
-   "test_needed": "reconciliar com registry ou declarar variante (E09)"
+   "gap": "colunas legadas preservadas sem versão; recomputação identificada somente pelo materializador existente",
+   "test_needed": "tests/test_cci.py; valores legados não são sobrescritos"
   },
   {
    "id": "LEG-ADV.fibonacci_levels",
@@ -3580,6 +3607,32 @@
    },
    "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
    "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "PURE.cci",
+   "kind": "pure_function",
+   "parent": "strategies.indicators",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "IND-CCI-01",
+   "variant": "CCI conforme REG-CCI, período parametrizável",
+   "depends_on": "high/low/close finitos e N observações consecutivas",
+   "stage": {
+    "contract": "IND-CCI-01/v2; momentum.cci_20, janela20, preço típico e MAD da mesma janela",
+    "implementation": "strategies/indicators.cci; registry e AdvancedIndicators delegam à mesma função",
+    "persistence": "indicator_materializer/feature_store existentes, versão2.0+hash; aditiva",
+    "query": "query_history/query_as_of e indicator_context existentes",
+    "consumers": [
+     "EnhancedIndicatorCalculator/data_collector",
+     "Lab Séries armazenado e calculado",
+     "trade_analytics.indicator_context",
+     "data_exporter",
+     "CLI features/indicators",
+     "Dashboard/Biblioteca"
+    ]
+   },
+   "gap": "função pura sem persistência própria; consultar REG-CCI para os aceites pendentes",
+   "test_needed": "tests/test_cci.py"
   }
  ]
 }
