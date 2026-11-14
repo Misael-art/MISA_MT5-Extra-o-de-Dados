@@ -166,6 +166,18 @@ def test_conflicting_report_or_unlabelled_trade_comment_is_not_coverage():
     assert not q.evaluate(contradictory, ("complete_real_ticks",))["eligible"]
 
 
+@pytest.mark.parametrize("label,value", [
+    ("Real ticks", "-100%"), ("Real ticks", "−100%"), ("Real ticks", "100% / 75%"),
+    ("History Quality", "100% (real ticks: 75%)"),
+])
+def test_invalid_or_ambiguous_tester_percent_never_qualifies_full_coverage(label, value):
+    rows = f"<tr><td>{label}</td><td>{value}</td></tr><tr><td>Real ticks</td><td>100%</td></tr>"
+    report = q.tester_report(f"<table>{rows}</table>", "4")
+    assert report["real_tick_fraction_reported"] is None
+    assert report["real_tick_coverage_status"] == "conflicting"
+    assert not q.evaluate(report, ("complete_real_ticks",))["eligible"]
+
+
 def test_multi_timeframe_asset_join_uses_close_and_receipt_and_revision_cutoff():
     data = pd.DataFrame([
         dict(symbol="X", timeframe="H1", event_end="2025-01-06T11:00:00Z", available_at="2025-01-06T11:01:00Z", value=1),

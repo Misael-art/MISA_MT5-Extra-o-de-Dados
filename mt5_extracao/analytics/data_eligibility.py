@@ -401,17 +401,13 @@ def tester_report(report_text, model):
             known_real = label in ("real ticks", "ticks reais", "real ticks percentage", "percentual de ticks reais")
             if not (known_history or known_real):
                 continue
-            match = re.search(r"(?<![\d.,])([0-9]+(?:[.,][0-9]+)?)\s*%", value)
-            if not match:
-                continue
-            pct = float(match[1].replace(",", "."))
-            if not 0 <= pct <= 100:
-                continue
-            if known_real or (known_history and ("real ticks" in value or "ticks reais" in value)):
-                real.append(pct)
-            elif known_history:
-                historical.append(pct)
-    fraction = real[0] / 100 if real and len(set(real)) == 1 else None
+            match = re.fullmatch(
+                r"([0-9]+(?:[.,][0-9]+)?)\s*%"
+                r"(?:\s+(?:real ticks|ticks reais|\((?:real ticks|ticks reais)\)))?", value)
+            pct = float(match[1].replace(",", ".")) if match else None
+            measurements = real if known_real or "real ticks" in value or "ticks reais" in value else historical
+            measurements.append(pct if pct is not None and 0 <= pct <= 100 else None)
+    fraction = real[0] / 100 if real and real[0] is not None and len(set(real)) == 1 else None
     conflict = str(model) in ("0", "1", "2", "3") and fraction is not None and fraction > 0
     origin = "unknown" if fraction is None or conflict else "observed" if fraction == 1 else "generated" if fraction == 0 else "mixed"
     return {"version": VERSION, "evidence_basis": "native_report_not_requested_model",
