@@ -1,5 +1,6 @@
 """Adaptador de pesquisa T13.4-P05 para o backtester canônico; nunca envia ordens."""
 
+from bisect import bisect_left
 from dataclasses import asdict, dataclass, replace
 import math
 
@@ -40,6 +41,8 @@ class PatternExecutionPolicy:
     risk_per_trade: float
     compound: bool
     overnight_policy: str
+    entry_delay_ms: int | None = None
+    max_entry_wait_ms: int | None = None
 
     def __post_init__(self):
         if self.order_type != "market_next_open" or self.position_policy != "single_position":
@@ -56,6 +59,11 @@ class PatternExecutionPolicy:
             raise ValueError("Risco deve ser fração menor que um; capitalização precisa ser explícita.")
         if self.overnight_policy not in {"allow_with_spec_swap", "eod_utc"}:
             raise ValueError("Política overnight incompatível ou ausente.")
+        maximum_ms = pd.Timedelta.max.value // 1_000_000
+        for name, value in (("Atraso da entrada", self.entry_delay_ms),
+                            ("Espera máxima pela abertura", self.max_entry_wait_ms)):
+            if value is not None and (type(value) is not int or not 0 <= value <= maximum_ms):
+                raise ValueError(f"{name} exige milissegundos inteiros não negativos representáveis.")
 
 
 @dataclass(frozen=True)
@@ -187,6 +195,10 @@ def run_pattern_simulation(bars, events, definition: Definition, *, source_names
     start_index = {stamp: index for index, stamp in enumerate(starts)}
     if len(start_index) != len(starts):
         raise ValueError("Barras duplicadas não podem alimentar sinais.")
+    model_entry_timing = policy.entry_delay_ms is not None or policy.max_entry_wait_ms is not None
+    delay = pd.Timedelta(milliseconds=policy.entry_delay_ms or 0)
+    max_wait = (pd.Timedelta(milliseconds=policy.max_entry_wait_ms)
+                if policy.max_entry_wait_ms is not None else None)
     mapped, journal, used_ids = {}, [], set()
     for event in events:
         if not isinstance(event, dict) or not {"event_id", "definition_hash", "source_namespace", "symbol",
@@ -210,12 +222,30 @@ def run_pattern_simulation(bars, events, definition: Definition, *, source_names
                     "revision": event["revision"], "available_at_utc": event_available.isoformat()}
         if event["event_id"] != digest(identity):
             raise ValueError("Identidade/hash do evento diverge da fonte congelada.")
-        signal = next((index for index in range(original, len(data) - 1)
-                       if ends[index] >= decision and available[index] <= ends[index]), None)
         row = {"event_id": event["event_id"], "definition_hash": definition.definition_hash,
                "source_namespace": source_namespace, "symbol": symbol_spec.symbol,
                "decision_at_utc": decision.isoformat(), "signal_bar_start_utc": None,
                "execution_bar_start_utc": None, "status": "censored_no_next_open"}
+        if model_entry_timing:
+            try:
+                ready_at = decision + delay
+            except (OverflowError, ValueError) as error:
+                raise ValueError("O atraso ultrapassa o relógio UTC representável.") from error
+            opening = bisect_left(starts, ready_at, lo=original + 1)
+            next_open = starts[opening] if opening < len(starts) else None
+            row.update(order_ready_at_utc=ready_at.isoformat(),
+                       next_open_at_utc=next_open.isoformat() if next_open is not None else None)
+            signal = None
+            if next_open is not None:
+                if max_wait is not None and next_open - ready_at > max_wait:
+                    row["status"] = "censored_entry_wait_limit"
+                else:
+                    # O motor recebe a ordem na barra anterior à abertura escolhida.
+                    # order_ready_at_utc conserva o instante calculado da ordem.
+                    signal = opening - 1
+        else:
+            signal = next((index for index in range(original, len(data) - 1)
+                           if ends[index] >= decision and available[index] <= ends[index]), None)
         if signal is not None:
             if signal in mapped:
                 raise ValueError("Dois eventos competem pela mesma abertura; política de agregação ausente.")
@@ -244,8 +274,13 @@ def run_pattern_simulation(bars, events, definition: Definition, *, source_names
             low, high = low + spread[index], high + spread[index]
         if low <= trade.stop_price <= high and low <= trade.target_price <= high:
             ambiguous.append(starts[index].isoformat())
-    return {"backtest": result, "events": journal, "ambiguous_stop_first_bars": ambiguous,
-            "cost_model": asdict(costs), "policy": asdict(policy),
-            "cost_status": "hypothetical" if costs.scenario == "hypothetical" else "declared_observed",
-            "economic_approval": False, "native_set_equivalent": False,
-            "portfolio_qualified": False}
+    report = {"backtest": result, "events": journal, "ambiguous_stop_first_bars": ambiguous,
+              "cost_model": asdict(costs), "policy": asdict(policy),
+              "cost_status": "hypothetical" if costs.scenario == "hypothetical" else "declared_observed",
+              "economic_approval": False, "native_set_equivalent": False,
+              "portfolio_qualified": False}
+    if model_entry_timing:
+        report["entry_timing"] = {"entry_delay_ms": policy.entry_delay_ms or 0,
+                                  "max_entry_wait_ms": policy.max_entry_wait_ms,
+                                  "execution_price_basis": "first_observed_open_at_or_after_order_ready"}
+    return report

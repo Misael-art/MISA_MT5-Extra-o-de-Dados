@@ -92,6 +92,44 @@ def test_delayed_event_waits_for_next_closed_bar_before_open():
     assert report["events"][0]["execution_bar_start_utc"] == "2025-01-06T09:04:00+00:00"
 
 
+def test_configured_delay_can_miss_an_open_and_wait_for_the_next_quote():
+    observations, data = sample([[100, 101, 99, 100], [98, 99, 97, 98],
+                                 [98, 99, 97, 98], [105, 107, 104, 106], [106, 108, 105, 107]])
+    report = run(observations[:2], data, policy=replace(POLICY, entry_delay_ms=1, max_entry_wait_ms=60_000))
+    event = report["events"][0]
+    assert event["order_ready_at_utc"] == "2025-01-06T09:02:00.001000+00:00"
+    assert event["status"] == "simulated_fill"
+    assert event["next_open_at_utc"] == event["execution_bar_start_utc"] == "2025-01-06T09:03:00+00:00"
+    assert report["backtest"].trades[0].entry_price == 105
+
+
+def test_opening_gap_inside_wait_limit_fills_and_expired_order_remains_unfilled():
+    observations, data = sample([[100, 101, 99, 100], [98, 99, 97, 98],
+                                 [112, 113, 111, 112], [114, 115, 113, 114]])
+    for column in ("time", "bar_start_utc", "bar_end_utc", "available_at_utc"):
+        data.loc[2:, column] = data.loc[2:, column].map(
+            lambda value: (pd.Timestamp(value) + pd.Timedelta(minutes=5)).isoformat())
+    delayed = replace(POLICY, entry_delay_ms=60_000, max_entry_wait_ms=240_000)
+    report = run(observations[:2], data, policy=delayed)
+    event = report["events"][0]
+    assert event["status"] == "simulated_fill" and report["backtest"].trades[0].entry_price == 112
+    assert event["order_ready_at_utc"] == "2025-01-06T09:03:00+00:00"
+    assert event["execution_bar_start_utc"] == "2025-01-06T09:07:00+00:00"
+
+    expired = run(observations[:2], data, policy=replace(delayed, max_entry_wait_ms=239_999))
+    event = expired["events"][0]
+    assert event["status"] == "censored_entry_wait_limit"
+    assert event["next_open_at_utc"] == "2025-01-06T09:07:00+00:00"
+    assert event["execution_bar_start_utc"] is None and expired["backtest"].trades == []
+
+
+@pytest.mark.parametrize("delays", [{"entry_delay_ms": -1}, {"entry_delay_ms": True},
+                                    {"max_entry_wait_ms": 1.5}, {"max_entry_wait_ms": 10**20}])
+def test_entry_timing_requires_representable_non_negative_milliseconds(delays):
+    with pytest.raises(ValueError, match="milissegundos"):
+        replace(POLICY, **delays)
+
+
 def test_unsupported_policy_missing_spread_and_wrong_source_are_refused():
     with pytest.raises(ValueError, match="limitada"):
         replace(POLICY, order_type="limit")
