@@ -120,3 +120,50 @@ def test_reunion_dry_run_import_retry_conflict_and_source_integrity(origin, tmp_
         assert asset_package.inspect_package(result["target"], check=check)["package_id"] == result["package_id"]
     finally:
         reader.close()
+
+
+def test_scope_preserves_revision_definitions_snapshot_blocks_and_study_links(origin, tmp_path):
+    with sqlite3.connect(origin) as db:
+        db.executescript("""
+            CREATE TABLE _feature_definitions (feature_id TEXT, algorithm_version TEXT, PRIMARY KEY(feature_id,algorithm_version));
+            INSERT INTO _feature_definitions VALUES ('needed','1'),('needed','2'),('other','1');
+            CREATE TABLE _feature_values (symbol TEXT, feature_id TEXT, algorithm_version TEXT, revision INTEGER,
+                FOREIGN KEY(feature_id,algorithm_version) REFERENCES _feature_definitions(feature_id,algorithm_version));
+            INSERT INTO _feature_values VALUES ('TEST','needed','1',1),('TEST','needed','2',2),('OTHER','other','1',1);
+            CREATE TABLE _dataset_manifests(manifest_id TEXT PRIMARY KEY,payload_json TEXT);
+            INSERT INTO _dataset_manifests VALUES ('selected','{"symbol":"TEST","frames":{"bars":["used","shared"]}}'),
+                ('excluded','{"symbol":"OTHER","frames":{"bars":["shared","alone"]}}');
+            CREATE TABLE _dataset_blocks(block_id TEXT PRIMARY KEY,payload_json TEXT);
+            INSERT INTO _dataset_blocks VALUES ('used','selected'),('shared','common'),('alone','outside');
+            CREATE TABLE _chart_study_notes(note_id TEXT PRIMARY KEY,symbol TEXT,note_text TEXT);
+            INSERT INTO _chart_study_notes VALUES ('n1','TEST','keep'),('n2','OTHER','outside');
+            CREATE TABLE _chart_study_captures(note_id TEXT PRIMARY KEY,snapshot_json TEXT);
+            INSERT INTO _chart_study_captures VALUES ('n1','{"frozen":true}'),('n2','{}');
+            CREATE TABLE _chart_study_requests(request_id TEXT PRIMARY KEY,note_id TEXT,response_json TEXT);
+            INSERT INTO _chart_study_requests VALUES ('r1','n1','{}'),('r2','n2','{}');
+            CREATE TABLE _preset_revisions(preset_id TEXT,revision INT,robot_key TEXT,symbol TEXT,timeframe TEXT,
+                PRIMARY KEY(preset_id,revision));
+            INSERT INTO _preset_revisions VALUES ('p1',1,'robot','TEST','M5'),('p1',2,'robot','TEST','M5');
+            CREATE TABLE _preset_selections(preset_id TEXT,revision INT,robot_key TEXT,symbol TEXT,timeframe TEXT);
+            INSERT INTO _preset_selections VALUES ('p1',2,'robot','TEST','M5');
+            CREATE TABLE _preset_imports(package_hash TEXT PRIMARY KEY,preset_id TEXT,revision INT);
+            INSERT INTO _preset_imports VALUES ('h1','p1',1),('h2','p2',1);
+        """)
+    reader = DatabaseManager(db_path=str(origin), read_only=True)
+    target = tmp_path / "study-package"
+    try:
+        manifest = asset_package.export(reader, ["TEST"], target, check=lambda: None)
+        assert asset_package.inspect_package(target, check=lambda: None) == manifest
+        with sqlite3.connect(target / asset_package.DATABASE) as db:
+            assert db.execute("SELECT algorithm_version FROM _feature_definitions ORDER BY 1").fetchall() == [("1",), ("2",)]
+            assert db.execute("SELECT block_id FROM _dataset_blocks ORDER BY 1").fetchall() == [("shared",), ("used",)]
+            assert db.execute("SELECT note_id FROM _chart_study_captures").fetchall() == [("n1",)]
+            assert db.execute("SELECT request_id FROM _chart_study_requests").fetchall() == [("r1",)]
+            assert db.execute("SELECT revision FROM _preset_selections").fetchall() == [(2,)]
+            assert db.execute("SELECT package_hash FROM _preset_imports").fetchall() == [("h1",)]
+        with sqlite3.connect(origin) as db:
+            db.execute("DELETE FROM _dataset_blocks WHERE block_id='used'")
+        with pytest.raises(ValueError, match="vínculos incompletos"):
+            asset_package.export(reader, ["TEST"], tmp_path / "missing-block", check=lambda: None)
+    finally:
+        reader.close()

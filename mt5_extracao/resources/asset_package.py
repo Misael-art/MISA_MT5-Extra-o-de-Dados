@@ -32,7 +32,31 @@ _CONTROL_FILTERS = {
     "_market_calendar": ("symbol", None),
     "_bars_derived": ("symbol", None),
     "_analytics_source_sequences": ("symbol", None),
+    "_feature_values": ("symbol", None),
+    "_dataset_manifests": ("json_extract(payload_json, '$.symbol')", None),
+    "_chart_study_notes": ("symbol", None),
+    "_preset_revisions": ("symbol", None),
+    "_preset_labels": ("symbol", None),
+    "_preset_selections": ("symbol", None),
 }
+_LINKED_FILTERS = {
+    "_feature_definitions": ("_feature_values", "(feature_id, algorithm_version)",
+                             "SELECT feature_id, algorithm_version FROM _feature_values WHERE symbol IN :selection"),
+    "_dataset_blocks": ("_dataset_manifests", "block_id", """
+        SELECT blocks.value FROM _dataset_manifests AS manifest
+        JOIN json_each(manifest.payload_json, '$.frames') AS frames
+        JOIN json_each(frames.value) AS blocks
+        WHERE json_extract(manifest.payload_json, '$.symbol') IN :selection
+    """),
+    "_chart_study_captures": ("_chart_study_notes", "note_id",
+                             "SELECT note_id FROM _chart_study_notes WHERE symbol IN :selection"),
+    "_chart_study_requests": ("_chart_study_notes", "note_id",
+                             "SELECT note_id FROM _chart_study_notes WHERE symbol IN :selection"),
+    "_preset_imports": ("_preset_revisions", "(preset_id, revision)",
+                        "SELECT preset_id, revision FROM _preset_revisions WHERE symbol IN :selection"),
+}
+_REQUIRED_TABLES = {"_feature_values": "_feature_definitions", "_dataset_manifests": "_dataset_blocks",
+                    "_preset_selections": "_preset_revisions", "_preset_labels": "_preset_revisions"}
 
 
 def _quote(identifier):
@@ -59,8 +83,13 @@ def _scope(plan):
     registrations = {t["table"] for t in plan["inventory"]["tables"] if t["selection"] == "selected"}
     if registrations != selected:
         raise ValueError("Há séries selecionadas com uma família de dados ainda sem suporte ao transporte.")
-    included = {t["table"]: t for t in plan["inventory"]["tables"]
-                if t["table"] in selected or t["table"] in _CONTROL_FILTERS}
+    inventory = {table["table"]: table for table in plan["inventory"]["tables"]}
+    applicable = {name for name, (owner, _, _) in _LINKED_FILTERS.items() if owner in inventory}
+    included = {name: table for name, table in inventory.items()
+                if name in selected or name in _CONTROL_FILTERS or name in applicable}
+    for name, dependency in _REQUIRED_TABLES.items():
+        if name in included and dependency not in included:
+            raise ValueError(f"A família {name} requer a tabela de origem {dependency}.")
     for table in included.values():
         if table["cross_schema_dependencies"] or set(table["declared_dependencies"]) - included.keys():
             raise ValueError(f"Tabela {table['table']} depende de uma origem fora do pacote.")
@@ -83,8 +112,8 @@ def _copy_table(source, target, name, selector, check):
     if selector is None:
         result = source.execute(text(query))
     else:
-        column, values = selector
-        result = source.execute(text(f"{query} WHERE {_quote(column)} IN :selection")
+        clause, values = selector
+        result = source.execute(text(f"{query} WHERE {clause}")
                                 .bindparams(bindparam("selection", expanding=True)), {"selection": tuple(values)})
     insert = f"INSERT INTO {_quote(name)} ({fields}) VALUES ({', '.join('?' for _ in columns)})"
     count = 0
@@ -113,11 +142,9 @@ def _write_payload(db, symbols, database, check):
             counts = {}
             for name in sorted(included):
                 check()
-                selector = _CONTROL_FILTERS.get(name)
-                if selector is not None:
-                    column, values = selector
-                    selector = (column, values or (symbols if column == "symbol" else raw_tables))
+                selector = _table_selector(name, symbols, raw_tables)
                 counts[name] = _copy_table(source, target, name, selector, check)
+            _check_links(target, counts)
             if target.execute("PRAGMA foreign_key_check").fetchone() is not None:
                 raise ValueError("O recorte contém vínculos de dados fora do pacote.")
             if target.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
@@ -143,6 +170,43 @@ def _continue_sql(check):
     except TimeoutError:
         return 1
     return 0
+
+
+def _table_selector(name, symbols, raw_tables):
+    if name in _LINKED_FILTERS:
+        _, key, subquery = _LINKED_FILTERS[name]
+        return f"{key} IN ({subquery})", symbols
+    selector = _CONTROL_FILTERS.get(name)
+    if selector is None:
+        return None
+    column, values = selector
+    if column == "table_name":
+        values = raw_tables
+    elif values is None:
+        values = symbols
+    return f"{column} IN :selection", values
+
+
+def _check_links(connection, tables):
+    checks = {
+        "_dataset_manifests": """
+            SELECT 1 FROM _dataset_manifests AS manifest
+            JOIN json_each(manifest.payload_json, '$.frames') AS frames
+            JOIN json_each(frames.value) AS blocks
+            LEFT JOIN _dataset_blocks AS data ON data.block_id = blocks.value
+            WHERE data.block_id IS NULL LIMIT 1
+        """,
+        "_preset_selections": """
+            SELECT 1 FROM _preset_selections AS choice
+            LEFT JOIN _preset_revisions AS preset ON preset.preset_id = choice.preset_id
+                AND preset.revision = choice.revision AND preset.robot_key = choice.robot_key
+                AND preset.symbol = choice.symbol AND preset.timeframe = choice.timeframe
+            WHERE preset.preset_id IS NULL LIMIT 1
+        """,
+    }
+    for table, sql in checks.items():
+        if table in tables and connection.execute(sql).fetchone() is not None:
+            raise ValueError(f"O pacote tem vínculos incompletos na família {table}.")
 
 
 def _publish(stage, destination):
@@ -232,12 +296,16 @@ def inspect_package(directory, *, check):
         with closing(sqlite3.connect(database.absolute().as_uri() + "?mode=ro&immutable=1", uri=True)) as db:
             db.execute("PRAGMA trusted_schema = OFF")
             db.set_progress_handler(lambda: _continue_sql(check), 10000)
-            present = {row[0] for row in db.execute("SELECT name FROM sqlite_schema WHERE type='table'")
-                       if not row[0].startswith("sqlite_")}
+            schema = db.execute("SELECT name, type, sql FROM sqlite_schema").fetchall()
+            if any(kind not in {"table", "index"} or (kind == "table" and
+                   not re.match(r"^CREATE\s+TABLE\b", sql or "", re.I)) for _, kind, sql in schema):
+                raise ValueError("O pacote contém objetos SQLite que a coleção não executa.")
+            present = {name for name, kind, _ in schema if kind == "table" and not name.startswith("sqlite_")}
             if present != counts.keys() or db.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
                 raise ValueError("O schema SQLite não corresponde ao manifesto.")
             if db.execute("PRAGMA foreign_key_check").fetchone() is not None:
                 raise ValueError("O pacote tem vínculos SQLite incompletos.")
+            _check_links(db, present)
             slots = dict(db.execute("SELECT slot, origin_id FROM _dataset_origin"))
             actual_symbols = {row[0] for row in db.execute("SELECT DISTINCT symbol FROM _symbol_tables")}
             clock = dict(db.execute("SELECT key,value FROM _metadata WHERE key IN ('time_basis','broker_timezone')")) \
