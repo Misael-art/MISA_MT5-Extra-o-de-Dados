@@ -51,3 +51,31 @@ B08/T19.23, S09 comSL/TP fixos, Default→Manual nomeado→backtest→preset car
 replay com negócios reconciliados na aplicação. Simulação Python, Tester nativo
 e operação ao vivo DEMO são modalidades distintas; nenhuma ordem ao vivo foi
 feita. Pullback/parcial/BE continuam bloqueados até T19.57; Windows físico específico.
+
+
+## E14-EXEC-01: fonte 2.14 em qualificação
+
+O SDK HADOUKEN95af71ab publica S09 2.14, fingerprint9a6b5b468cd4d7c3,
+59 inputs e59 arquivos na closure. O mapper aceita exatamente essa identidade
+com revisão16 do perfil, exige pacote e sessão Tester DEMO e mantém
+`operational_acceptance=false`. A identidade2.13 anterior permanece congelada;
+a nova cadeia não recebe seu aceite financeiro ou nativo por herança.
+
+O caminho vinculado usa o mesmo journal/reservas/executor. Antes de nova entrada,
+consulta os pedidos de fechamento da própria contribuição desde a confirmação
+da barra: reinício não libera reversão/reentrada nessa barra. A próxima barra
+exige sinal, reconciliação, risco e margem novos. Aceitação, parcial e incerteza
+permanecem sujeitos à consulta/reconciliação, sem completar volume por reenvio.
+O metadata `execution_recovery` declara essa política nos pacotes novos.
+
+StrategyRobot e chamadas diretas sem vínculo passam a recusar execução fora do
+Strategy Tester DEMO, pois não possuem journal completo por pedido. Isso inclui
+mutações de gestão nesse caminho; não se declara proteção automática de posições
+ao vivo legadas. A política agregada OFF não concede qualificação operacional.
+Nenhum perfil antigo/preset/snapshot é migrado automaticamente.
+
+A baselinee23d3615 reproduziu duas falhas em185 testes; a correçãob73e4bcb
+passou os185 e checker171 no CI43587026347. A fixture inicial de reinício falhou
+na extração e foi corrigida antes da reprodução. Simulação/CI não certificam MT5,
+reinício real do processo, DEMO ao vivo ou Windows físico. Ensaios locais nativos
+e prévia aguardam margem medida do host; Windows aguarda host qualificado.

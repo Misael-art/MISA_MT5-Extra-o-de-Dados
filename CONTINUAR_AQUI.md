@@ -66,7 +66,7 @@ conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os do
 atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
 `27b8599` está limpo detached, conforme os pins existentes.
 
-A fila tem 28 itens: 14 concluídos, seis bloqueados, três livres e cinco em validação. Reavaliar os aceites de cada alvo pela evidência própria.
+A fila tem 28 itens: 14 concluídos, seis bloqueados, dois livres e seis em validação. Reavaliar os aceites de cada alvo pela evidência própria.
 Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
@@ -76,7 +76,7 @@ Os aceites possuem escopo explícito e dependências próprias.
 | IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance / Codex nesta tarefa, indicadores HADOUKEN | em validação | HADOUKEN PR86 `461a067`, recibo `438e49e`; App `codex/ind-aggr-integracao` | CI Linux executou174 testes e checker171: aprovados. A regressão anterior falhou em quatro cenários. Corrigidos AS_SERIES, ausência vs zero válido e interrupção; candle/volume continua aproximação. Pin revisado no manifesto. Execução local/MetaEditor/CopyBuffer e prévia aguardam recursos; Windows físico aguarda host qualificado |
 | E14-METRIC-01 | P0 · Indisponibilidade, frescor e cobertura / Codex nesta tarefa, painel HADOUKEN/Analytics | em validação | HADOUKEN PR87, pin231343f; App `codex/e14-metric-integracao` | CI reproduziu total parcial8 substituindo28; correção passou181 testes e checker171. Estados explícitos, último snapshot válido, idade/recortes, DTO/painel e leitor ativo de marcações qualificados. O pin final rejeita EMPTY_VALUE e passou181 testes no CI43581200274. MetaEditor/GUI/prévia aguardam recursos; Windows físico aguarda host qualificado |
 | E14-SCOPE-01 | P0 · Escopos de métricas, risco e zeragem / Codex nesta tarefa, Safety/painel/Analytics | em validação | HADOUKEN PR88 `4982259`; App `codex/e14-scope-integracao` | Duas falhas reproduzidas em182 testes. Correção final passou184 testes/checker171 em CI. Snapshot vincula conta/servidor/moeda; painel explicita bases patrimoniais, Magic/todos os ativos e contribuição netting não qualificada. Zeragem exige inventário legível; executor revalida posse/tipo/símbolo/volume e preserva alheios. Native/GUI/prévia aguardam recursos; Windows físico aguarda host |
-| E14-EXEC-01 | P0 · Intenção durável, parcial, incerteza, reinício e reversão / Expert-HADOUKEN e Safety, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Qualificar consumidores vigentes StrategyRobot/NativeBaseAdapter, vínculo durável e recuperação. Reproduzir fronteiras e aplicar a política vigente de saída/reversão. Corrigir lacunas demonstradas. Compatibilidade do futuro Triplo pertence a SA-01-CONTRATO. Ensaio nativo exige sessão autorizada própria |
+| E14-EXEC-01 | P0 · Intenção, parcial, incerteza e reinício / Codex nesta tarefa, Expert/Safety | em validação | HADOUKEN PR89 `95af71a`; App `codex/e14-exec-integracao` | Duas falhas reproduzidas em185 testes; correção passou185/checker171. Journal impede reentrada na barra do fechamento após reinício. Sem vínculo só pesquisa Tester DEMO; painel propaga recusa. S09 2.14/perfil16 exige fingerprint/revisão próprios e não herda aceite2.13. Fonte instalada passou gate leve; mapper/Session CI e QA nativa/prévia pendentes de recursos. Windows físico aguarda host |
 | SA-01-CONTRATO | P1 · Contrato Triplo e compatibilidade SL/TP / Expert, Dados e integração, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Relato descreve três bandas no mesmo TF20/fatores1/2/3, fonte atual usa multi-TF e saída diferente. Fórmula/seed/reentrada continuam abertas. Adaptador vinculado exige SL/TP positivos. Próximo é fechar a variante e dependências P0 aplicáveis |
 | SA-01-PLOT | P1 · Plot opcional com parâmetros/seed efetivos / Expert e painel, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da implementação pendente | Catálogo atual chama indicador pelos defaults e exibe dez curvas. Depende de SA-01-CONTRATO. Próximo é vincular as três curvas ao mesmo cálculo e qualificar visual ligado/desligado, preservando estudos alheios |
 | DIAG-CONFIG | Mesma leitura literal na GUI, CLI e conector / App | concluído | PR299 `d0ea937` | SHA anterior publicado. Conflito apenas documental com master impedia CI. Recibo reposicionado e `merge-tree` limpo, novo SHA enviado. Código mantém os 32 testes e launcher de QA registrados. SHA remoto confirmado. Cinco jobs aprovados. Windows tentativa 1 teve 4.663 aprovados/195 não executados e três timeouts em Node/Node/g++. Caso Node já tem proposta de outro agente na PR301 `28e4c17`, com seis jobs aprovados. A tentativa diagnóstica 2 do mesmo SHA passou nos seis jobs, incluindo Windows. As falhas da primeira tentativa continuam preservadas. O timeout do compilador não foi reproduzido |
@@ -1363,3 +1363,30 @@ prévia continuam sujeitos à margem de RAM/swap/PSI. A prévia habitual segue2b
 CCI2b8bb96 e integraçãoAGGRadf31e4 já passaram Linux completo/PG/instaladores/lint;
 Windows CI segue próprio. Próximo item: E14-EXEC-01.
 Recibo: docs/evidencias/E14_SCOPE_INTEGRACAO_20261114.json.
+
+
+## E14-EXEC-01 · integração Linux em validação — 14/11/2026
+
+HADOUKEN PR89/95af71a publica S09 2.14: baselinee23d3615 reproduziu duas
+falhas de185 testes, e a correçãob73e4bcb passou185/checker171/sintaxe no
+CI43587026347. O followup documental final passou CI43587182502.
+A consulta do journal antes da entrada conserva a barreira de reentrada/reversão
+na barra em que houve pedido de fechamento, inclusive após reinício. Resultado
+aceito/parcial/incerto continua distinto do efeito conciliado e não autoriza
+reenvio para completar volume. O legado e chamadas diretas sem vínculo passam
+a recusar entrada/gestão fora do Tester DEMO; não há migração operacional de
+posições ao vivo. TradingAllowed propaga essa indisponibilidade ao painel.
+
+O App fixa95af71a e acrescenta somente a identidade2.14/perfil16, fingerprint
+9a6b5b468cd4d7c3,59 inputs/59 fontes. A identidade2.13 anterior e SA-REF-01
+continuam congeladas. O gate real do mapper, executado de forma leve com o
+catálogo canônico, aceitou a fonte exata e recusou rótulo antigo/inputs incompletos;
+isso não é o mapper completo, Session ou replay nativo. `operational_acceptance`
+permanece falso. Os outros perfis com closure não qualificada continuam recusados.
+
+CCI2b8bb96 concluiu os seis checks do App no CI43578756978. A primeira fixture
+62e54e89 teve erro de extração, corrigido antes da reprodução; evidência preservada.
+A reserva medida do host adiou compilação e GUI finais, sem encerrar processos
+alheios. A prévia habitual continua2b;d136 está preparado, sem ativação e anterior
+a este pin. Próximo desenvolvimento: SA-01-CONTRATO, mantendo a QA pendente.
+Recibo: docs/evidencias/E14_EXEC_INTEGRACAO_20261114.json.
