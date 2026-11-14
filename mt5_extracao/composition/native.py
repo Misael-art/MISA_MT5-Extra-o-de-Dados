@@ -130,6 +130,13 @@ POSTFILL_AUDIT_APPROVED_FINGERPRINT="134eb770360afaf6"
 POSTFILL_AUDIT_HADOUKEN_REVISION="51358a16c1685cd79f4ffec0c8da464b72e10f5a"
 POSTFILL_AUDIT_INPUT_TYPES=POSTFILL_INPUT_TYPES
 
+# E14-EXEC: identidade nova após correções de métricas/escopo/recuperação.
+# Aprovação de fonte para pacote Tester DEMO; aceite operacional continua falso.
+RECOVERY_ROBOT_VERSION="2.14"
+RECOVERY_APPROVED_FINGERPRINT="9a6b5b468cd4d7c3"
+RECOVERY_HADOUKEN_REVISION="95af71ab5a3411bffe8a9c90845cf6d3a10e4a4d"
+RECOVERY_INPUT_TYPES=POSTFILL_AUDIT_INPUT_TYPES
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
@@ -145,12 +152,13 @@ def _require_robot(robot):
                 RUNTIME_ROBOT_VERSION:(RUNTIME_APPROVED_FINGERPRINT,RUNTIME_INPUT_TYPES,11,RUNTIME_HADOUKEN_REVISION),
                 PROTECTION_ROBOT_VERSION:(PROTECTION_APPROVED_FINGERPRINT,PROTECTION_INPUT_TYPES,13,PROTECTION_HADOUKEN_REVISION),
                 POSTFILL_ROBOT_VERSION:(POSTFILL_APPROVED_FINGERPRINT,POSTFILL_INPUT_TYPES,14,POSTFILL_HADOUKEN_REVISION),
-                POSTFILL_AUDIT_ROBOT_VERSION:(POSTFILL_AUDIT_APPROVED_FINGERPRINT,POSTFILL_AUDIT_INPUT_TYPES,15,POSTFILL_AUDIT_HADOUKEN_REVISION)}
+                POSTFILL_AUDIT_ROBOT_VERSION:(POSTFILL_AUDIT_APPROVED_FINGERPRINT,POSTFILL_AUDIT_INPUT_TYPES,15,POSTFILL_AUDIT_HADOUKEN_REVISION),
+                RECOVERY_ROBOT_VERSION:(RECOVERY_APPROVED_FINGERPRINT,RECOVERY_INPUT_TYPES,16,RECOVERY_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
             or len(robot.inputs) != len(profile[1])
-            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION) else set())):
+            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION) else set())):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
     if profile[3] is None:
@@ -160,7 +168,7 @@ def _require_robot(robot):
 
 def runtime_binding_required(robot):
     """A mesma autoridade do mapper recusa execução avulsa do perfil vinculado."""
-    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION):
+    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION,RECOVERY_ROBOT_VERSION):
         return False
     _require_robot(robot)
     return True
@@ -346,6 +354,15 @@ class S09NativeAdapter:
                 if data["profit_exit"]["mode"]=="postfill_r_v1":
                     description["protection_rules"]["target_r"]="actual initial R from owned weighted entry fills and original fill SL; planned-R TP remains at broker until a confirmed change"
                     description["protection_rules"]["precedence"]="account risk, session exit, temporal exit, postfill R target, closed opposite signal, confirmed partial and partial-BE, common trailing/trigger-BE"
+        if profile_version>=16:
+            description["execution_recovery"]={
+                "authority":"bound portfolio journal and existing executor",
+                "intent_before_effect":True,"automatic_resend":False,
+                "result_requires_reconciliation":True,
+                "same_bar_after_close":"refuse entry or reversal after any own close intent since bar confirmation, including after restart",
+                "next_bar":"new signal, reconciliation, risk and margin evaluation required",
+                "unbound_consumer":"research in Strategy Tester DEMO only",
+                "source_qualification":"reviewed source identity; native replay and physical acceptance pending"}
         return description
 
 

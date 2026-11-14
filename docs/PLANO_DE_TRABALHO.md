@@ -4934,3 +4934,16 @@ não certificam zeragem, e efeitos revalidam o alcance no executor existente.
 Estado financeiro persistido não foi migrado ou apagado. Safety27b8599 e
 SA-REF-01 preservados. MetaEditor/GUI/prévia aguardam admissão; Windows físico
 aguarda host qualificado. A qualificação da execução durável é o próximo P0.
+
+
+### E14-EXEC-01 · integração de 14/11/2026
+
+Em validação: HADOUKEN PR89/95af71a e App `codex/e14-exec-integracao`.
+185 testes/checker171 passaram, incluindo recuperação, parciais e incerteza.
+A nova barreira consulta o journal existente antes de reentrar na barra da saída;
+o caminho sem vínculo fica restrito a pesquisa Tester DEMO. S09 2.14/perfil16
+possui fingerprint/pin próprios e mantém aceite operacional falso. Fonte exata
+passou gate leve local; pytest/doctor completos, GUI e replay nativo continuam
+sujeitos à admissão de recursos. CCI final passou seis checks App. Safety27b8599
+e referências históricas preservados. Windows físico aguarda host qualificado.
+Avançar SA-01-CONTRATO enquanto os aceites próprios continuam em validação.

@@ -1,0 +1,52 @@
+{
+  "schema": "mt5x-e14-exec-integration/v1",
+  "hadouken": {
+    "pin": "95af71ab5a3411bffe8a9c90845cf6d3a10e4a4d",
+    "pr": 89,
+    "implementation": "b73e4bcbdacc2ebbfb149b55e6f74900eb0ba612",
+    "baseline": "e23d36153d6df2a7b25212bc0985ce55de68b5cc",
+    "baseline_run": 43586782702,
+    "tests": 185,
+    "baseline_failures": 2,
+    "implementation_ci": 43587026347,
+    "final_ci": 43587182502,
+    "tests_passed": 185,
+    "static_files": 171
+  },
+  "source_gate": {
+    "source_authority": "actual native.py assignments/_require_robot/runtime_binding_required via AST; canonical robot_from_file/fingerprint",
+    "profile_version": 16,
+    "fingerprint": "9a6b5b468cd4d7c3",
+    "hadouken": "95af71ab5a3411bffe8a9c90845cf6d3a10e4a4d",
+    "historical_label_rejected": true,
+    "missing_input_rejected": true,
+    "runtime_binding_required": true,
+    "peak_kib": 22684,
+    "limits": "light source gate only; not full mapper/Session/runtime or native acceptance"
+  },
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "profile": {
+    "robot_version": "2.14",
+    "profile_version": 16,
+    "fingerprint": "9a6b5b468cd4d7c3",
+    "public_inputs": 59,
+    "closure_files": 59,
+    "frozen_2_13_unchanged": true
+  },
+  "accepted_reference_changed": false,
+  "cci_ci": {
+    "sha": "2b8bb96aed8d1730982066f23a113828d9b6607b",
+    "run": 43578756978,
+    "six_product_jobs": "success"
+  },
+  "local_static": "deferred: RAM reserve, no own compiler started",
+  "preview": "2b active;d136 prepared before this pin; no activation",
+  "remaining": [
+    "App CI by exact SHA",
+    "local focused mapper/doctor when resources admit",
+    "compiled native/restart and controlled GUI QA",
+    "preview matching the published pin",
+    "Windows physical: future qualified host"
+  ],
+  "accepted_operationally": false
+}

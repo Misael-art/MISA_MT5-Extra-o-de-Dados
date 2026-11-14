@@ -176,6 +176,34 @@ def test_postfill_audit_source_has_own_version_and_binding(protection_robot,monk
     assert out["runtime_binding_required"] and not out["operational_acceptance"]
 
 
+
+def test_recovery_profile_is_distinct_and_preserves_frozen_identity_and_strict_gate(protection_robot,monkeypatch):
+    frozen=(native.POSTFILL_AUDIT_ROBOT_VERSION,native.POSTFILL_AUDIT_APPROVED_FINGERPRINT,
+            native.POSTFILL_AUDIT_HADOUKEN_REVISION)
+    protection_robot.version=native.RECOVERY_ROBOT_VERSION
+    with pytest.raises(ValueError,match="fonte/versão/fingerprint"):
+        native.runtime_binding_required(protection_robot)
+    monkeypatch.setattr(native,"RECOVERY_APPROVED_FINGERPRINT",catalog.fingerprint(protection_robot))
+    comp=Composition(managed_composition())
+    out=native.S09NativeAdapter(comp,protection_robot).describe("recovery")
+    assert out["profile_version"]==16 and out["runtime_binding_required"]
+    assert native.runtime_binding_required(protection_robot)
+    assert out["hadouken_revision"]==native.RECOVERY_HADOUKEN_REVISION
+    assert out["modality"]=="native_tester_demo_only" and not out["operational_acceptance"]
+    recovery=out["execution_recovery"]
+    assert recovery["intent_before_effect"] and recovery["result_requires_reconciliation"]
+    assert not recovery["automatic_resend"] and "after restart" in recovery["same_bar_after_close"]
+    assert frozen==("2.13","134eb770360afaf6","51358a16c1685cd79f4ffec0c8da464b72e10f5a")
+    # O fingerprint de2.14 nunca concede suporte ao rótulo histórico2.13.
+    protection_robot.version=native.POSTFILL_AUDIT_ROBOT_VERSION
+    with pytest.raises(ValueError,match="fonte/versão/fingerprint"):
+        native.S09NativeAdapter(comp,protection_robot)
+    protection_robot.version=native.RECOVERY_ROBOT_VERSION
+    protection_robot.inputs.pop()
+    with pytest.raises(ValueError,match="fonte/versão/fingerprint"):
+        native.runtime_binding_required(protection_robot)
+
+
 def test_common_protection_maps_all_inputs_and_declares_units_cadence_and_inactive_paths(protection_robot):
     comp=Composition(managed_composition())
     out=native.S09NativeAdapter(comp,protection_robot).describe("managed")
