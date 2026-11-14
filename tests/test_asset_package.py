@@ -199,3 +199,35 @@ def test_package_keeps_complete_ledger_runs_and_rejects_cross_asset_slices(origi
             asset_package.export(reader, ["TEST"], tmp_path / "partial", check=lambda: None)
     finally:
         reader.close()
+
+
+def test_campaign_keeps_roster_and_exposure_events_as_a_unit(origin, tmp_path):
+    with sqlite3.connect(origin) as db:
+        db.executescript("""
+            CREATE TABLE _dataset_manifests(manifest_id TEXT PRIMARY KEY,payload_json TEXT);
+            INSERT INTO _dataset_manifests VALUES ('image','{"symbol":"TEST","frames":{}}');
+            CREATE TABLE _dataset_blocks(block_id TEXT PRIMARY KEY,payload_json TEXT);
+            CREATE TABLE _experiment_protocols(protocol_id TEXT PRIMARY KEY,payload_json TEXT);
+            INSERT INTO _experiment_protocols VALUES ('campaign','{"type":"pattern_campaign_v1","roster":[{"symbol":"TEST","data_manifest_id":"image"}]}');
+            CREATE TABLE _experiment_requests(request_id TEXT PRIMARY KEY,protocol_id TEXT);
+            INSERT INTO _experiment_requests VALUES ('selected','campaign'),('excluded','other');
+            CREATE TABLE _experiment_events(event_id TEXT PRIMARY KEY,protocol_id TEXT,kind TEXT);
+            INSERT INTO _experiment_events VALUES ('exposure','campaign','holdout_access');
+            CREATE TABLE _experiment_executions(execution_id TEXT PRIMARY KEY,request_id TEXT);
+            INSERT INTO _experiment_executions VALUES ('attempt','selected');
+        """)
+    reader = DatabaseManager(db_path=str(origin), read_only=True)
+    try:
+        target = tmp_path / "campaign"
+        manifest = asset_package.export(reader, ["TEST"], target, check=lambda: None)
+        assert asset_package.inspect_package(target, check=lambda: None) == manifest
+        with sqlite3.connect(target / asset_package.DATABASE) as db:
+            assert db.execute("SELECT event_id FROM _experiment_events").fetchone() == ("exposure",)
+            assert db.execute("SELECT request_id FROM _experiment_requests").fetchall() == [("selected",)]
+        with sqlite3.connect(origin) as db:
+            db.execute("UPDATE _experiment_protocols SET payload_json=json_insert(payload_json, '$.roster[#]', json(?))",
+                       ('{"symbol":"OTHER","data_manifest_id":"other"}',))
+        with pytest.raises(ValueError, match="roster fora do recorte"):
+            asset_package.export(reader, ["TEST"], tmp_path / "incomplete", check=lambda: None)
+    finally:
+        reader.close()

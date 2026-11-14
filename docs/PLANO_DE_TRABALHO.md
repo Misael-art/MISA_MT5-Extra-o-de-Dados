@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — campanhas e validações no pacote SQLite
+
+Exporta campanhas de padrões quando o recorte contém todo o roster e seus
+snapshots, preservando pedidos, execuções e trilha de exposição. O pacote
+também preserva os resultados do Filtro C por ativo. A operação recusa uma
+seleção parcial do roster. São 15 testes de pacote e campanha aprovados.
+
+
 ## T20.30-HOST1-DRIVE — relações persistidas no pacote SQLite
 
 O pacote seleciona relações pelo ativo do contexto e carrega suas referências

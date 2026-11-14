@@ -39,6 +39,7 @@ _CONTROL_FILTERS = {
     "_preset_revisions": ("symbol", None),
     "_preset_labels": ("symbol", None),
     "_preset_selections": ("symbol", None),
+    "_strategy_validation": ("symbol", None),
 }
 _LINKED_FILTERS = {
     "_feature_definitions": ("_feature_values", "(feature_id, algorithm_version)",
@@ -58,9 +59,26 @@ _LINKED_FILTERS = {
 }
 _REQUIRED_TABLES = {"_feature_values": "_feature_definitions", "_dataset_manifests": "_dataset_blocks",
                     "_preset_selections": "_preset_revisions", "_preset_labels": "_preset_revisions",
-                    "_dataset_references": "_dataset_manifests", "_feature_relations": "_dataset_references"}
+                    "_dataset_references": "_dataset_manifests", "_feature_relations": "_dataset_references",
+                    "_experiment_protocols": "_dataset_manifests"}
 _RUN_DEPENDENCIES = ("_native_input_receipts", "_preset_native_runs", "_robot_checks", "_trade_features",
                      "_trade_features_runs", "_trade_trajectories", "_dataset_references")
+_CAMPAIGN_FILTERS = {
+    "_experiment_protocols": "protocol_id",
+    "_experiment_requests": "protocol_id",
+    "_experiment_events": "protocol_id",
+    "_experiment_executions": "request_id",
+}
+_CAMPAIGNS = """
+    SELECT protocol.protocol_id FROM _experiment_protocols AS protocol
+    WHERE json_extract(protocol.payload_json, '$.type') = 'pattern_campaign_v1'
+      AND EXISTS (SELECT 1 FROM json_each(protocol.payload_json, '$.roster'))
+      AND NOT EXISTS (
+        SELECT 1 FROM json_each(protocol.payload_json, '$.roster') AS member
+        WHERE json_extract(member.value, '$.symbol') IS NULL
+           OR json_extract(member.value, '$.symbol') NOT IN :selection
+      )
+"""
 
 
 def _quote(identifier):
@@ -90,6 +108,7 @@ def _scope(plan, source, check):
     inventory = {table["table"]: table for table in plan["inventory"]["tables"]}
     symbols = plan["requested_symbols"]
     run_filters = _run_filters(source, inventory, symbols, check)
+    run_filters.update(_campaign_filters(source, inventory, symbols))
     if "_feature_relations" in inventory and "_dataset_references" in inventory:
         relations = "SELECT analysis_id FROM _feature_relations WHERE symbol IN :selection"
         clause = f"EXISTS (SELECT 1 FROM ({relations}) AS selected_relations " \
@@ -107,6 +126,29 @@ def _scope(plan, source, check):
         if table["cross_schema_dependencies"] or set(table["declared_dependencies"]) - included.keys():
             raise ValueError(f"Tabela {table['table']} depende de uma origem fora do pacote.")
     return selected, included, run_filters
+
+
+def _campaign_filters(source, inventory, symbols):
+    if "_experiment_protocols" not in inventory:
+        return {}
+    mixed = text("""
+        SELECT 1 FROM _experiment_protocols AS protocol
+        JOIN json_each(protocol.payload_json, '$.roster') AS member
+        WHERE json_extract(protocol.payload_json, '$.type') = 'pattern_campaign_v1'
+          AND json_extract(member.value, '$.symbol') IN :selection
+          AND protocol.protocol_id NOT IN (""" + _CAMPAIGNS + ") LIMIT 1")
+    if source.execute(mixed.bindparams(bindparam("selection", expanding=True)), {"selection": symbols}).first():
+        raise ValueError("Há campanha com roster fora do recorte. Exporte todos os ativos da campanha.")
+    result = {table: (f"{key} IN ({_CAMPAIGNS})", symbols) for table, key in _CAMPAIGN_FILTERS.items()
+              if table in inventory and key == "protocol_id"}
+    for table in ("_experiment_requests", "_experiment_events", "_experiment_executions"):
+        if table not in inventory:
+            raise ValueError("O registro de campanhas está incompleto; recupere o ledger antes de exportar.")
+    if "_experiment_executions" in inventory and "_experiment_requests" in inventory:
+        result["_experiment_executions"] = (
+            f"request_id IN (SELECT request_id FROM _experiment_requests WHERE protocol_id IN ({_CAMPAIGNS}))", symbols)
+    # Protocolos e trilha de exposição, não o estado operacional do lock, viajam juntos.
+    return result
 
 
 def _run_filters(connection, inventory, symbols, check):
@@ -221,6 +263,13 @@ def _table_selector(name, symbols, raw_tables):
 
 def _check_links(connection, tables):
     checks = {
+        "_experiment_protocols": """
+            SELECT 1 FROM _experiment_protocols AS protocol
+            JOIN json_each(protocol.payload_json, '$.roster') AS member
+            LEFT JOIN _dataset_manifests AS manifest
+              ON manifest.manifest_id = json_extract(member.value, '$.data_manifest_id')
+            WHERE manifest.manifest_id IS NULL LIMIT 1
+        """,
         "_dataset_references": """
             SELECT 1 FROM _dataset_references AS ref
             LEFT JOIN _dataset_manifests AS manifest ON ref.manifest_id = manifest.manifest_id
