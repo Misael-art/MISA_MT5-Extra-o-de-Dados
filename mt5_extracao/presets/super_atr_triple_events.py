@@ -30,6 +30,8 @@ _SIZING = re.compile(r"HDK_TRIPLE_SIZING schema=1 event_at=(\d+) plan_known=([01
     r" risk_money="+_N+r" risk_budget="+_N+r" stop="+_N+r" price_tick="+_N+r" margin_required="+_N+
     r" margin_free="+_N+r" volume_min="+_N+r" volume_max="+_N+r" volume_step="+_N)
 _EXIT = re.compile(r"HDK_EXIT kind=signal position=(\d+) event_at=(\d+) at=(\d+) direction=(-?\d+) acknowledged=([01])")
+_PLOT = re.compile(r"HDK_TRIPLE_PLOT schema=1 bar_at=(\d+) first="+_N+r" second="+_N+r" third="+_N)
+_PLOT_STATE = re.compile(r"HDK_TRIPLE_PLOT_STATE schema=1 at=(\d+) enabled=([01])")
 
 
 def _require(condition, detail="prefixo/decisão/risco/diário/fills divergentes"):
@@ -215,7 +217,31 @@ def _journal(directory, journal, symbol, magic, signals, entries, sizing, deals,
     return positions
 
 
-def validate(directory, params, signals, ledger, *, timeframe, framework_root, journal, symbol, magic, partial_plan, manifest_path=None):
+def _presentation(text, decisions, *, visual):
+    known = {row["bar_at"]:row for row in decisions if row["available"]}
+    points = []; states = []
+    # Espaço faz parte do marcador: STATE/UNAVAILABLE/CLEANUP são eventos distintos.
+    for match in strict_events(text, "HDK_TRIPLE_PLOT ", _PLOT):
+        at, *raw = match.groups(); at = int(at); levels = list(map(_number, raw)); row = known.get(at)
+        _require(visual is True and row is not None and all(_same(a,b) for a,b in zip(levels,row["levels"])),
+                 "plot difere dos pontos confirmados usados na decisão")
+        points.append(dict(bar_at=at, levels=levels))
+    for match in strict_events(text, "HDK_TRIPLE_PLOT_STATE ", _PLOT_STATE):
+        at, enabled = map(int, match.groups())
+        _require(visual is True and at > 0 and (not states or at >= states[-1]["at"]))
+        states.append(dict(at=at, enabled=bool(enabled)))
+    failures = re.findall(r"HDK_TRIPLE_PLOT_(?:UNAVAILABLE|CLEANUP): ([^\r\n]*)", text)
+    return dict(points=points, states=states, failures=failures,
+        status="unavailable" if failures else "observed" if points else "not_observed",
+        native_visual_qualified=False, paired_decisions_qualified=False)
+
+
+def semantic_reference(reference):
+    """Apresentação é auditada, mas não participa da comparação de decisões."""
+    return {key:value for key,value in reference.items() if key != "presentation"}
+
+
+def validate(directory, params, signals, ledger, *, timeframe, framework_root, journal, symbol, magic, partial_plan, manifest_path=None, visual=None):
     frame = timeframes.parse(timeframe)
     _require(frame is not None and frame.minutes < 1440)
     seconds = frame.minutes*60; text = _text(directory)
@@ -240,4 +266,41 @@ def validate(directory, params, signals, ledger, *, timeframe, framework_root, j
         contexts=len(decisions), bars=len(bars), trace_sha256=hashlib.sha256(canonical_json(trace).encode("utf-8")).hexdigest(),
         decisions=decisions, exits=exits, reference="three original MQL curves on the fixed observed closed prefix",
         source_conformity=True, external_parity=False, native_mt5_qualified=False, restart_operational_qualified=False,
-        history_revision="unavailable", allows_live=False), sizing, deals)
+        history_revision="unavailable", allows_live=False, presentation=_presentation(text,decisions,visual=visual)), sizing, deals)
+
+
+def compare_presentation_pair(visible, hidden):
+    """Consulta de dois recibos existentes; não executa/importa/aprova negociação."""
+    from .execution import first_difference
+    from ..composition import super_atr_triple_native as profile
+    for proof, expected in ((visible, True), (hidden, False)):
+        _require(proof.get("status")=="reconciled_replay" and proof.get("functional_native_activity") is True
+                 and proof.get("actual_mode")==dict(tester=True, visual=True, demo=True)
+                 and proof.get("inputs",{}).get("runtime_binding",{}).get("native_verified") is True,
+                 "par exige dois replays DEMO ativos e conciliados")
+        values = proof["inputs"]["values"]
+        _require(set(values)==set(profile.PLOT_INPUT_TYPES) and values.get("InpPlotEnabled") is expected)
+        _require(proof.get("source")==dict(key=profile.ROBOT_KEY,version=profile.PLOT_ROBOT_VERSION,fingerprint=profile.PLOT_APPROVED_FINGERPRINT))
+        reference = proof["strategy_reference"]
+        _require(reference.get("source_conformity") is True and reference.get("contract")=="super_atr_triple_closed/1")
+        _require(reference.get("source",{}).get("framework_commit")==profile.PLOT_HADOUKEN_REVISION
+                 and reference["source"].get("qualification")=="PINNED_TRIPLE_HEADER_CPP_ADAPTER")
+        presentation = reference.get("presentation",{})
+        _require(not presentation.get("failures"), "par contém falha visual")
+        _require(all(row["enabled"] is expected for row in presentation.get("states",[])), "par alternou a apresentação durante o ensaio")
+        if expected: _require(presentation.get("points"), "par ligado não observou curvas")
+        else: _require(not presentation.get("points"), "par desligado observou plot")
+    for key in ("source", "context", "test_context", "tester_model"):
+        _require(visible.get(key)==hidden.get(key), "par usa fontes/contextos/modelos diferentes")
+    omitted = {"InpPlotEnabled", "InpPresetId", "InpConfigHash"}
+    a = {k:v for k,v in visible["inputs"]["values"].items() if k not in omitted}
+    b = {k:v for k,v in hidden["inputs"]["values"].items() if k not in omitted}
+    _require(a==b, "par mudou parâmetros operacionais")
+    difference = first_difference(hidden,visible["ledger"],visible["signals"],visible.get("sizing"),
+                                  deals=visible.get("deals"))
+    if difference is None and semantic_reference(visible["strategy_reference"]) != semantic_reference(hidden["strategy_reference"]):
+        difference=dict(section="strategy_reference",field="observed_context")
+    return dict(schema_version=1,visible_run=visible["run_id"],hidden_run=hidden["run_id"],
+        same_observed_decisions_and_closed_fills=difference is None, first_difference=difference,
+        scope="observed fixed closed prefix and reconciled fills; not latency, display appearance or full tick history",
+        native_visual_qualified=False, operational_acceptance=False)

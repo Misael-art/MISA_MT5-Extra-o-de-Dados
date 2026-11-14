@@ -53,10 +53,10 @@ def example(tmp_path, monkeypatch):
     monkeypatch.setattr(events.super_atr_triple, "source", lambda *a: (artifact, Model))
     rows = [dict(direction=1, entry_time=events._clock(available), exit_time=events._clock(available+100),
                  entry_price=100, exit_price=99, stop_price=90, target_price=0, volume=2, pnl=-2, exit_reason="sl")]
-    def validate():
+    def validate(*, visual=None):
         signals = execution.native_signals(tmp_path, marker="HDK_STRATEGY_SIGNAL")
         return events.validate(tmp_path, params, signals, rows, timeframe="M5", framework_root=tmp_path,
-            journal=journal, symbol="EURUSD", magic=12, partial_plan=dict(mode="strategy_default", params={}))
+            journal=journal, symbol="EURUSD", magic=12, partial_plan=dict(mode="strategy_default", params={}),visual=visual)
     return dict(validate=validate, log=log, journal=journal, directory=tmp_path, params=params,
                 rows=rows, seed=seed, at=at, available=available, Model=Model)
 

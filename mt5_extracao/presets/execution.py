@@ -368,7 +368,7 @@ class PresetExecution:
         ha_hilo=native["profile_id"]=="hadouken.ha_hilo"
         triplo=native["profile_id"]=="hadouken.super_atr_triple"
         signals=native_signals(job.directory,marker="HDK_STRATEGY_SIGNAL" if stoch or vwap or madrid or ha_hilo or triplo else "S09_SIGNAL")
-        sizing=native_sizing(job.directory,signals,native["expected_native_inputs"]) if native["profile_version"]>=2 else None
+        sizing=native_sizing(job.directory,signals,native["expected_native_inputs"]) if native["profile_version"]>=2 and not triplo else None
         rows=_ledger_rows(self.db,job.record,signals,target_required=not (ha_hilo or triplo) and (not stoch or package["composition"]["strategy"]["params"]["target_points"]>0))
         if stoch and package["composition"]["strategy"]["params"]["target_points"]==0 and any(row["target_price"]!=0 for row in rows):
             raise ValueError("S10: alvo desabilitado no preset, mas o livro informa TP; preserve a divergência.")
@@ -406,7 +406,7 @@ class PresetExecution:
             scope=package["composition"]["context"]
             strategy_reference,sizing,deals=validate(job.directory,package["composition"]["strategy"]["params"],signals,rows,
                 timeframe=scope["timeframe"],framework_root=source.parents[3],journal=receipt.get("portfolio_journal"),
-                symbol=scope["symbol"],magic=native["expected_native_inputs"]["InpMagic"],partial_plan=package["composition"]["partial_exit_plan"])
+                symbol=scope["symbol"],magic=native["expected_native_inputs"]["InpMagic"],partial_plan=package["composition"]["partial_exit_plan"],visual=actual_mode["visual"])
             validate_sizing_budgets(sizing,signals,rows,deposit=package["test_context"]["deposit"],
                                    risk_pct=native["expected_native_inputs"]["InpRiskPct"])
         temporal=None;channel=[] if native["profile_version"]>=6 else None;atr=[] if native["profile_version"]>=7 else None
@@ -432,8 +432,13 @@ class PresetExecution:
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
         difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr,session,cooldown,protection) if prior is not None else None
-        if (stoch or vwap or madrid or ha_hilo or triplo) and prior is not None and difference is None and prior.get("strategy_reference")!=strategy_reference:
-            difference=dict(section="strategy_reference",field="observed_context",expected=prior.get("strategy_reference"),observed=strategy_reference)
+        if (stoch or vwap or madrid or ha_hilo or triplo) and prior is not None and difference is None:
+            old_reference=prior.get("strategy_reference");new_reference=strategy_reference
+            if triplo:
+                from .super_atr_triple_events import semantic_reference
+                old_reference=semantic_reference(old_reference or {});new_reference=semantic_reference(new_reference or {})
+            if old_reference!=new_reference:
+                difference=dict(section="strategy_reference",field="observed_context",expected=old_reference,observed=new_reference)
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")

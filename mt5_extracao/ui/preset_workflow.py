@@ -72,6 +72,7 @@ INPUT_LABELS["InpOrientation"]="Orientação (0 normal / 1 invertida)"
 INPUT_LABELS.update({"InpSeedStart":"Primeira barra broker", "InpPeriod":"Período TR comum", "InpMean":"Média (0 SMA / 1 EMA)",
  "InpDeviation1":"Desvio1 / SL", "InpDeviation2":"Desvio2", "InpDeviation3":"Desvio3",
  "InpInitialSide":"Lado inicial", "InpEntriesEnabled":"Entradas armadas no Tester"})
+INPUT_LABELS["InpPlotEnabled"]="Mostrar curvas no replay"
 
 class NameDialog:
     def __init__(self,parent,robot,current,callback,*,rename=False):
@@ -126,14 +127,14 @@ class PresetWorkflow:
             from mt5_extracao.composition.ha_hilo_native import STRATEGY_FIELDS
             self.strategy_fields=STRATEGY_FIELDS
         if self.triplo:
-            from mt5_extracao.composition.super_atr_triple_native import STRATEGY_FIELDS
-            self.strategy_fields=STRATEGY_FIELDS
+            from mt5_extracao.composition.super_atr_triple_native import STRATEGY_FIELDS,PLOT_STRATEGY_FIELDS
+            self.strategy_fields=PLOT_STRATEGY_FIELDS if profile_level==2 else STRATEGY_FIELDS
         self.profile_label="Super ATR Triplo" if self.triplo else "HA/HiLo" if self.ha_hilo else "Madrid" if self.madrid else "VWAP Bands" if self.vwap else "S10 · Estocástico/EMA" if self.stoch else "Pullback" if self.pullback else "S09"
         self.window=tk.Toplevel(self.ui.root);self.window.title(self.profile_label+" · Default e Manual")
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=profile_level>=2
+        self.lots_enabled=profile_level>=2 and not self.triplo
         self.partials_enabled=profile_level>=3
         self.temporal_enabled=not self.pullback and profile_level>=4
         self.er_enabled=not self.pullback and profile_level>=5
@@ -166,7 +167,7 @@ class PresetWorkflow:
         self.fields={};self.entries=[]
         for index,(key,label) in enumerate(self.strategy_fields):
             ttk.Label(form,text=label,wraplength=180 if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False) else 0).grid(row=index//3*2,column=index%3,sticky="w",padx=(0,12))
-            is_boolean=self.triplo and key=="entries_enabled"
+            is_boolean=self.triplo and key in ("entries_enabled","plot_enabled")
             value=tk.BooleanVar() if is_boolean else tk.StringVar();value.trace_add("write",lambda *_:self.mark_dirty())
             entry=ttk.Checkbutton(form,text="Ativar",variable=value) if is_boolean else ttk.Entry(form,textvariable=value,width=16)
             entry.grid(row=index//3*2+1,column=index%3,sticky="ew",padx=(0,12),pady=(2,8))
@@ -642,7 +643,7 @@ class PresetWorkflow:
         data=self.current.composition.to_dict()
         if getattr(self,"triplo",False):
             from mt5_extracao.composition.super_atr_triple_native import coerce_parameters
-            data["strategy"]["params"]=coerce_parameters({key:self.fields[key].get() for key,_ in self.strategy_fields})
+            data["strategy"]["params"]=coerce_parameters({key:self.fields[key].get() for key,_ in self.strategy_fields},strategy_key=data["strategy"]["key"])
         for key,_ in (() if getattr(self,"triplo",False) else self.strategy_fields):
             raw=self.fields[key].get().strip()
             if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False):raw=raw.replace(",",".")

@@ -4970,3 +4970,15 @@ compara o botão Salvar com TODOS os campos da estratégia em grid. O gate e o
 formulário permanecem íntegros. A nova revisão exige CI por SHA próprio; não
 qualifica Windows físico, MT5, GUI local ou replay nativo. Admissão local repetida
 recusou pytest por reserva medida de RAM, sem iniciar a suíte.
+
+
+### SA-01-PLOT · integração de 14/11/2026
+
+Em validação: HADOUKEN PR91/566c8e32 e App `codex/sa01-plot-integracao`.
+195 testes e174 arquivos MQL5 passaram. Renderer usa os pontos confirmados do
+Expert e alterna pelo painel, limitado a768 objetos próprios. App versiona
+perfil14 inputs sem migrar o anterior, confere trace e compara pares de recibos
+DEMO ativos/conciliados. App CI, GUI/doctor, compilação/replay nativos e prévia
+coerente permanecem pendentes; host recusou pytest por RAM. Windows físico
+aguarda host futuro. Prosseguir recortes Linux independentes de pacotes/reunião,
+Drive sintético, M1 e UI conforme contratos e bloqueios comprovados.

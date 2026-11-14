@@ -34,6 +34,18 @@ def test_consensus_shared_api_revision_has_separate_identity_and_keeps_recovery_
     assert not result["operational_acceptance"]
 
 
+def test_presentation_shared_api_preserves_previous_versions_and_uses_own_fingerprint(robot,monkeypatch):
+    robot.version=native.PRESENTATION_API_ROBOT_VERSION
+    robot.inputs=[mql.MqlInput(name,kind,"0") for name,kind in native.PRESENTATION_API_INPUT_TYPES.items()]
+    monkeypatch.setattr(native,"PRESENTATION_API_APPROVED_FINGERPRINT",catalog.fingerprint(robot))
+    result=native.S09NativeAdapter(composition(),robot).describe("s09_presentation_api")
+    assert result["profile_version"]==18 and result["runtime_binding_required"]
+    assert result["hadouken_revision"]==native.PRESENTATION_API_HADOUKEN_REVISION
+    assert native.PRESENTATION_API_ROBOT_VERSION=="2.17" and native.CONSENSUS_API_ROBOT_VERSION=="2.16"
+    assert native.CONSENSUS_API_APPROVED_FINGERPRINT=="a9379fff9788159b"
+    assert not result["operational_acceptance"]
+
+
 def test_defaults_map_every_input_and_percent_conversion_without_changing_composition(robot):
     comp=native.default_composition(robot,symbol="EURUSD",timeframe="M5")
     before=comp.to_json();out=native.S09NativeAdapter(comp,robot).describe("manual_01")
