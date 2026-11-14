@@ -7,8 +7,8 @@
   O HADOUKEN `d3dd3a5` (PR92) corrigiu a classe. Painel 7.12, S09 2.18 e
   Triplo 1.02 compilaram com zero erros e avisos em perfil isolado. A PR322
   (`4fa0bd4`) acompanha o pin e as novas identidades de fonte.
-- O atalho e o menu usam a prévia `7fa98e64651e` (PR326), com 370 arquivos
-  verificados, HADOUKEN `d3dd3a5`, Safety `27b8599` e retorno `bbe8cf477b4d`.
+- O atalho e o menu usam a prévia `6e48e9010e38` (PR329), com 370 arquivos
+  verificados, HADOUKEN `d3dd3a5`, Safety `27b8599` e retorno `3d2447243704`.
   GUI Linux em Xvfb, CCI versionado, doctor offline e percurso de pacotes
   pelo launcher passaram. Os recibos estão em `state/qa-tmp/corretivos-20261113/`.
 - A PR321 (`a06836d`) publica `package-plan`, verificado em SQLite legado e
@@ -16,9 +16,14 @@
   de mercado SQLite com seletores definidos. A PR324 (`f2d1c9c`) publica reunião
   em coleção local com origens separadas, integridade, conflito e repetição
   idempotente. A PR325 inclui fatos analíticos, snapshots, notas e presets
-  vinculados. A PR326 preserva execuções completas e ledger. Ainda faltam
-  transporte PostgreSQL, campanhas e relações multissímbolo. Os checks de
-  cada PR continuam vinculados ao SHA.
+  vinculados. A PR326 preserva execuções completas e ledger. A PR327 preserva
+  a linhagem de relações persistidas. A PR329 preserva campanhas com roster
+  completo e trilha de exposição. Os dois recortes passaram pelo launcher.
+  Transporte de pacotes PostgreSQL e famílias sem contrato de seleção ainda
+  exigem implementação. Os checks de cada PR continuam vinculados ao SHA.
+- Os warnings NumPy da SA-REF-01 vieram da janela de descoberta vazia na
+  fixture. A PR328 completa a fixture e preserva a referência congelada.
+  Os 27 testes CCI/SA-REF passaram com RuntimeWarning tratado como erro.
 - 195 testes do HADOUKEN, checker de 174 arquivos e 54 verificações de
   Dashboard, configurador e campanhas passaram. Os testes do Dashboard e
   do configurador exercitam dados controlados e os critérios cobertos.
