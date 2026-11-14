@@ -15,6 +15,10 @@ def add_parser(sub) -> None:
     q = rs.add_parser("package-export", help="exporta séries SQLite registradas e histórico de aquisição")
     q.add_argument("--symbols", required=True, help="identidades registradas, separadas por vírgula")
     q.add_argument("--out", required=True, help="novo diretório local com o banco e o manifesto")
+    q = rs.add_parser("package-reunite", help="confere ou incorpora pacote a uma coleção local de origens separadas")
+    q.add_argument("source", help="diretório do pacote exportado")
+    q.add_argument("collection", help="diretório existente reservado para a coleção")
+    q.add_argument("--yes", action="store_true", help="incorpora o pacote após revalidar o plano")
     q = rs.add_parser("scan", help="séries candidatas a sair da base (sem lucro, sem estudo, obsoletas, vazias)")
     q.add_argument("--rules", default="", help="limita às regras, separadas por vírgula")
     q.add_argument("--selected", default="", help="ativos na seleção (protegidos), separados por vírgula")
@@ -213,6 +217,13 @@ def run(args: argparse.Namespace, ctx) -> int:
     out, data, err = cli._print, cli._data, cli._err
     if args.resources_command == "drive":
         return _drive(args, cli, ctx)
+    if args.resources_command == "package-reunite":
+        from . import asset_package
+        action = asset_package.reunite if args.yes else asset_package.reunion_plan
+        result = action(args.source, args.collection, check=storage.scan_deadline(300))
+        out(f"Pacote {result['package_id']}: {result['state']}.")
+        data(**result)
+        return cli.EXIT_FAIL if result["state"] == "conflict" else cli.EXIT_OK
     if args.resources_command in {"package-plan", "package-export"}:
         from .. import services
         symbols = cli._parse_symbols(args.symbols)

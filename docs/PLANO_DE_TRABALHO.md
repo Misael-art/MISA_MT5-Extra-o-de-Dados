@@ -1,6 +1,21 @@
 # Plano de trabalho detalhado
 
 
+## T20.30-HOST1-DRIVE — reunião em coleção local de QA
+
+`resources package-reunite PACOTE COLEÇÃO` valida o pacote e mostra o resultado
+previsto. Com `--yes`, a operação verifica novamente o conteúdo e incorpora
+uma base SQLite separada por origem e seleção. Repetir o mesmo pacote devolve
+`already_present`. Seleções sobrepostas ou conteúdo divergente para a mesma
+origem exigem resolução explícita. O banco da origem permanece intacto.
+O manifesto e os dados do diretório publicado permitem consultar o resultado
+após interrupção. O escopo é o transporte de séries SQLite registradas.
+
+Launcher Linux com dados sintéticos: exportação, plano sem gravação, reunião,
+repetição idempotente e resolução da tabela pelo consumidor canônico.
+Os aceites de OAuth, custódia externa e famílias excluídas continuam próprios.
+
+
 ## T20.30-HOST1-DRIVE — transporte de séries SQLite registradas
 
 `resources package-export --symbols ATIVO[,ATIVO] --out NOVO_DIRETÓRIO`
