@@ -66,14 +66,14 @@ conferidos, e o retorno histórico `57d13ee` tem 341. O caminho estável e os do
 atalhos foram conferidos. HADOUKEN `d4d389e` está limpo em branch e Safety
 `27b8599` está limpo detached, conforme os pins existentes.
 
-A fila tem28 itens:14 concluídos, seis bloqueados, seis livres e dois em validação. Reavaliar os aceites de cada alvo pela evidência própria.
+A fila tem 28 itens: 14 concluídos, seis bloqueados, cinco livres e três em validação. Reavaliar os aceites de cada alvo pela evidência própria.
 Os aceites possuem escopo explícito e dependências próprias.
 
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
 |---|---|---|---|---|
 | E14-CALC-01 | P0 · Comissões, fills, parciais e ciclos / Codex nesta tarefa, HADOUKEN-E14 e Analytics | em validação | HADOUKEN PR85 `569718c`; App PR313 `72f95e9`, `codex/e14-calc-integracao` | Consumidor comum reproduziu a falha e corrige26→28 com rateio por volume, taxas, INOUT e entradas antigas. 169 testes únicos passaram em lotes:162 antes de interrupção própria por reserva, sete restantes e sete afetados repetidos. MetaEditor/Wine0erros/0avisos,39fontes idênticas. Manifesto App em reconciliação explícita; prévia continua2b até gates. Aceite de histórico nativo/visual é próprio; Windows aguarda host qualificado |
 | IND-CCI-01 | P0 · Fórmula, aquecimento e precisão CCI / Codex nesta tarefa, Dados/App | em validação | App PR314, branch `codex/ind-cci-01`; base276e479, precisão em novo SHA | 63 testes únicos;19 casos numéricos finais aprovados. Janela/MAD compartilhados, TP por soma compensada e escala só para overflow/underflow, sem arredondar DTO. Fonte276 passou launcher/GUI XWayland com19 WARMUP/26 AVAILABLE e preferências preservadas; ruído de arredondamento foi reproduzido e corrigido. Launcher/GUI da precisão e prévia em validação, carga adiada por recursos. Snapshots/versões antigas preservados; iCCI/Windows têm aceites próprios |
-| IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance / indicadores HADOUKEN, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Arrays e buffers AS_SERIES true, loop começa em prev_calculated−1. Com100/100 atualiza índice99; com101/100 atualiza99/100, deixando a barra corrente0 fora. Inspeção e ensaio de índices, sem execução MQL nativa. Próximo é comparar incremental/reconstrução, corrigir a seleção e qualificar consumidores/artefato com composição revisada |
+| IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance / Codex nesta tarefa, indicadores HADOUKEN | em validação | HADOUKEN PR86 `461a067`, recibo `438e49e`; App `codex/ind-aggr-integracao` | CI Linux executou174 testes e checker171: aprovados. A regressão anterior falhou em quatro cenários. Corrigidos AS_SERIES, ausência vs zero válido e interrupção; candle/volume continua aproximação. Pin revisado no manifesto. Execução local/MetaEditor/CopyBuffer e prévia aguardam recursos; Windows físico aguarda host qualificado |
 | E14-METRIC-01 | P0 · Indisponibilidade, frescor e cobertura / painel HADOUKEN e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | TradeStats.Refresh zera acumuladores antes de HistorySelect. Próximo é reproduzir falha/leitura incompleta, implementar estado explícito e testar recuperação, zero válido e métricas derivadas. Reutiliza o contexto contábil de E14-CALC-01 |
 | E14-SCOPE-01 | P0 · Escopos de métricas, risco e zeragem / Safety, painel e Analytics, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Guard usa equity da conta, estatísticas filtram Magic e pânico alcança símbolos desse Magic. Esses fatos exigem política e rótulos explícitos. Próximo é qualificar escopo, reproduzir ambiguidades e corrigir consumidores afetados, com proteção de posições alheias |
 | E14-EXEC-01 | P0 · Intenção durável, parcial, incerteza, reinício e reversão / Expert-HADOUKEN e Safety, executor a assumir | livre | Branch/PR a conferir e definir por objetivo. SHA da correção pendente | Qualificar consumidores vigentes StrategyRobot/NativeBaseAdapter, vínculo durável e recuperação. Reproduzir fronteiras e aplicar a política vigente de saída/reversão. Corrigir lacunas demonstradas. Compatibilidade do futuro Triplo pertence a SA-01-CONTRATO. Ensaio nativo exige sessão autorizada própria |
@@ -1303,3 +1303,19 @@ assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
 O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
 em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
 precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.
+
+## IND-AGGR-01 · integração Linux em validação — 14/11/2026
+
+A rotina MQL OnCalculate foi executada em adaptador C++ pelo CI Linux.
+O commit de regressão f53bb30 registrou quatro falhas em 174 testes.
+A correção 461a067 passou os 174 testes e o checker de 171 fontes; 438e49e
+acrescenta o recibo, mantendo a implementação idêntica. HADOUKEN PR86 e
+App `codex/ind-aggr-integracao` preservam o incremento em revisão. Safety
+27b8599 e SA-REF-01 permanecem fixos.
+
+O manifesto usa o novo pin de desenvolvimento. Isso não qualifica o fluxo
+CopyBuffer/MT5: testes locais compilados, MetaEditor e prévia aguardam admissão
+de RAM/swap/PSI. A prévia habitual continua 2b, com retorno conservado.
+Recibo integrado: docs/evidencias/IND_AGGR_INTEGRACAO_20261114.json.
+CCI PR314/2b8bb96 completa BD01/Biblioteca após quatro falhas de catálogo
+no CI e0; seu novo CI e GUI final continuam próprios. Próximo item: E14-METRIC-01.

@@ -4902,3 +4902,14 @@ assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
 O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
 em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
 precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.
+
+
+### IND-AGGR-01 · integração de 14/11/2026
+
+Em validação na branch `codex/ind-aggr-integracao`, HADOUKEN PR86.
+A versão 1.21 atualiza AS_SERIES de rates_total−prev_calculated até zero,
+refaz revisões e preserva a diferença entre ausência e zero observado.
+CI da implementação 461a067: 174 testes e 171 fontes aprovados; pin438e49e
+inclui somente o recibo adicional. Safety27b8599 preservado.
+MetaEditor, CopyBuffer e prévia dependem da admissão de recursos; Windows
+físico aguarda host qualificado. Não há aceite operacional implícito.
