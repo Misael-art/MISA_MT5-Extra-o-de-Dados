@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T13.4-P07 — sessão da barra na abertura da grade
+
+O fluxo de pesquisa vincula uma abertura H1 anterior ao início observado da
+sessão somente com derivação M1 correspondente, cobertura integral no trecho
+observado e uma sessão inequívoca no snapshot. A barra permanece parcial e
+respeita o relógio de confirmação. O teste em SQLite cobriu abertura, falta de
+derivação, cobertura incompleta e reabertura. Aceite econômico M1 pendente.
+
 ## T19.29 / SA-01-PLOT — comparação de fills entre sessões
 
 Comparação de Tester e Replay normaliza os tickets locais mantendo os
