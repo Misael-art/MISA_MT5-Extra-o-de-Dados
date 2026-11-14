@@ -139,3 +139,19 @@ def read_events(directory,plan,signals,sizing,ledger):
 def semantic(rows):
     # Tickets do Tester variam; vínculo real é conferido antes da comparação semântica.
     return [{k:v for k,v in row.items() if k not in ('position','deal')} for row in rows]
+
+
+def semantic_deals(rows):
+    """Compara os vínculos entre fills, ordens e posições dentro de cada run."""
+    positions = {}
+    orders = {}
+    output = []
+    for row in rows:
+        normalized = {key: value for key, value in row.items() if key != 'deal'}
+        for key in ('position', 'order_position'):
+            if normalized.get(key):
+                normalized[key] = positions.setdefault(row[key], len(positions) + 1)
+        if normalized.get('order'):
+            normalized['order'] = orders.setdefault(row['order'], len(orders) + 1)
+        output.append(normalized)
+    return output

@@ -129,7 +129,7 @@ def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None
     sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
     if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
     if partials is not None:sections.append(("partials",partial_events.semantic(reference.get("partials",[])),partial_events.semantic(partials)))
-    if deals is not None:sections.append(("deals",partial_events.semantic(reference.get("deals",[])),partial_events.semantic(deals)))
+    if deals is not None:sections.append(("deals",partial_events.semantic_deals(reference.get("deals",[])),partial_events.semantic_deals(deals)))
     if temporal is not None:sections.append(("temporal_events",partial_events.semantic(reference.get("temporal_events",[])),partial_events.semantic(temporal)))
     if atr is not None:sections.append(("atr_observations",partial_events.semantic(reference.get("atr_observations",[])),partial_events.semantic(atr)))
     if session is not None:sections.append(("session_events",reference.get("session_events",[]),session))
@@ -380,7 +380,7 @@ class PresetExecution:
             validate_sizing_budgets(sizing,signals,rows,deposit=package["test_context"]["deposit"],
                                    risk_pct=native["expected_native_inputs"]["InpRiskPct"])
         partials=deals=None
-        if native["profile_version"]>=3:
+        if native["profile_version"]>=3 and not triplo:
             partials,deals=partial_events.read_events(job.directory,package["composition"]["partial_exit_plan"],signals,sizing,rows)
         strategy_reference=None
         if native["profile_id"]=="hadouken.pullback":
