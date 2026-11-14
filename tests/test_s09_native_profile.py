@@ -46,6 +46,17 @@ def test_presentation_shared_api_preserves_previous_versions_and_uses_own_finger
     assert not result["operational_acceptance"]
 
 
+def test_corrected_panel_keeps_s09_inputs_with_a_new_source_identity(robot, monkeypatch):
+    robot.version = native.PANEL_SCOPE_FIX_ROBOT_VERSION
+    robot.inputs = [mql.MqlInput(name, kind, "0") for name, kind in native.PRESENTATION_API_INPUT_TYPES.items()]
+    robot.missing_includes = ["Canvas/Canvas.mqh"]
+    monkeypatch.setattr(native, "PANEL_SCOPE_FIX_FINGERPRINT", catalog.fingerprint(robot))
+    result = native.S09NativeAdapter(composition(), robot).describe("panel_scope_fix")
+    assert result["profile_version"] == 19
+    assert result["hadouken_revision"] == native.PANEL_SCOPE_FIX_HADOUKEN_REVISION
+    assert set(result["expected_native_inputs"]) == set(native.PRESENTATION_API_INPUT_TYPES)
+
+
 def test_defaults_map_every_input_and_percent_conversion_without_changing_composition(robot):
     comp=native.default_composition(robot,symbol="EURUSD",timeframe="M5")
     before=comp.to_json();out=native.S09NativeAdapter(comp,robot).describe("manual_01")
