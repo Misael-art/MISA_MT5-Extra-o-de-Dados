@@ -1,0 +1,27 @@
+{
+  "schema": "mt5x-ind-aggr-integration/v1",
+  "base_app": "2b8bb96aed8d1730982066f23a113828d9b6607b",
+  "app_branch": "codex/ind-aggr-integracao",
+  "hadouken": {
+    "pin": "438e49e1c76d23ec89669bd79004def8ce30a7ad",
+    "implementation": "461a067d2a09d247d7c06cc932e88eb7ef86ac8e",
+    "pr": 86,
+    "ci_run": 43578264759,
+    "ci_job": 132397225013,
+    "tests_passed": 174,
+    "static_files": 171,
+    "receipt_only_delta": true
+  },
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "active_preview": "development-2b3b274da6de",
+  "preview_activated": false,
+  "native_execution": false,
+  "remaining": [
+    "local focused compiled tests under host admission",
+    "MetaEditor and actual CopyBuffer path",
+    "App CI by published SHA",
+    "preview integration and hashes",
+    "Windows physical: future qualified host"
+  ],
+  "accepted_operationally": false
+}
