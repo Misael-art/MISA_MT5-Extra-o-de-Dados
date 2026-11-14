@@ -4,7 +4,8 @@
   "feature_id": "momentum.cci_20",
   "algorithm_contract_version": "2.0",
   "observed_materialized_versions": [
-    "2.0+7c3446445e1b"
+    "2.0+7c3446445e1b",
+    "2.0+15dc1f90361c"
   ],
   "base_app_sha": "72f95e90f86a4ce3f3ee9dee231fdbac367ab327",
   "reference": {
@@ -13,7 +14,9 @@
     "increasing_27_period_14_after": 123.8095238095,
     "first_eligible_bar": 14,
     "native_example_sha256": "856b0193f81239bafb31de5d522c487f2c05ccceca7558e69b6c3336c2dd41fd",
-    "native_iCCI_executed": false
+    "native_iCCI_executed": false,
+    "primary_code_url": "https://www.mql5.com/en/code/18",
+    "note": "The installed MetaQuotes CCI example divides (price - mean) by0.015 times same-window mean absolute deviation. Web help prose currently inverts the displayed final quotient; code and independent reference govern this contract."
   },
   "validation": {
     "unique_tests_passed": 63,
@@ -53,13 +56,14 @@
       "dataset": "own synthetic SQLite, 225 M1 bars and 45 M5 observations",
       "peak_process_tree_rss_mib": 281.46,
       "minimum_available_gib": 5.285,
-      "MT5_started": false
+      "MT5_started": false,
+      "artifact_sha": "276e4792f8c49b6fd8efd1732697a41c64d8c663"
     }
   },
   "history_policy": "no bulk update or reinterpretation of unversioned raw CCI; identified additive values through existing producer/store",
   "remaining": [
-    "CI by published SHA",
-    "preview and real GUI path",
+    "followup CI by published SHA",
+    "preview and final real GUI path",
     "native iCCI parity",
     "Windows physical: future qualified host"
   ],
@@ -83,6 +87,30 @@
       "overflow of typical-price sums and deviations",
       "subnormal prices and cancellation"
     ],
-    "old_versions_preserved": true
+    "old_versions_preserved": true,
+    "runtime_algorithm_version": "2.0+15dc1f90361c"
+  },
+  "ci_e0eae5d": {
+    "run": 43534606564,
+    "linux": {
+      "job": 132260445819,
+      "passed": 4651,
+      "failed": 4,
+      "skipped": 473
+    },
+    "windows": {
+      "job": 132260445878,
+      "passed": 4919,
+      "failed": 4,
+      "skipped": 205
+    },
+    "four_other_jobs": "success",
+    "failures": [
+      "BD01 registry inventory lacks CCI",
+      "BD01 pure function inventory lacks CCI",
+      "registry count52 vs53",
+      "Dashboard library lacks CCI and reviewed contract hash"
+    ],
+    "followup": "BD01 entries, CCI library card reusing existing illustrative example, registry-count assertion; four focused local tests deferred by PSI admission; CI by new SHA pending"
   }
 }
