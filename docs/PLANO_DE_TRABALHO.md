@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T20.9 / T13.4-P05 — atraso e validade da entrada simulada
+
+O plano econômico congela atraso e espera máxima em milissegundos. A ordem
+busca a primeira abertura disponível após ficar pronta. A espera vencida
+recebe um motivo no recibo e fica sem fill. O motor existente calcula spread,
+slippage, lote e PnL do preço da abertura escolhida. Quinze testes focados
+cobriram o adaptador e o recibo persistido. É um cenário de preços por barra.
+
 ## T20.6 — evidência de cobertura no relatório nativo
 
 O leitor do Tester exige um percentual único entre 0 e 100. Evidência

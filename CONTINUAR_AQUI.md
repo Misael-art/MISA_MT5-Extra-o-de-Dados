@@ -1,5 +1,18 @@
 # Retomar MT5X em um host limpo
 
+## Pesquisa — atraso de entrada e espera pela abertura
+
+O plano econômico de campanha aceita `entry_delay_ms` e `max_entry_wait_ms`
+em `economic_plan.policy`. O primeiro conta a partir da decisão causal. O
+segundo limita a espera a partir do instante em que a ordem fica pronta.
+A simulação usa a primeira abertura observada a partir desse instante e
+registra expiração quando o intervalo supera o limite. Os planos anteriores
+conservam a regra de agendamento pela barra fechada. O recibo conserva
+o instante da decisão, a abertura encontrada e o estado da execução.
+Quinze verificações no Linux cobriram atraso, gap, validade dos inputs,
+reconciliação de preço e reabertura do recibo persistido. Custos observados e
+paridade com o Tester seguem com aceites próprios.
+
 ## Cobertura de ticks no relatório do Tester — 14/11/2026
 
 O relatório só comprova a fração de ticks reais com percentual explícito,

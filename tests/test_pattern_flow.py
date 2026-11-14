@@ -119,7 +119,8 @@ def test_signal_precedes_outcome_and_persisted_receipt_survives_restart(tmp_path
         reversal = family("reversal", {"drop_fraction": "0.013"})
         body["grid"] = [reversal.definition_hash]
         body["economic_plan"] = {"schema_version": 1, "spec_source": "synthetic_override",
-                                 "symbol_spec": asdict(SPEC), "policy": asdict(POLICY),
+                                 "symbol_spec": asdict(SPEC),
+                                 "policy": {**asdict(POLICY), "entry_delay_ms": 1, "max_entry_wait_ms": 60_000},
                                  "costs": asdict(COSTS)}
         protocol = experiments.create_pattern_campaign(db, body)["protocol_id"]
         attempt = experiments.register_pattern_attempt(db, protocol, "reversal", reversal)
@@ -132,6 +133,11 @@ def test_signal_precedes_outcome_and_persisted_receipt_survives_restart(tmp_path
         assert first["receipt"]["event_count"] == first["receipt"]["complete_count"] == 1
         assert first["receipt"]["economic"]["status"] == "simulated_hypothetical"
         assert len(first["receipt"]["economic"]["trades"]) == 1
+        timing = first["receipt"]["economic"]["entry_timing"]
+        assert timing["entry_delay_ms"] == 1 and timing["max_entry_wait_ms"] == 60_000
+        event = first["receipt"]["economic"]["event_execution"][0]
+        assert event["order_ready_at_utc"] == "2025-01-06T09:02:00.001000+00:00"
+        assert event["execution_bar_start_utc"] == "2025-01-06T09:03:00+00:00"
         preset = first["receipt"]["research_preset"]
         assert validate_research_preset(preset)["data_manifest_id"] == manifest_id
         assert not preset["native_set_equivalent"] and not preset["activation_authorized"]

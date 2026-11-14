@@ -90,7 +90,7 @@ def _economic_result(snapshot, prepared, definition, events, campaign, *, role, 
             subset, events, definition, source_namespace=prepared["source_namespace"],
             symbol_spec=spec, policy=policy, costs=costs)
         backtest = simulation["backtest"]
-        return {"status": "simulated_" + simulation["cost_status"],
+        receipt = {"status": "simulated_" + simulation["cost_status"],
                 "metrics": backtest.metrics,
                 "trades": [{key: value.isoformat() if isinstance(value, pd.Timestamp) else value
                             for key, value in vars(trade).items()} for trade in backtest.trades],
@@ -101,6 +101,9 @@ def _economic_result(snapshot, prepared, definition, events, campaign, *, role, 
                 "cost_model_id": costs.model_id,
                 "economic_approval": False, "portfolio_qualified": False,
                 "native_set_equivalent": False}
+        if "entry_timing" in simulation:
+            receipt["entry_timing"] = simulation["entry_timing"]
+        return receipt
     except (TypeError, ValueError) as exc:
         return {"status": "blocked", "reason": str(exc)}
 
