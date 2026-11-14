@@ -194,3 +194,121 @@ def export(db, symbols, destination, *, check):
             if stage.is_dir():
                 shutil.rmtree(stage)
     return manifest
+
+
+def inspect_package(directory, *, check):
+    directory = Path(directory)
+    receipt, database = directory / MANIFEST, directory / DATABASE
+    if (directory.is_symlink() or receipt.is_symlink() or database.is_symlink()
+            or not receipt.is_file() or not database.is_file()):
+        raise ValueError("O pacote precisa conter banco e manifesto locais, sem links.")
+    try:
+        with receipt.open("rb") as stream:
+            raw = stream.read(_MAX_MANIFEST_BYTES + 1)
+        if len(raw) > _MAX_MANIFEST_BYTES:
+            raise ValueError
+        manifest = json.loads(raw)
+        fields = {"format", "base", "symbols", "clock_metadata", "source_inventory_sha256", "tables",
+                  "excluded_tables", "excluded_views", "database_bytes", "database_sha256", "package_id"}
+        if not isinstance(manifest, dict) or manifest.keys() != fields or manifest["format"] != FORMAT:
+            raise ValueError
+        identity = manifest["base"]
+        symbols = package_plan._selection(manifest["symbols"])
+        counts = manifest["tables"]
+        if (set(identity) != {"namespace", "backend", "lineage", "parent_namespace", "provider", "server"}
+                or identity["backend"] != "sqlite" or not isinstance(identity["namespace"], str)
+                or not identity["namespace"] or len(identity["namespace"]) > 256
+                or symbols != manifest["symbols"] or not isinstance(counts, dict) or not counts
+                or any(type(count) is not int or count < 0 for count in counts.values())):
+            raise ValueError
+        claimed = manifest["package_id"]
+        if claimed != package_plan._hash({key: value for key, value in manifest.items() if key != "package_id"}):
+            raise ValueError
+    except (TypeError, ValueError, KeyError, UnicodeError) as exc:
+        raise ValueError("Manifesto de pacote inválido ou alterado.") from exc
+    if database.stat().st_size != manifest["database_bytes"] or _sha_file(database, check) != manifest["database_sha256"]:
+        raise ValueError("O conteúdo SQLite não corresponde ao manifesto.")
+    try:
+        with closing(sqlite3.connect(database.absolute().as_uri() + "?mode=ro&immutable=1", uri=True)) as db:
+            db.execute("PRAGMA trusted_schema = OFF")
+            db.set_progress_handler(lambda: _continue_sql(check), 10000)
+            present = {row[0] for row in db.execute("SELECT name FROM sqlite_schema WHERE type='table'")
+                       if not row[0].startswith("sqlite_")}
+            if present != counts.keys() or db.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise ValueError("O schema SQLite não corresponde ao manifesto.")
+            if db.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                raise ValueError("O pacote tem vínculos SQLite incompletos.")
+            slots = dict(db.execute("SELECT slot, origin_id FROM _dataset_origin"))
+            actual_symbols = {row[0] for row in db.execute("SELECT DISTINCT symbol FROM _symbol_tables")}
+            clock = dict(db.execute("SELECT key,value FROM _metadata WHERE key IN ('time_basis','broker_timezone')")) \
+                if "_metadata" in present else {}
+            if (slots.get("default") != identity["namespace"] or slots.get("provider") != identity["provider"]
+                    or slots.get("server") != identity["server"] or slots.get("parent") != identity["parent_namespace"]
+                    or identity["lineage"] != ("fork" if slots.get("parent") else "original")
+                    or actual_symbols != set(symbols) or clock != manifest["clock_metadata"]):
+                raise ValueError("O pacote tem origem ou seleção diferente do manifesto.")
+            for table, expected in counts.items():
+                check()
+                if db.execute(f"SELECT COUNT(*) FROM {_quote(table)}").fetchone()[0] != expected:
+                    raise ValueError("A contagem de linhas do pacote difere do manifesto.")
+    except sqlite3.Error as exc:
+        check()
+        raise ValueError("O pacote SQLite não pôde ser verificado.") from exc
+    return manifest
+
+
+def reunion_plan(source, collection, *, check):
+    """Lê e valida origem e destino. Um namespace/seleção divergente exige decisão explícita."""
+    manifest = inspect_package(source, check=check)
+    symbols = set(manifest["symbols"])
+    namespace_key = package_plan._hash(manifest["base"]["namespace"])
+    selection_key = package_plan._hash(manifest["symbols"])
+    collection = Path(collection).resolve(strict=True)
+    if not collection.is_dir():
+        raise ValueError("A coleção precisa ser um diretório local existente.")
+    target = collection / f"{namespace_key}-{selection_key}"
+    status = "ready"
+    if target.exists() or target.is_symlink():
+        existing = inspect_package(target, check=check)
+        status = "already_present" if existing == manifest else "conflict"
+    else:
+        for sibling in collection.glob(f"{namespace_key}-*"):
+            check()
+            existing = inspect_package(sibling, check=check)
+            if existing["base"] != manifest["base"] or existing["clock_metadata"] != manifest["clock_metadata"]:
+                status = "conflict"
+                break
+            if symbols.intersection(existing["symbols"]):
+                status = "conflict"
+                break
+    return {"state": status, "package_id": manifest["package_id"], "target": str(target),
+            "namespace": manifest["base"]["namespace"], "symbols": manifest["symbols"]}
+
+
+def reunite(source, collection, *, check):
+    collection = Path(collection).resolve(strict=True)
+    with actions.exclusive(collection, "reunir pacote de mercado"):
+        plan = reunion_plan(source, collection, check=check)
+        if plan["state"] == "conflict":
+            raise ValueError("A coleção já contém conteúdo diferente ou sobreposto para a mesma origem.")
+        if plan["state"] == "already_present":
+            return plan
+        if shutil.disk_usage(collection).free < (Path(source) / DATABASE).stat().st_size * 2:
+            raise RuntimeError("Espaço livre insuficiente para incorporar e conferir o pacote.")
+        target = Path(plan["target"])
+        stage = Path(tempfile.mkdtemp(prefix=".mt5x-package-", dir=collection))
+        try:
+            for name in (MANIFEST, DATABASE):
+                with (Path(source) / name).open("rb") as src, (stage / name).open("xb") as dst:
+                    for chunk in iter(lambda: src.read(1024 * 1024), b""):
+                        check()
+                        dst.write(chunk)
+                files._sync_artifact(stage / name)
+            manifest = inspect_package(stage, check=check)
+            if manifest["package_id"] != plan["package_id"]:
+                raise ValueError("O conteúdo da origem mudou após o plano de reunião.")
+            _publish(stage, target)
+        finally:
+            if stage.is_dir():
+                shutil.rmtree(stage)
+    return {**plan, "state": "imported"}

@@ -91,3 +91,32 @@ def test_export_refuses_a_foreign_key_to_another_assets_table(origin, tmp_path):
         assert not (tmp_path / "invalid").exists()
     finally:
         reader.close()
+
+
+def test_reunion_dry_run_import_retry_conflict_and_source_integrity(origin, tmp_path):
+    collection = tmp_path / "collection"
+    collection.mkdir()
+    check = lambda: None
+    reader = DatabaseManager(db_path=str(origin), read_only=True)
+    try:
+        first = tmp_path / "first"
+        asset_package.export(reader, ["TEST"], first, check=check)
+        assert asset_package.reunion_plan(first, collection, check=check)["state"] == "ready"
+        assert not list(collection.iterdir())
+        result = asset_package.reunite(first, collection, check=check)
+        assert result["state"] == "imported"
+        assert asset_package.reunite(first, collection, check=check)["state"] == "already_present"
+        with sqlite3.connect(origin) as db:
+            db.execute("UPDATE legacy_bars SET close = 42")
+        second = tmp_path / "second"
+        asset_package.export(reader, ["TEST"], second, check=check)
+        assert asset_package.reunion_plan(second, collection, check=check)["state"] == "conflict"
+        with pytest.raises(ValueError, match="conteúdo diferente"):
+            asset_package.reunite(second, collection, check=check)
+        with (first / asset_package.DATABASE).open("ab") as stream:
+            stream.write(b"tampered")
+        with pytest.raises(ValueError, match="não corresponde"):
+            asset_package.reunite(first, collection, check=check)
+        assert asset_package.inspect_package(result["target"], check=check)["package_id"] == result["package_id"]
+    finally:
+        reader.close()
