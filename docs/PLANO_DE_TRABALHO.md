@@ -4923,3 +4923,14 @@ Disponibilidade, idade, recorte e motivo chegam ao painel e ao leitor de marcas.
 A implementação68bb6b1 passou181 testes/171 fontes em CI Linux; pin231343f inclui
 o follow-up de sentinelas, com CI próprio aprovado. MetaEditor/GUI/prévia seguem
 admissão do host. Safety27b8599 preservado; nenhum aceite operacional implícito.
+
+
+### E14-SCOPE-01 · integração de 14/11/2026
+
+Em validação: HADOUKEN PR88/4982259 e App `codex/e14-scope-integracao`.
+CI do pin final aprovou184 testes/171 fontes. Conta/servidor/moeda qualificam
+histórico; âncoras e variação patrimonial são explícitas; consultas desconhecidas
+não certificam zeragem, e efeitos revalidam o alcance no executor existente.
+Estado financeiro persistido não foi migrado ou apagado. Safety27b8599 e
+SA-REF-01 preservados. MetaEditor/GUI/prévia aguardam admissão; Windows físico
+aguarda host qualificado. A qualificação da execução durável é o próximo P0.
