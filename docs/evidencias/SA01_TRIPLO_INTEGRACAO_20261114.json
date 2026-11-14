@@ -8,7 +8,7 @@
     "pr": 90,
     "ci": 43608990320,
     "passed": 192,
-    "final_documentation_ci": "pending"
+    "final_documentation_ci": 43609514535
   },
   "profile": {
     "id": "hadouken.super_atr_triple",
@@ -38,7 +38,18 @@
   },
   "tests": {
     "app": "prepared regressions; local pytest deferred: measured RAM reserve",
-    "framework": "192 passed on exact implementation SHA in CI"
+    "framework": "192 passed on exact implementation SHA in CI",
+    "app_initial_ci": {
+      "sha": "45186fd1f30754cbf17a4f255b1875e1bfc86631",
+      "run": 43610229517,
+      "five_product_jobs": "success",
+      "windows_job": 132493481764,
+      "windows_passed": 4953,
+      "windows_skipped": 205,
+      "windows_failed": 1,
+      "cause": "UI fixture compared grid strategy-save row with unrelated packed risk entry; actual strategy fields and container now checked",
+      "correction_ci": "pending exact followup SHA"
+    }
   },
   "integration": [
     "existing preset compiler/Session/runtime binding, no Python strategy substitute",

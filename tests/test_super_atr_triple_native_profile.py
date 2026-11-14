@@ -84,5 +84,7 @@ def test_ui_default_manual_explicit_seed_save_reopen_and_export(view):
     assert view.current.identity.id == own.identity.id and view.current.identity.revision == 2
     assert view.fields["entries_enabled"].get() and view.fields["seed_start_broker"].get() == "2026-11-01T00:00"
     assert view.current.manifest["native"]["configuration_ready"]
-    assert int(view.save.grid_info()["row"]) > int(view.entries[-1].grid_info()["row"])
+    strategy_entries = view.entries[:len(view.strategy_fields)]
+    assert all(entry.master is view.save.master for entry in strategy_entries)
+    assert int(view.save.grid_info()["row"]) > max(int(entry.grid_info()["row"]) for entry in strategy_entries)
     view.export.invoke(); assert "Pacote exportado" in view.status.get(), view.status.get()
