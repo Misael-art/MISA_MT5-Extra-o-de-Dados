@@ -51,6 +51,8 @@ def _params(value, specs, field):
     _object(value, specs, field)
     for key, spec in specs.items():
         if not spec.accepts(value[key]):
+            if spec.kind == "broker_datetime":
+                _fail(f"{field}.{key}", "informe data broker YYYY-MM-DDTHH:MM, sem fuso inferido (1970…3000).")
             _fail(f"{field}.{key}", f"valor inválido: esperado {spec.kind} finito, unidade {spec.unit}; "
                                    f"mínimo {'>' if spec.exclusive_minimum else '>='}{spec.minimum}, "
                                    f"máximo {spec.maximum if spec.maximum is not None else 'não limitado'}.")

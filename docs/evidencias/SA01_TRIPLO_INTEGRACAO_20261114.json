@@ -1,0 +1,60 @@
+{
+  "schema": "mt5x-sa01-triple-integration/v1",
+  "contract": "super_atr_triple_closed/1",
+  "state": "em validação",
+  "hadouken": {
+    "pin": "42793107df40118080936e63196ad152f2bfb930",
+    "implementation": "03e6a9a964e2318d04267a3dc2398df2d0170ddc",
+    "pr": 90,
+    "ci": 43608990320,
+    "passed": 192,
+    "final_documentation_ci": "pending"
+  },
+  "profile": {
+    "id": "hadouken.super_atr_triple",
+    "version": 1,
+    "robot_version": "1.00",
+    "fingerprint": "802c44f481a9bb8a",
+    "inputs": 13,
+    "source_files": 50,
+    "default_entries": false,
+    "explicit_broker_seed_required": true
+  },
+  "shared_s09": {
+    "robot_version": "2.16",
+    "profile_version": 17,
+    "fingerprint": "a9379fff9788159b",
+    "inputs": 59,
+    "source_files": 59,
+    "frozen_2_14_preserved": true
+  },
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "frozen_SA_REF_01_changed": false,
+  "external_equivalence": false,
+  "source_gate": {
+    "result": "actual source gates and canonical catalog accepted exact sources; historical label/incomplete inputs refused",
+    "peak_kib": 22540,
+    "scope": "not full mapper, Session, GUI or runtime"
+  },
+  "tests": {
+    "app": "prepared regressions; local pytest deferred: measured RAM reserve",
+    "framework": "192 passed on exact implementation SHA in CI"
+  },
+  "integration": [
+    "existing preset compiler/Session/runtime binding, no Python strategy substitute",
+    "original three MQL curves on full fixed observed prefix, no other formula/store",
+    "unavailable distinct from valid mixed consensus",
+    "instance-start barrier and stable episode intent, no same-bar reverse",
+    "absolute curve1 outward tick SL; explicit TP0; no partial/BE/trailing",
+    "same journal decoder and readonly historical fills/cost observer"
+  ],
+  "remaining": [
+    "App CI by exact SHA",
+    "local full mapper/doctor and official launcher GUI after host admission",
+    "native compile/controlled replay and restart/history revision qualification",
+    "matching immutable preview activation",
+    "SA-01-PLOT",
+    "Windows physical on future qualified host"
+  ],
+  "operational_acceptance": false
+}

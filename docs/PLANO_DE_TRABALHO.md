@@ -4947,3 +4947,14 @@ passou gate leve local; pytest/doctor completos, GUI e replay nativo continuam
 sujeitos à admissão de recursos. CCI final passou seis checks App. Safety27b8599
 e referências históricas preservados. Windows físico aguarda host qualificado.
 Avançar SA-01-CONTRATO enquanto os aceites próprios continuam em validação.
+
+
+### SA-01-CONTRATO · integração de 14/11/2026
+
+Em validação: HADOUKEN PR90/42793107 e App `codex/sa01-triplo-integracao`.
+192 testes framework passaram. Pacote Default/Manual com seed explícita, binding
+completo e conferência pelo kernel original/journal/fills existentes; não há
+backtest Python substituto. CI App, QA nativa/GUI/doctor e prévia coerente ainda
+pendentes. O host recusou suíte local por reserva de RAM. SA-REF-01 e produtor
+antigo preservados; sem aceite operacional ou equivalência externa. Avançar
+SA-01-PLOT após conferir a integração; Windows físico aguarda host futuro.
