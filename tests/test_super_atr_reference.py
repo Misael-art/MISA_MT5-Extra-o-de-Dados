@@ -2,6 +2,7 @@
 import shutil
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from mt5_extracao.robots import super_atr_reference as ref
@@ -13,6 +14,18 @@ def framework():
     if not (FRAMEWORK / ref.PROTOCOL).exists() or not (shutil.which("g++") or shutil.which("clang++")):
         pytest.skip("HADOUKEN fixado ou compilador C++ indisponível")
     return FRAMEWORK
+
+
+def reference_fixture():
+    from tests.market_data import random_walk
+
+    # OperationalStudy também calibra o limiar de volatilidade na descoberta.
+    # Um dia completo fornece barras elegíveis sem mudar a janela later dos testes.
+    discovery = random_walk(1440, freq="min", start="2026-08-31 00:00",
+                            start_price=1.1, vol=.0001, wick=.00005)
+    later = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00",
+                        start_price=1.1, vol=.0001, wick=.00005)
+    return pd.concat([discovery, later], ignore_index=True)
 
 
 def test_contract_matches_frozen_protocol():
@@ -61,10 +74,8 @@ def test_reference_rejects_changed_frozen_inputs_after_development_repin(tmp_pat
 def test_book_runs_on_synthetic_m1_without_opposite_flip_exits(tmp_path):
     framework()
     from mt5_extracao.database_manager import DatabaseManager
-    from tests.market_data import random_walk
     db = DatabaseManager(db_path=str(tmp_path / "qa.sqlite"))
-    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00",
-                       start_price=1.1, vol=.0001, wick=.00005)     # janela later + aquecimento, dentro do timeout
+    bars = reference_fixture()
     # Fixture do leitor: mesmo schema/recebimentos/UPSERT canônicos, sem enviar
     # dezenas de colunas derivadas NULL que este cenário não calcula nem usa.
     table = db.get_table_name_for_symbol("EURUSD", "1 minuto")
@@ -112,9 +123,7 @@ def test_readonly_reader_does_not_change_schema_or_data_and_refuses_missing_base
 def test_book_reproduces_from_frozen_csv_without_database(tmp_path):
     framework()
     import gzip
-    from tests.market_data import random_walk
-    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00",
-                       start_price=1.1, vol=.0001, wick=.00005)
+    bars = reference_fixture()
     frozen = tmp_path / "m1.csv.gz"
     with gzip.open(frozen, "wt", encoding="utf-8") as handle:
         handle.write("time,open,high,low,close\n")
