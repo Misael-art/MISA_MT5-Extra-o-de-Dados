@@ -1,5 +1,14 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — execuções e livro no pacote SQLite
+
+O pacote preserva o livro, execuções registradas, recibos de input, baterias,
+trajetórias, enriquecimento e vínculo ao snapshot pelo ID da execução.
+Uma operação de vários ativos exige que o recorte inclua todos os ativos
+do run. Uma seleção parcial é recusada para preservar a amostra e o vínculo.
+Regressões de pacotes, inventário e deduplicação de backtests: 37 aprovadas.
+
+
 ## T20.30-HOST1-DRIVE — estudos, snapshots e presets no pacote SQLite
 
 A seleção inclui fatos e revisões analíticas, suas definições referenciadas,

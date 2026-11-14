@@ -167,3 +167,29 @@ def test_scope_preserves_revision_definitions_snapshot_blocks_and_study_links(or
             asset_package.export(reader, ["TEST"], tmp_path / "missing-block", check=lambda: None)
     finally:
         reader.close()
+
+
+def test_package_keeps_complete_ledger_runs_and_rejects_cross_asset_slices(origin, tmp_path):
+    with sqlite3.connect(origin) as db:
+        db.executescript("""
+            CREATE TABLE _robot_runs(run_id TEXT PRIMARY KEY,symbol TEXT,metrics_json TEXT);
+            INSERT INTO _robot_runs VALUES ('selected','TEST','{}'),('external','OTHER','{}');
+            CREATE TABLE _trade_ledger(run_id TEXT,seq INT,symbol TEXT, pnl REAL,PRIMARY KEY(run_id,seq));
+            INSERT INTO _trade_ledger VALUES ('selected',0,'TEST',1.25),('imported',0,'TEST',-2.5),
+                ('external',0,'OTHER',101);
+            CREATE TABLE _trade_features_runs(run_id TEXT PRIMARY KEY,signature TEXT);
+            INSERT INTO _trade_features_runs VALUES ('selected','s'),('imported','i'),('external','x');
+        """)
+    reader = DatabaseManager(db_path=str(origin), read_only=True)
+    try:
+        target = tmp_path / "ledger"
+        manifest = asset_package.export(reader, ["TEST"], target, check=lambda: None)
+        assert manifest["tables"]["_trade_ledger"] == 2
+        with sqlite3.connect(target / asset_package.DATABASE) as db:
+            assert db.execute("SELECT run_id FROM _trade_features_runs ORDER BY run_id").fetchall() == [("imported",), ("selected",)]
+        with sqlite3.connect(origin) as db:
+            db.execute("INSERT INTO _trade_ledger VALUES ('selected',1,'OTHER',10)")
+        with pytest.raises(ValueError, match="execução de vários ativos"):
+            asset_package.export(reader, ["TEST"], tmp_path / "partial", check=lambda: None)
+    finally:
+        reader.close()
