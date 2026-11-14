@@ -17,6 +17,15 @@ class Parameter:
     exclusive_minimum: bool = False
 
     def accepts(self, value):
+        if self.kind == "broker_datetime":
+            from datetime import datetime
+            if type(value) is not str:
+                return False
+            try:
+                parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+            except ValueError:
+                return False
+            return 1970 <= parsed.year <= 3000 and parsed.strftime("%Y-%m-%dT%H:%M") == value
         if self.kind == "bool":
             return type(value) is bool
         if type(value) not in (int, float):
@@ -39,6 +48,14 @@ ATR = Parameter("number", "ATR", exclusive_minimum=True)
 OSCILLATOR = Parameter("number", "index_0_100", 0, 100)
 # Nomes explícitos: não converter nome Python em nome de input MQL5.
 STRATEGY_PARAMETERS = {
+    "super_atr_triple": {
+        "seed_start_broker": Parameter("broker_datetime", "broker_clock"),
+        "period": Parameter("int", "bar", 1, 10000),
+        "mean": Parameter("int", "SMA_0_EMA_1", 0, 1),
+        "deviation1": ATR, "deviation2": ATR, "deviation3": ATR,
+        "initial_side": Parameter("int", "side", -1, 1),
+        "entries_enabled": Parameter("bool", "boolean"),
+    },
     "ha_hilo": {"hilo_period": Parameter("int", "bar", 2, 500),
                 "hilo_offset": Parameter("int", "bar", 0, 0),
                 "stop_buffer_points": Parameter("int", "point", 0, 2147483647)},
@@ -74,6 +91,14 @@ STRATEGY_PARAMETERS = {
                  "target_r": Parameter("number", "R", exclusive_minimum=True)},
     "squeeze": {"period": PERIOD, "bb_k": POSITIVE, "kc_mult": POSITIVE, "lookback": PERIOD,
                 "stop_atr": ATR, "trail_atr": ATR},
+}
+
+# Contrato de parâmetros nativo; não registra sinais Python nem libera um
+# backtester substituto. A data zero do MQL é um Default desarmado/incompleto.
+NATIVE_STRATEGY_DEFAULTS = {
+    "super_atr_triple": dict(seed_start_broker="1970-01-01T00:00", period=20, mean=0,
+                             deviation1=1.0, deviation2=2.0, deviation3=3.0,
+                             initial_side=1, entries_enabled=False),
 }
 
 # O schema pode representar rascunho indisponível. Só o modo base tem adaptador.

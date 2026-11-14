@@ -4947,3 +4947,26 @@ passou gate leve local; pytest/doctor completos, GUI e replay nativo continuam
 sujeitos à admissão de recursos. CCI final passou seis checks App. Safety27b8599
 e referências históricas preservados. Windows físico aguarda host qualificado.
 Avançar SA-01-CONTRATO enquanto os aceites próprios continuam em validação.
+
+
+### SA-01-CONTRATO · integração de 14/11/2026
+
+Em validação: HADOUKEN PR90/42793107 e App `codex/sa01-triplo-integracao`.
+192 testes framework passaram. Pacote Default/Manual com seed explícita, binding
+completo e conferência pelo kernel original/journal/fills existentes; não há
+backtest Python substituto. CI App, QA nativa/GUI/doctor e prévia coerente ainda
+pendentes. O host recusou suíte local por reserva de RAM. SA-REF-01 e produtor
+antigo preservados; sem aceite operacional ou equivalência externa. Avançar
+SA-01-PLOT após conferir a integração; Windows físico aguarda host futuro.
+
+
+### SA-01-CONTRATO · correção da fixture gráfica
+
+O CI43610229517 de45186fd1 aprovou cinco checks, incluindo Linux e PostgreSQL.
+Windows concluiu4953 testes/205 skips com uma falha na fixture nova de layout:
+a última entrada da lista era orçamento em outro contêiner, gerenciado por pack,
+e não o checkbox do formulário. A conferência agora exige o mesmo contêiner e
+compara o botão Salvar com TODOS os campos da estratégia em grid. O gate e o
+formulário permanecem íntegros. A nova revisão exige CI por SHA próprio; não
+qualifica Windows físico, MT5, GUI local ou replay nativo. Admissão local repetida
+recusou pytest por reserva medida de RAM, sem iniciar a suíte.

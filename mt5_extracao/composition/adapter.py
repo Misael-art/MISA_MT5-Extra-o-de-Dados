@@ -1,7 +1,7 @@
 """Adaptador base: delega sinal, regras de saída e backtest ao motor existente."""
 from dataclasses import dataclass, replace
 
-from .registry import BASE_MODES, EXECUTION_ORDER
+from .registry import BASE_MODES, EXECUTION_ORDER, NATIVE_STRATEGY_DEFAULTS
 from .schema import Composition, Problem
 
 
@@ -9,10 +9,15 @@ def base_composition(strategy_key, *, symbol, timeframe, params=None, risk_fract
     """Retrato dos parâmetros efetivos; não cria nem persiste o preset Default (T19.55)."""
     from ..strategies import get_strategy
 
-    strategy = get_strategy(strategy_key, **({} if params is None else params))
+    if strategy_key in NATIVE_STRATEGY_DEFAULTS:
+        strategy_data = {"key": strategy_key,
+                         "params": {**NATIVE_STRATEGY_DEFAULTS[strategy_key], **(params or {})}}
+    else:
+        strategy = get_strategy(strategy_key, **({} if params is None else params))
+        strategy_data = {"key": strategy.key, "params": dict(strategy.params)}
     data = {
         "composition_schema_version": 1,
-        "strategy": {"key": strategy.key, "params": dict(strategy.params)},
+        "strategy": strategy_data,
         "context": {"symbol": symbol, "timeframe": timeframe},
         **{slot: {"mode": mode, "params": {}} for slot, mode in BASE_MODES.items()},
         "filters": [], "execution_order": list(EXECUTION_ORDER),
@@ -30,6 +35,9 @@ def compatibility(composition, *, backend="python"):
         return [Problem("backend", "adaptador modular nativo genérico indisponível (T19.23); o perfil S09 requer S09NativeAdapter com fonte aprovada; "
                                    "use os fluxos legados ou o backtest Python. Declaração não autoriza execução.")]
     data = composition.to_dict()
+    if data["strategy"]["key"] in NATIVE_STRATEGY_DEFAULTS:
+        return [Problem("strategy", "Este perfil usa o consumidor MQL5 vinculado; backtest Python indisponível. "
+                                    "Use o pacote no Strategy Tester DEMO, com semente explícita.")]
     problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
                 for slot, mode in BASE_MODES.items()
                 if data[slot]["mode"] not in ({mode, "fixed_points", "fixed_r"} if slot == "profit_exit"

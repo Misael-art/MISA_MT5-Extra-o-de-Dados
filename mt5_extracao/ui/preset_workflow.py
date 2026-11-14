@@ -17,6 +17,9 @@ from .components import ScrollableContent,DetailsPanel
 from .theme import fmt_num
 
 def native_adapter_profile(robot):
+    if robot.key=="mql5:hdk_superatrtriplo":
+        from mt5_extracao.composition.super_atr_triple_native import require_robot
+        return require_robot(robot)
     if robot.key=="mql5:hdk_pullback_nativo":
         from mt5_extracao.composition.pullback_native import require_robot
         return require_robot(robot)
@@ -66,6 +69,9 @@ INPUT_LABELS.update({"InpStopMode":"SL inicial (0 pontos / 1 ATR)","InpStopATR":
  "InpExitOnSessionEnd":"Sair fora da sessão","InpDynamicTargetATR":"Alvo virtual (ATR14)",
  "InpDynamicTargetMinR":"Alvo virtual mínimo (R real)","InpDynamicTargetMaxR":"Alvo máximo/TP contingência (R)"})
 INPUT_LABELS["InpOrientation"]="Orientação (0 normal / 1 invertida)"
+INPUT_LABELS.update({"InpSeedStart":"Primeira barra broker", "InpPeriod":"Período TR comum", "InpMean":"Média (0 SMA / 1 EMA)",
+ "InpDeviation1":"Desvio1 / SL", "InpDeviation2":"Desvio2", "InpDeviation3":"Desvio3",
+ "InpInitialSide":"Lado inicial", "InpEntriesEnabled":"Entradas armadas no Tester"})
 
 class NameDialog:
     def __init__(self,parent,robot,current,callback,*,rename=False):
@@ -104,6 +110,7 @@ class PresetWorkflow:
         self.vwap=robot.key=="mql5:hdk_vwapbands"
         self.madrid=robot.key=="mql5:hdk_madrid"
         self.ha_hilo=robot.key=="mql5:hdk_hahilo"
+        self.triplo=robot.key=="mql5:hdk_superatrtriplo"
         profile_level=native_adapter_profile(robot)[2]
         self.strategy_fields=(("trend","EMA de tendência (barras)"),("adx_min","ADX mínimo"),("rsi_period","RSI (barras)"),("rsi_pullback","RSI de recuo"),("swing_bars","Fundo/topo (barras)"),("target_r","Alvo em R")) if self.pullback else FIELDS
         if self.stoch:
@@ -118,7 +125,10 @@ class PresetWorkflow:
         if self.ha_hilo:
             from mt5_extracao.composition.ha_hilo_native import STRATEGY_FIELDS
             self.strategy_fields=STRATEGY_FIELDS
-        self.profile_label="HA/HiLo" if self.ha_hilo else "Madrid" if self.madrid else "VWAP Bands" if self.vwap else "S10 · Estocástico/EMA" if self.stoch else "Pullback" if self.pullback else "S09"
+        if self.triplo:
+            from mt5_extracao.composition.super_atr_triple_native import STRATEGY_FIELDS
+            self.strategy_fields=STRATEGY_FIELDS
+        self.profile_label="Super ATR Triplo" if self.triplo else "HA/HiLo" if self.ha_hilo else "Madrid" if self.madrid else "VWAP Bands" if self.vwap else "S10 · Estocástico/EMA" if self.stoch else "Pullback" if self.pullback else "S09"
         self.window=tk.Toplevel(self.ui.root);self.window.title(self.profile_label+" · Default e Manual")
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
@@ -142,7 +152,7 @@ class PresetWorkflow:
         content=ScrollableContent(self.window,self.ui.theme);content.pack(fill=tk.BOTH,expand=True)
         self.body=body=content.content
         ttk.Label(body,text=self.profile_label+" · Default → Manual → backtest → replay",style="Title.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=(12,4))
-        ttk.Label(body,text=f"{self.symbol} · {self.timeframe} · "+("Heiken-Ashi e HiLo · sinal fechado · stop inicial fixo · saída por sinal oposto · sem TP" if self.ha_hilo else "10 EMAs alinhadas · cruzamento fechado · afastamento em pontos ou ATR · TP fixado no sinal" if self.madrid else "HLC3 ponderado · bandas percentuais · offset além da banda · alvo fixado no sinal" if self.vwap else "K lento por razão de somas · D SMA · stop/Move Guard EMA · alvo desde o sinal" if self.stoch else "EMA/ADX/RSI · stop no swing · alvo em R · metade em 1R" if self.pullback else "variante mínima EMA com SL/TP fixos"),style="Heading.TLabel",wraplength=850).pack(anchor="w",padx=12)
+        ttk.Label(body,text=f"{self.symbol} · {self.timeframe} · "+("Três curvas no mesmo TF · consenso fechado · SL absoluto na curva1 · saída no consenso oposto · sem TP" if self.triplo else "Heiken-Ashi e HiLo · sinal fechado · stop inicial fixo · saída por sinal oposto · sem TP" if self.ha_hilo else "10 EMAs alinhadas · cruzamento fechado · afastamento em pontos ou ATR · TP fixado no sinal" if self.madrid else "HLC3 ponderado · bandas percentuais · offset além da banda · alvo fixado no sinal" if self.vwap else "K lento por razão de somas · D SMA · stop/Move Guard EMA · alvo desde o sinal" if self.stoch else "EMA/ADX/RSI · stop no swing · alvo em R · metade em 1R" if self.pullback else "variante mínima EMA com SL/TP fixos"),style="Heading.TLabel",wraplength=850).pack(anchor="w",padx=12)
         ttk.Label(body,text="Histórico no Strategy Tester DEMO · execução ao vivo não faz parte deste percurso.",style="Info.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=4)
         row=ttk.Frame(body,padding=12);row.pack(fill=tk.X);row.columnconfigure(0,weight=1)
         self.selected=tk.StringVar();self.combo=ttk.Combobox(row,textvariable=self.selected,state="readonly")
@@ -155,12 +165,14 @@ class PresetWorkflow:
         form=ttk.LabelFrame(body,text="Parâmetros da estratégia",padding=12);form.pack(fill=tk.X,padx=12,pady=4)
         self.fields={};self.entries=[]
         for index,(key,label) in enumerate(self.strategy_fields):
-            ttk.Label(form,text=label,wraplength=180 if self.stoch or self.vwap or self.madrid or self.ha_hilo else 0).grid(row=index//3*2,column=index%3,sticky="w",padx=(0,12))
-            value=tk.StringVar();value.trace_add("write",lambda *_:self.mark_dirty())
-            entry=ttk.Entry(form,textvariable=value,width=16);entry.grid(row=index//3*2+1,column=index%3,sticky="ew",padx=(0,12),pady=(2,8))
+            ttk.Label(form,text=label,wraplength=180 if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False) else 0).grid(row=index//3*2,column=index%3,sticky="w",padx=(0,12))
+            is_boolean=self.triplo and key=="entries_enabled"
+            value=tk.BooleanVar() if is_boolean else tk.StringVar();value.trace_add("write",lambda *_:self.mark_dirty())
+            entry=ttk.Checkbutton(form,text="Ativar",variable=value) if is_boolean else ttk.Entry(form,textvariable=value,width=16)
+            entry.grid(row=index//3*2+1,column=index%3,sticky="ew",padx=(0,12),pady=(2,8))
             self.fields[key]=value;self.entries.append(entry)
         for col in range(3):form.columnconfigure(col,weight=1)
-        self.save=ttk.Button(form,text="Salvar revisão",command=self.save_revision);self.save.grid(row=5 if self.pullback or self.stoch or self.madrid else 3,column=2,sticky="e")
+        self.save=ttk.Button(form,text="Salvar revisão",command=self.save_revision);self.save.grid(row=7 if self.triplo else 5 if self.pullback or self.stoch or self.madrid else 3,column=2,sticky="e")
         if self.common_protection_available:self.build_protection_fields(body)
         if self.lots_enabled:
             lots=ttk.LabelFrame(body,text="Lotes · uma única entrada",padding=12);lots.pack(fill=tk.X,padx=12,pady=4)
@@ -179,7 +191,7 @@ class PresetWorkflow:
             self.lot_preview=tk.StringVar(value="Aguardando especificação atual do símbolo…")
             ttk.Label(lots,textvariable=self.lot_preview,wraplength=850).pack(fill=tk.X,pady=(8,0))
             for variable in (self.lot_mode,self.fixed_volume,self.risk_pct):variable.trace_add("write",lambda *_:self.mark_dirty())
-        if self.stoch or self.vwap or self.madrid or self.ha_hilo:
+        if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False):
             budget=ttk.LabelFrame(body,text="Orçamento por entrada",padding=12);budget.pack(fill=tk.X,padx=12,pady=4)
             self.risk_pct=tk.StringVar(value="0.5")
             ttk.Label(budget,text="Percentual do saldo · até 0,5% · dimensionamento por risco").pack(anchor="w")
@@ -491,6 +503,7 @@ class PresetWorkflow:
         if not self.source_compatible:
             for button in (self.clone,self.export,self.save):button.state(["disabled"])
         disabled=busy or not loaded or self.dirty or not self.source_compatible or self.preview_error
+        if loaded and self.current.manifest["native"].get("configuration_ready") is False:disabled=True
         offline=bool(getattr(self.ui.app,"offline",False));all_tfs=self.robot.key in getattr(self.controller,"all_timeframes",set())
         self.backtest.state(["disabled" if disabled or (offline and not all_tfs) else "!disabled"])
         self.replay.state(["disabled" if disabled or offline or all_tfs else "!disabled"])
@@ -535,7 +548,10 @@ class PresetWorkflow:
         self.current=item;self.setting=True
         source=item.manifest["native"]["robot"]
         self.source_compatible=source["version"]==self.robot.version and source["fingerprint"]==(native_adapter_profile(self.robot))[0]
-        for key,_ in self.strategy_fields:self.fields[key].set(str(item.composition.to_dict()["strategy"]["params"][key]))
+        for key,_ in self.strategy_fields:
+            value=item.composition.to_dict()["strategy"]["params"][key]
+            if getattr(self,"triplo",False) and key=="seed_start_broker" and value=="1970-01-01T00:00":value=""
+            self.fields[key].set(str(value))
         if self.common_protection_available:
             data=item.composition.to_dict();p=data["protection"];t=data["profit_exit"]
             self.signal_orientation.set("Invertida" if data["orientation"]["mode"]=="inverted" else "Normal")
@@ -558,7 +574,7 @@ class PresetWorkflow:
             self.lot_mode.set("Volume fixo" if sizing["mode"]=="fixed_volume" else "Por risco")
             self.fixed_volume.set(str(sizing["params"].get("volume",.01)))
             self.risk_pct.set(str(sizing["params"]["risk_fraction"]*100))
-        if self.stoch or self.vwap or self.madrid or self.ha_hilo:self.risk_pct.set(str(item.composition.to_dict()["sizing"]["params"]["risk_fraction"]*100))
+        if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False):self.risk_pct.set(str(item.composition.to_dict()["sizing"]["params"]["risk_fraction"]*100))
         if self.partials_enabled:
             plan=item.composition.to_dict()["partial_exit_plan"];items=stages(plan)
             self.partial_mode.set("Desabilitada" if not items else "Lotes" if items[0]["mode"]==1 else "Fração (%)")
@@ -596,6 +612,8 @@ class PresetWorkflow:
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
         self.status.set(label)
+        if getattr(self,"triplo",False) and item.manifest["native"].get("configuration_ready") is False:
+            self.status.set(label+" "+item.manifest["native"]["configuration_reason"])
         if not self.source_compatible:
             self.status.set("Fonte anterior preservada: parâmetros não serão migrados. Selecione o novo Default para criar outro Manual; consulta histórica continua disponível.")
         self.protection.configure(text="Risco por saldo: até 0,5% · uma posição · SL obrigatório · parcial/BE/trailing indisponíveis. Proteções não são editadas aqui.")
@@ -608,6 +626,7 @@ class PresetWorkflow:
         if self.ha_hilo:self.protection.configure(text="Uma posição · SL inicial na linha HiLo com folga · sem TP ou trailing. Sinal oposto tenta fechar; entrada inversa exige posição encerrada e proteções satisfeitas. Pode ficar sem posição. Tester DEMO; aceite pendente.")
         if self.madrid:self.protection.configure(text="Uma posição · SL na média com offset ATR · Move Guard só aperta em barra fechada. TP obrigatório fixado em M1 ± afastamento; pontos 0 usa ATR. Sem ciclo persistente, TP móvel ou parciais/BE. Tester DEMO; aceite pendente.")
         if self.vwap:self.protection.configure(text="Uma posição · entrada a mercado · SL obrigatório além da banda. Alvo percentual fixado no sinal: 0 é VWAP central COM TP. Volume 0 Auto, 1 ticks, 2 real. Parciais/BE/trailing indisponíveis. Tester DEMO; aceite pendente.")
+        if getattr(self,"triplo",False):self.protection.configure(text="Uma posição · risco até0,5% do saldo · SL absoluto na curva1 confirmada · TP ausente · saída no consenso oposto. Mesmo episódio reservado não reentra após stop/reinício; nova barra e conciliação são obrigatórias após fechamento. Apenas Tester DEMO; equivalência externa e aceite operacional pendentes.")
         self.clear_result();self.refresh_preview();self.update_buttons()
     def choose(self):
         if self.pending:return
@@ -621,16 +640,19 @@ class PresetWorkflow:
         self.clear_result();self.refresh_preview();self.update_buttons()
     def composition_from_fields(self):
         data=self.current.composition.to_dict()
-        for key,_ in self.strategy_fields:
+        if getattr(self,"triplo",False):
+            from mt5_extracao.composition.super_atr_triple_native import coerce_parameters
+            data["strategy"]["params"]=coerce_parameters({key:self.fields[key].get() for key,_ in self.strategy_fields})
+        for key,_ in (() if getattr(self,"triplo",False) else self.strategy_fields):
             raw=self.fields[key].get().strip()
-            if self.stoch or self.vwap or self.madrid or self.ha_hilo:raw=raw.replace(",",".")
+            if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False):raw=raw.replace(",",".")
             data["strategy"]["params"][key]=(float if key in ("adx_min","rsi_pullback","target_r","upper_level","lower_level","entry_band_pct","target_band_pct","distance_atr","offset_atr") else int)(raw)
         if self.lots_enabled:
             params={"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}
             mode="fixed_volume" if self.lot_mode.get()=="Volume fixo" else "risk_fraction"
             if mode=="fixed_volume":params["volume"]=float(self.fixed_volume.get().replace(",","."))
             data["sizing"]={"mode":mode,"params":params}
-        if self.stoch or self.vwap or self.madrid or self.ha_hilo:data["sizing"]={"mode":"risk_fraction","params":{"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}}
+        if self.stoch or self.vwap or self.madrid or self.ha_hilo or getattr(self,"triplo",False):data["sizing"]={"mode":"risk_fraction","params":{"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}}
         if self.partials_enabled and not self.pullback:
             mode=self.partial_mode.get()
             if mode=="Desabilitada":data["partial_exit_plan"]={"mode":"strategy_default","params":{}}
