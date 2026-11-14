@@ -1,5 +1,12 @@
 # Plano de trabalho detalhado
 
+## T20.6 — evidência de cobertura no relatório nativo
+
+O leitor do Tester exige um percentual único entre 0 e 100. Evidência
+inválida ou ambígua mantém a cobertura inconclusiva, inclusive quando outra
+linha informa 100%. Dez testes focados passaram no Linux. A cobertura da
+fonte do broker segue em qualificação.
+
 ## T13.4-P07 — sessão da barra na abertura da grade
 
 O fluxo de pesquisa vincula uma abertura H1 anterior ao início observado da

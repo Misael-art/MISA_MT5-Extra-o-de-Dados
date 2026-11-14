@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Cobertura de ticks no relatório do Tester — 14/11/2026
+
+O relatório só comprova a fração de ticks reais com percentual explícito,
+válido e inequívoco. Antes, `-100%` e `100% (real ticks: 75%)` podiam ser
+lidos como cobertura integral. O leitor conserva o estado inconclusivo
+quando o mesmo relatório também contém uma indicação válida de 100%.
+Dez testes do leitor passaram no Linux. A verificação de ticks do broker
+continua vinculada às sessões nativas preparadas.
+
 ## Sessão observada na abertura da grade H1 — 14/11/2026
 
 O fluxo T13.4 reconhece a barra que começa antes do primeiro M1 da sessão
