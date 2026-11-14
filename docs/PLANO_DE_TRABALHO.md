@@ -1,5 +1,20 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — inventário de pacotes por ativo
+
+O comando `resources package-plan --symbols ATIVO[,ATIVO]` inventaria tabelas,
+views, colunas, identidade BD03 e dependências declaradas. A abertura somente
+leitura preserva o schema existente, inclusive quando faltam os controles do
+App. O plano informa quais séries estão registradas, quais estão ausentes e
+quais tabelas ainda dependem de qualificação pelo seu responsável. O hash
+identifica o inventário, e mudanças nas linhas de mercado podem conservar o
+mesmo hash de plano. A coleção de QA mantém as origens separadas.
+
+Verificado no launcher Linux com SQLite legado sintético (hash idêntico antes e
+depois), 28 testes locais e três verificações em PostgreSQL de QA. Exportação
+das famílias, cópia de colunas e revisões e reunião têm incrementos próprios.
+
+
 ## Correções prioritárias de cálculo e confiabilidade — 13/11/2026
 
 O proprietário definiu atuação corretiva prioritária para os achados da

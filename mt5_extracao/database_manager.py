@@ -8,10 +8,11 @@ import threading
 import traceback
 from datetime import datetime
 from contextlib import contextmanager
+from pathlib import Path
 from sqlalchemy import bindparam, create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
@@ -31,7 +32,7 @@ class DatabaseManager:
     _PRESUMED_OFFSET = -3.0
 
     def __init__(self, db_type='sqlite', db_path='database/mt5_data.db', time_basis='broker',
-                 broker_utc_offset=None, broker_timezone=None):
+                 broker_utc_offset=None, broker_timezone=None, *, read_only=False):
         """
         Inicializa o gerenciador do banco de dados.
 
@@ -46,11 +47,13 @@ class DatabaseManager:
             broker_timezone (str | None): zona IANA da corretora (ex.: Europe/Athens). Exige
                 time_basis='utc': converte o relógio local para UTC com horário de verão; a hora
                 repetida é inferida pela ordem e a inexistente é recusada.
+            read_only (bool): abre uma base existente sem criar ou migrar tabelas de controle.
         """
         if time_basis not in self.TIME_BASES:
             raise ValueError(f"time_basis inválido: {time_basis!r} (use 'broker' ou 'utc')")
         self.db_type = db_type
         self.db_path = db_path
+        self.read_only = read_only
         self.time_basis = time_basis
         self.offset_declared = broker_utc_offset is not None and str(broker_utc_offset).strip() != ""
         self.broker_utc_offset = float(broker_utc_offset) if self.offset_declared else self._PRESUMED_OFFSET
@@ -76,36 +79,47 @@ class DatabaseManager:
         log.info(f"Configurando conexão com banco de dados: Tipo={self.db_type}, Path={self._safe_location()}")
         try:
             if self.db_type == 'sqlite':
-                # Garante que o diretório do banco existe
-                db_dir = os.path.dirname(self.db_path)
-                if db_dir and not os.path.exists(db_dir):
-                    os.makedirs(db_dir)
-                    log.info(f"Diretório do banco de dados criado: {db_dir}")
-                connection_string = f'sqlite:///{self.db_path}'
+                if self.read_only:
+                    connection_string = URL.create(
+                        'sqlite', database=Path(self.db_path).resolve().as_uri(),
+                        query={'mode': 'ro', 'uri': 'true'},
+                    )
+                else:
+                    db_dir = os.path.dirname(self.db_path)
+                    if db_dir and not os.path.exists(db_dir):
+                        os.makedirs(db_dir, exist_ok=True)
+                        log.info(f"Diretório do banco de dados criado: {db_dir}")
+                    connection_string = f'sqlite:///{self.db_path}'
                 # timeout: extrações em paralelo gravam no mesmo arquivo (SQLite serializa escritas)
-                self.engine = create_engine(connection_string, connect_args={'timeout': 30})
+                self.engine = create_engine(connection_string, connect_args={'timeout': 1 if self.read_only else 30})
                 # Testa a conexão inicial
                 with self.engine.connect() as connection:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
-                self._ensure_control_tables()
+                if not self.read_only:
+                    self._ensure_control_tables()
             elif self.db_type == 'postgresql':
                 self.engine = create_engine(self.db_path, pool_pre_ping=True)
+                if self.read_only:
+                    self.engine = self.engine.execution_options(postgresql_readonly=True)
                 with self.engine.connect() as connection:
                     self._timescale = bool(connection.execute(text(
                         "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar())
                 log.info(f"Conexão com PostgreSQL estabelecida: {self._safe_location()}"
                          + (" (TimescaleDB disponível)" if self._timescale else ""))
-                self._ensure_control_tables()
+                if not self.read_only:
+                    self._ensure_control_tables()
             else:
                 log.error(f"Tipo de banco de dados não suportado: {self.db_type}")
                 self.engine = None
         except SQLAlchemyError as e:
             log.error(f"Erro ao conectar ao banco de dados ({self.db_type}): {e}")
             log.debug(traceback.format_exc())
+            self.close()
             self.engine = None
         except Exception as e:
             log.error(f"Erro inesperado ao configurar banco de dados: {e}")
             log.debug(traceback.format_exc())
+            self.close()
             self.engine = None
 
     _timescale = False
