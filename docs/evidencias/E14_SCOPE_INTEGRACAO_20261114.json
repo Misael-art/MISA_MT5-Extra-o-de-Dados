@@ -1,0 +1,39 @@
+{
+  "schema": "mt5x-e14-scope-integration/v1",
+  "base_app": "eb3a2dd56ebdb8680bdb1cc8ea5344999056bb9e",
+  "app_branch": "codex/e14-scope-integracao",
+  "hadouken": {
+    "pin": "498225950dc3fce4b1504f4765a10ff9cf273bdd",
+    "pr": 88,
+    "ci_run": 43584418492,
+    "ci_job": 132415748147,
+    "tests_passed": 184,
+    "static_files": 171
+  },
+  "safety_pin": "27b85992af4b10f4cd7687f370142ac88f515375",
+  "accepted_reference_changed": false,
+  "local_checker": {
+    "source": "c9642fa9a17f85c438cc1c1aa8524c0ada9240af",
+    "first_attempt": "10s timeout retained; draft was pushed before outcome",
+    "readmission": "171 files passed in1.67s;17416KiB peak",
+    "final_followup": "CI static check passed by4982259"
+  },
+  "cci_ci": {
+    "sha": "2b8bb96aed8d1730982066f23a113828d9b6607b",
+    "run": 43578756978,
+    "linux_passed": 4655,
+    "linux_skipped": 473,
+    "core_coverage_percent": 81,
+    "other_jobs": "PG/installers/lint success; Windows in progress"
+  },
+  "active_preview": "development-2b3b274da6de",
+  "preview_activated": false,
+  "native_execution": false,
+  "remaining": [
+    "App CI by published SHA",
+    "local compiled execution and MetaEditor under host admission",
+    "controlled native account/history/UI and preview",
+    "Windows physical: future qualified host"
+  ],
+  "accepted_operationally": false
+}
