@@ -63,6 +63,7 @@ class FakeSession:
              native_profile_isolated=True,native_detail_capture="observer",artifact_directory=str(self.directory),
              tester_model="cada tick",currency="USD",data_quality={"real_tick_coverage_status":"not_reported"})
         if self.fault=="cash":metrics["cash_reconciled"]=False
+        if self.fault=="reported_cash":metrics["native_cash_result"]=2.01
         if self.fault=="stop":metrics["entries_without_stop"]=1
         self.record=dict(run_id=ctx["control"].run_id if ctx.get("control") is not None else uuid.uuid4().hex,robot_key=self.robot.key,source="strategy tester",symbol=self.symbol,
              timeframe=self.timeframe,data_start="2026-10-14 00:00:00",data_end="2026-10-15 00:00:00",bars=0,
@@ -272,3 +273,15 @@ def test_replay_difference_records_first_divergence_without_widening_tolerance(p
     assert different.status=="native_divergence",different.error
     assert different.evidence["cash_reconciled"] and not different.evidence["functional_cycle"]
     assert different.evidence["first_difference"]==dict(section="ledger",index=0,field="exit_price",expected=102.0,observed=103.0)
+
+
+def test_matching_trades_can_have_a_different_native_cash_receipt(prepared, monkeypatch):
+    first = job(prepared).run()
+    assert first.status == "reconciled_backtest"
+    monkeypatch.setattr(FakeSession, "fault", "reported_cash")
+    replay = job(prepared, "replay").run()
+    assert replay.status == "native_divergence", replay.error
+    assert replay.evidence["first_difference"] == dict(
+        section="cash", field="native_cash_result", expected=2.0, observed=2.01)
+    assert replay.evidence["ledger"] == first.evidence["ledger"]
+    assert not replay.evidence["functional_cycle"]

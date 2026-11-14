@@ -48,3 +48,27 @@ def test_replay_reports_first_sizing_difference(log):
     rows=read(log);reference=dict(ledger=[],signals=[],sizing=rows)
     other=[{**rows[0],"risk_budget":499}]
     assert first_difference(reference,[],[],other)==dict(section="sizing",index=0,field="risk_budget",expected=500,observed=499)
+
+
+def test_earlier_signal_precedes_downstream_ledger_and_fill_differences():
+    ledger = [dict(entry_time="1970-01-01 00:01:40", exit_time="1970-01-01 00:02:00", pnl=5)]
+    signals = [dict(event_at=80, available_at=95, direction=1)]
+    fills = [dict(at_msc=120_500, commission=-1)]
+    reference = dict(ledger=ledger, signals=signals, deals=fills)
+    changed_ledger = [dict(ledger[0], pnl=3)]
+    changed_fills = [dict(fills[0], commission=-3)]
+    difference = first_difference(reference, changed_ledger, [dict(signals[0], direction=-1)], deals=changed_fills)
+    assert difference == dict(section="signals", index=0, field="direction", expected=1, observed=-1)
+
+    difference = first_difference(reference, changed_ledger, signals, deals=changed_fills)
+    assert difference == dict(section="deals", index=0, field="commission", expected=-1, observed=-3)
+
+
+def test_extra_later_fill_does_not_hide_an_earlier_change_in_the_same_trace():
+    fills = [dict(at_msc=100_000, price=100)]
+    reference = dict(ledger=[], signals=[], deals=fills)
+    observed = [dict(at_msc=100_000, price=101), dict(at_msc=200_000, price=101)]
+    assert first_difference(reference, [], [], deals=observed) == dict(
+        section="deals", index=0, field="price", expected=100, observed=101)
+    assert first_difference(reference, [], [], deals=[fills[0], observed[1]]) == dict(
+        section="deals", field="count", expected=1, observed=2)

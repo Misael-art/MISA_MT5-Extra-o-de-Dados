@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## Reconciliação do Tester e Replay por instante
+
+O comparador ordena diferenças pelo relógio broker dos eventos disponíveis,
+incluindo sinais, dimensionamento, negócios e livro. No mesmo segundo, o
+evento nativo precede o valor resumido do livro. Diferença posterior de
+contagem não encobre um campo divergente anterior. Moeda e caixa do relatório
+são conferidos após os eventos e a referência da estratégia. Trinta e três
+testes focados passaram no Linux, incluindo mudança de caixa com livro igual.
+As sessões Wine e a paridade financeira com Python continuam com aceites
+próprios.
+
 ## Pesquisa — atraso de entrada e espera pela abertura
 
 O plano econômico de campanha aceita `entry_delay_ms` e `max_entry_wait_ms`
