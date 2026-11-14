@@ -33,6 +33,7 @@ _CONTROL_FILTERS = {
     "_bars_derived": ("symbol", None),
     "_analytics_source_sequences": ("symbol", None),
     "_feature_values": ("symbol", None),
+    "_feature_relations": ("symbol", None),
     "_dataset_manifests": ("json_extract(payload_json, '$.symbol')", None),
     "_chart_study_notes": ("symbol", None),
     "_preset_revisions": ("symbol", None),
@@ -57,7 +58,7 @@ _LINKED_FILTERS = {
 }
 _REQUIRED_TABLES = {"_feature_values": "_feature_definitions", "_dataset_manifests": "_dataset_blocks",
                     "_preset_selections": "_preset_revisions", "_preset_labels": "_preset_revisions",
-                    "_dataset_references": "_dataset_manifests"}
+                    "_dataset_references": "_dataset_manifests", "_feature_relations": "_dataset_references"}
 _RUN_DEPENDENCIES = ("_native_input_receipts", "_preset_native_runs", "_robot_checks", "_trade_features",
                      "_trade_features_runs", "_trade_trajectories", "_dataset_references")
 
@@ -89,6 +90,13 @@ def _scope(plan, source, check):
     inventory = {table["table"]: table for table in plan["inventory"]["tables"]}
     symbols = plan["requested_symbols"]
     run_filters = _run_filters(source, inventory, symbols, check)
+    if "_feature_relations" in inventory and "_dataset_references" in inventory:
+        relations = "SELECT analysis_id FROM _feature_relations WHERE symbol IN :selection"
+        clause = f"EXISTS (SELECT 1 FROM ({relations}) AS selected_relations " \
+                 "WHERE _dataset_references.run_id = 'relation:' || selected_relations.analysis_id || ':' || manifest_id)"
+        if "_dataset_references" in run_filters:
+            clause = f"{run_filters['_dataset_references'][0]} OR {clause}"
+        run_filters["_dataset_references"] = (clause, symbols)
     applicable = {name for name, (owner, _, _) in _LINKED_FILTERS.items() if owner in inventory}
     included = {name: table for name, table in inventory.items()
                 if name in selected or name in _CONTROL_FILTERS or name in applicable or name in run_filters}
@@ -224,6 +232,13 @@ def _check_links(connection, tables):
             JOIN json_each(frames.value) AS blocks
             LEFT JOIN _dataset_blocks AS data ON data.block_id = blocks.value
             WHERE data.block_id IS NULL LIMIT 1
+        """,
+        "_feature_relations": """
+            SELECT 1 FROM _feature_relations AS relation
+            JOIN json_each(relation.payload_json, '$.provenance.lineage_manifests') AS lineage
+            LEFT JOIN _dataset_references AS ref ON ref.manifest_id = lineage.value
+                AND ref.run_id = 'relation:' || relation.analysis_id || ':' || lineage.value
+            WHERE ref.run_id IS NULL LIMIT 1
         """,
         "_preset_selections": """
             SELECT 1 FROM _preset_selections AS choice

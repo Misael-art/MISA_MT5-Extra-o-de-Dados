@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T20.30-HOST1-DRIVE — relações persistidas no pacote SQLite
+
+O pacote seleciona relações pelo ativo do contexto e carrega suas referências
+de snapshot pelo ID canônico. Na exportação e reunião, confere se a linhagem
+declarada está vinculada e se os manifestos/blocos estão presentes. O recorte
+foi verificado em 44 testes de pacote, inventário e transferência de relações.
+
+
 ## T20.30-HOST1-DRIVE — execuções e livro no pacote SQLite
 
 O pacote preserva o livro, execuções registradas, recibos de input, baterias,
