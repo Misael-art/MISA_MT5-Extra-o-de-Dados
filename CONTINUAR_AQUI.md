@@ -1,5 +1,13 @@
 # Retomar MT5X em um host limpo
 
+## Relação descritiva entre tempos gráficos
+
+No modo da mesma estratégia, o Laboratório mostra Pearson entre retornos de
+patrimônio em cotas nos fechamentos coincidentes. A duração é comum ao par.
+A tabela informa os pares válidos e explicita lacunas, séries constantes e
+recibos incompatíveis. A avaliação preditiva fora da amostra continua pendente.
+Passaram as verificações de serviço, CLI, HTML e Tk em Xvfb com dados próprios.
+
 ## Interrupção do Tester pelo prazo do lote
 
 O prazo do lote interrompe a sessão e registra o motivo no recibo. A mesma

@@ -51,6 +51,11 @@ def render_runs(comparison):
     elif value.get('mode') == 'same_strategy':
         template = template.replace('Comparação de execuções gravadas', 'Mesma estratégia entre tempos gráficos')
         template = template.replace('<svg id="curves"', '<fieldset id="curve-filter" class="controls"><legend>Execuções no gráfico</legend></fieldset><svg id="curves"')
+        if value.get('timeframe_relations'):
+            template = template.replace('<section><h2>Período, revisão e custos', '''<section><h2>Relação entre os retornos</h2>
+<p>Pearson mede a relação descritiva entre retornos de patrimônio em cotas, com a mesma duração e o mesmo fechamento.
+Capacidade preditiva aguarda avaliação fora da amostra.</p><div class="scroll"><table id="timeframe-relations"
+aria-label="Correlação descritiva por par de tempos gráficos"></table></div></section><section><h2>Período, revisão e custos''')
     return template.replace('__CSS__',TEMPLATE.split('<style>',1)[1].split('</style>',1)[0]).replace('__DATA__',raw)
 
 
@@ -95,6 +100,8 @@ function table(id,heads,rows){const t=$(id),h=document.createElement('tr');heads
 $('status').textContent=R.compatible?'Recibos compatíveis para esta comparação. Estratégia e desempenho futuro continuam sem qualificação.':'Comparação com diferenças ou informações ausentes. Os resultados permanecem separados.';$('reasons').textContent=R.reasons.join(' · ');
 table('results',['Run / ativo / TF','Moeda','Operações','Lucro líquido','Capital inicial','Saldo final','Patrimônio final','Retorno de encerradas','DD encerradas','DD patrimônio'],R.rows.map(r=>{const s=r.summary;return [r.run_id+' · '+r.symbol+' · '+r.timeframe,r.currency||'não declarada',s.trades,s.net_profit,s.initial_equity,s.final_balance,s.final_equity,pct(s.return_pct),pct(s.max_drawdown_pct),pct(s.max_floating_drawdown_pct)]}));
 table('contexts',['Run','Período','Revisão','Modelo / custos declarados'],R.rows.map(r=>{const p=r.observed_interval||r.interval;return [r.run_id,p.start+' → '+p.end,r.composition_hash||r.body_hash,JSON.stringify(r.context?.settings||null)]}));$('receipts').textContent=JSON.stringify(R,null,2);R.limitations.forEach(x=>{const p=document.createElement('p');p.textContent=x;$('limits').append(p)});
+if ($('timeframe-relations')) table('timeframe-relations',['Tempos gráficos','Duração (min)','Pares válidos','Pearson','Estado'],
+  R.timeframe_relations.pairs.map(p=>[p.left_timeframe+' × '+p.right_timeframe,p.horizon_minutes,p.n_pairs,p.coefficient,p.status_label]));
 const palette=['#2465ad','#aa4723','#13796e','#8454a2','#827400','#a63868','#405760','#4b6920'];
 const selectedRuns=new Set(R.rows.map(row=>row.run_id));
 function chart(){

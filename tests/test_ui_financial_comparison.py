@@ -38,4 +38,9 @@ def test_financial_view_selects_same_strategy_across_timeframes(panel, financial
     assert view.result['mode'] == 'same_strategy'
     assert {view.results.tree.item(row, 'values')[0].split(' · ')[1]
             for row in view.results.tree.get_children()} == {'M1', 'M2'}
+    pair, = view.relations.tree.get_children()
+    assert view.relations.tree.item(pair, 'values')[:3] == ('M1 × M2', '2', '319')
+    assert view.relations.winfo_manager() == 'pack'
+    view.mode.set('Mesmo preset entre ativos')
+    assert view.relations.winfo_manager() == ''
     view.close()
