@@ -1,5 +1,12 @@
 # Plano de trabalho detalhado
 
+## BD04 — gravação de OHLCV com lotes de parâmetros
+
+O upsert reutiliza a instrução ao gravar as barras escolhidas pelos recibos.
+A transação e a resolução das revisões ficam no DatabaseManager existente.
+Passaram 27 testes no Linux sobre SQLite. A medição com as mesmas 753
+barras registrou 9,58 s antes e 2,98 s com a instrução parametrizada.
+
 ## T20.4 — reaproveitamento do snapshot validado na captura
 
 A captura de mercado e a captura somente de séries retornam o snapshot

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import event, text
 
 from mt5_extracao.database_manager import DatabaseManager
 
@@ -53,10 +53,18 @@ def test_save_data_upserts_when_table_has_time_pk(tmp_path):
 
 def test_upsert_many_rows_uses_chunks(tmp_path):
     db = DatabaseManager(db_path=str(tmp_path / 't.db'))
+    batches = []
+
+    def observe(conn, cursor, statement, params, context, executemany):
+        if statement.startswith('INSERT INTO win_n_1_minuto '):
+            batches.append((executemany, len(params)))
+
+    event.listen(db.engine, 'before_cursor_execute', observe)
     times = pd.date_range('2024-01-01 09:00', periods=1000, freq='min')
     df = pd.DataFrame({'time': times, 'open': 1.0, 'high': 1.0, 'low': 1.0, 'close': 1.0,
                        'tick_volume': 1, 'spread': 1, 'real_volume': 1})
     assert db.save_ohlcv_data('WIN$N', '1 minuto', df)
     assert db.save_ohlcv_data('WIN$N', '1 minuto', df)
+    assert batches == [(True, 200)] * 10
     with db.engine.connect() as c:
         assert c.execute(text('SELECT COUNT(*) FROM win_n_1_minuto')).scalar() == 1000

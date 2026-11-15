@@ -528,11 +528,14 @@ class DatabaseManager:
                 r['time'] = r['time'].to_pydatetime()
         with self.engine.begin() as conn:
             records = self._receive(conn, table_name, records, received_at, origin)
+            if not records:
+                return 0
+            insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
+            stmt = insert(table)
+            update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
+            upsert = stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols)
             for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
-                insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
-                stmt = insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
-                update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
-                conn.execute(stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols))
+                conn.execute(upsert, records[i:i + self._UPSERT_CHUNK_ROWS])
         return len(records)
 
     def load_ohlcv_as_of(self, symbol, timeframe_name, as_of, *, mode="causal", start=None, end=None):
