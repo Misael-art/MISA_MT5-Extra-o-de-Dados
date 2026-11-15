@@ -1386,12 +1386,45 @@ def test_header_preserves_connection_actions_and_whole_caption_when_it_fits(ui, 
 
 def test_analysis_cancels_scheduled_geometry_when_destroyed(ui):
     panel = ui.analysis_panel
+    ui.notebook.select(panel.frame)
+    ui.pump(.05)
     panel._schedule_layout()
     job = panel._layout_job
     assert job is not None
     panel.frame.destroy()
     assert panel._layout_job is None
     assert job not in ui.root.tk.call("after", "info")
+
+
+def test_analysis_layout_resumes_when_visible_without_processing_nested_events(ui, monkeypatch):
+    panel = ui.analysis_panel
+    errors = []
+    monkeypatch.setattr(ui.root, "report_callback_exception", lambda *args: errors.append(args[1]))
+
+    def nested_update():
+        pytest.fail("O callback de layout não deve iniciar outro ciclo de eventos.")
+
+    monkeypatch.setattr(panel.frame, "update_idletasks", nested_update)
+    ui.notebook.select(ui.robots_panel.frame)
+    ui.pump(.05)
+    _set_ui_scaling(ui, 2)
+    assert panel._layout_job is None
+    assert panel._controls_layout is None
+    assert panel._canvases == {}
+
+    deadline = time.monotonic() + 10
+    while panel.data is None and time.monotonic() < deadline:
+        ui.pump(.05)
+    assert panel.data is not None and panel._redraw_pending
+    assert panel._canvases == {}
+
+    ui.notebook.select(panel.frame)
+    ui.pump(.15)
+    assert errors == []
+    assert panel._controls_layout is not None
+    assert panel._metric_columns > 0
+    assert set(panel._canvases) == {"chart", "season", "returns"}
+    assert not panel._redraw_pending
 
 
 def test_analysis_refits_cards_after_a_large_display_value(ui):

@@ -35,6 +35,8 @@ class AnalysisPanel:
         self.available = {}    # símbolo -> timeframes (rótulos) com barras na base
         self.frame = ttk.Frame(parent, padding=12)
         self._layout_job = None
+        self._redraw_pending = False
+        self.frame.bind("<Map>", self._mapped, add="+")
         self.frame.bind("<Destroy>", self._destroyed, add="+")
 
         controls = FilterBar(self.frame, padding=10)
@@ -126,8 +128,13 @@ class AnalysisPanel:
         self.theme.on_change(self._schedule_layout)
 
     def _schedule_layout(self, _event=None):
-        if self._layout_job is None and self.frame.winfo_exists():
+        if self._layout_job is None and self.frame.winfo_exists() and self.frame.winfo_ismapped():
             self._layout_job = self.frame.after_idle(self._layout)
+
+    def _mapped(self, _event):
+        self._schedule_layout()
+        if self._redraw_pending:
+            self.redraw()
 
     def _destroyed(self, event):
         if event.widget is self.frame and self._layout_job is not None:
@@ -135,12 +142,13 @@ class AnalysisPanel:
             self._layout_job = None
 
     def _layout(self):
-        # Mantém a marca durante update_idletasks para coalescer Configure reentrante.
-        self.frame.update_idletasks()
-        self._layout_controls()
-        self._layout_metrics()
-        self._layout_figures()
-        self._layout_job = None
+        try:
+            if self.frame.winfo_ismapped():
+                self._layout_controls()
+                self._layout_metrics()
+                self._layout_figures()
+        finally:
+            self._layout_job = None
 
     def _layout_figures(self):
         if not self._figure_frames:
@@ -299,6 +307,7 @@ class AnalysisPanel:
     def _empty(self, message):
         self.data = self.candles = None
         self.result = None
+        self._redraw_pending = False
         self.quality_text.configure(state=tk.NORMAL)
         self.quality_text.delete("1.0", tk.END)
         self.quality_text.insert(tk.END, message)
@@ -427,6 +436,9 @@ class AnalysisPanel:
 
     def redraw(self):
         if self.data is None:
+            return
+        self._redraw_pending = not self.frame.winfo_ismapped()
+        if self._redraw_pending:
             return
         try:
             self.draw_chart()

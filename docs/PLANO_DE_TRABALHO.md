@@ -1,5 +1,12 @@
 # Plano de trabalho detalhado
 
+## T7.1 — layout da Análise ao voltar à aba
+
+A aba oculta guarda o resultado lido e aguarda sua abertura para desenhar os
+gráficos. O layout usa o agendamento normal do Tk. Passaram três verificações
+focadas em Linux/Xvfb, incluindo redimensionamento, rolagem e escala 2.0.
+O check Windows deve ser conferido no SHA do corretivo.
+
 ## T19.33 / T20.22 — mesma estratégia entre tempos gráficos
 
 O Laboratório, SDK e CLI aceitam seleção explícita de execuções no mesmo ativo
