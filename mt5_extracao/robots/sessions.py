@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 
 from mt5_extracao.bootstrap import display, paths
-from . import backtest, battery, catalog, contract, controls, live, mql, mt5_tools
+from . import backtest, battery, budget, catalog, contract, controls, live, mql, mt5_tools
 
 log = logging.getLogger(__name__)
 
@@ -970,7 +970,7 @@ class Session:
                 if self.input_fields is not None:
                     self._verify_input_receipt(common)
             self.state = "completed"
-        except Cancelled as error:
+        except (Cancelled, budget.Interrupted) as error:
             if self.child_config is not None:
                 self._stop_owned()
             self.exception = error if self.native_options is not None else None
