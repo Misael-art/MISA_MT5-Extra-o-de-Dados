@@ -633,6 +633,8 @@ class Session:
                 if deadline is not None and time.monotonic() >= deadline:
                     self._stop_owned()
                     self.process.wait(timeout=15)
+                    if compiling:
+                        raise subprocess.TimeoutExpired(command, timeout)
                     raise RuntimeError("A sessão excedeu o tempo previsto; o terminal desta sessão foi encerrado.")
                 now = time.monotonic()
                 if placement is not None and now - last_window_check >= 1:

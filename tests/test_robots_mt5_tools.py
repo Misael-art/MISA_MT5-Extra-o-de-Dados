@@ -176,8 +176,13 @@ def test_compile_failures_are_reported_with_the_fix(mt5_home):
     assert not silent.ok and "não gerou o log" in silent.summary
 
     def slow(*a):
+        source.with_suffix('.log').write_text(' : information: generating code 95%\r\n'
+                                              ' : information: generating code 100%', encoding='utf-16')
         raise subprocess.TimeoutExpired("wine", 1)
-    assert "não terminou" in mt5_tools.compile_source(source, editor, mt5_home.prefix, slow).summary
+    expired = mt5_tools.compile_source(source, editor, mt5_home.prefix, slow, timeout=1)
+    assert not expired.ok and "não terminou em 1 s" in expired.summary
+    assert "100%" in expired.summary and str(source.with_suffix('.log')) in expired.summary
+    assert not source.with_suffix('.ex5').exists()
     with pytest.raises(ValueError, match="fora do prefixo Wine"):
         mt5_tools.compile_source(LIBRARY / "Experts" / "Demo" / "DemoGuard.mq5", editor, mt5_home.prefix, lambda *a: 0)
 

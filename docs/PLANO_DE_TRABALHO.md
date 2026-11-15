@@ -1,5 +1,11 @@
 # Plano de trabalho detalhado
 
+## T20.25 — diagnóstico de prazo do MetaEditor
+
+Quando a compilação excede o limite, o fluxo da sessão preserva o log e
+exibe o último progresso disponível. O recibo identifica a etapa em que
+parou. Treze testes focados passaram no Linux.
+
 ## DASH-07 — teste de fronteira do corte gravado
 
 O caso do Filtro C usa a data UTC persistida para testar tanto a exclusão

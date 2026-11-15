@@ -300,6 +300,28 @@ def test_native_context_rejects_unreachable_wine_directory_before_writing_owner(
         assert mt5_tools.release_native_context(valid)
 
 
+def test_session_compile_deadline_is_reported_as_metaeditor_timeout(tmp_path, monkeypatch):
+    from contextlib import ExitStack
+    from mt5_extracao.robots import sessions
+
+    stopped = []
+    process = SimpleNamespace(poll=lambda: None, wait=lambda **_kw: 0)
+    session = SimpleNamespace(visible=False, mode="backtest", directory=tmp_path,
+                              cancelled=SimpleNamespace(wait=lambda _seconds: False),
+                              _check_cancel=lambda: None, _stop_owned=lambda: stopped.append(True))
+    stamps = iter((1, 1, 2))
+    monkeypatch.setattr(sessions.paths, "is_windows", lambda: True)
+    monkeypatch.setattr(sessions.display, "windows_startup", lambda _hidden: None)
+    monkeypatch.setattr(sessions.subprocess, "Popen", lambda *_args, **_kwargs: process)
+    monkeypatch.setattr(sessions, "time", SimpleNamespace(monotonic=lambda: next(stamps)))
+
+    with ExitStack() as cleanup, pytest.raises(subprocess.TimeoutExpired) as expired:
+        sessions.Session._launch_command(session, "MetaEditor64.exe /compile:wrapped.mq5", tmp_path, None,
+                                         1, True, cleanup)
+
+    assert expired.value.timeout == 1 and stopped == [True]
+
+
 def test_unreadable_native_owner_fails_closed_but_releases_os_lock(monkeypatch):
     marker = paths.state_dir() / "native-active.json"
     marker.parent.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Prazo de compilação do Triplo no Wine
+
+O MetaEditor da sessão `f412ccbe82fb4f789699072c34b91ea4` registrou 100% da
+geração de código no limite de 300 segundos. O perfil encerrou e liberou os
+processos antes de aparecerem o binário e a linha final do compilador. O
+diagnóstico da sessão agora mostra o prazo, o último progresso e o log parcial.
+Treze testes focados passaram, incluindo a propagação do prazo da sessão e o
+caso de 100% sem `.ex5`.
+
 ## Corte UTC do Filtro C no CI Windows
 
 A suíte Windows da PR 338 encontrou uma comparação dependente de duas
