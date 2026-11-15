@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Qualidade das barras com conversão compartilhada
+
+A avaliação reaproveita a normalização das colunas de preços e quantidades.
+A seleção de vigência evita agrupar conjuntos sem candidatos. Os diagnósticos
+e os contextos produziram resultados idênticos nas massas comparadas.
+Passaram 96 testes de qualidade, capacidades e histórico de instrumentos.
+A reabertura do lote de seis ativos verificou 12 execuções gravadas e 126
+células. O teste de duração do lote ainda atingiu o limite de 60 s.
+
 ## Gravação de barras reutiliza o comando entre lotes
 
 A gravação de OHLCV usa uma instrução parametrizada nos lotes de 200 barras.
