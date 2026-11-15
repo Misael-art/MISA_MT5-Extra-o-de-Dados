@@ -907,7 +907,11 @@ def register_native_context(session):
         raise RuntimeError("A sessão histórica precisa reservar o Tester antes de iniciar processos.")
     target = paths.state_dir() / "native-active.json"
     prefix = wine_prefix(session.child_config)
-    payload = {"version": 1, "session": session.id, "directory": str(session.directory.resolve()),
+    directory = session.directory.resolve()
+    if prefix is not None:
+        # A conferência de posse precisa identificar os executáveis pelo caminho Windows.
+        _windows_path(directory, prefix)
+    payload = {"version": 1, "session": session.id, "directory": str(directory),
                "prefix": str(prefix) if prefix is not None else ""}
     temporary = target.with_suffix(".tmp")
     temporary.write_text(json.dumps(payload), encoding="utf-8")
