@@ -119,7 +119,7 @@ def _broker_bound(value):
     return stamp
 
 
-def _exact_frames(db, symbol, timeframes_selected, start=None, end=None, cutoff=None):
+def _exact_frames(db, symbol, timeframes_selected, start=None, end=None, cutoff=None, *, guard=lambda: None):
     """Última revisão fechada de cada tempo de dia exato. Não cria a barra que falta."""
     labels = list(timeframes_selected)
     if not labels or len(labels) > MAX_TIMEFRAMES or len(set(labels)) != len(labels):
@@ -127,6 +127,7 @@ def _exact_frames(db, symbol, timeframes_selected, start=None, end=None, cutoff=
     start_at, end_at = _broker_bound(start), _broker_bound(end)
     loaded = []
     for label in labels:
+        guard()
         target = parse_target(label)
         if target.mode != "exact_day":
             raise ValueError(
@@ -168,10 +169,11 @@ def _gap_count(frame, minutes):
     return int((starts.iloc[1:].reset_index(drop=True) != expected.reset_index(drop=True)).sum())
 
 
-def read_stored(db, symbol, timeframes_selected, start=None, end=None):
+def read_stored(db, symbol, timeframes_selected, start=None, end=None, *, guard=lambda: None):
     """Devolve OHLC da última revisão fechada. Recusa tempo nativo e não preenche buraco."""
     series = []
-    for target, frame in _exact_frames(db, symbol, timeframes_selected, start, end):
+    for target, frame in _exact_frames(db, symbol, timeframes_selected, start, end, guard=guard):
+        guard()
         starts = pd.to_datetime(frame["bar_start_broker"])
         prices = [[float(row.open), float(row.high), float(row.low), float(row.close)]
                   for row in frame.itertuples(index=False)]
@@ -278,7 +280,7 @@ def _series_channels(frame, label, minutes, feature_ids, strategies, cutoff):
 
 def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
                    feature_ids=service.DEFAULT_FEATURES, strategy_key=None, strategy_params=None,
-                   strategies=None, as_of):
+                   strategies=None, as_of, guard=lambda: None):
     """Compara tempos de dia exato já gravados na grade do fechamento mais curto.
 
     Não chama ``datasets.capture``, não agrega e não preenche o intervalo recusado.
@@ -305,7 +307,7 @@ def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
     if (len(selected) + n_strategies) * len(labels) > service.MAX_CHANNELS:
         raise ValueError(f"Seleção excede {service.MAX_CHANNELS} canais; separe o estudo em recortes explícitos.")
     cutoff = service._utc(as_of)
-    loaded = _exact_frames(db, symbol, labels, start, end, cutoff)
+    loaded = _exact_frames(db, symbol, labels, start, end, cutoff, guard=guard)
     if len(loaded) < 2:
         raise ValueError("A comparação sincronizada pede ao menos dois tempos de dia exato.")
     # O schema de preset só nomeia tempos do enum. A checagem de parâmetros usa M1 e
@@ -314,6 +316,7 @@ def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
         strategy_key, strategy_params, strategies, symbol, "M1")
     channels, populations = [], []
     for target, frame in loaded:
+        guard()
         built, population = _series_channels(frame, target.label, target.minutes, selected, resolved, cutoff)
         population["symbol"] = str(symbol)
         channels.extend(built)
@@ -322,10 +325,13 @@ def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
     aligned = [_align_minutes(channel, grid, channel_minutes(channel, populations))
                for channel in channels]
     unconfirmed = [bool(channel["events"] and not channel["events"]["usable"]) for channel in channels]
-    pairs = [dict(left=left["id"], right=right["id"],
-                  **service._pair(aligned[i], aligned[j], lag, unconfirmed[i] or unconfirmed[j]))
-             for i, left in enumerate(channels) for j, right in enumerate(channels)
-             for lag in ((0,) if i == j else (0, *service.PREDICTIVE_LAGS) if j > i else service.PREDICTIVE_LAGS)]
+    pairs = []
+    for i, left in enumerate(channels):
+        guard()
+        pairs.extend(dict(left=left["id"], right=right["id"],
+                          **service._pair(aligned[i], aligned[j], lag, unconfirmed[i] or unconfirmed[j]))
+                     for j, right in enumerate(channels)
+                     for lag in ((0,) if i == j else (0, *service.PREDICTIVE_LAGS) if j > i else service.PREDICTIVE_LAGS))
     prices = [[float(value) if pd.notna(value) else None for value in row]
               for row in populations[0]["prices"].itertuples(index=False, name=None)]
     grid_minutes = populations[0]["minutes"]
@@ -336,6 +342,7 @@ def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
         population.pop("cutoff")
     output_channels = []
     for channel, frame in zip(channels, aligned):
+        guard()
         summary = {key: value for key, value in channel.items() if key not in
                    {"values", "direction", "source_start", "source_end", "event_at"}}
         summary.update(available=int(frame.value.notna().sum()), total=len(frame),

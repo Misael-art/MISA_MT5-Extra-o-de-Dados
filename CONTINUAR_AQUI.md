@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## Cancelamento e troca de base em Séries e confluências
+
+Cada análise conserva sua própria solicitação de cancelamento e a base
+selecionada no início. Abrir um estudo congelado cancela o cálculo anterior.
+Se a base mudar durante a captura, os vínculos e o resultado não são aplicados
+à nova seleção. A leitura de fontes também descarta respostas de outra base.
+Atualizar as fontes da base ativa permite congelar a nova seleção.
+Pares sem observações válidas preservam os estados e as contagens sem recalcular
+agregações vazias. O caso M7/M9 passou na interface Tk no Linux. A comparação
+isolada de duas barras produziu os mesmos 325 resultados em 5,2 s ante 10,1 s.
+
 ## Prazo de compilação do Triplo no Wine
 
 O MetaEditor da sessão `f412ccbe82fb4f789699072c34b91ea4` registrou 100% da

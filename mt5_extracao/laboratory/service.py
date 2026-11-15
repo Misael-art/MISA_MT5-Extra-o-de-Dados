@@ -559,6 +559,13 @@ def _temporal_split(x, y, naive=None):
 def _pair(left, right, lag, unconfirmed=False):
     a, b = left.direction.shift(lag), right.direction
     valid = a.notna() & b.notna()
+    relation = "DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE"
+    if not valid.any():
+        return dict(lag_bars=lag, n_pairs=0, unique_source_pairs=0, correlation=None,
+            event_sample=_event_sample(left, right, lag, valid), left_source_bars=0, right_source_bars=0,
+            agreement=None, active_pairs=0, active_agreement=None, state="UNAVAILABLE",
+            reason="UNCONFIRMED_EVENT" if unconfirmed else "INSUFFICIENT_PAIRS", relation=relation,
+            out_of_sample=None)
     x, y = a[valid].astype(float), b[valid].astype(float)
     n = len(x)
     unique = len(pd.DataFrame(dict(a=left.source_end.shift(lag)[valid], b=right.source_end[valid])).drop_duplicates())
@@ -579,7 +586,7 @@ def _pair(left, right, lag, unconfirmed=False):
         state="UNAVAILABLE" if reason else "EXPLORATORY", reason=reason,
         # Defasagem 0 só descreve co-movimento; com defasagem o preditor antecede o alvo e
         # exige o corte temporal. Consistência fora da amostra não é previsão calibrada.
-        relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
+        relation=relation,
         out_of_sample=split)
 
 

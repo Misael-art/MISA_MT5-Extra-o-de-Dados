@@ -291,6 +291,7 @@ class SeriesLaboratoryPanel:
         self._selection_revision = 0
         self._columns = None
         self._inventory = []
+        self._sources_db = ui.app.db_manager
         self.pending = False
         self._analysis_cancel=threading.Event()
         self._display_initialized = False
@@ -335,7 +336,7 @@ class SeriesLaboratoryPanel:
         ttk.Button(actions, text="Padrões avaliados…", command=self.open_patterns).pack(side=tk.LEFT, padx=4)
         self.links_button=ttk.Button(actions,text="Fontes, candle e relatório…",command=self.open_links)
         self.links_button.pack(side=tk.LEFT,padx=4)
-        ttk.Button(actions,text="Cancelar análise",command=self._analysis_cancel.set).pack(side=tk.LEFT,padx=4)
+        ttk.Button(actions,text="Cancelar análise",command=lambda:self._analysis_cancel.set()).pack(side=tk.LEFT,padx=4)
         self.extended = tk.BooleanVar(value=False)
         ttk.Checkbutton(actions, text="Visão ampliada", variable=self.extended,
                         command=self._layout).pack(side=tk.LEFT, padx=4)
@@ -586,12 +587,12 @@ class SeriesLaboratoryPanel:
     def reload(self):
         self._reload_request = getattr(self, "_reload_request", 0) + 1
         request = self._reload_request
+        db = self.ui.app.db_manager
         self._loading_sources = True
         self.reload_button.configure(text="Lendo fontes…")
         self.reload_button.state(["disabled"])
 
         def work():
-            db = self.ui.app.db_manager
             return dict(sources=derived.chart_sources(db), catalog=service.catalog(db))
         def done(result, error):
             if request != self._reload_request or not self.frame.winfo_exists():
@@ -599,12 +600,16 @@ class SeriesLaboratoryPanel:
             self._loading_sources = False
             self.reload_button.configure(text="Atualizar fontes")
             self.reload_button.state(["!disabled"])
+            if self.ui.app.db_manager is not db:
+                self.status.configure(text="Base alterada durante a leitura. Atualize as fontes da base ativa.")
+                return
             if error:
                 self.status.configure(text=str(error))
                 return
             self.catalog = result["catalog"]
             self._filter_features()
             items = result["sources"]
+            self._sources_db = db
             self._inventory = items
             symbols = sorted({item["symbol"] for item in items})
             self.symbol_box.configure(values=symbols)
@@ -653,7 +658,14 @@ class SeriesLaboratoryPanel:
                          f"{service.MAX_BARS} barras entra no campo De.")
 
     def analyze(self):
+        from mt5_extracao.analytics.indicator_materializer import Cancelled
         from mt5_extracao.automation.protocol import loads
+        if self.pending:
+            return
+        db = self.ui.app.db_manager
+        if self._sources_db is not db:
+            self.status.configure(text="Base alterada. Atualize as fontes antes de congelar uma análise.")
+            return
         try:
             symbol = self.symbol.get()
             if self.linked_selections and self.linked_target != symbol:
@@ -679,7 +691,7 @@ class SeriesLaboratoryPanel:
                 oversized = [item for item in chosen if int(item.get("rows") or 0) > service.MAX_BARS]
                 if oversized:
                     item = max(oversized, key=lambda row: int(row.get("rows") or 0))
-                    bound = derived.earliest_of_last(self.ui.app.db_manager, symbol, item["timeframe"])
+                    bound = derived.earliest_of_last(db, symbol, item["timeframe"])
                     if bound:
                         self.start.set(bound)
                     raise ValueError(
@@ -718,7 +730,7 @@ class SeriesLaboratoryPanel:
         start, end = self.start.get() or None, self.end.get() or None
         linked_selections=json.loads(json.dumps(self.linked_selections));basis=self.timeline_basis
         self.pending = True
-        self._analysis_cancel.clear()
+        stop = self._analysis_cancel = threading.Event()
         self.analyze_button.state(["disabled"])
         if plan == "derived" and len(tfs) > 1:
             self.status.configure(text="Comparando as barras já gravadas na grade do tempo mais curto. "
@@ -727,29 +739,37 @@ class SeriesLaboratoryPanel:
             self.status.configure(text="Lendo as barras já gravadas. Esta leitura não agrega candles nem congela snapshot.")
         else:
             self.status.configure(text="Congelando a seleção pela API de snapshots e calculando os cruzamentos…")
+        def cancelled():
+            return stop.is_set() or self.ui.app.db_manager is not db or revision != self._selection_revision
+
+        def guard():
+            if cancelled():
+                raise Cancelled("Análise cancelada; snapshots confirmados preservados.")
+
         def work():
-            from mt5_extracao.analytics.indicator_materializer import Cancelled
-            def guard():
-                if self._analysis_cancel.is_set():raise Cancelled("Análise cancelada; snapshots confirmados preservados.")
             guard()
             if plan == "derived" and len(tfs) == 1:
-                return derived.read_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end)
+                return derived.read_stored(db, symbol, tfs, start=start, end=end, guard=guard)
             if plan == "derived":
-                return derived.compare_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end,
-                    feature_ids=feature_ids, as_of=pd.Timestamp.now(tz="UTC").isoformat(), **request_kwargs)
-            snapshots = service.capture_selection(self.ui.app.db_manager, symbol=symbol,
+                return derived.compare_stored(db, symbol, tfs, start=start, end=end,
+                    feature_ids=feature_ids, as_of=pd.Timestamp.now(tz="UTC").isoformat(), guard=guard, **request_kwargs)
+            snapshots = service.capture_selection(db, symbol=symbol,
                 timeframes_selected=tfs, start=start, end=end, stored_features=stored_features,guard=guard)
-            linked=service.capture_linked_sources(self.ui.app.db_manager,target_symbol=symbol,selections=linked_selections,
-                                                  cancel_check=self._analysis_cancel.is_set)
+            guard()
+            linked=service.capture_linked_sources(db,target_symbol=symbol,selections=linked_selections,
+                                                  cancel_check=cancelled)
+            guard()
             return service.analyze(snapshots, feature_ids=feature_ids,
                 as_of=pd.Timestamp.now(tz="UTC").isoformat(), stored_features=stored_features,
-                linked_sources=linked,timeline_basis=basis,cancel_check=self._analysis_cancel.is_set,**request_kwargs)
+                linked_sources=linked,timeline_basis=basis,cancel_check=cancelled,**request_kwargs)
         def done(report, error):
             if not self.frame.winfo_exists() or request != self._request:
                 return
             self.pending = False
             self.analyze_button.state(["!disabled"])
-            if self._analysis_cancel.is_set():
+            if self.ui.app.db_manager is not db:
+                self.status.configure(text="Base alterada durante a análise. Atualize as fontes da base ativa.")
+            elif stop.is_set():
                 self.status.configure(text="Análise cancelada; resultado anterior e snapshots confirmados preservados.")
             elif revision != self._selection_revision:
                 self.status.configure(text="Seleção mudou durante o cálculo; resultado antigo não publicado. Analise a seleção atual.")
@@ -871,7 +891,7 @@ class SeriesLaboratoryPanel:
             self.extended.set(width > 1920 and height > 1080 and
                               window.winfo_width() > 1920 and window.winfo_height() > 1080)
             self._layout()
-        if not self._inventory and not getattr(self, "_loading_sources", False):
+        if (not self._inventory or self._sources_db is not self.ui.app.db_manager) and not getattr(self, "_loading_sources", False):
             self.reload()
 
     def redraw(self):
@@ -1525,5 +1545,6 @@ class SeriesLaboratoryPanel:
     def _destroyed(self, event):
         if event.widget is self.frame:
             self._request += 1
+            self._analysis_cancel.set()
             for panel in self.panels.values():
                 panel.restore()
