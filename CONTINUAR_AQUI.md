@@ -1,5 +1,13 @@
 # Retomar MT5X em um host limpo
 
+## Quarentena após cancelamento por orçamento do Tester
+
+As suítes Linux das PRs 340 e 342 encontraram o teste que ainda esperava
+falha ao interromper uma cópia por falta de reserva. O teste agora confere
+o cancelamento, o motivo, a liberação dos recursos e a ausência de execução
+publicada. A restauração da quarentena precisa devolver o recibo original.
+Sete testes focados passaram no Linux.
+
 ## Cancelamento e troca de base em Séries e confluências
 
 Cada análise conserva sua própria solicitação de cancelamento e a base

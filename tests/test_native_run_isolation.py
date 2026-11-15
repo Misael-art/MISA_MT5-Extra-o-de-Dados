@@ -424,19 +424,25 @@ def test_interrupted_preparation_can_be_quarantined_without_publishing_a_run(hom
     from mt5_extracao.resources import files
     original = home.mt5 / "terminal64.exe"
     original.write_bytes(b"x" * (3 * 1024**2))
+    interruption = "Disco insuficiente para copiar o arquivo do perfil"
+
     def check(*, path=None, reserve_bytes=0):
         if reserve_bytes > 1024**2:
-            raise budget.Interrupted("Disco insuficiente para copiar o arquivo do perfil")
+            raise budget.Interrupted(interruption)
+
     monkeypatch.setattr(mt5_tools, "compile_source", lambda *a, **k: pytest.fail("Orçamento recusado não pode compilar"))
     session = sessions.Session(home.db, home.config, home.robot, "EURUSD", "H1",
                                native_options={"control": SimpleNamespace(check=check)})
     session.run()
     assert isinstance(session.exception, budget.Interrupted)
     report = json.loads(session.report.read_text())
-    assert report["resources_released"] is True and report["state"] == "failed"
+    assert report["state"] == "cancelled" and report["error"] == interruption
+    assert report["resources_released"] is True and report["run"] is None
     assert store.load_runs(home.db) == [] and not (session.directory / "terminal64.exe").exists()
     assert files.move_session(home.db, home.config, session.id)["ok"]
+    assert not session.directory.exists()
     assert files.move_session(home.db, home.config, session.id, restore=True)["ok"]
+    assert json.loads(session.report.read_text()) == report
 
 
 def test_history_copy_checks_each_file_before_writing(home):

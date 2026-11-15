@@ -1,5 +1,12 @@
 # Plano de trabalho detalhado
 
+## T20.24 — quarentena após interrupção de preparação
+
+O teste de falta de espaço acompanha o contrato de interrupção por orçamento.
+Verifica o estado cancelado e seu motivo, a liberação do perfil, a ausência de
+registro operacional e a recuperação do recibo após a quarentena.
+Sete testes focados passaram no Linux, incluindo prazo e cópias interrompidas.
+
 ## LAB-02 — cancelamento e recuperação em Séries e confluências
 
 O cálculo de cada seleção usa a própria base e o próprio cancelamento.
