@@ -310,7 +310,7 @@ def test_scrollable_content_tracks_wrapped_height_after_width_changes(app):
     for width in (800, 300, 800, 300):
         root.geometry(f"{width}x240");root.update()
         assert viewport.content.winfo_height() == max(viewport.content.winfo_reqheight(), 238)
-    viewport._content_changed()
+    viewport.refresh_layout()
     assert viewport._geometry_sync is not None
     viewport.destroy()
     assert viewport._geometry_sync is None

@@ -672,6 +672,78 @@ class LaboratoryPanel:
             chart.figure.tight_layout()
             chart.draw()
 
+    def _draw_monthdays(self, month):
+        from matplotlib.patches import Rectangle
+
+        tab = "Tempo e calendário"
+        chart = self._chart(tab, "t_month", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "month", "Dia do mês"))
+        panel = self._chart_panels["t_month"]
+        if not hasattr(self, "monthday_picker"):
+            controls = ttk.Frame(panel.body, style="Surface.TFrame")
+            controls.pack(fill=tk.X, before=panel.chart_area, pady=(0, SPACING["xs"]))
+            ttk.Label(controls, text="Dia", style="Surface.TLabel").pack(side=tk.LEFT, padx=(0, SPACING["xs"]))
+            self.monthday_picker = ttk.Combobox(controls, state="readonly", width=4,
+                                               values=tuple(f"{day:02d}" for day in range(1, 32)))
+            self.monthday_picker.pack(side=tk.LEFT)
+            self.monthday_detail = ttk.Label(controls, style="Surface.TLabel", anchor="w")
+            self.monthday_detail.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(SPACING["sm"], 0))
+            self.monthday_detail.bind("<Configure>",
+                lambda event: self.monthday_detail.configure(wraplength=max(1, event.width)))
+            self.monthday_picker.bind("<<ComboboxSelected>>", self._update_monthday)
+            chart.canvas.mpl_connect("button_press_event", self._choose_monthday)
+
+        self._monthday_table = month["table"]
+        self._monthday_highlight = None
+        if not month["measured_n"]:
+            self.monthday_picker.configure(state="disabled")
+            self.monthday_detail.configure(text="Sem dias com operações e resultado válido no recorte.")
+            chart.message("Nenhum valor de expectativa disponível por dia do mês.")
+            self._sample_notice(chart, None)
+            return
+
+        self.monthday_picker.configure(state="readonly")
+        if not self.monthday_picker.get():
+            self.monthday_picker.current(int(self._monthday_table["n"].gt(0).idxmax()))
+        chart.clear()
+        ax = chart.figure.add_subplot(111)
+        days = self._monthday_table["day_of_month"]
+        charts.bars(chart, ax, [f"Dia {day:02d}" for day in days], self._monthday_table["expectancy"],
+                    self._monthday_table["n"], self._monthday_table["small"], "Expectativa por operação")
+        shown = (1, 5, 10, 15, 20, 25, 31)
+        ax.set_xticks([day - 1 for day in shown], labels=[str(day) for day in shown], rotation=0)
+        ax.set_xlabel("Dia do mês", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
+        self._monthday_highlight = Rectangle((0, 0), 1, 1, transform=ax.get_xaxis_transform(),
+            facecolor=self.theme.colors["accent"], edgecolor="none", alpha=0.12, zorder=0)
+        ax.add_patch(self._monthday_highlight)
+        self._sample_notice(chart, self._monthday_table["small"])
+        self._update_monthday()
+        chart.draw()
+
+    def _update_monthday(self, _event=None):
+        selected = self.monthday_picker.get()
+        if not selected or self._monthday_highlight is None:
+            return
+        index = int(selected) - 1
+        row = self._monthday_table.iloc[index]
+        text = f"Dia {int(row['day_of_month']):02d} · Sem operações com resultado válido"
+        if row["n"]:
+            sample = " · pouca amostra" if row["small"] else ""
+            text = (f"Dia {int(row['day_of_month']):02d} · {charts.money(row['expectancy'])} por operação · "
+                    f"n={fmt_int(row['n'])}{sample}")
+        self.monthday_detail.configure(text=text)
+        self._monthday_highlight.set_x(index - 0.5)
+        self._charts["t_month"].canvas.draw_idle()
+
+    def _choose_monthday(self, event):
+        highlight = self._monthday_highlight
+        if highlight is None or event.inaxes is not highlight.axes or event.xdata is None or event.button != 1:
+            return
+        index = int(round(event.xdata))
+        if 0 <= index < len(self._monthday_table):
+            self.monthday_picker.current(index)
+            self._update_monthday()
+
     def _time(self):
         from mt5_extracao.trade_analytics import aggregate
         view, tab, cfg = self.view, "Tempo e calendário", self._config()
@@ -684,15 +756,8 @@ class LaboratoryPanel:
         self._sample_notice(chart, days["small"])
         chart.figure.tight_layout()
         chart.draw()
-        month = aggregate.by_dimension(view, ["day_of_month"], cfg, ci=False)
-        chart = self._chart(tab, "t_month", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "month", "Dia do mês"))
-        chart.clear()
-        charts.bars(chart, chart.figure.add_subplot(111), [str(int(d)) for d in month["day_of_month"]],
-                    month["expectancy"], month["n"], month["small"], "Dia do mês: expectativa por operação")
-        self._sample_notice(chart, month["small"])
-        chart.figure.tight_layout()
-        chart.draw()
+        month = aggregate.monthday_summary(view, cfg)
+        self._draw_monthdays(month)
         hourly = aggregate.hourly_summary(view, cfg)
         hours = hourly["table"]
         chart = self._chart(tab, "t_hours", 0, 0, height=4.0,
@@ -781,6 +846,13 @@ class LaboratoryPanel:
         for key in ("t_week", "t_month", "t_hours", "t_winloss"):
             panel = self._chart_panels[key]
             sample = panel.notice.message.cget("text") if panel.notice is not None else ""
+            if key == "t_month":
+                sample = (f"{fmt_int(month['measured_n'])} operações com dia e resultado válidos. "
+                          "Mesmo dia agrupado entre os meses do recorte. " + sample)
+                if month["untimed_n"]:
+                    sample += f" {fmt_int(month['untimed_n'])} operações sem dia válido ficam fora."
+                if month["missing_result_n"]:
+                    sample += f" {fmt_int(month['missing_result_n'])} operações com dia, mas sem resultado válido, ficam fora."
             if key == "t_hours":
                 sample = "Lacunas (n=0): sem observações válidas; não equivalem a zero e não são ligadas. " + sample
                 if hourly["untimed_n"]:
@@ -791,6 +863,7 @@ class LaboratoryPanel:
             panel.notice.message.bind(
                 "<Configure>", lambda event, message=panel.notice.message:
                 message.configure(wraplength=max(180, event.width)))
+        self.results_viewport.refresh_layout()
 
     def _micro(self):
         from mt5_extracao.trade_analytics import aggregate

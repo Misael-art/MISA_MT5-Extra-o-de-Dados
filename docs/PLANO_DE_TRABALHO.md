@@ -1,5 +1,14 @@
 # Plano de trabalho detalhado
 
+## LAB-04 — calendário de expectativa por dia do mês
+
+O Laboratório usa a agregação canônica das operações medidas em uma grade
+de 31 dias. O denominador é o número de operações válidas de cada dia.
+A cor acompanha a magnitude da expectativa, e o detalhe selecionável
+conserva o valor, a amostra e a indicação de amostra pequena.
+O viewport atualiza a altura assim que a guia é desenhada e a rolagem mantém
+o gráfico completo acessível. Passaram 29 testes focados no Linux.
+
 ## T20.24 — quarentena após interrupção de preparação
 
 O teste de falta de espaço acompanha o contrato de interrupção por orçamento.

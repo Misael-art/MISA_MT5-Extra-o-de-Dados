@@ -177,3 +177,23 @@ def test_hourly_grid_empty_book_has_no_measurements():
     assert result["table"]["n"].sum() == result["timed_n"] == result["measured_n"] == 0
     assert result["table"][["expectancy", "win_rate"]].isna().all().all()
     assert not result["table"]["small"].any()
+
+
+def test_monthday_grid_preserves_calendar_gaps_zero_and_trade_weighting():
+    from mt5_extracao.trade_analytics import enrich
+
+    dates = pd.Series(pd.to_datetime(["2025-01-03", "2025-02-03", "2025-02-03", "2025-02-15",
+                                      "2025-01-31", "2025-02-18", None]))
+    lab = enrich.calendar_columns(dates, 30).assign(pnl=[9.0, -1.0, 1.0, 0.0, -5.0, np.inf, 99.0])
+    before = lab.copy(deep=True)
+    result = aggregate.monthday_summary(lab)
+    table = result["table"].set_index("day_of_month")
+    assert list(table.index) == list(range(1, 32))
+    assert table.loc[3, ["n", "expectancy"]].tolist() == [3, 3.0]
+    assert table.loc[15, ["n", "expectancy"]].tolist() == [1, 0.0]
+    assert table.loc[31, ["n", "expectancy"]].tolist() == [1, -5.0]
+    assert table["n"].sum() == result["measured_n"] == 5
+    assert result["untimed_n"] == result["missing_result_n"] == 1
+    assert table.loc[[1, 18], "expectancy"].isna().all()
+    assert not table.loc[[1, 18], "small"].any()
+    pd.testing.assert_frame_equal(lab, before)

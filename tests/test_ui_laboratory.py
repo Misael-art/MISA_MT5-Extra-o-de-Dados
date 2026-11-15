@@ -433,6 +433,61 @@ def test_hourly_curve_preserves_real_spacing_and_gaps_in_both_themes(panel):
     assert "4 operações sem faixa horária válida ficam fora" in panel._chart_panels["t_hours"].notice.message.cget("text")
 
 
+def test_monthday_chart_selects_date_without_compressing_gaps(panel):
+    from dataclasses import replace
+    from matplotlib.backend_bases import MouseEvent
+    from mt5_extracao.trade_analytics import aggregate
+
+    dates = pd.to_datetime(["2025-01-03", "2025-01-15", "2025-01-31", "2025-02-03"])
+    trades = [replace(trade, entry_time=entry, exit_time=entry + pd.Timedelta(minutes=10), pnl=pnl)
+              for trade, entry, pnl in zip(_trades(12, n=4), dates, [2.0, 0.0, -7.0, 8.0])]
+    ledger.save_trades(panel.db, "monthdays", trades, robot_key="python:calendar", symbol="AAA", timeframe="H1")
+    root = panel.ui.root
+    root.geometry("1280x800")
+    panel.frame.master.pack_configure(fill=tk.BOTH, expand=True)
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.tabs.select(panel.tab_frames["Tempo e calendário"])
+    panel.pump(lambda: "Tempo e calendário" in panel._drawn)
+    panel._analysis_notebooks["Tempo e calendário"].select(1)
+    root.update()
+    chart = panel._charts["t_month"]
+    ax = chart.figure.axes[0]
+    minimum = max(480, panel.theme.font.metrics("linespace") * 24)
+    assert chart.widget.winfo_height() >= minimum and ax.bbox.height > minimum * 0.5
+    bars = ax.containers[0].patches
+    assert len(bars) == 31
+    assert bars[2].get_height() == 5 and bars[14].get_height() == 0 and bars[30].get_height() == -7
+    assert np.isnan(bars[1].get_height())
+    assert all(label.get_rotation() == 0 for label in ax.get_xticklabels())
+    assert "5,00 por operação · n=2" in panel.monthday_detail.cget("text")
+    assert "4 operações com dia e resultado válidos" in panel._chart_panels["t_month"].notice.message.cget("text")
+
+    x, y = ax.transData.transform((14, 0))
+    chart.canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", chart.canvas, x, y, button=1))
+    assert panel.monthday_picker.get() == "15" and panel._monthday_highlight.get_x() == 13.5
+    assert "0,00 por operação · n=1" in panel.monthday_detail.cget("text")
+    panel.monthday_picker.current(1)
+    panel.monthday_picker.event_generate("<<ComboboxSelected>>")
+    assert panel._monthday_highlight.get_x() == 0.5
+    assert "Sem operações com resultado válido" in panel.monthday_detail.cget("text")
+
+    panel.theme.toggle()
+    root.geometry("1000x740")
+    panel._time()
+    root.update()
+    assert panel.monthday_picker.get() == "02" and panel._monthday_highlight.get_x() == 0.5
+    panel.results_viewport.canvas.yview_moveto(1)
+    root.update()
+    assert panel.results_viewport.canvas.yview()[0] > 0
+    assert chart.widget.winfo_height() >= minimum and chart.figure.axes[0].bbox.height > minimum * 0.5
+    legend = chart.figure.axes[0].get_legend().get_window_extent(chart.canvas.get_renderer())
+    assert chart.figure.bbox.contains(legend.x1, legend.y1)
+    panel._draw_monthdays(aggregate.monthday_summary(pd.DataFrame()))
+    assert panel.monthday_picker.instate(["disabled"]) and panel._monthday_highlight is None
+    assert "Nenhum valor" in chart.figure.axes[0].texts[0].get_text()
+
+
 def test_population_details_stay_collapsed_refresh_and_hide_for_synthetic_relations(panel):
     from mt5_extracao.trade_analytics import context
     from mt5_extracao.ui.laboratory import RELATIONS_TAB
