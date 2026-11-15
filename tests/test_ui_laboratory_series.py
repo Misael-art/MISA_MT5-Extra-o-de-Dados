@@ -122,6 +122,70 @@ def test_selection_changed_during_compute_cannot_replace_frozen_result(panel, sn
     assert "não publicado" in series.status.cget("text")
 
 
+def test_opening_frozen_analysis_keeps_older_worker_cancelled_after_starting_next(panel, snapshots, tmp_path, monkeypatch):
+    import json
+    from mt5_extracao.analytics.indicator_materializer import Cancelled
+    from mt5_extracao.laboratory import service
+
+    series = open_series(panel)
+    panel.pump(lambda: not getattr(series, "_loading_sources", True))
+    series._inventory = [dict(symbol="X", timeframe="M5")]
+    series.symbol.set("X")
+    series._symbol_changed()
+    saved = tmp_path / "frozen.json"
+    report = analysis(snapshots)
+    saved.write_text(json.dumps(report), encoding="utf-8")
+    jobs = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: jobs.append((work, done)))
+    monkeypatch.setattr(service, "capture_selection", lambda *_a, **_kw: pytest.fail("Cálculo cancelado atingiu a captura"))
+
+    series.analyze()
+    series.open_analysis(saved)
+    series.analyze()
+    assert len(jobs) == 2 and series.pending
+    with pytest.raises(Cancelled) as interrupted:
+        jobs[0][0]()
+    jobs[0][1](None, interrupted.value)
+    assert series.pending and series.report["analysis_id"] == report["analysis_id"]
+
+
+def test_database_change_during_capture_stops_before_reading_linked_sources(panel, monkeypatch):
+    from mt5_extracao.analytics.indicator_materializer import Cancelled
+    from mt5_extracao.laboratory import service
+
+    series = open_series(panel)
+    panel.pump(lambda: not getattr(series, "_loading_sources", True))
+    series._inventory = [dict(symbol="X", timeframe="M5")]
+    series.symbol.set("X")
+    series._symbol_changed()
+    original = panel.ui.app.db_manager
+    other = object()
+    jobs = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: jobs.append((work, done)))
+
+    def capture(db, *, guard, **_selection):
+        assert db is original
+        guard()
+        monkeypatch.setattr(panel.ui.app, "db_manager", other)
+        return []
+
+    monkeypatch.setattr(service, "capture_selection", capture)
+    monkeypatch.setattr(service, "capture_linked_sources", lambda *_a, **_kw: pytest.fail("Leitura misturou bases"))
+    series.analyze()
+    with pytest.raises(Cancelled) as interrupted:
+        jobs[0][0]()
+    jobs[0][1](None, interrupted.value)
+    assert not series.pending and series.report is None
+    assert "Base alterada" in series.status.cget("text")
+    series.analyze()
+    assert len(jobs) == 1 and "Atualize as fontes" in series.status.cget("text")
+
+    series.reload()
+    jobs[1][1](dict(sources=[dict(symbol="X", timeframe="M5")], catalog=series.catalog), None)
+    series.analyze()
+    assert len(jobs) == 3 and series.pending
+
+
 def test_presets_use_existing_generator_and_frozen_context_without_promoting_correlation(panel, snapshots):
     from types import SimpleNamespace
     import tkinter as tk

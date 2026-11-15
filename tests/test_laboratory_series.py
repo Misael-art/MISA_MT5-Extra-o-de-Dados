@@ -101,6 +101,16 @@ def test_constant_and_missing_pairs_are_unavailable_not_zero_or_perfect():
     frame.direction = np.nan
     assert service._pair(frame, frame, 0)["n_pairs"] == 0
     assert service._pair(frame, frame, 0)["agreement"] is None
+    events = frame.assign(event_at=end)
+    missing = service._pair(events, events, 1, unconfirmed=True)
+    assert missing["state"] == "UNAVAILABLE" and missing["reason"] == "UNCONFIRMED_EVENT"
+    assert missing["relation"] == "PREDICTIVE_CANDIDATE" and missing["out_of_sample"] is None
+    assert missing["event_sample"] == dict(left_events=0, right_events=0, unique_event_pairs=0,
+        basis="distinct_confirmation_closes_in_valid_pairs", independent_events_proven=False)
+    one_side = service._pair(frame, events, 0)
+    assert one_side["reason"] == "INSUFFICIENT_PAIRS" and one_side["relation"] == "DESCRIPTIVE"
+    assert one_side["event_sample"] == dict(left_events=None, right_events=0, unique_event_pairs=None,
+        basis="distinct_confirmation_closes_in_valid_pairs", independent_events_proven=False)
 
 
 def test_lag_is_prior_predictor_and_counts_repeated_source_pairs():

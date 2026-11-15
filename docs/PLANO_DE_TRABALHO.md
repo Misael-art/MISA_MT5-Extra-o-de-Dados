@@ -1,5 +1,16 @@
 # Plano de trabalho detalhado
 
+## LAB-02 — cancelamento e recuperação em Séries e confluências
+
+O cálculo de cada seleção usa a própria base e o próprio cancelamento.
+A captura, a leitura de vínculos e os cálculos em barras sintéticas verificam
+a vigência da solicitação. A troca de base exige atualizar as fontes antes
+de congelar a nova seleção. Abrir um relatório antigo preserva sua identidade.
+As verificações em Tk cobrem recuperação após troca de base, cancelamento ao
+abrir um relatório e comparação M7/M9 com a grade do fechamento mais curto.
+O teste de cálculo confere também a ausência e a confirmação de eventos nos
+pares sem observações válidas.
+
 ## T20.25 — diagnóstico de prazo do MetaEditor
 
 Quando a compilação excede o limite, o fluxo da sessão preserva o log e
