@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T17.22/T20.24 — regressões da candidata no CI Windows
+
+A verificação da Análise offline separa a conclusão da carga das barras da
+renderização da guia visível. A sessão ainda precisa exibir Gráfico,
+Sazonalidade e Retornos sem conectar ao terminal. A verificação da interrupção
+do Tester lê o recibo UTF-8 com a mesma codificação do gravador, preservando a
+asserção da mensagem completa e a liberação dos recursos da sessão.
+
 ## BD04 — avaliação de qualidade sem reconversões
 
 Preços, volumes e spread reaproveitam a conversão numérica inicial. A seleção

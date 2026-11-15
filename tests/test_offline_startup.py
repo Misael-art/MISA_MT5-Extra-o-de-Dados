@@ -135,6 +135,7 @@ def create(root,offline=False,config_path="config/config.ini"):
     instance=original(root,offline=offline)
     ui=instance.ui_manager
     assert ui is not None and offline
+    root.withdraw()
     deadline=time.monotonic()+25
     def inspect_local():
         try:
@@ -147,16 +148,31 @@ def create(root,offline=False,config_path="config/config.ini"):
             assert 'configurados' in ui.symbols_label.cget('text')
             ui.check_mt5_status();ui.connect_mt5();ui.open_mt5_view();ui._offer_demo_account()
             assert ui.open_analysis('WIN$N','1 minuto')
+            root.after(50,inspect_hidden_analysis)
+        except BaseException:
+            errors.append(traceback.format_exc());root.destroy()
+    def inspect_hidden_analysis():
+        try:
+            panel=ui.analysis_panel
+            if panel.data is None or panel.status.cget('text').startswith('Carregando '):
+                assert time.monotonic()<deadline,'analysis timeout'
+                root.after(50,inspect_hidden_analysis);return
+            assert len(panel.data)==600
+            assert panel._redraw_pending and not panel.frame.winfo_ismapped() and not panel._canvases
+            root.deiconify()
             root.after(50,inspect_analysis)
         except BaseException:
             errors.append(traceback.format_exc());root.destroy()
     def inspect_analysis():
         try:
             panel=ui.analysis_panel
-            if panel.data is None:
-                assert time.monotonic()<deadline,'analysis timeout'
+            if panel._redraw_pending or not panel.frame.winfo_ismapped():
+                assert time.monotonic()<deadline,'analysis rendering timeout'
                 root.after(50,inspect_analysis);return
-            assert len(panel.data)==600 and set(panel._canvases)=={'chart','season','returns'}
+            assert ui.notebook.select()==str(panel.frame)
+            assert len(panel.data)==600
+            assert set(panel._canvases)=={'chart','season','returns'},set(panel._canvases)
+            assert panel._canvases['chart'].get_tk_widget().winfo_ismapped()
             assert not instance.mt5_connector.is_initialized and instance.offline
             proof.update(rows=len(panel.data),mode=ui.mt5_status_value.cget('text'),sdk_calls=len(calls))
             root.destroy()
