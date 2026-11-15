@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## LAB-07 — relação descritiva por fechamento comum
+
+O SDK, a CLI, o HTML e o Laboratório informam o coeficiente de Pearson, a
+duração comum e o número de retornos pareados por tempo gráfico. O cálculo
+usa patrimônio em cotas com dados registrados, janela compatível e defasagem
+zero. Lacunas e curvas constantes têm estados explícitos. O aceite preditivo
+fora da amostra permanece no protocolo de pesquisa.
+
 ## T20.24 — interrupção do Tester por orçamento
 
 A sessão histórica aplica seu fluxo de cancelamento quando o orçamento

@@ -45,6 +45,8 @@ class FinancialComparison:
         ttk.Button(actions,text='Exportar JSON…',command=lambda:self.export('json')).grid(row=1,column=0,sticky='ew')
         for i in (0,1):actions.columnconfigure(i,weight=1)
         self.results=TablePanel(body,'Resultados gravados',('Ativo / TF / run','Moeda','Operações','Lucro líquido','Saldo final','Patrimônio final','DD encerradas','DD patrimônio'),(280,90,90,120,120,140,130,130),xscroll=True,height=6);self.results.pack(fill=tk.BOTH,expand=True,pady=6)
+        self.relations=TablePanel(body,'Relação descritiva · Pearson',
+            ('Tempos gráficos','Duração (min)','Pares válidos','Pearson','Estado'),(120,120,110,90,365),xscroll=True,height=4)
         self.mode.trace_add('write',lambda *_:self.invalidate())
         self.load()
 
@@ -90,6 +92,7 @@ class FinancialComparison:
 
     def invalidate(self):
         self.result=None;self.results.tree.delete(*self.results.tree.get_children())
+        self.relations.pack_forget()
 
     def compare(self):
         if self.pending:return
@@ -106,6 +109,14 @@ class FinancialComparison:
             def percent(v):return value_text(None if v is None else v*100)+('%' if v is not None else '')
             for r in result['rows']:
                 s=r['summary'];tree.insert('',tk.END,values=(f"{r['symbol']} · {r['timeframe']} · {r['run_id']}",r['currency'] or 'não declarada',value_text(s['trades']),value_text(s['net_profit']),value_text(s['final_balance']),value_text(s['final_equity']),percent(s['max_drawdown_pct']),percent(s['max_floating_drawdown_pct'])))
+            relation=result.get('timeframe_relations')
+            if relation:
+                self.relations.tree.delete(*self.relations.tree.get_children())
+                for pair in relation['pairs']:
+                    self.relations.tree.insert('',tk.END,values=(
+                        f"{pair['left_timeframe']} × {pair['right_timeframe']}", value_text(pair['horizon_minutes']),
+                        pair['n_pairs'], value_text(pair['coefficient']), pair['status_label']))
+                self.relations.pack(fill=tk.BOTH,expand=True,pady=6)
             self.status.configure(text=('Recibos compatíveis. ' if result['compatible'] else 'Diferenças: '+'; '.join(result['reasons'])+'. ')+'Sem qualificação financeira; HTML inclui curvas e contexto completo.')
         self.job(lambda:sdk.compare_laboratory_runs(self.db,selected,mode=mode,guard=guard),done,'Comparando execuções gravadas — aguarde…')
 

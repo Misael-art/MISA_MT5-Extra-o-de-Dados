@@ -70,6 +70,11 @@ def test_same_strategy_between_timeframes_compares_frozen_window_and_exports(fin
     assert left['interval']['bars'] == 640 and right['interval']['bars'] == 320
     assert left['body_hash'] == right['body_hash'] and left['composition_hash'] != right['composition_hash']
     assert not result['opened_backtest'] and not result['financial_qualification']
+    relations = result['timeframe_relations']
+    assert relations['lag_minutes'] == 0 and relations['predictive_status'] == 'NOT_EVALUATED_OUT_OF_SAMPLE'
+    pair, = relations['pairs']
+    assert pair['horizon_minutes'] == 2 and pair['n_pairs'] == 319
+    assert pair['status'] == 'CONSTANT_SERIES' and pair['coefficient'] is None
     monkeypatch.setattr(cli.Context, 'db', property(lambda _: db))
     path = tmp_path / 'timeframes.html'
     assert cli.main(['--json', 'laboratory', 'compare-runs', '--mode', 'same_strategy', '--run', ids[0],
@@ -77,6 +82,24 @@ def test_same_strategy_between_timeframes_compares_frozen_window_and_exports(fin
     assert json.loads(capsys.readouterr().out)['data'] == result
     html = path.read_text(encoding='utf-8')
     assert 'Mesma estratégia entre tempos gráficos' in html and 'id="curve-filter"' in html
+    assert 'id="timeframe-relations"' in html and 'Capacidade preditiva aguarda avaliação fora da amostra.' in html
+
+
+def test_timeframe_relation_excludes_gap_and_preserves_signed_coefficient():
+    coarse_index = pd.date_range('2025-01-01 09:02', periods=42, freq='2min')
+    coarse = pd.Series([100.0], index=coarse_index[:1], dtype=float).reindex(coarse_index)
+    inverse = coarse.copy()
+    for i in range(1, len(coarse)):
+        change = (-1 if i % 2 else 1) * i / 10000
+        coarse.iloc[i] = coarse.iloc[i - 1] * (1 + change)
+        inverse.iloc[i] = inverse.iloc[i - 1] * (1 - change)
+    fine_index = pd.date_range(coarse_index[0] - pd.Timedelta(minutes=1), coarse_index[-1], freq='min')
+    gap = coarse_index[12] - pd.Timedelta(minutes=1)
+    fine = inverse.reindex(fine_index).bfill().drop(index=gap)
+    rows = [{'run_id': 'fast', 'timeframe': 'M1'}, {'run_id': 'slow', 'timeframe': 'M2'}]
+    pair, = preset_assets._timeframe_relations(rows, {'fast': (1, fine), 'slow': (2, coarse)}, True, lambda: None)['pairs']
+    assert pair['status'] == 'AVAILABLE' and pair['n_pairs'] == 40
+    assert pair['horizon_minutes'] == 2 and pair['coefficient'] == pytest.approx(-1)
 
 
 def test_same_strategy_keeps_different_parameters_and_windows_incompatible(financial_timeframes):
@@ -88,6 +111,7 @@ def test_same_strategy_keeps_different_parameters_and_windows_incompatible(finan
     store.save_run(db, changed)
     result = sdk.compare_laboratory_runs(db, [base['run_id'], changed['run_id']], mode='same_strategy')
     assert not result['compatible'] and 'Estratégia ou parâmetros diferem além do timeframe' in result['reasons']
+    assert result['timeframe_relations']['pairs'][0]['status'] == 'INCOMPATIBLE_RECEIPTS'
 
     robot = next(robot for robot in catalog.python_robots() if robot.key == 'python:ema_atr')
     truncated = backtest.run_python(db, config, robot, second['symbol'], 'M2', start='2025-01-01 09:02:00',

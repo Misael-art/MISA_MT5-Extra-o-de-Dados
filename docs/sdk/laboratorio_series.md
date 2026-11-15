@@ -570,6 +570,13 @@ vinculado. A janela termina no fechamento nominal da última barra. Quando as
 janelas divergem, cada métrica mantém seu período original. No HTML, alterne
 saldo e patrimônio e escolha com quais tempos gráficos montar a sobreposição.
 
+A tabela de relações usa retornos do patrimônio em cotas dos recibos intradiários
+compatíveis. A duração é o menor múltiplo comum dos dois tempos gráficos e o
+pareamento exige fechamentos idênticos, barras consecutivas e patrimônio positivo.
+O coeficiente descritivo de Pearson a defasagem zero exige pelo menos 30 pares e
+variação nas duas séries. Lacunas reduzem a amostra. Capacidade preditiva fica como
+não avaliada até haver teste fora da amostra com protocolo próprio.
+
 SDK: `compare_laboratory_runs(db, run_ids, mode="same_asset"|"same_preset"|"same_strategy")` e
 `export_laboratory_runs(comparison, "novo.html")`. CLI: `laboratory runs --limit
 50 --offset 0`, depois `laboratory compare-runs --run ID1 --run ID2 --mode

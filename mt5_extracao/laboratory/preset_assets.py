@@ -4,13 +4,25 @@ Lê execuções já gravadas. Não abre backtest, não usa fila e não trata o �
 run de cada ativo como prova de que o preset é o mesmo.
 """
 import hashlib
+from itertools import combinations
 import json
 import math
 import time
 import pandas as pd
 
 from mt5_extracao.robots import store
-from mt5_extracao import profit_factor
+from mt5_extracao import profit_factor, timeframes
+
+
+_RELATION_STATUS = {
+    'AVAILABLE': 'Retornos comparáveis',
+    'INCOMPATIBLE_RECEIPTS': 'Recibos incompatíveis',
+    'NO_VERIFIED_INTRADAY_VALUATIONS': 'Curvas completas de fechamento intradiário indisponíveis',
+    'INCOMPATIBLE_CURVE_CLOCKS': 'Relógios das curvas incompatíveis',
+    'INSUFFICIENT_PAIRS': 'Menos de 30 pares válidos',
+    'CONSTANT_SERIES': 'Uma das séries de retornos é constante',
+    'UNDEFINED': 'Coeficiente indefinido',
+}
 
 
 def _canonical(value):
@@ -253,6 +265,67 @@ def _observed_interval(row):
     return None
 
 
+def _closing_valuations(run):
+    frame = timeframes.parse(run['timeframe'])
+    valuation = run.get('valuation') or {}
+    raw = run.get('performance_equity') or []
+    if (frame is None or frame.minutes >= 1440 or not raw or len(raw) != run['bars'] or not isinstance(valuation, dict)
+            or valuation.get('resolution') != 'bar_close' or valuation.get('timestamp_basis') != 'bar_start'):
+        return None
+    try:
+        opens = pd.DatetimeIndex(pd.to_datetime([point[0] for point in raw]))
+        if (opens.hasnans or not opens.is_monotonic_increasing or not opens.is_unique
+                or opens[0] != pd.Timestamp(run['data_start']) or opens[-1] != pd.Timestamp(run['data_end'])):
+            return None
+        step = pd.Timedelta(minutes=frame.minutes)
+        values = pd.Series([_number(point[1]) for point in raw], index=opens + step, dtype=float)
+        return frame.minutes, values
+    except (ValueError, TypeError, IndexError, OverflowError):
+        return None
+
+
+def _returns_at_close(values, bars, horizon):
+    previous = values.shift(bars)
+    regular = values.index.to_series().diff().eq(horizon / bars).rolling(bars).sum().eq(bars)
+    returns = values.div(previous.where(previous > 0)).sub(1)
+    return returns.where(regular & (values > 0)).replace([math.inf, -math.inf], math.nan)
+
+
+def _timeframe_relations(rows, valuations, compatible, guard):
+    durations = {frame.name: frame.minutes for frame in timeframes.Timeframe}
+    ordered = sorted(rows, key=lambda row: (durations.get(row['timeframe'], math.inf), row['timeframe'], row['run_id']))
+    pairs = []
+    for left, right in combinations(ordered, 2):
+        guard()
+        a, b = valuations.get(left['run_id']), valuations.get(right['run_id'])
+        pair = dict(left_run_id=left['run_id'], right_run_id=right['run_id'], left_timeframe=left['timeframe'],
+                    right_timeframe=right['timeframe'], horizon_minutes=None, n_pairs=0, coefficient=None)
+        if not compatible:
+            pair['status'] = 'INCOMPATIBLE_RECEIPTS'
+        elif a is None or b is None:
+            pair['status'] = 'NO_VERIFIED_INTRADAY_VALUATIONS'
+        elif (a[1].index.tz is None) != (b[1].index.tz is None):
+            pair['status'] = 'INCOMPATIBLE_CURVE_CLOCKS'
+        else:
+            minutes = math.lcm(a[0], b[0])
+            horizon = pd.Timedelta(minutes=minutes)
+            first = _returns_at_close(a[1], minutes // a[0], horizon).rename('left')
+            second = _returns_at_close(b[1], minutes // b[0], horizon).rename('right')
+            sample = pd.concat((first, second), axis=1, join='inner').dropna()
+            pair.update(horizon_minutes=minutes, n_pairs=len(sample))
+            if len(sample) < 30:
+                pair['status'] = 'INSUFFICIENT_PAIRS'
+            elif any(sample[key].nunique() < 2 for key in ('left', 'right')):
+                pair['status'] = 'CONSTANT_SERIES'
+            else:
+                coefficient = _number(sample['left'].corr(sample['right']))
+                pair.update(status='AVAILABLE' if coefficient is not None else 'UNDEFINED', coefficient=coefficient)
+        pair['status_label'] = _RELATION_STATUS[pair['status']]
+        pairs.append(pair)
+    return dict(method='pearson', basis='unitized_equity_common_bar_closes', lag_minutes=0, minimum_pairs=30,
+                predictive_status='NOT_EVALUATED_OUT_OF_SAMPLE', pairs=pairs)
+
+
 def compare_runs(db,run_ids,*,mode,guard=None):
     """Seleção explícita de runs; compara recibos, não gera uma execução nova."""
     if mode not in ('same_asset','same_preset','same_strategy','same_scope'):
@@ -268,7 +341,7 @@ def compare_runs(db,run_ids,*,mode,guard=None):
     from mt5_extracao.composition import Composition
     from dataclasses import asdict
     from mt5_extracao.strategies.backtester import BacktestConfig
-    rows=[];problems=[];snapshots={};scope_checkpoint=None
+    rows=[];problems=[];snapshots={};scope_checkpoint=None;valuations={}
     for ident in run_ids:
         guard();found=store.load_runs(db,run_id=ident)
         if len(found)!=1:raise ValueError('Execução não encontrada: '+ident)
@@ -287,6 +360,8 @@ def compare_runs(db,run_ids,*,mode,guard=None):
             except (ValueError,TypeError):problems.append(ident+': revisão de composição não comprovada')
         if compare_timeframes:
             row['observed_interval'] = _observed_interval(row)
+        if mode == 'same_strategy':
+            valuations[ident] = _closing_valuations(run)
         if not isinstance(ctx,dict) or ctx.get('schema_version')!=1 or not ctx.get('code_sha256'):
             problems.append(ident+': recibo de motor/configuração completo ausente');continue
         required={'engine','settings','trade_from','source','clock','instrument_spec','currency','currency_source','external_cashflows'}
@@ -357,6 +432,8 @@ def compare_runs(db,run_ids,*,mode,guard=None):
             'Saldo de encerradas e patrimônio a mercado são separados; marcação por fechamento não mede drawdown intrabar.',
             'Compatibilidade de recibos não aprova estratégia, qualidade financeira ou desempenho futuro.'])
     if compare_timeframes:result['configuration_compatible']=configuration_compatible
+    if mode == 'same_strategy':
+        result['timeframe_relations'] = _timeframe_relations(rows, valuations, result['compatible'], guard)
     result['comparison_sha256']=hashlib.sha256(_canonical(result).encode()).hexdigest()
     return result
 

@@ -1313,6 +1313,10 @@ continuam sem qualificação. [Contrato estatístico](laboratorio_series.md#aval
 existentes nos modos `same_asset`, `same_preset` e `same_strategy`.
 `same_strategy` compara execuções de um mesmo ativo em tempos gráficos distintos,
 com a mesma estratégia, parâmetros, contrato e intervalo congelado.
+`timeframe_relations` informa a correlação descritiva de Pearson por par, com
+duração comum, defasagem zero, número de pares válidos e estado. A comparação
+usa somente fechamentos intradiários coincidentes e identifica a ausência de
+avaliação preditiva fora da amostra.
 O modo same_scope admite1…512
 tentativas publicadas do mesmo lote revisado, com vínculo exato ao journal;
 para incluir também estados/exclusões/cobertura, prefira `sdk.compare_backtest_scope`.
