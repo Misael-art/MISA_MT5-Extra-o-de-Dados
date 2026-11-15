@@ -12,6 +12,13 @@ from .components import ScrollableContent,TablePanel
 from .series_observations import value_text
 
 
+MODES = {
+    'Estratégias / presets no mesmo ativo': 'same_asset',
+    'Mesmo preset entre ativos': 'same_preset',
+    'Mesma estratégia entre tempos gráficos': 'same_strategy',
+}
+
+
 class FinancialComparison:
     def __init__(self,panel):
         self.panel,self.ui=panel,panel.ui;self.db=panel._db();self.offset=0;self.selected={};self.pending=False;self.result=None;self.cancel_event=threading.Event()
@@ -30,14 +37,14 @@ class FinancialComparison:
         ttk.Button(navigation,text='Adicionar selecionadas',command=self.add).pack(side=tk.LEFT,padx=6)
         self.chosen=TablePanel(body,'Seleção desta comparação',('Run','Ativo','TF'),(330,180,90),selectmode='extended',xscroll=True,height=3);self.chosen.pack(fill=tk.BOTH,expand=True,pady=6)
         ttk.Button(body,text='Retirar da seleção',command=self.remove).pack(anchor='w')
-        self.mode=tk.StringVar(value='Estratégias / presets no mesmo ativo')
-        ttk.Combobox(body,textvariable=self.mode,values=['Estratégias / presets no mesmo ativo','Mesmo preset entre ativos'],state='readonly').pack(fill=tk.X,pady=6)
+        self.mode=tk.StringVar(value=next(iter(MODES)))
+        ttk.Combobox(body,textvariable=self.mode,values=list(MODES),state='readonly').pack(fill=tk.X,pady=6)
         actions=ttk.Frame(body);actions.pack(fill=tk.X)
         ttk.Button(actions,text='Comparar recibos',command=self.compare).grid(row=0,column=0,sticky='ew')
         ttk.Button(actions,text='Exportar HTML…',command=lambda:self.export('html')).grid(row=0,column=1,sticky='ew')
         ttk.Button(actions,text='Exportar JSON…',command=lambda:self.export('json')).grid(row=1,column=0,sticky='ew')
         for i in (0,1):actions.columnconfigure(i,weight=1)
-        self.results=TablePanel(body,'Resultados gravados',('Run / ativo','Moeda','Operações','Lucro líquido','Saldo final','Patrimônio final','DD encerradas','DD patrimônio'),(280,90,90,120,120,140,130,130),xscroll=True,height=6);self.results.pack(fill=tk.BOTH,expand=True,pady=6)
+        self.results=TablePanel(body,'Resultados gravados',('Ativo / TF / run','Moeda','Operações','Lucro líquido','Saldo final','Patrimônio final','DD encerradas','DD patrimônio'),(280,90,90,120,120,140,130,130),xscroll=True,height=6);self.results.pack(fill=tk.BOTH,expand=True,pady=6)
         self.mode.trace_add('write',lambda *_:self.invalidate())
         self.load()
 
@@ -86,16 +93,19 @@ class FinancialComparison:
 
     def compare(self):
         if self.pending:return
-        selected=list(self.selected);mode='same_preset' if self.mode.get()=='Mesmo preset entre ativos' else 'same_asset'
+        selected=list(self.selected);mode_label=self.mode.get();mode=MODES[mode_label]
         started=dict(started_monotonic=time.monotonic());memory=min(8192,max(1024,int(producer_jobs.current_rss_bytes()/1024**2)+256))
         def guard():
             if self.ui.app.db_manager is not self.db:raise ValueError('Base alterada durante a comparação.')
             indicator_materializer._guard(started,None,self.cancel_event.is_set,120,memory)
         def done(result):
+            if self.mode.get()!=mode_label:
+                self.status.configure(text='Modo alterado. Compare novamente para abrir os resultados deste modo.')
+                return
             self.result=result;tree=self.results.tree;tree.delete(*tree.get_children())
             def percent(v):return value_text(None if v is None else v*100)+('%' if v is not None else '')
             for r in result['rows']:
-                s=r['summary'];tree.insert('',tk.END,values=(r['run_id']+' · '+r['symbol'],r['currency'] or 'não declarada',value_text(s['trades']),value_text(s['net_profit']),value_text(s['final_balance']),value_text(s['final_equity']),percent(s['max_drawdown_pct']),percent(s['max_floating_drawdown_pct'])))
+                s=r['summary'];tree.insert('',tk.END,values=(f"{r['symbol']} · {r['timeframe']} · {r['run_id']}",r['currency'] or 'não declarada',value_text(s['trades']),value_text(s['net_profit']),value_text(s['final_balance']),value_text(s['final_equity']),percent(s['max_drawdown_pct']),percent(s['max_floating_drawdown_pct'])))
             self.status.configure(text=('Recibos compatíveis. ' if result['compatible'] else 'Diferenças: '+'; '.join(result['reasons'])+'. ')+'Sem qualificação financeira; HTML inclui curvas e contexto completo.')
         self.job(lambda:sdk.compare_laboratory_runs(self.db,selected,mode=mode,guard=guard),done,'Comparando execuções gravadas — aguarde…')
 

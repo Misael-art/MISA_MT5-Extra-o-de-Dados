@@ -1,6 +1,6 @@
 """Seleção manual, espera e exportação na interface real."""
 from tests.test_ui_laboratory import panel
-from tests.test_laboratory_financial import financial
+from tests.test_laboratory_financial import financial, financial_timeframes
 from tests.test_mentions_contract import db
 
 
@@ -21,3 +21,21 @@ def test_financial_view_selects_runs_and_exports_without_execution(panel,financi
     view.window.geometry('650x500');panel.ui.root.update()
     view.chosen.tree.selection_set(ids[0]);view.remove();assert view.result is None
     view.close();assert not view.alive()
+
+
+def test_financial_view_selects_same_strategy_across_timeframes(panel, financial_timeframes):
+    database, _, runs = financial_timeframes
+    panel.ui.app.db_manager = database
+    panel.open_financial_comparison()
+    view = panel.financial_comparison
+    panel.pump(lambda: not view.pending, seconds=30)
+    view.index.tree.selection_set([run['run_id'] for run in runs])
+    view.add()
+    view.mode.set('Mesma estratégia entre tempos gráficos')
+    view.compare()
+    panel.pump(lambda: not view.pending, seconds=30)
+    assert view.result['compatible'], view.status.cget('text')
+    assert view.result['mode'] == 'same_strategy'
+    assert {view.results.tree.item(row, 'values')[0].split(' · ')[1]
+            for row in view.results.tree.get_children()} == {'M1', 'M2'}
+    view.close()

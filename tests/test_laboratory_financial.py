@@ -40,6 +40,63 @@ def prepare(db,monkeypatch):
 def financial(db,monkeypatch):return db,*prepare(db,monkeypatch)
 
 
+@pytest.fixture
+def financial_timeframes(db):
+    symbol = 'QA_TF'
+    for tf, freq, size in [('1 minuto', 'min', 640), ('2 minutos', '2min', 320)]:
+        frame = bars([[100, 102, 98, 101]] * size, start='2025-01-01 09:00', freq=freq)
+        frame['tick_volume'] = 20 if size == 640 else 40
+        frame['real_volume'] = 0
+        assert db.save_ohlcv_data(symbol, tf, frame)
+    db.save_symbol_spec(symbol, spec_from_symbol_info(SimpleNamespace(
+        point=1, trade_tick_size=1, trade_tick_value=1, volume_min=.01, volume_step=.01)), source='qa.owned.spec')
+    config = configparser.ConfigParser()
+    config['STRATEGY'] = dict(initial_equity='10000', account_currency='USD', commission_per_lot='.1')
+    robot = next(robot for robot in catalog.python_robots() if robot.key == 'python:ema_atr')
+    runs = [backtest.run_python(db, config, robot, symbol, tf, real_spread=False,
+                               composition=base_composition('ema_atr', symbol=symbol, timeframe=tf))
+            for tf in ('M1', 'M2')]
+    return db, config, runs
+
+
+def test_same_strategy_between_timeframes_compares_frozen_window_and_exports(financial_timeframes, tmp_path, monkeypatch, capsys):
+    db, _, runs = financial_timeframes
+    ids = [run['run_id'] for run in runs]
+    monkeypatch.setattr(backtest, 'run_python', lambda *a, **k: pytest.fail('comparison ran backtest'))
+    result = sdk.compare_laboratory_runs(db, ids, mode='same_strategy')
+    assert result['compatible'], result['reasons']
+    left, right = result['rows']
+    assert left['observed_interval'] == right['observed_interval']
+    assert left['interval']['bars'] == 640 and right['interval']['bars'] == 320
+    assert left['body_hash'] == right['body_hash'] and left['composition_hash'] != right['composition_hash']
+    assert not result['opened_backtest'] and not result['financial_qualification']
+    monkeypatch.setattr(cli.Context, 'db', property(lambda _: db))
+    path = tmp_path / 'timeframes.html'
+    assert cli.main(['--json', 'laboratory', 'compare-runs', '--mode', 'same_strategy', '--run', ids[0],
+                     '--run', ids[1], '--html', str(path)]) == 0
+    assert json.loads(capsys.readouterr().out)['data'] == result
+    html = path.read_text(encoding='utf-8')
+    assert 'Mesma estratégia entre tempos gráficos' in html and 'id="curve-filter"' in html
+
+
+def test_same_strategy_keeps_different_parameters_and_windows_incompatible(financial_timeframes):
+    db, config, runs = financial_timeframes
+    base, second = runs
+    changed = deepcopy(second)
+    changed['run_id'] += '-params'
+    changed['params']['fast'] += 1
+    store.save_run(db, changed)
+    result = sdk.compare_laboratory_runs(db, [base['run_id'], changed['run_id']], mode='same_strategy')
+    assert not result['compatible'] and 'Estratégia ou parâmetros diferem além do timeframe' in result['reasons']
+
+    robot = next(robot for robot in catalog.python_robots() if robot.key == 'python:ema_atr')
+    truncated = backtest.run_python(db, config, robot, second['symbol'], 'M2', start='2025-01-01 09:02:00',
+                                    real_spread=False, composition=Composition(second['metrics']['composition']))
+    result = sdk.compare_laboratory_runs(db, [base['run_id'], truncated['run_id']], mode='same_strategy')
+    assert result['configuration_compatible'] and not result['compatible']
+    assert any(reason.startswith('Coberturas temporais diferentes') for reason in result['reasons'])
+
+
 def test_compatible_runs_preserve_full_financial_metrics_and_clocks(financial,monkeypatch):
     db,cfg,runs=financial
     monkeypatch.setattr(backtest,'run_python',lambda *a,**k:pytest.fail('comparison ran backtest'))

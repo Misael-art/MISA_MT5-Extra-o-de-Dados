@@ -563,7 +563,14 @@ currency_profit. Esta é uma declaração do usuário; não prova conta/FX hist�
 Runs antigos continuam legíveis e não são regravados para simular um recibo.
 Compatibilidade técnica não concede aprovação financeira ou preditiva.
 
-SDK: `compare_laboratory_runs(db, run_ids, mode="same_asset"|"same_preset")` e
+Para comparar a mesma estratégia entre tempos gráficos, selecione uma execução
+por timeframe no mesmo ativo. O modo verifica a composição retirando somente o
+timeframe, compara os parâmetros efetivos e confere cada janela no snapshot
+vinculado. A janela termina no fechamento nominal da última barra. Quando as
+janelas divergem, cada métrica mantém seu período original. No HTML, alterne
+saldo e patrimônio e escolha com quais tempos gráficos montar a sobreposição.
+
+SDK: `compare_laboratory_runs(db, run_ids, mode="same_asset"|"same_preset"|"same_strategy")` e
 `export_laboratory_runs(comparison, "novo.html")`. CLI: `laboratory runs --limit
 50 --offset 0`, depois `laboratory compare-runs --run ID1 --run ID2 --mode
 same_preset --out novo.json --html novo.html`. Saídas novas e integridade do

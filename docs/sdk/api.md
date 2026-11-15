@@ -1310,7 +1310,10 @@ com a família inteira. Relatório já exposto, reserva inédita e desempenho fu
 continuam sem qualificação. [Contrato estatístico](laboratorio_series.md#avaliação-estatística-registrada).
 
 `sdk.compare_laboratory_runs(db, run_ids, *, mode, **kwargs)` consulta2…8 runs
-existentes nos modos same_asset ou same_preset. O modo same_scope admite1…512
+existentes nos modos `same_asset`, `same_preset` e `same_strategy`.
+`same_strategy` compara execuções de um mesmo ativo em tempos gráficos distintos,
+com a mesma estratégia, parâmetros, contrato e intervalo congelado.
+O modo same_scope admite1…512
 tentativas publicadas do mesmo lote revisado, com vínculo exato ao journal;
 para incluir também estados/exclusões/cobertura, prefira `sdk.compare_backtest_scope`.
 kwargs aceita guard cooperativo;

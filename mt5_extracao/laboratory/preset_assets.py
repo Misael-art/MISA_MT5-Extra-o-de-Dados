@@ -17,8 +17,8 @@ def _canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def _body(run):
-    """Hash da composição sem o ativo. O hash completo continua o de cada execução."""
+def _body(run, *, varied_dimension="symbol"):
+    """Hash da composição sem a dimensão em comparação."""
     metrics = run.get("metrics") or {}
     composition = metrics.get("composition")
     if not isinstance(composition, dict):
@@ -30,7 +30,7 @@ def _body(run):
         return None, "ativo ou timeframe do run difere da composição gravada"
     try:
         body = json.loads(_canonical(composition))
-        body["context"].pop("symbol")
+        body["context"].pop(varied_dimension)
         digest = hashlib.sha256(_canonical(body).encode("utf-8")).hexdigest()
     except (TypeError, ValueError):
         return None, "composição com valor não finito; revisão não identificada"
@@ -183,9 +183,9 @@ def compare(db, robot_key):
                 groups=groups, unproven=unproven, curves=curves[:8])
 
 
-def _financial_row(run):
+def _financial_row(run, *, varied_dimension="symbol"):
     from mt5_extracao.robots.backtest import downsample
-    metrics=run.get('metrics') or {};body,reason=_body(run)
+    metrics=run.get('metrics') or {};body,reason=_body(run,varied_dimension=varied_dimension)
     curves={};issues=[]
     for key in ('equity','account_balance','floating_equity','performance_equity'):
         raw=run.get(key) or []
@@ -238,9 +238,26 @@ def scope_run(db, run, checkpoint=None):
     return saved
 
 
+def _observed_interval(row):
+    from mt5_extracao.trade_analytics.trajectories.clocks import bar_end_in_source
+    context = row['context']
+    if not isinstance(context, dict) or context.get('engine') != 'python_ohlcv_stop_first':
+        return None
+    try:
+        begin = pd.Timestamp(row['interval']['start'])
+        finish = pd.Timestamp(bar_end_in_source(row['interval']['end'], row['timeframe']))
+        if pd.notna(begin) and pd.notna(finish) and begin < finish:
+            return dict(start=begin.isoformat(), end=finish.isoformat())
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return None
+
+
 def compare_runs(db,run_ids,*,mode,guard=None):
     """Seleção explícita de runs; compara recibos, não gera uma execução nova."""
-    if mode not in ('same_asset','same_preset','same_scope'):raise ValueError('Modo exige same_asset, same_preset ou same_scope.')
+    if mode not in ('same_asset','same_preset','same_strategy','same_scope'):
+        raise ValueError('Modo exige same_asset, same_preset, same_strategy ou same_scope.')
+    compare_timeframes = mode in ('same_strategy', 'same_scope')
     low, high = (1, 512) if mode == 'same_scope' else (2, 8)
     if not isinstance(run_ids,(list,tuple)) or not low<=len(run_ids)<=high or any(not isinstance(i,str) or not i.strip() for i in run_ids) or len(set(run_ids))!=len(run_ids):raise ValueError(f'Selecione{low} a{high} run_ids distintos.')
     if guard is None:
@@ -255,26 +272,21 @@ def compare_runs(db,run_ids,*,mode,guard=None):
     for ident in run_ids:
         guard();found=store.load_runs(db,run_id=ident)
         if len(found)!=1:raise ValueError('Execução não encontrada: '+ident)
-        run=found[0];row=_financial_row(run);rows.append(row);ctx=row['context']
+        run=found[0]
+        row=_financial_row(run,varied_dimension='timeframe' if mode=='same_strategy' else 'symbol')
+        rows.append(row);ctx=row['context']
         if mode == 'same_scope':
             scope_checkpoint = scope_run(db, run, scope_checkpoint)
             row['body_hash'] = run['metrics']['backtest_scope']['preset_identity']['content_hash']
             row['revision_reason'] = None
-            row['observed_interval'] = None
-            try:
-                from mt5_extracao.trade_analytics.trajectories.clocks import bar_end_in_source
-                if not isinstance(ctx,dict) or ctx.get('engine')!='python_ohlcv_stop_first':raise ValueError()
-                begin=pd.Timestamp(row['interval']['start'])
-                finish=pd.Timestamp(bar_end_in_source(row['interval']['end'],row['timeframe']))
-                if pd.isna(begin) or pd.isna(finish) or begin>=finish:raise ValueError()
-                row['observed_interval']=dict(start=begin.isoformat(),end=finish.isoformat())
-            except (ValueError,TypeError,OverflowError):pass
         else:
             try:
                 comp=Composition(row['composition'])
                 if comp.config_hash!=row['composition_hash']:raise ValueError('hash da composição diverge')
                 if comp.to_dict()['context']!=dict(symbol=row['symbol'],timeframe=row['timeframe']):raise ValueError('contexto da composição diverge')
             except (ValueError,TypeError):problems.append(ident+': revisão de composição não comprovada')
+        if compare_timeframes:
+            row['observed_interval'] = _observed_interval(row)
         if not isinstance(ctx,dict) or ctx.get('schema_version')!=1 or not ctx.get('code_sha256'):
             problems.append(ident+': recibo de motor/configuração completo ausente');continue
         required={'engine','settings','trade_from','source','clock','instrument_spec','currency','currency_source','external_cashflows'}
@@ -288,25 +300,41 @@ def compare_runs(db,run_ids,*,mode,guard=None):
         if any(row['summary'][k] is None for k in ('trades','net_profit','initial_equity','max_drawdown_pct','final_balance','final_equity','max_floating_drawdown_pct')):problems.append(ident+': métricas/patrimônio completo ausentes')
         if not (row['summary']['initial_equity'] or 0)>0:problems.append(ident+': capital inicial inválido')
         try:
-            snapshot=datasets.for_run(db,ident) if mode=='same_scope' else datasets.load(db,row['data_manifest_id'])
+            snapshot=datasets.for_run(db,ident) if compare_timeframes else datasets.load(db,row['data_manifest_id'])
             if snapshot is None:raise ValueError('Snapshot indisponível')
             manifest=snapshot.manifest;snapshots[ident]=manifest
             if (manifest['symbol'],manifest['timeframe'])!=(row['symbol'],row['timeframe']) or manifest['source']!=ctx['source'] or manifest['time']!=ctx['clock']:raise ValueError()
             if not (row['data_quality'] or {}).get('eligibility',{}).get('eligible'):raise ValueError()
+            if mode=='same_strategy':
+                period = manifest['period']
+                interval = row['interval']
+                if (snapshot.manifest_id != row['data_manifest_id'] or period['rows'] != interval['bars']
+                        or pd.Timestamp(period['first']) != pd.Timestamp(interval['start'])
+                        or pd.Timestamp(period['last']) != pd.Timestamp(interval['end'])):
+                    raise ValueError('Período da execução não coincide com o snapshot')
         except (ValueError,TypeError,KeyError):problems.append(ident+': referência congelada/qualidade não comprovada')
     first=rows[0]
     for row in rows[1:]:
-        if mode != 'same_scope' and (row['timeframe']!=first['timeframe'] or row['interval']!=first['interval']):problems.append('Períodos, quantidade de barras ou timeframes diferentes')
+        if not compare_timeframes and (row['timeframe']!=first['timeframe'] or row['interval']!=first['interval']):problems.append('Períodos, quantidade de barras ou timeframes diferentes')
         if mode=='same_asset' and (row['symbol']!=first['symbol'] or row['data_manifest_id']!=first['data_manifest_id']):problems.append('Mesmo ativo exige o mesmo snapshot de dados')
         if mode=='same_preset' and (row['body_hash'] is None or row['body_hash']!=first['body_hash']):problems.append('Presets diferem além do ativo')
         if mode=='same_scope' and (row['body_hash'] is None or row['body_hash']!=first['body_hash']):problems.append('Composições diferem além do ativo/TF do mesmo plano')
+        if mode=='same_strategy':
+            if row['symbol'] != first['symbol']:
+                problems.append('Comparação entre tempos gráficos exige o mesmo ativo')
+            if (row['robot_key'] != first['robot_key'] or row['body_hash'] is None
+                    or row['body_hash'] != first['body_hash']
+                    or _canonical(row['effective_params']) != _canonical(first['effective_params'])):
+                problems.append('Estratégia ou parâmetros diferem além do timeframe')
         a,b=first['context'] or {},row['context'] or {}
         for key,label in [('engine','Motor'),('code_sha256','Código do motor'),('settings','Configuração de capital/risco/custos'),('trade_from','Início efetivo'),('source','Origem'),('clock','Relógio'),('currency','Moeda da conta')]:
             if a.get(key)!=b.get(key):problems.append(label+' diferente')
         if mode=='same_asset' and a.get('instrument_spec')!=b.get('instrument_spec'):problems.append('Especificação do instrumento diferente')
     if mode=='same_preset' and len({r['symbol'] for r in rows})<2:problems.append('Mesmo preset entre ativos exige ao menos dois ativos')
+    if mode=='same_strategy' and len({r['timeframe'] for r in rows}) != len(rows):
+        problems.append('Escolha uma execução por timeframe')
     configuration_compatible=not problems
-    if mode=='same_scope':
+    if compare_timeframes:
         specs={}
         for row in rows:
             spec=(row['context'] or {}).get('instrument_spec')
@@ -328,7 +356,7 @@ def compare_runs(db,run_ids,*,mode,guard=None):
             'Métricas vêm do motor canônico sobre a série completa. Curvas exibidas usam redução gráfica existente até240 pontos.',
             'Saldo de encerradas e patrimônio a mercado são separados; marcação por fechamento não mede drawdown intrabar.',
             'Compatibilidade de recibos não aprova estratégia, qualidade financeira ou desempenho futuro.'])
-    if mode=='same_scope':result['configuration_compatible']=configuration_compatible
+    if compare_timeframes:result['configuration_compatible']=configuration_compatible
     result['comparison_sha256']=hashlib.sha256(_canonical(result).encode()).hexdigest()
     return result
 

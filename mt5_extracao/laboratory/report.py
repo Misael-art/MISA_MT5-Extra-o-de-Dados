@@ -46,10 +46,11 @@ def render_runs(comparison):
     template = FINANCIAL_TEMPLATE
     if 'cells' in value:
         template = template.replace('<h1>Comparação de execuções gravadas</h1>', '<h1>Preset entre tempos gráficos</h1><p id="scope-context" class="notice"></p><section><h2>Matriz ativo × TF e estados</h2><p>Selecione uma célula para inspecionar a tentativa. Ausência não é zero; métricas usam a janela integral de cada TF.</p><div class="scroll"><table id="scope-matrix"></table></div><pre id="scope-detail"></pre></section>')
-        template = template.replace("palette[i]", "palette[i%palette.length]")
         template = template.replace('<label>Curva<select', '<label>Ativo<select id="scope-asset"></select></label><label>Curva<select')
-        template = template.replace('const data=R.rows.map', "const data=R.rows.filter(r=>!$('scope-asset')||r.symbol===$('scope-asset').value).map")
         template = template.replace("</script></html>", SCOPE_SCRIPT + "</script></html>")
+    elif value.get('mode') == 'same_strategy':
+        template = template.replace('Comparação de execuções gravadas', 'Mesma estratégia entre tempos gráficos')
+        template = template.replace('<svg id="curves"', '<fieldset id="curve-filter" class="controls"><legend>Execuções no gráfico</legend></fieldset><svg id="curves"')
     return template.replace('__CSS__',TEMPLATE.split('<style>',1)[1].split('</style>',1)[0]).replace('__DATA__',raw)
 
 
@@ -86,16 +87,64 @@ FINANCIAL_TEMPLATE=r'''<!doctype html><html lang="pt-BR"><meta charset="utf-8"><
 <title>Comparação de execuções gravadas</title><style>__CSS__</style><main>
 <h1>Comparação de execuções gravadas</h1><p id="status" class="notice"></p><p id="reasons"></p>
 <section><h2>Operações e capital</h2><p>Valores nas moedas declaradas de cada execução, sem conversão. — indica informação ausente. Drawdown de encerradas e patrimônio por fechamento têm bases distintas.</p><div class="scroll"><table id="results"></table></div></section>
-<section><h2>Curvas em fração do capital inicial</h2><label>Curva<select id="kind"><option value="floating_equity">Patrimônio a mercado</option><option value="account_balance">Saldo</option><option value="equity">Encerradas</option><option value="performance_equity">Patrimônio em cotas</option></select></label><svg id="curves" viewBox="0 0 1000 300" role="img" aria-label="Curvas gravadas normalizadas pelo capital inicial"></svg><p id="legend"></p><p class="muted">Eixo temporal no relógio gravado. Redução gráfica conserva extremos; métricas usam a série completa. Linhas entre amostras não descrevem o percurso intrabar.</p></section>
+<section><h2>Curvas em fração do capital inicial</h2><label>Curva<select id="kind"><option value="floating_equity">Patrimônio a mercado</option><option value="account_balance">Saldo</option><option value="equity">Encerradas</option><option value="performance_equity">Patrimônio em cotas</option></select></label><svg id="curves" viewBox="0 0 1000 300" role="img" aria-label="Curvas gravadas normalizadas pelo capital inicial"></svg><div id="legend" aria-live="polite"></div><p class="muted">Eixo temporal no relógio gravado. Redução gráfica conserva extremos; métricas usam a série completa. Linhas entre amostras não descrevem o percurso intrabar.</p></section>
 <section><h2>Período, revisão e custos</h2><div class="scroll"><table id="contexts"></table></div><details><summary>Recibos completos da seleção</summary><pre id="receipts"></pre></details></section><section id="limits"></section>
 </main><script id="data" type="application/json">__DATA__</script><script>
 'use strict';const R=JSON.parse(document.getElementById('data').textContent),$=id=>document.getElementById(id),fmt=v=>v===null||v===undefined?'—':typeof v==='number'?v.toLocaleString('pt-BR',{maximumFractionDigits:4}):String(v),pct=v=>v===null||v===undefined?'—':fmt(v*100)+'%';
 function table(id,heads,rows){const t=$(id),h=document.createElement('tr');heads.forEach(x=>{const e=document.createElement('th');e.textContent=x;h.append(e)});t.append(h);rows.forEach(values=>{const tr=document.createElement('tr');values.forEach(v=>{const e=document.createElement('td');e.textContent=fmt(v);if(typeof v==='number'||typeof v==='string'&&v.endsWith('%'))e.className='number';tr.append(e)});t.append(tr)})}
 $('status').textContent=R.compatible?'Recibos compatíveis para esta comparação. Estratégia e desempenho futuro continuam sem qualificação.':'Comparação com diferenças ou informações ausentes. Os resultados permanecem separados.';$('reasons').textContent=R.reasons.join(' · ');
 table('results',['Run / ativo / TF','Moeda','Operações','Lucro líquido','Capital inicial','Saldo final','Patrimônio final','Retorno de encerradas','DD encerradas','DD patrimônio'],R.rows.map(r=>{const s=r.summary;return [r.run_id+' · '+r.symbol+' · '+r.timeframe,r.currency||'não declarada',s.trades,s.net_profit,s.initial_equity,s.final_balance,s.final_equity,pct(s.return_pct),pct(s.max_drawdown_pct),pct(s.max_floating_drawdown_pct)]}));
-table('contexts',['Run','Período','Revisão','Modelo / custos declarados'],R.rows.map(r=>[r.run_id,r.interval.start+' → '+r.interval.end,r.composition_hash||r.body_hash,JSON.stringify(r.context?.settings||null)]));$('receipts').textContent=JSON.stringify(R,null,2);R.limitations.forEach(x=>{const p=document.createElement('p');p.textContent=x;$('limits').append(p)});
-function chart(){const svg=$('curves');svg.replaceChildren();const kind=$('kind').value,palette=['#2465ad','#c35a32','#14857c','#8454a2','#827400','#a63868','#405760','#4b6920'];const data=R.rows.map(r=>({row:r,points:(r.curves[kind]||[]).filter(p=>r.summary.initial_equity>0).map(p=>[Date.parse(p[0].replace(' ','T')+(/(?:Z|[+-]\d\d:\d\d)$/.test(p[0])?'':'Z')),p[1]/r.summary.initial_equity]).filter(p=>p.every(Number.isFinite))}));const all=data.flatMap(r=>r.points);if(!all.length){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',30);t.setAttribute('y',50);t.textContent='Sem curva/capital inicial válido nesta seleção.';svg.append(t);return}const xs=all.map(p=>p[0]),ys=all.map(p=>p[1]),a=Math.min(...xs),b=Math.max(...xs),lo=Math.min(1,...ys),hi=Math.max(1,...ys),x=v=>55+(v-a)/(b-a||1)*900,y=v=>260-(v-lo)/(hi-lo||1)*230;
-function node(tag,attrs){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));svg.append(n);return n}for(const v of [lo,1,hi]){node('line',{x1:55,x2:955,y1:y(v),y2:y(v),stroke:'#d4dce8'});node('text',{x:5,y:y(v)-3,fill:'#405760','font-size':14}).textContent=fmt(v)}data.forEach((r,i)=>node('polyline',{points:r.points.map(p=>x(p[0])+','+y(p[1])).join(' '),fill:'none',stroke:palette[i], 'stroke-width':2}));$('legend').replaceChildren();data.forEach((r,i)=>{const p=document.createElement('p');p.style.color=palette[i];p.textContent=r.row.symbol+' · '+r.row.timeframe+' · '+r.row.run_id+' · '+r.points.length+' pontos';$('legend').append(p)})}
+table('contexts',['Run','Período','Revisão','Modelo / custos declarados'],R.rows.map(r=>{const p=r.observed_interval||r.interval;return [r.run_id,p.start+' → '+p.end,r.composition_hash||r.body_hash,JSON.stringify(r.context?.settings||null)]}));$('receipts').textContent=JSON.stringify(R,null,2);R.limitations.forEach(x=>{const p=document.createElement('p');p.textContent=x;$('limits').append(p)});
+const palette=['#2465ad','#aa4723','#13796e','#8454a2','#827400','#a63868','#405760','#4b6920'];
+const selectedRuns=new Set(R.rows.map(row=>row.run_id));
+function chart(){
+ const svg=$('curves'),legend=$('legend'),kind=$('kind').value,asset=$('scope-asset');
+ svg.replaceChildren();legend.replaceChildren();
+ function node(tag,attrs){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));svg.append(n);return n}
+ const data=R.rows.map((row,index)=>({row,color:palette[index%palette.length]}))
+   .filter(({row})=>selectedRuns.has(row.run_id)&&(!asset||asset.value===row.symbol))
+   .map(({row,color})=>{
+      const initial=row.summary.initial_equity;
+      const points=initial>0?(row.curves[kind]||[]).map(([time,value])=>[
+          Date.parse(time.replace(' ','T')+(/(?:Z|[+-]\d\d:\d\d)$/.test(time)?'':'Z')),value/initial,time
+      ]).filter(([at,value])=>Number.isFinite(at)&&Number.isFinite(value)):[];
+      return {row,color,points};
+   });
+ const all=data.flatMap(series=>series.points);
+ if(!all.length){
+   node('text',{x:30,y:50}).textContent=selectedRuns.size?'Sem curva ou capital inicial válido.':'Selecione uma execução para exibir a curva.';
+   return;
+ }
+ const times=all.map(point=>point[0]),values=all.map(point=>point[1]);
+ const first=Math.min(...times),last=Math.max(...times);
+ let lo=Math.min(1,...values),hi=Math.max(1,...values);
+ if(lo===hi){lo-=.005;hi+=.005;}
+ const x=value=>62+(value-first)/(last-first||1)*874,y=value=>246-(value-lo)/(hi-lo)*212;
+ for(const value of new Set([lo,1,hi])){
+   node('line',{x1:62,x2:936,y1:y(value),y2:y(value),stroke:value===1?'#617590':'#d4dce8'});
+   node('text',{x:5,y:y(value)+4,fill:'#405760','font-size':14}).textContent=fmt(value);
+ }
+ for(const [instant,anchor] of [[first,'start'],[last,'end']]){
+   const tick=node('text',{x:x(instant),y:281,'text-anchor':anchor,fill:'#405760','font-size':13});
+   tick.textContent=all.find(([at])=>at===instant)[2].slice(0,16).replace('T',' ');
+   if(first===last)break;
+ }
+ for(const {row,color,points} of data){
+   if(points.length===1)node('circle',{cx:x(points[0][0]),cy:y(points[0][1]),r:4,fill:color});
+   if(points.length>1)node('polyline',{points:points.map(([at,value])=>x(at)+','+y(value)).join(' '),fill:'none',stroke:color,'stroke-width':2.5});
+   const caption=document.createElement('p');caption.style.color=color;
+   caption.textContent=row.symbol+' · '+row.timeframe+' · '+row.run_id+' · '+points.length+' pontos';legend.append(caption);
+ }
+}
+const filter=$('curve-filter');
+if(filter)R.rows.forEach(row=>{
+ const label=document.createElement('label'),choice=document.createElement('input');
+ label.style.display='flex';label.style.alignItems='center';
+ choice.type='checkbox';choice.checked=true;choice.title=row.run_id;
+ choice.onchange=()=>{if(choice.checked)selectedRuns.add(row.run_id);else selectedRuns.delete(row.run_id);chart();};
+ choice.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();choice.click();}};
+ label.append(choice,row.timeframe);filter.append(label);
+});
 $('kind').onchange=chart;chart();</script></html>'''
 
 
