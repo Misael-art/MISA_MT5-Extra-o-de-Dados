@@ -1,5 +1,11 @@
 # Plano de trabalho detalhado
 
+## DASH-07 — teste de fronteira do corte gravado
+
+O caso do Filtro C usa a data UTC persistida para testar tanto a exclusão
+antes da gravação quanto a inclusão no instante declarado. O teste independe
+da resolução do relógio do runner.
+
 ## LAB-07 — relação descritiva por fechamento comum
 
 O SDK, a CLI, o HTML e o Laboratório informam o coeficiente de Pearson, a
