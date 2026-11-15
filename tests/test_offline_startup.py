@@ -172,7 +172,9 @@ def create(root,offline=False,config_path="config/config.ini"):
             assert ui.notebook.select()==str(panel.frame)
             assert len(panel.data)==600
             assert set(panel._canvases)=={'chart','season','returns'},set(panel._canvases)
-            assert panel._canvases['chart'].get_tk_widget().winfo_ismapped()
+            if not panel._canvases['chart'].get_tk_widget().winfo_ismapped():
+                assert time.monotonic()<deadline,'chart visibility timeout'
+                root.after(50,inspect_analysis);return
             assert not instance.mt5_connector.is_initialized and instance.offline
             proof.update(rows=len(panel.data),mode=ui.mt5_status_value.cget('text'),sdk_calls=len(calls))
             root.destroy()
