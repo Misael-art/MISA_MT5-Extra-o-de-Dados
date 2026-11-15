@@ -169,36 +169,36 @@ def outcome_counts(lab: pd.DataFrame, dimension: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=columns)
 
 
-def hourly_summary(lab: pd.DataFrame, config=None) -> dict:
-    """Grade diária explícita, sem resultado inventado para faixas sem medida.
-
-    Metadados distinguem operações sem faixa válida e sem PnL disponível.
-    As métricas dos grupos observados vêm de by_dimension, sem interpolação.
-    """
-    from mt5_extracao.trade_analytics import enrich
-
-    minutes = enrich.time_bucket_minutes(config)
-    labels = [f"{minute // 60:02d}:{minute % 60:02d}" for minute in range(0, 1440, minutes)]
-    timed = lab.loc[lab["time_bucket"].isin(labels)] if not lab.empty else lab
+def _calendar_summary(lab: pd.DataFrame, dimension, labels, metrics, config) -> dict:
+    """Métricas canônicas para subgrupos medidos e lacunas explícitas na grade."""
+    timed = lab.loc[lab[dimension].isin(labels)] if not lab.empty else lab
     numbers = _pnl_numbers(timed["pnl"]) if not timed.empty else np.array([], dtype=float)
     finite = np.isfinite(numbers)
     measured = timed.loc[finite].copy()
     if not measured.empty:
         measured["pnl"] = numbers[finite]
-    observed = by_dimension(measured, ["time_bucket"], config, ci=False)
-    if observed.empty:
-        table = pd.DataFrame({"time_bucket": labels, "n": 0, "expectancy": np.nan,
-                              "win_rate": np.nan, "small": False})
-    else:
-        table = observed.set_index("time_bucket").reindex(labels)
-        table.index.name = "time_bucket"
-        table["n"] = table["n"].fillna(0).astype(int)
-        missing = table["n"].eq(0)
-        table.loc[missing, ["expectancy", "win_rate"]] = np.nan
-        table["small"] = table["small"].astype("boolean").fillna(False).astype(bool) & ~missing
-        table = table.reset_index()[["time_bucket", "n", "expectancy", "win_rate", "small"]]
-    return {"table": table, "bucket_min": minutes, "timed_n": len(timed), "measured_n": len(measured),
+    columns = [dimension, "n", *metrics, "small"]
+    observed = by_dimension(measured, [dimension], config, ci=False)
+    table = observed.reindex(columns=columns).set_index(dimension).reindex(labels)
+    table["n"] = table["n"].astype("Int64").fillna(0).astype(int)
+    table["small"] = table["small"].astype("boolean").fillna(False).astype(bool)
+    return {"table": table.reset_index(), "timed_n": len(timed), "measured_n": len(measured),
             "untimed_n": len(lab) - len(timed), "missing_result_n": len(timed) - len(measured)}
+
+
+def hourly_summary(lab: pd.DataFrame, config=None) -> dict:
+    """Grade diária com as faixas configuradas e motivos das exclusões."""
+    from mt5_extracao.trade_analytics import enrich
+
+    minutes = enrich.time_bucket_minutes(config)
+    labels = [f"{minute // 60:02d}:{minute % 60:02d}" for minute in range(0, 1440, minutes)]
+    return dict(_calendar_summary(lab, "time_bucket", labels, ("expectancy", "win_rate"), config),
+                bucket_min=minutes)
+
+
+def monthday_summary(lab: pd.DataFrame, config=None) -> dict:
+    """Expectativa por operação no dia 1 a 31, agrupando as operações de todos os meses do recorte."""
+    return _calendar_summary(lab, "day_of_month", range(1, 32), ("expectancy",), config)
 
 
 def crosstab(lab: pd.DataFrame, row: str, col: str, metric: str = "expectancy", config=None) -> Dict[str, pd.DataFrame]:

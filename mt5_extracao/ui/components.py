@@ -678,7 +678,7 @@ class ScrollableContent(ttk.Frame):
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
-        self.content.bind("<Configure>", self._content_changed, add="+")
+        self.content.bind("<Configure>", self.refresh_layout, add="+")
         self.canvas.bind("<Configure>", self._canvas_changed, add="+")
         self.canvas.bind("<Prior>", lambda event: self._page(-1))
         self.canvas.bind("<Next>", lambda event: self._page(1))
@@ -698,9 +698,10 @@ class ScrollableContent(ttk.Frame):
 
     def _canvas_changed(self, event):
         self.canvas.itemconfigure(self._window, width=event.width)
-        self._content_changed()
+        self.refresh_layout()
 
-    def _content_changed(self, _event=None):
+    def refresh_layout(self, _event=None):
+        """Atualiza a área de rolagem quando filhos passam a pedir mais espaço."""
         if self._geometry_sync is None:
             self._geometry_sync = self.after_idle(self._sync_content)
 

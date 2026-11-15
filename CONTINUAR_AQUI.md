@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Expectativa por dia do mês no Laboratório
+
+A grade mantém as posições de 1 a 31 entre os meses do recorte. Selecionar
+um dia no gráfico ou no controle Dia mostra sua expectativa por operação e
+a amostra. Zero observado tem marca neutra e dias sem observações têm outra
+marca. A faixa de contexto informa as exclusões por dia ou PnL inválido.
+A área de rolagem reserva a altura do gráfico ao abrir a guia. Passaram 29
+testes focados no Linux, incluindo navegação e redimensionamento em Tk/Xvfb.
+
 ## Quarentena após cancelamento por orçamento do Tester
 
 As suítes Linux das PRs 340 e 342 encontraram o teste que ainda esperava
