@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T20.4 — reaproveitamento do snapshot validado na captura
+
+A captura de mercado e a captura somente de séries retornam o snapshot
+reconstruído para validar o pacote. A transação confere a correspondência
+dos bytes gravados. Na bancada com um ativo e dois tempos gráficos, a
+fase de preparação passou de seis para quatro reconstruções de snapshot.
+Passaram 36 testes, inclusive a exportação byte a byte de um snapshot v3.
+
 ## LAB-05/06 — vínculo e grade das comparações financeiras
 
 As comparações de execuções exigem que a revisão de dados esteja vinculada

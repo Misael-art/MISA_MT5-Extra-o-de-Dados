@@ -633,8 +633,7 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
     payload = _json(manifest)
     bundle = {"format": f"mt5x.dataset.v{version}", "manifest_id": _hash(payload), "manifest": manifest, "blocks": blocks}
     if guard is not None:guard()
-    _persist(db, bundle,guard=guard)
-    return load(db, bundle["manifest_id"])
+    return _persist(db, bundle, guard=guard)
 
 
 def _feature_only_bounds(manifest):
@@ -671,8 +670,8 @@ def _capture_feature_only(db,symbol,timeframe,start,end,source,pairs,guard):
     for role,frame,column in [('feature_definitions',definitions,'registered_at_utc'),('feature_history',history,'observation_time')]:
         guard();manifest['frames'][role]=_blocks(frame,column,blocks)
     payload=_json(manifest);bundle=dict(format=f'mt5x.dataset.v{FEATURE_ONLY_VERSION}',manifest_id=_hash(payload),manifest=manifest,blocks=blocks)
-    guard();_persist(db,bundle,guard=guard)
-    return load(db,bundle['manifest_id'])
+    guard()
+    return _persist(db, bundle, guard=guard)
 
 
 def _validate_features(manifest, frames):
@@ -856,11 +855,13 @@ def _validated(bundle):
 
 
 def _persist(db, bundle, *, guard=None):
-    _validated(bundle)
+    snapshot = _validated(bundle)
     _schema(db)
     with _LOCK, db.engine.begin() as conn:
         _persist_validated(conn, bundle,guard=guard)
         if guard is not None:guard()
+    # O retorno usa a mesma reconstrução que validou os bytes conferidos na transação.
+    return snapshot
 
 
 def _persist_validated(conn, bundle, *, guard=None):

@@ -1,5 +1,12 @@
 # Retomar MT5X em um host limpo
 
+## Captura retorna o snapshot validado na gravação
+
+A captura valida o conteúdo, grava e confere os blocos e o manifesto na
+transação. O retorno reaproveita o snapshot já reconstruído. A reabertura
+continua validando os dados no banco, inclusive quando o bloco foi alterado.
+A bancada confirmou 36 testes, incluindo séries, importação e reabertura.
+
 ## Grade e vínculo na comparação de execuções gravadas
 
 A comparação confere o snapshot vinculado a cada execução e a correspondência
