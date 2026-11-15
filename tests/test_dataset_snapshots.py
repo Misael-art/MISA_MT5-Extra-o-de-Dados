@@ -48,6 +48,26 @@ def test_identity_is_stable_and_old_revision_survives_correction(db):
     assert datasets.load(db, first.manifest_id).manifest["symbol"] == "X"
 
 
+def test_capture_returns_the_validated_snapshot_and_checks_existing_bytes(db, monkeypatch):
+    checked = []
+    validate = datasets._validated
+
+    def observe(bundle):
+        checked.append(bundle['manifest_id'])
+        return validate(bundle)
+
+    monkeypatch.setattr(datasets, '_validated', observe)
+    captured = datasets.capture(db, 'X', 'H1')
+    assert checked == [captured.manifest_id]
+    stored = datasets.load(db, captured.manifest_id)
+    assert stored.manifest == captured.manifest
+    pd.testing.assert_frame_equal(stored.bars, captured.bars)
+    with db.engine.begin() as conn:
+        conn.execute(text("UPDATE _dataset_blocks SET payload_json='{}'"))
+    with pytest.raises(ValueError, match='Bloco existente sem integridade'):
+        datasets.capture(db, 'X', 'H1')
+
+
 def test_late_ingestion_and_spec_or_calendar_changes_have_new_identity(db):
     first = datasets.capture(db, "X", "H1")
     frame = bars([[100, 101, 99, 100]], start="2025-01-07 03:00", freq="h")
