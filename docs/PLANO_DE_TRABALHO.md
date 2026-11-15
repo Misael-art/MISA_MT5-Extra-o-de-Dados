@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T19.33 / T20.22 — mesma estratégia entre tempos gráficos
+
+O Laboratório, SDK e CLI aceitam seleção explícita de execuções no mesmo ativo
+em tempos gráficos distintos. O comparador confere parâmetros, revisão,
+snapshots e fechamento nominal de cada janela. HTML com sobreposição
+selecionável, legenda e alternância de saldo e patrimônio. Serviço, CLI, Tk
+em Xvfb e controles do relatório foram verificados com dados próprios.
+
 ## T20.11 — primeira divergência do Tester e Replay
 
 O comparador das sessões usa os instantes conhecidos do broker e confere

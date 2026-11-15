@@ -1,5 +1,18 @@
 # Retomar MT5X em um host limpo
 
+## Laboratório — mesma estratégia entre tempos gráficos
+
+O modo `same_strategy` compara de duas a oito execuções gravadas de uma
+estratégia em um ativo, com uma execução por timeframe. A conferência inclui
+parâmetros efetivos, motor, contrato, custos, moeda, snapshots vinculados e a
+janela do início ao fechamento nominal da última barra. Divergências mantêm
+as métricas no período original de cada execução. SDK, CLI, janela do
+Laboratório e relatório HTML usam o mesmo serviço.
+Dois testes de serviço/CLI e um teste Tk em Xvfb passaram no Linux. O HTML
+foi aberto no navegador com dados próprios. Alternaram as curvas de saldo e
+patrimônio e a seleção M2 pelo teclado, com as duas curvas restauradas e sem
+erros de execução no navegador.
+
 ## Reconciliação do Tester e Replay por instante
 
 O comparador ordena diferenças pelo relógio broker dos eventos disponíveis,
