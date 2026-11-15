@@ -78,6 +78,24 @@ def test_invalid_bars_are_not_eligible_for_price_consumer(problem):
     assert not q.evaluate(q.assess(frame), ("ohlcv",))["eligible"]
 
 
+def test_assessment_keeps_partial_price_and_nullable_quantity_capabilities():
+    frame = prices()
+    frame["open"] = pd.Series([pd.NA, 100, 100, 100, 100, 100], dtype="Float64")
+    frame["close"] = ["100"] * len(frame)
+    frame["tick_volume"] = pd.Series([1, 0, pd.NA, 1, 1, 1], dtype="Int64")
+    frame["spread"] = [0, -1, 0, 0, 0, 0]
+    original = frame.copy(deep=True)
+
+    capabilities = q.assess(frame)["capabilities"]
+    assert capabilities["ohlcv"]["state"] == "invalid"
+    assert capabilities["ohlc_prices"]["state"] == "invalid"
+    assert capabilities["price_open"]["state"] == "missing"
+    assert capabilities["price_close"]["state"] == capabilities["hlc"]["state"] == "available"
+    assert capabilities["tick_volume"]["state"] == capabilities["spread"]["state"] == "missing"
+    assert capabilities["real_volume"]["state"] == "unknown"
+    pd.testing.assert_frame_equal(frame, original)
+
+
 def test_gap_diagnostic_does_not_claim_full_coverage_or_block_unrelated_price_study():
     frame = prices()
     frame["time"] = pd.date_range("2025-01-06 09:00", periods=6, freq="h")

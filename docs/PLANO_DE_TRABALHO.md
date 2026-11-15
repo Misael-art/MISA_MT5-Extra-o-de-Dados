@@ -1,5 +1,26 @@
 # Plano de trabalho detalhado
 
+## T17.22/T20.24 — regressões da candidata no CI Windows
+
+A verificação da Análise offline separa a conclusão da carga das barras da
+renderização da guia visível. A sessão ainda precisa exibir Gráfico,
+Sazonalidade e Retornos sem conectar ao terminal. A verificação da interrupção
+do Tester lê o recibo UTF-8 com a mesma codificação do gravador, preservando a
+asserção da mensagem completa e a liberação dos recursos da sessão.
+
+## BD04 — avaliação de qualidade sem reconversões
+
+Preços, volumes e spread reaproveitam a conversão numérica inicial. A seleção
+de vigência retorna cedo quando a janela e o corte não oferecem candidatos.
+Na medição sintética, 35 avaliações passaram de 2,069 s para 0,382 s e 24
+consultas de contexto de 0,766 s para 0,169 s, com respostas idênticas.
+Na repetição em ordem inversa, as avaliações passaram de 9,252 s para
+3,118 s e os contextos de 3,306 s para 1,289 s. A pressão do host variou
+entre as rodadas e a saída serializada permaneceu idêntica.
+Passaram 96 testes. O pacote v3 legado mantém a exportação byte a byte.
+O cenário de três ativos passou. No de seis, o teste atingiu 60 s. A
+reabertura de uma cópia comprovou 12 execuções gravadas e 126 células.
+
 ## BD04 — gravação de OHLCV com lotes de parâmetros
 
 O upsert reutiliza a instrução ao gravar as barras escolhidas pelos recibos.

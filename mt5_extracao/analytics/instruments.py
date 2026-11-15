@@ -164,6 +164,8 @@ def select(frame, kind, at, *, known_at=None):
         return frame.copy()
     rows = frame[(frame.kind == kind) & frame.valid_from.notna() &
                  (pd.to_datetime(frame.known_at, utc=True, format="ISO8601") <= cutoff)].copy()
+    if rows.empty:
+        return rows.reset_index(drop=True)
     # Uma correção pode invalidar/restringir o intervalo anterior: resolver revisão antes da vigência.
     keys = ["symbol", "kind", "event_key"]
     latest = rows.groupby(keys)["known_at"].transform("max")

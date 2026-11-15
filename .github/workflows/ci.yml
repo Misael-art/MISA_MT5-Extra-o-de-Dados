@@ -42,9 +42,12 @@ jobs:
         run: |
           python -m venv --system-site-packages .venv
           python -m mt5_extracao.bootstrap configure --non-interactive --skip-credentials --no-doctor
-      - name: Contexto visual (processo isolado antes da suíte)
+      - name: Regressões focadas (processo isolado antes da suíte)
         if: runner.os == 'Windows'
-        run: python -m pytest -v tests/test_ui_robot_context.py tests/test_ui_robot_viewport.py
+        run: >-
+          python -m pytest -v tests/test_ui_robot_context.py tests/test_ui_robot_viewport.py
+          tests/test_offline_startup.py::test_main_entrypoint_analyzes_local_data_and_exits_without_sdk
+          tests/test_preset_replay_cleanup.py::test_budget_expiry_cancels_session_and_releases_next_tester
       - name: pytest (com cobertura mínima de 60% no núcleo)
         run: >-
           python -m pytest -v

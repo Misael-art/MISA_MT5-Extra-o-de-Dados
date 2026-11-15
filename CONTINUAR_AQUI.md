@@ -1,5 +1,22 @@
 # Retomar MT5X em um host limpo
 
+## Regressões Windows na candidata da PR 350
+
+O teste da Análise offline carrega as 600 barras com a janela oculta e
+confere os três gráficos quando a guia fica visível. Continua verificando
+que a sessão não chama o SDK do MetaTrader. Os testes de encerramento do
+Tester leem o recibo em UTF-8 e conferem os acentos e a liberação da sessão.
+A revisão é uma extensão da PR 350 e conserva o runtime da candidata.
+
+## Qualidade das barras com conversão compartilhada
+
+A avaliação reaproveita a normalização das colunas de preços e quantidades.
+A seleção de vigência evita agrupar conjuntos sem candidatos. Os diagnósticos
+e os contextos produziram resultados idênticos nas massas comparadas.
+Passaram 96 testes de qualidade, capacidades e histórico de instrumentos.
+A reabertura do lote de seis ativos verificou 12 execuções gravadas e 126
+células. O teste de duração do lote ainda atingiu o limite de 60 s.
+
 ## Gravação de barras reutiliza o comando entre lotes
 
 A gravação de OHLCV usa uma instrução parametrizada nos lotes de 200 barras.

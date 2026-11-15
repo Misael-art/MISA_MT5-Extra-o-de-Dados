@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 
+import numpy as np
 import pandas as pd
 
 from mt5_extracao.data_quality import check_quality
@@ -166,6 +167,7 @@ def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=N
 
     timed = False
     diagnostic = None
+    finite_columns = set()
     if bars is not None and not bars.empty:
         data = bars.copy()
         if "time" in data:
@@ -173,8 +175,13 @@ def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=N
             timed = bool(data.time.notna().all())
         numeric = [c for c in BAR_FAMILIES if c != "time" and c in data]
         data[numeric] = data[numeric].apply(pd.to_numeric, errors="coerce")
+        finite_columns = {
+            column for column in numeric
+            if not pd.api.types.is_complex_dtype(data[column])
+            and np.isfinite(data[column].to_numpy(dtype=float, na_value=np.nan)).all()
+        }
         bars = data
-    valid = bool(timed and _finite(bars, ("open", "high", "low", "close")))
+    valid = timed and {"open", "high", "low", "close"} <= finite_columns
     if valid:
         diagnostic = check_quality(bars, bar_minutes=bar_minutes)
         # O diagnóstico faz parte do hash dos snapshots v3 já publicados. Mantém
@@ -190,21 +197,18 @@ def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=N
     measured = bar_origin(bars, evidence, symbol, timeframe) if timed else {"origin": "unknown"}
     cap("ohlcv", "available" if valid else "invalid", "OHLCV finitos e horários únicos." if valid else "OHLCV ausentes, inválidos ou com horários duplicados.", **measured)
     for column in ("open", "high", "low", "close"):
-        good = _finite(bars, (column,))
+        good = column in finite_columns
         cap(BAR_FAMILIES[column], "available" if good else "missing", f"Preço {column} disponível." if good else f"Falta preço {column} finito.", origin=measured["origin"])
-    for family, columns in (("hl", ("high", "low")), ("hlc", ("high", "low", "close")),
-                            ("ohlc_prices", ("open", "high", "low", "close"))):
-        good = _finite(bars, columns)
-        if good:
-            prices = bars[list(columns)].apply(pd.to_numeric)
-            good = (prices.high >= prices.low).all()
-            for column in (set(columns) & {"open", "close"}):
-                good = good and prices[column].between(prices.low, prices.high).all()
+    ordered_range = {"high", "low"} <= finite_columns and bars.high.ge(bars.low).all()
+    inside_range = {column for column in finite_columns & {"open", "close"}
+                    if ordered_range and bars[column].between(bars.low, bars.high).all()}
+    for family, enclosed in (("hl", set()), ("hlc", {"close"}), ("ohlc_prices", {"open", "close"})):
+        good = ordered_range and enclosed <= inside_range
         cap(family, "available" if good else "invalid", "Preços necessários finitos e coerentes entre si." if good else "Faltam preços necessários ou há contradição entre eles.", origin=measured["origin"])
     cap("bar_time", "available" if timed else "missing", "Horário da barra não comprova seu fechamento/disponibilidade." if timed else "Falta horário válido.", origin=measured["origin"])
     for name, column in (("tick_volume", "tick_volume"), ("real_volume", "real_volume"), ("spread", "spread")):
-        good = _finite(bars, (column,), nonnegative=True)
-        if name == "real_volume" and good and not (pd.to_numeric(bars[column]) > 0).any():
+        good = column in finite_columns and bars[column].ge(0).all()
+        if name == "real_volume" and good and not bars[column].gt(0).any():
             cap(name, "unknown", "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui.")
         else:
             cap(name, "available" if good else "missing", f"Coluna {column} disponível." if good else f"Falta {column} válido; não há substituição por outra família.", origin=measured["origin"])

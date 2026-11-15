@@ -35,7 +35,7 @@ def test_completed_report_closes_own_children_before_release_but_keeps_result(ro
     job.run()
     assert job.state=="completed" and job.record is record
     assert events==["imported","close-own","released"]
-    report=json.loads(job.report.read_text())
+    report=json.loads(job.report.read_text(encoding="utf-8"))
     assert report["resources_released"] and report["run"]==record
     assert not (mt5_tools.paths.state_dir()/"native-active.json").exists()
     with mt5_tools.tester_lease():
@@ -77,7 +77,7 @@ def test_budget_expiry_cancels_session_and_releases_next_tester(robot, tmp_path,
     monkeypatch.setattr(job, '_stop_owned', lambda: events.append('stopped'))
     monkeypatch.setattr(mt5_tools, '_native_context_processes', lambda _context: [])
     job.run()
-    receipt = json.loads(job.report.read_text())
+    receipt = json.loads(job.report.read_text(encoding='utf-8'))
     assert job.state == 'cancelled' and job.record is None and events == ['stopped']
     assert receipt['state'] == 'cancelled' and receipt['resources_released']
     assert receipt['error'] == 'Prazo do lote atingido durante a compilação.'
@@ -101,7 +101,7 @@ def test_surviving_child_keeps_owner_and_blocks_next_tester_without_losing_resul
     monkeypatch.setattr(backtest,"run_mql5",native)
     monkeypatch.setattr(mt5_tools,"_native_context_processes",lambda context:list(alive))
     job.run()
-    report=json.loads(job.report.read_text())
+    report=json.loads(job.report.read_text(encoding="utf-8"))
     marker=mt5_tools.paths.state_dir()/"native-active.json"
     assert stopped==[1] and job.state=="completed" and job.record is record
     assert report["resources_released"] is False and report["run"]==record
