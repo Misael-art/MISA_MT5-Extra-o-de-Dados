@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## Preset, bateria e identidade MQL5 no Dashboard
+
+A bateria aparece junto ao resultado quando está vinculada à execução e ao
+escopo registrados. Baterias de referência ficam em evidências ocultas. A
+identidade exibida vem da execução escolhida ou de sua própria bateria.
+O preset nativo é lido por `run_id` e só aparece como associado após conferir
+ativo, timeframe, Expert, fingerprint e instante da gravação no corte. Quando
+o vínculo nativo constar do recibo, a faixa expõe os hashes do fonte, `.ex5`,
+wrapper e inputs. Journals e arquivos locais continuam na bancada da sessão.
+A prova deste fluxo usa base isolada e recibos sintéticos.
+
 ## Recibo do Filtro C no Dashboard
 
 Os novos recibos guardam o instante da gravação em UTC, o período e a amostra

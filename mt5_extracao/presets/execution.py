@@ -225,12 +225,13 @@ def _ledger_rows(db,record,signals, *, target_required=True):
     return output
 
 
-def load_evidence(db,*,execution_hash=None):
+def load_evidence(db,*,execution_hash=None,run_id=None):
     if not inspect(db.engine).has_table("_preset_native_runs"):
         return []
     with db.engine.connect() as conn:
-        query="SELECT evidence_json FROM _preset_native_runs";params={}
-        if execution_hash is not None:query+=" WHERE execution_hash=:hash";params["hash"]=execution_hash
+        query="SELECT evidence_json FROM _preset_native_runs"
+        params={key:value for key,value in (("execution_hash",execution_hash),("run_id",run_id)) if value is not None}
+        if params:query+=" WHERE "+" AND ".join(f"{key}=:{key}" for key in params)
         return [json.loads(row[0]) for row in conn.execute(text(query+" ORDER BY created_at DESC,run_id DESC"),params)]
 
 

@@ -128,3 +128,57 @@ def test_battery_projection_still_sees_cited_run_metrics(db):
                           "run_id": "r-bad", "items": [], "created_at": "2026-01-03 10:00:00"})
     section = sections(generator.generate_robot(db, robot_key="qa.robot", as_of=LATER.isoformat()))["robot:battery"]
     assert section["source_status"] == "BATTERY_REJECTED" and section["evidence"]["allows_real"] is False
+    assert not section["default_visible"] and not section["evidence"]["linked_to_selected_run"]
+
+
+def test_selected_run_only_uses_its_own_battery_fingerprint(db):
+    store.save_run(db, run("r-chosen", created="2026-01-02 10:00:00"))
+    store.save_run(db, run("r-other", created="2026-01-03 10:00:00"))
+    common = {"robot_key": "qa.robot", "preset": "p", "approved": True, "allows_real": False,
+              "static_status": "ok", "statistical_status": "aprovada", "items": [],
+              "symbol": "QA", "timeframe": "M5"}
+    store.save_check(db, {**common, "check_id": "chosen", "run_id": "r-chosen",
+                          "fingerprint": "f-1", "created_at": "2026-01-04 10:00:00"})
+    store.save_check(db, {**common, "check_id": "other", "run_id": "r-other",
+                          "fingerprint": "f-2", "created_at": "2026-01-05 10:00:00"})
+    store.save_check(db, {**common, "check_id": "wrong-timeframe", "run_id": "r-chosen",
+                          "fingerprint": "f-3", "timeframe": "M1", "created_at": "2026-01-06 10:00:00"})
+    snapshot = generator.generate_robot(db, robot_key="qa.robot", as_of=LATER.isoformat(), run_id="r-chosen")
+    assert snapshot["subject"]["fingerprint"] == "f-1"
+    battery = sections(snapshot)["robot:battery"]
+    assert battery["default_visible"] and battery["evidence"]["linked_to_selected_run"]
+    assert battery["source_refs"][0]["check_id"] == "chosen"
+
+
+def test_native_preset_receipt_follows_exact_run_identity_and_cut(db):
+    from mt5_extracao.presets.execution import _save_evidence, load_evidence
+
+    store.save_record(db, "qa.robot", "mql5", "Expert QA", stage="bateria")
+    for run_id, fingerprint in (("exact", "f1"), ("later", "f2"), ("wrong", "f3")):
+        native = run(run_id, created="2026-01-02 10:00:00")
+        native["metrics"]["source_fingerprint"] = fingerprint
+        store.save_run(db, native)
+    common = {"preset_native_evidence_schema_version": 1, "mode": "replay", "status": "reconciled_replay",
+              "preset": {"id": "manual", "category": "Manual", "label": "Preset QA", "revision": 3},
+              "context": {"symbol": "QA", "timeframe": "M5"}, "session": "sessao", "execution_hash": "execution",
+              "package_hash": "package", "set_sha256": "inputs", "created_at": "2026-01-05T10:00:00+00:00",
+              "inputs": {"runtime_binding": {"native_verified": True, "preset_hash": "package", "revision": 3,
+                         "binary_hash": "ex5", "session_id": "sessao", "symbol": "QA", "timeframe": "M5"}},
+              "ledger": ["sem exposição no Dashboard"]}
+    for run_id, fingerprint in (("exact", "f1"), ("later", "f2"), ("wrong", "different")):
+        proof = {**common, "run_id": run_id, "source": {"key": "qa.robot", "fingerprint": fingerprint, "version": "2.18"}}
+        if run_id == "later":
+            proof["created_at"] = "2026-01-07T10:00:00+00:00"
+        _save_evidence(db, proof)
+    cut = "2026-01-06T10:00:00+00:00"
+    assert load_evidence(db, run_id="exact", execution_hash="other") == []
+    snapshot = generator.generate_robot(db, robot_key="qa.robot", as_of=cut, run_id="exact")
+    receipt = sections(snapshot)["robot:native-identity"]
+    assert snapshot["subject"]["fingerprint"] == "f1"
+    assert receipt["evidence"]["preset"]["revision"] == 3
+    assert receipt["evidence"]["runtime_verified"] and receipt["evidence"]["runtime_artifacts"]["binary_hash"] == "ex5"
+    assert "ledger" not in receipt["evidence"]
+    for run_id, state in (("later", "NO_RECEIPT_AT_CUT"), ("wrong", "SCOPE_MISMATCH")):
+        snapshot = generator.generate_robot(db, robot_key="qa.robot", as_of=cut, run_id=run_id)
+        receipt = sections(snapshot)["robot:native-identity"]
+        assert receipt["evidence"]["preset_receipt_state"] == state and len(receipt["source_refs"]) == 1

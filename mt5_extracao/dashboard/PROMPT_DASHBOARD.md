@@ -627,6 +627,16 @@ O produtor guarda a última validação para cada estratégia nesse escopo.
 As demonstrações usam dados sintéticos. Custos observados e vigência histórica
 do contrato dependem da respectiva evidência de mercado.
 
+### Bateria e preset da execução selecionada
+
+No modo Robô a bateria é vinculada pelo `run_id`, pelo ativo e timeframe
+quando declarados, e pela impressão digital quando conhecida. A evidência
+de outra execução continua auditável nas faixas ocultas. O recibo nativo é
+associado pelo mesmo `run_id`, escopo, fonte e instante no corte. O painel
+preserva a revisão, os hashes e o resultado da conferência do Replay gravado.
+O vínculo de runtime associa a sessão, o pacote, a revisão e o mercado ao
+binário efetivo. O estado ausente ou divergente fica explícito no painel.
+
 ## Biblioteca do MT5X
 
 A página **Biblioteca** é uma rota somente de leitura do Dashboard local. O
