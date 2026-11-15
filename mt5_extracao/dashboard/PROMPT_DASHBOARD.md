@@ -616,6 +616,17 @@ Integrações analíticas ausentes, registradas à parte e sem bloquear o Expert
 surpresa comparável (produtor inexistente), hipóteses T13.4, recibos reais do
 Filtro C, bateria/preset/fingerprint MQL5 gravados e baseline de novidade.
 
+### Recibos novos do Filtro C
+
+O Dashboard lê o próprio recibo da validação no ativo e timeframe selecionados.
+A linha do tempo distingue treino e teste e permite escolher uma janela por
+teclado. A evidência mostra amostra, tentativas da grade, parâmetros efetivos,
+critérios, robustez, Monte Carlo, custo simulado e contrato aplicado.
+Recibos legados publicados sem esses campos mantêm o estado de ausência.
+O produtor guarda a última validação para cada estratégia nesse escopo.
+As demonstrações usam dados sintéticos. Custos observados e vigência histórica
+do contrato dependem da respectiva evidência de mercado.
+
 ## Biblioteca do MT5X
 
 A página **Biblioteca** é uma rota somente de leitura do Dashboard local. O

@@ -1,5 +1,12 @@
 # Plano de trabalho detalhado
 
+## DASH-07 — treino, teste e custos do Filtro C
+
+O recibo conserva limites, amostra e tentativas por janela, configuração
+econômica e contrato aplicado. O Dashboard expõe separadamente treino e
+fora da amostra, inclusive quando o PF não é calculável. O corte usa o UTC
+da gravação quando presente. Recibos legados mantêm a leitura conservadora.
+
 ## T7.1 — layout da Análise ao voltar à aba
 
 A aba oculta guarda o resultado lido e aguarda sua abertura para desenhar os

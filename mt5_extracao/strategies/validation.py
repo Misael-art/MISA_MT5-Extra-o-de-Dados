@@ -17,7 +17,7 @@ import json
 import logging
 import math
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -160,12 +160,14 @@ def walk_forward(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
         raise ValueError(f"Poucos dados para o walk-forward: {n} barras (mínimo {parts * 50}). "
                          "Extraia um período maior ou use um timeframe menor.")
     cache = _SignalCache(df, key, base_params)
+    candidates = _grid(key)
+    defaults = get_strategy(key).default_params
     windows, oos_trades = [], []
     for w in range(criteria.n_windows):
         is_start, is_end = w * size, (w + criteria.is_parts) * size
         oos_end = n if w == criteria.n_windows - 1 else is_end + size
         best = None
-        for params in _grid(key):
+        for params in candidates:
             r = _run_slice(cache, params, spec, config, is_start, is_end, warmup)
             score = r.metrics["total_r"]
             if best is None or score > best[0]:
@@ -174,8 +176,11 @@ def walk_forward(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
         oos_trades.extend(oos.trades)
         windows.append({
             "window": w + 1,
+            "is_start": str(df["time"].iloc[is_start]), "is_end": str(df["time"].iloc[is_end - 1]),
+            "is_bars": is_end - is_start, "oos_bars": oos_end - is_end,
             "oos_start": str(df["time"].iloc[is_end]), "oos_end": str(df["time"].iloc[oos_end - 1]),
-            "params": best[1],
+            "params": best[1], "effective_params": {**defaults, **(base_params or {}), **best[1]},
+            "fit_attempts": len(candidates),
             "is_profit_factor": best[2]["profit_factor"], "is_trades": best[2]["trades"],
             "is_profit_factor_status": best[2]["profit_factor_status"],
             "oos_profit_factor": oos.metrics["profit_factor"], "oos_trades": oos.metrics["trades"],
@@ -243,6 +248,7 @@ def validate(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
     """Veredito do Filtro C com cada critério explicado em português."""
     criteria = criteria or Criteria()
     config = config or BacktestConfig()
+    spec = spec or SymbolSpec(known=False)
     df = df.reset_index(drop=True)
     wf = walk_forward(df, key, spec, config, criteria, params)
     full = run_backtest(df, get_strategy(key, **(params or {})), spec, config)
@@ -283,6 +289,7 @@ def validate(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
         "skipped_min_lot": full.skipped_min_lot,
         "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]), "bars": int(len(df)),
         "criteria": asdict(criteria),
+        "execution": {"schema_version": 1, "config": asdict(config), "specification": asdict(spec)},
     }
 
 
@@ -307,6 +314,10 @@ def _json_default(obj):
 
 def save_validation(db, symbol: str, timeframe: str, verdict: dict) -> None:
     from sqlalchemy import text
+    now = datetime.now(timezone.utc)
+    receipt = dict(verdict)
+    if isinstance(receipt.get("execution"), dict) and receipt["execution"].get("schema_version") == 1:
+        receipt["created_at_utc"] = now.isoformat()
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE))
         conn.execute(text(
@@ -325,9 +336,9 @@ def save_validation(db, symbol: str, timeframe: str, verdict: dict) -> None:
              "pw": float(next(c["value"] for c in verdict["checks"] if c["name"].startswith("Janelas"))),
              "rb": int(verdict["robustness"]["robust"]), "dd": float(verdict["monte_carlo"]["dd_percentile"]),
              "p": json.dumps(verdict["params"], default=_json_default),
-             "r": json.dumps(verdict, default=_json_default, ensure_ascii=False, allow_nan=False),
+             "r": json.dumps(receipt, default=_json_default, ensure_ascii=False, allow_nan=False),
              "ds": verdict["data_start"], "de": verdict["data_end"],
-             "c": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+             "c": now.astimezone().strftime("%Y-%m-%d %H:%M:%S")})
 
 
 def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optional[str] = None,
@@ -337,13 +348,26 @@ def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optiona
     include_result=True acrescenta `result` (veredito gravado já decodificado, ou None se ilegível)
     para leitores que precisam das janelas walk-forward sem reler a tabela.
     """
-    from sqlalchemy import inspect, text
+    from sqlalchemy import bindparam, inspect, text
     cols = ["symbol", "timeframe", "strategy", "approved", "status", "profit_factor_oos", "trades_oos",
             "positive_windows", "robust", "mc_dd", "params_json", "data_start", "data_end", "created_at"]
     if not inspect(db.engine).has_table("_strategy_validation"):
         return pd.DataFrame(columns=cols + (["result"] if include_result else []))
+    conditions, params = [], {}
+    if symbols:
+        conditions.append("symbol IN :symbols")
+        params["symbols"] = symbols
+    if timeframe:
+        conditions.append("timeframe = :timeframe")
+        params["timeframe"] = timeframe
+    query = f"SELECT {', '.join(cols)}, result_json FROM _strategy_validation"
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    stmt = text(query)
+    if symbols:
+        stmt = stmt.bindparams(bindparam("symbols", expanding=True))
     with db.engine.connect() as conn:
-        df = pd.read_sql(text(f"SELECT {', '.join(cols)}, result_json FROM _strategy_validation"), conn)
+        df = pd.read_sql(stmt, conn, params=params)
     df["profit_factor_oos"] = df["profit_factor_oos"].astype(object)
     if include_result:
         df["result"] = None
@@ -367,9 +391,4 @@ def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optiona
         if projected["profit_factor"] is None:
             df.at[index, "approved"] = 0
             df.at[index, "status"] = str(row["status"] or "") + "; " + profit_factor.reason(projected)
-    df = df.drop(columns="result_json")
-    if symbols:
-        df = df[df["symbol"].isin(symbols)]
-    if timeframe:
-        df = df[df["timeframe"] == timeframe]
-    return df.reset_index(drop=True)
+    return df.drop(columns="result_json")

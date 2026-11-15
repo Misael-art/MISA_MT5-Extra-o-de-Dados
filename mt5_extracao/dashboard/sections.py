@@ -307,8 +307,6 @@ def hypothesis(data, record):
 
 
 # DASH-07 — validação temporal a partir de _strategy_validation (strategies.validation).
-# O recibo atual guarda as janelas OOS por fold, critérios e veredito do Filtro C;
-# não guarda datas de treino, custos (BacktestConfig) nem fuso de created_at.
 NAIVE_CLOCK_MARGIN_HOURS = 14  # maior adiantamento de fuso civil (UTC+14)
 
 
@@ -319,29 +317,48 @@ def _naive(value):
 
 def validation_sections(data, rows):
     """Uma faixa por estratégia validada no ativo/TF; nada é recalculado."""
-    from datetime import timedelta
     cut = datetime.fromisoformat(data["as_of_utc"])
-    cut_naive = cut.replace(tzinfo=None)  # as_of_utc já está em UTC
     result, late = [], 0
     for row in rows:
-        try:
-            created = _naive(row["created_at"])
-        except (TypeError, ValueError):
-            late += 1
-            continue
-        # created_at é hora local sem fuso: só entra se precede o corte em qualquer fuso civil.
-        if created + timedelta(hours=NAIVE_CLOCK_MARGIN_HOURS) > cut_naive:
-            late += 1
-            continue
         verdict = row.get("result") if isinstance(row.get("result"), dict) else {}
+        if "created_at_utc" in verdict:
+            try:
+                created = datetime.fromisoformat(verdict["created_at_utc"])
+                included = created.utcoffset() is not None and created <= cut
+            except (TypeError, ValueError):
+                included = False
+            clock = {"created_at_utc": verdict["created_at_utc"], "clock_rule": "Instante de gravação em UTC"}
+        else:
+            included = _within_cut(row["created_at"], cut)
+            clock = {"created_at_local_naive": str(row["created_at"]),
+                     "clock_rule": f"created_at sem fuso; incluído só se +{NAIVE_CLOCK_MARGIN_HOURS} h precede o corte"}
+        if not included:
+            late += 1
+            continue
         windows = verdict.get("windows") if isinstance(verdict.get("windows"), list) else []
         folds = []
         for w in windows:
             if not isinstance(w, dict):
                 continue
-            folds.append({k: w.get(k) for k in ("window", "oos_start", "oos_end", "oos_trades", "oos_profit_factor",
-                                                "oos_profit_factor_status", "oos_net_profit", "is_trades",
-                                                "is_profit_factor", "params")})
+            folds.append({k: w.get(k) for k in ("window", "is_start", "is_end", "is_bars", "oos_bars",
+                "oos_start", "oos_end", "oos_trades", "oos_profit_factor", "oos_profit_factor_status",
+                "oos_net_profit", "is_trades", "is_profit_factor", "is_profit_factor_status",
+                "params", "effective_params", "fit_attempts")})
+        costs = {"state": "NOT_RECORDED", "reason": "O recibo não grava a configuração econômica."}
+        execution = verdict.get("execution")
+        if isinstance(execution, dict) and execution.get("schema_version") == 1:
+            config, spec = execution.get("config"), execution.get("specification")
+            if isinstance(config, dict) and isinstance(spec, dict):
+                provenance = spec.get("provenance") or {}
+                if not isinstance(provenance, dict):
+                    provenance = {}
+                costs = {"state": "RECORDED", "config": config,
+                         "specification": {k: v for k, v in spec.items() if k != "provenance"},
+                         "specification_source": {k: provenance.get(k) for k in
+                             ("specification_status", "source", "observed_at", "historical_validity")}}
+        dated_folds = sum(bool(f["is_start"] and f["is_end"]) for f in folds)
+        train_dates = {"state": "RECORDED" if dated_folds and dated_folds == len(folds)
+                       else "PARTIAL" if dated_folds else "NOT_RECORDED", "folds_with_dates": dated_folds}
         approved = bool(row["approved"])
         strategy = str(row["strategy"])
         pf = row.get("profit_factor_oos")
@@ -358,17 +375,13 @@ def validation_sections(data, rows):
             hidden_reason_code=None if approved else "FILTER_C_REJECTED", hidden_reason_short=hidden,
             n_observations=int(row["trades_oos"]) if row.get("trades_oos") is not None else None,
             unit="profit factor fora da amostra",
-            temporal={"created_at_local_naive": str(row["created_at"]), "data_start": row.get("data_start"),
-                      "data_end": row.get("data_end"),
-                      "clock_rule": f"created_at sem fuso; incluído só se +{NAIVE_CLOCK_MARGIN_HOURS} h precede o corte"},
+            temporal={**clock, "data_start": row.get("data_start"), "data_end": row.get("data_end")},
             evidence={"checks": checks, "criteria": verdict.get("criteria"),
                       "profit_factor_status": row.get("profit_factor_status"),
                       "positive_windows": row.get("positive_windows"), "robust": row.get("robust"),
                       "monte_carlo_dd": row.get("mc_dd"),
-                      "costs": {"state": "NOT_RECORDED",
-                                "reason": "O recibo não grava BacktestConfig; custos não são conferíveis aqui."},
-                      "train_dates": {"state": "NOT_RECORDED",
-                                      "reason": "O recibo grava só as janelas OOS; o treino antecede cada OOS."},
+                      "costs": costs, "train_dates": train_dates,
+                      "monte_carlo": verdict.get("monte_carlo"), "robustness": verdict.get("robustness"),
                       "approved_is_hypothesis": False},
             visual={"value": pf, "direction": None, "series": [], "folds": folds,
                     "data_start": row.get("data_start"), "data_end": row.get("data_end")},
@@ -380,7 +393,7 @@ def validation_sections(data, rows):
         result.append(section)
     if late:
         note = empty(data, "validation:late", "validation", "Validações após o corte",
-                     f"{late} recibo(s) com relógio sem fuso possivelmente posterior ao corte; omitidos desta fotografia.")
+                     f"{late} recibo(s) com gravação posterior ou incompatível com o corte foram omitidos.")
         note.update(hidden_reason_code="CLOCK_AFTER_CUT", n_observations=late, status_namespace="dashboard")
         result.append(note)
     return result
