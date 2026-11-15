@@ -1,5 +1,13 @@
 # Retomar MT5X em um host limpo
 
+## Gravação de barras reutiliza o comando entre lotes
+
+A gravação de OHLCV usa uma instrução parametrizada nos lotes de 200 barras.
+A escolha da revisão, os recibos e as alterações do bruto continuam na
+mesma transação. A regressão confere os lotes e a reversão de falha parcial.
+Na bancada, a gravação das mesmas 753 barras passou de 9,58 s para 2,98 s.
+Passaram 27 testes de gravação, revisões, consultas e retomada em SQLite.
+
 ## Captura retorna o snapshot validado na gravação
 
 A captura valida o conteúdo, grava e confere os blocos e o manifesto na
