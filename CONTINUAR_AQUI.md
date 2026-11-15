@@ -1,5 +1,15 @@
 # Retomar MT5X em um host limpo
 
+## Recibo do Filtro C no Dashboard
+
+Os novos recibos guardam o instante da gravação em UTC, o período e a amostra
+de treino e teste, as tentativas da grade em cada janela e os parâmetros
+efetivos. A configuração inclui custos simulados, especificação e a vigência
+que a fonte declara. O Dashboard consulta só o ativo e o timeframe escolhidos,
+mostra as janelas em uma linha do tempo com seletor e mantém ausências de
+recibos antigos. O Filtro C guarda a validação mais recente de cada estratégia,
+ativo e timeframe. A evidência continua sendo de simulação.
+
 ## Layout da Análise ao alternar com Robôs
 
 A Análise conserva os dados já lidos e desenha os gráficos quando a aba está

@@ -10,7 +10,7 @@ from markupsafe import Markup
 from . import generator
 
 ROOT = Path(__file__).parent
-RENDERER_VERSION = "DASH-03/2"
+RENDERER_VERSION = "DASH-03/3"
 RESOURCES = ("css/dashboard.css", "vendor/echarts-6.0.0.min.js", "vendor/LICENSE-echarts",
              "vendor/NOTICE-echarts", "vendor/manifest.json", "js/transport.js", "js/charts/surprise.js",
              "js/charts/regime.js", "js/charts/volume.js", "js/charts/hypothesis.js", "js/charts/validation.js", "js/dashboard.js")

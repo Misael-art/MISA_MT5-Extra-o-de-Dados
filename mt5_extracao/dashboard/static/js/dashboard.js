@@ -126,21 +126,26 @@
       + age(stale.expired_minutes_before_cut) + " antes do corte · observado em " + human(stale.observation_time)
       + ". Não é o estado atual.", "stale-note"));
     body.append(text("p", section.n_observations === null ? "n não informado" : "n = " + section.n_observations, "sample"));
-    if (section.visual.value !== null && section.visual.value !== undefined) {
-      const metric = text("button", "", "metric");
-      metric.type = "button";
-      metric.setAttribute("aria-label", "Aprofundar " + section.title);
-      metric.append(text("span", ({UP: "↑", DOWN: "↓", FLAT: "→"})[section.visual.direction] || "", "direction"),
-        text("strong", typeof section.visual.value === "number" ? (Number.isInteger(section.visual.decimals)
-          ? new Intl.NumberFormat("pt-BR", {minimumFractionDigits: section.visual.decimals,
-            maximumFractionDigits: section.visual.decimals}).format(section.visual.value) : number(section.visual.value))
-          : section.visual.value),
-        text("span", section.unit || "", "unit"));
-      body.append(metric);
-      if (section.visual.baseline !== null && section.visual.baseline !== undefined)
-        body.append(text("p", "Referência " + number(section.visual.baseline) + " " + (section.unit || ""), "reference"));
+    const hasMetric = section.visual.value !== null && section.visual.value !== undefined;
+    if (hasMetric || (section.visual.folds || []).length) {
       const detail = details(section);
-      metric.addEventListener("click", () => { detail.open = !detail.open; });
+      if (hasMetric) {
+        const metric = text("button", "", "metric");
+        metric.type = "button";
+        metric.setAttribute("aria-label", "Aprofundar " + section.title);
+        metric.append(text("span", ({UP: "↑", DOWN: "↓", FLAT: "→"})[section.visual.direction] || "", "direction"),
+          text("strong", typeof section.visual.value === "number" ? (Number.isInteger(section.visual.decimals)
+            ? new Intl.NumberFormat("pt-BR", {minimumFractionDigits: section.visual.decimals,
+              maximumFractionDigits: section.visual.decimals}).format(section.visual.value) : number(section.visual.value))
+            : section.visual.value),
+          text("span", section.unit || "", "unit"));
+        body.append(metric);
+        if (section.visual.baseline !== null && section.visual.baseline !== undefined)
+          body.append(text("p", "Referência " + number(section.visual.baseline) + " " + (section.unit || ""), "reference"));
+        metric.addEventListener("click", () => { detail.open = !detail.open; });
+      } else {
+        body.append(text("p", section.details.pf_reason || section.details.reason, "absence"));
+      }
       body.append(detail);
       if ((section.visual.series || []).length || (section.visual.cells || []).length || (section.visual.rings || []).length || (section.visual.folds || []).length) {
         const figure = text("div", "", "chart chart--" + section.kind);

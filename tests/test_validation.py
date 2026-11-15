@@ -27,12 +27,18 @@ def test_walk_forward_windows_are_out_of_sample():
     size = len(df) // 7
     first_oos = pd.Timestamp(wf["windows"][0]["oos_start"])
     assert first_oos == df["time"].iloc[2 * size]
+    assert sum(w["oos_bars"] for w in wf["windows"]) == len(df) - 2 * size
     for t in wf["oos_trades"]:
         assert t.entry_time >= first_oos      # nenhuma operação fora da amostra antes do 1º teste
     assert 0 <= wf["positive_windows"] <= 1
     assert wf["oos_metrics"]["trades"] == len(wf["oos_trades"])
-    for w in wf["windows"]:
+    for i, w in enumerate(wf["windows"]):
         assert set(w["params"]) == {"entry_period", "exit_period"}
+        assert pd.Timestamp(w["is_start"]) == df["time"].iloc[i * size]
+        assert pd.Timestamp(w["is_end"]) == df["time"].iloc[(i + 2) * size - 1]
+        assert w["is_bars"] == 2 * size
+        assert w["fit_attempts"] == len(v._grid("donchian"))
+        assert all(w["effective_params"][key] == value for key, value in w["params"].items())
 
 
 def test_walk_forward_needs_enough_data():

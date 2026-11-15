@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from mt5_extracao.analytics import datasets, feature_store, query_service
 
 SCHEMA_VERSION = 1
-GENERATOR_VERSION = "DASH-02/1"
+GENERATOR_VERSION = "DASH-02/2"
 MAX_FACTS = 20_000
 MAX_BYTES = 8 * 1024 * 1024
 MAX_DAYS = 31
@@ -240,7 +240,7 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         shown = [s for s in validation if s["status_namespace"] == "validation"]
         data["capabilities"]["validation"].update(state="AVAILABLE" if shown else "NO_DATA",
             reason_code=None if shown else "NO_DATA",
-            reason="Vereditos do Filtro C gravados; datas de treino e custos não constam do recibo.")
+            reason="Vereditos do Filtro C com as janelas e a configuração econômica registradas em cada recibo.")
         from mt5_extracao.analytics import pattern_queries
         from .sections import hypothesis_pending, pattern_evaluation
         evaluations = pattern_queries.evaluations(db, symbol=selection["symbol"],
