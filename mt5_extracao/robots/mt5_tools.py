@@ -333,8 +333,16 @@ def compile_source(source, metaeditor, prefix: Optional[Path] = None, run: Optio
     try:
         code = (run or run_windows_command)(command_line, metaeditor.parent, prefix, timeout)
     except subprocess.TimeoutExpired:
-        result.summary = (f"O MetaEditor não terminou em {timeout} s. Feche janelas do MetaEditor que estejam "
-                          "abertas e tente de novo.")
+        result.summary = f"O MetaEditor não terminou em {timeout} s."
+        try:
+            partial = mql.read_text(log_path)
+        except OSError:
+            partial = ""
+        progress = re.findall(r"\bgenerating code (100|[0-9]{1,2})%", partial, re.I)
+        if progress:
+            result.summary += f" Último progresso da geração de código: {progress[-1]}%."
+        if partial:
+            result.summary += f" Confira o log de compilação em {log_path}."
         return result
     log.debug(f"MetaEditor terminou com código {code} para {source.name}")
     if not log_path.is_file():
