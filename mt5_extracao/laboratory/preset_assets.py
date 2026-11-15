@@ -341,7 +341,8 @@ def compare_runs(db,run_ids,*,mode,guard=None):
     from mt5_extracao.composition import Composition
     from dataclasses import asdict
     from mt5_extracao.strategies.backtester import BacktestConfig
-    rows=[];problems=[];snapshots={};scope_checkpoint=None;valuations={}
+    rows=[];problems=[];scope_checkpoint=None;valuations={}
+    reference_bar_times = None
     for ident in run_ids:
         guard();found=store.load_runs(db,run_id=ident)
         if len(found)!=1:raise ValueError('Execução não encontrada: '+ident)
@@ -375,18 +376,24 @@ def compare_runs(db,run_ids,*,mode,guard=None):
         if any(row['summary'][k] is None for k in ('trades','net_profit','initial_equity','max_drawdown_pct','final_balance','final_equity','max_floating_drawdown_pct')):problems.append(ident+': métricas/patrimônio completo ausentes')
         if not (row['summary']['initial_equity'] or 0)>0:problems.append(ident+': capital inicial inválido')
         try:
-            snapshot=datasets.for_run(db,ident) if compare_timeframes else datasets.load(db,row['data_manifest_id'])
+            snapshot=datasets.for_run(db,ident)
             if snapshot is None:raise ValueError('Snapshot indisponível')
-            manifest=snapshot.manifest;snapshots[ident]=manifest
+            manifest=snapshot.manifest
             if (manifest['symbol'],manifest['timeframe'])!=(row['symbol'],row['timeframe']) or manifest['source']!=ctx['source'] or manifest['time']!=ctx['clock']:raise ValueError()
             if not (row['data_quality'] or {}).get('eligibility',{}).get('eligible'):raise ValueError()
-            if mode=='same_strategy':
+            if mode != 'same_scope':
                 period = manifest['period']
                 interval = row['interval']
                 if (snapshot.manifest_id != row['data_manifest_id'] or period['rows'] != interval['bars']
                         or pd.Timestamp(period['first']) != pd.Timestamp(interval['start'])
                         or pd.Timestamp(period['last']) != pd.Timestamp(interval['end'])):
                     raise ValueError('Período da execução não coincide com o snapshot')
+            if mode == 'same_preset':
+                bar_times = pd.DatetimeIndex(snapshot.bars['time'])
+                if reference_bar_times is None:
+                    reference_bar_times = bar_times
+                elif not reference_bar_times.equals(bar_times):
+                    problems.append(f'{ident}: Horários das barras diferem entre as execuções.')
         except (ValueError,TypeError,KeyError):problems.append(ident+': referência congelada/qualidade não comprovada')
     first=rows[0]
     for row in rows[1:]:

@@ -1,5 +1,15 @@
 # Plano de trabalho detalhado
 
+## LAB-05/06 — vínculo e grade das comparações financeiras
+
+As comparações de execuções exigem que a revisão de dados esteja vinculada
+ao próprio run e confira com seu período gravado. Entre ativos, janelas com
+os mesmos extremos e contagens ainda podem divergir nos horários internos.
+O comparador sinaliza esse caso e o HTML permite inspecionar cada curva.
+Os 24 testes anteriores ao cenário ampliado passaram no Linux. O timeout
+do cenário com três ativos foi reproduzido na candidata anterior, na etapa
+de preparação e antes da comparação.
+
 ## LAB-04 — calendário de expectativa por dia do mês
 
 O Laboratório usa a agregação canônica das operações medidas em uma grade
