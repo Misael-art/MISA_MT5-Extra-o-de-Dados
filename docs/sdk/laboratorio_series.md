@@ -549,11 +549,15 @@ Curvas usam a redução gráfica existente até240 pontos; não representam tick
 
 Compatibilidade exige composição/hash válidos, recibo completo do motor,
 configuração de capital/risco/custos, origem, relógio, período, moeda e qualidade
-congelada compatíveis. Mesmo ativo exige snapshot idêntico; entre ativos exige
-o mesmo corpo de preset removendo somente o símbolo. Especificações distintas
-entre ativos permanecem declaradas, sem supor preço/tick iguais. Fluxos externos
+congelada compatíveis. Cada execução precisa do vínculo persistido com seu
+snapshot, que deve conferir com as datas e a quantidade de barras do recibo.
+Mesmo ativo exige snapshot idêntico. Entre ativos, o comparador exige o mesmo
+corpo de preset removendo somente o símbolo e os mesmos horários observados em
+toda a grade, inclusive onde há lacunas. Especificações distintas entre ativos
+permanecem declaradas, sem supor preço/tick iguais. Fluxos externos
 não são qualificados nesta versão. Moeda ausente, custos/contexto incompletos,
-revisão incompatível ou diferença de janela deixam os resultados separados.
+revisão incompatível ou diferença de janela mantêm os resultados separados.
+No HTML, o seletor de execução permite inspecionar uma curva por vez nesses casos.
 Não há conversão cambial, soma entre moedas ou ranking automático.
 
 Novos runs Python gravam `comparison_context` nas métricas existentes. Para

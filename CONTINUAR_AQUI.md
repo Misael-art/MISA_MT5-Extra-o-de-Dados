@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Grade e vínculo na comparação de execuções gravadas
+
+A comparação confere o snapshot vinculado a cada execução e a correspondência
+da janela gravada. Entre ativos, a mesma revisão de preset exige também os
+mesmos horários de barras observadas. Se houver diferença, as métricas de
+cada execução ficam disponíveis e o HTML apresenta uma curva por vez.
+Passaram 24 testes focados. O cenário ampliado com três ativos atingiu o
+limite de 60 s na preparação dos backtests também na candidata anterior.
+
 ## Expectativa por dia do mês no Laboratório
 
 A grade mantém as posições de 1 a 31 entre os meses do recorte. Selecionar

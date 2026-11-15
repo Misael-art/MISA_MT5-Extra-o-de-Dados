@@ -19,14 +19,15 @@ from tests.test_mentions_contract import db
 from tests.test_backtester import bars
 
 
-def prepare(db,monkeypatch):
+def prepare(db,monkeypatch,*,missing=None):
     def signals(self,frame,out):
         out.loc[299,'entry_long']=True;out.loc[319,'exit_long']=True;out['stop_long']=90.;out['stop_short']=110.
     monkeypatch.setattr(EmaAtrTrend,'_signals',signals);monkeypatch.setattr(EmaAtrTrend,'exit_rules',lambda self:ExitRules())
     data=bars([[100,101,99,100]]*330,start='2025-01-01',freq='min');data['tick_volume']=100;data['real_volume']=0
     data.loc[310,['high','low','close']]=[101,94,95];data.loc[320,['open','high','low','close']]=[103,104,102,103]
     for symbol in ('QA_X','QA_Y'):
-        assert db.save_ohlcv_data(symbol,'1 minuto',data)
+        frame = data.drop(index=missing[symbol]) if missing else data
+        assert db.save_ohlcv_data(symbol,'1 minuto',frame)
         db.save_symbol_spec(symbol,spec_from_symbol_info(SimpleNamespace(point=1,trade_tick_size=1,trade_tick_value=1,volume_min=.01,volume_step=.01)),source='qa.owned.spec')
     cfg=configparser.ConfigParser();cfg['STRATEGY']=dict(initial_equity='10000',account_currency='USD',commission_per_lot='.1')
     robot=catalog.load_catalog(None,db);robot=next(r for r in robot if r.key=='python:ema_atr')
@@ -144,6 +145,36 @@ def test_same_preset_between_assets_and_currency_mismatch_stays_separate(financi
     assert [r['currency'] for r in result['rows']]==['USD','EUR']
 
 
+def test_comparison_needs_the_snapshot_linked_to_each_run(financial):
+    from sqlalchemy import text
+
+    db, _, runs = financial
+    first = runs[0]
+    with db.engine.begin() as conn:
+        conn.execute(text('DELETE FROM _dataset_references WHERE run_id=:id'), {'id': first['run_id']})
+    assert datasets.load(db, first['data_manifest_id']).manifest_id == first['data_manifest_id']
+
+    for mode, other in [('same_asset', runs[2]), ('same_preset', runs[1])]:
+        result = sdk.compare_laboratory_runs(db, [first['run_id'], other['run_id']], mode=mode)
+        assert not result['compatible']
+        assert result['reasons'] == [first['run_id'] + ': referência congelada/qualidade não comprovada']
+        assert result['rows'][0]['summary']['net_profit'] == first['metrics']['net_profit']
+
+
+def test_same_preset_requires_identical_bar_times_not_just_equal_interval(db, monkeypatch, tmp_path):
+    _, runs = prepare(db, monkeypatch, missing={'QA_X': [301], 'QA_Y': [302]})
+    first, second = runs[:2]
+    assert [first[k] for k in ('data_start', 'data_end', 'bars')] == [second[k] for k in ('data_start', 'data_end', 'bars')]
+    result = sdk.compare_laboratory_runs(db, [first['run_id'], second['run_id']], mode='same_preset')
+    assert not result['compatible']
+    assert any('Horários das barras' in reason for reason in result['reasons'])
+    assert [r['summary']['net_profit'] for r in result['rows']] == [r['metrics']['net_profit'] for r in runs[:2]]
+    output = tmp_path / 'different-grids.html'
+    sdk.export_laboratory_runs(result, output)
+    html = output.read_text(encoding='utf-8')
+    assert '<select id="curve-run">' in html and 'Horários das barras' in html
+
+
 def test_cost_revision_and_missing_receipt_are_not_inferred(financial):
     db,cfg,runs=financial;ids=[r['run_id'] for r in runs[:2]]
     result=preset_assets.compare_runs(db,[ids[0],runs[2]['run_id']],mode='same_preset')
@@ -162,7 +193,8 @@ def test_frozen_export_detects_changes_and_cli_reads_same_receipt(financial,tmp_
     db,_,runs=financial;ids=[r['run_id'] for r in runs[:2]]
     result=sdk.compare_laboratory_runs(db,ids,mode='same_preset')
     path=tmp_path/'financial.html';sdk.export_laboratory_runs(result,path)
-    assert 'Patrimônio a mercado' in path.read_text(encoding='utf-8')
+    html=path.read_text(encoding='utf-8')
+    assert 'Patrimônio a mercado' in html and '<select id="curve-run">' not in html
     changed=deepcopy(result);changed['rows'][0]['summary']['net_profit']=1e9
     with pytest.raises(ValueError,match='alterada'):report.render_runs(changed)
     monkeypatch.setattr(cli.Context,'db',property(lambda _:db))

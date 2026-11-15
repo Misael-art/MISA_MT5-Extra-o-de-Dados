@@ -48,11 +48,15 @@ def render_runs(comparison):
         template = template.replace('<h1>Comparação de execuções gravadas</h1>', '<h1>Preset entre tempos gráficos</h1><p id="scope-context" class="notice"></p><section><h2>Matriz ativo × TF e estados</h2><p>Selecione uma célula para inspecionar a tentativa. Ausência não é zero; métricas usam a janela integral de cada TF.</p><div class="scroll"><table id="scope-matrix"></table></div><pre id="scope-detail"></pre></section>')
         template = template.replace('<label>Curva<select', '<label>Ativo<select id="scope-asset"></select></label><label>Curva<select')
         template = template.replace("</script></html>", SCOPE_SCRIPT + "</script></html>")
-    elif value.get('mode') == 'same_strategy':
-        template = template.replace('Comparação de execuções gravadas', 'Mesma estratégia entre tempos gráficos')
-        template = template.replace('<svg id="curves"', '<fieldset id="curve-filter" class="controls"><legend>Execuções no gráfico</legend></fieldset><svg id="curves"')
-        if value.get('timeframe_relations'):
-            template = template.replace('<section><h2>Período, revisão e custos', '''<section><h2>Relação entre os retornos</h2>
+    else:
+        if not value['compatible']:
+            template = template.replace('<label>Curva<select', '<label>Execução<select id="curve-run"></select></label><label>Curva<select')
+        if value.get('mode') == 'same_strategy':
+            template = template.replace('Comparação de execuções gravadas', 'Mesma estratégia entre tempos gráficos')
+            if value['compatible']:
+                template = template.replace('<svg id="curves"', '<fieldset id="curve-filter" class="controls"><legend>Execuções no gráfico</legend></fieldset><svg id="curves"')
+            if value.get('timeframe_relations'):
+                template = template.replace('<section><h2>Período, revisão e custos', '''<section><h2>Relação entre os retornos</h2>
 <p>Pearson mede a relação descritiva entre retornos de patrimônio em cotas, com a mesma duração e o mesmo fechamento.
 Capacidade preditiva aguarda avaliação fora da amostra.</p><div class="scroll"><table id="timeframe-relations"
 aria-label="Correlação descritiva por par de tempos gráficos"></table></div></section><section><h2>Período, revisão e custos''')
@@ -92,7 +96,7 @@ FINANCIAL_TEMPLATE=r'''<!doctype html><html lang="pt-BR"><meta charset="utf-8"><
 <title>Comparação de execuções gravadas</title><style>__CSS__</style><main>
 <h1>Comparação de execuções gravadas</h1><p id="status" class="notice"></p><p id="reasons"></p>
 <section><h2>Operações e capital</h2><p>Valores nas moedas declaradas de cada execução, sem conversão. — indica informação ausente. Drawdown de encerradas e patrimônio por fechamento têm bases distintas.</p><div class="scroll"><table id="results"></table></div></section>
-<section><h2>Curvas em fração do capital inicial</h2><label>Curva<select id="kind"><option value="floating_equity">Patrimônio a mercado</option><option value="account_balance">Saldo</option><option value="equity">Encerradas</option><option value="performance_equity">Patrimônio em cotas</option></select></label><svg id="curves" viewBox="0 0 1000 300" role="img" aria-label="Curvas gravadas normalizadas pelo capital inicial"></svg><div id="legend" aria-live="polite"></div><p class="muted">Eixo temporal no relógio gravado. Redução gráfica conserva extremos; métricas usam a série completa. Linhas entre amostras não descrevem o percurso intrabar.</p></section>
+<section><h2>Curvas em fração do capital inicial</h2><div class="controls"><label>Curva<select id="kind"><option value="floating_equity">Patrimônio a mercado</option><option value="account_balance">Saldo</option><option value="equity">Encerradas</option><option value="performance_equity">Patrimônio em cotas</option></select></label></div><svg id="curves" viewBox="0 0 1000 300" role="img" aria-label="Curvas gravadas normalizadas pelo capital inicial"></svg><div id="legend" aria-live="polite"></div><p class="muted">Eixo temporal no relógio gravado. Redução gráfica conserva extremos; métricas usam a série completa. Linhas entre amostras não descrevem o percurso intrabar.</p></section>
 <section><h2>Período, revisão e custos</h2><div class="scroll"><table id="contexts"></table></div><details><summary>Recibos completos da seleção</summary><pre id="receipts"></pre></details></section><section id="limits"></section>
 </main><script id="data" type="application/json">__DATA__</script><script>
 'use strict';const R=JSON.parse(document.getElementById('data').textContent),$=id=>document.getElementById(id),fmt=v=>v===null||v===undefined?'—':typeof v==='number'?v.toLocaleString('pt-BR',{maximumFractionDigits:4}):String(v),pct=v=>v===null||v===undefined?'—':fmt(v*100)+'%';
@@ -104,12 +108,13 @@ if ($('timeframe-relations')) table('timeframe-relations',['Tempos gráficos','D
   R.timeframe_relations.pairs.map(p=>[p.left_timeframe+' × '+p.right_timeframe,p.horizon_minutes,p.n_pairs,p.coefficient,p.status_label]));
 const palette=['#2465ad','#aa4723','#13796e','#8454a2','#827400','#a63868','#405760','#4b6920'];
 const selectedRuns=new Set(R.rows.map(row=>row.run_id));
+const singleRun=$('curve-run');
 function chart(){
  const svg=$('curves'),legend=$('legend'),kind=$('kind').value,asset=$('scope-asset');
  svg.replaceChildren();legend.replaceChildren();
  function node(tag,attrs){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));svg.append(n);return n}
  const data=R.rows.map((row,index)=>({row,color:palette[index%palette.length]}))
-   .filter(({row})=>selectedRuns.has(row.run_id)&&(!asset||asset.value===row.symbol))
+   .filter(({row})=>selectedRuns.has(row.run_id)&&(!asset||asset.value===row.symbol)&&(!singleRun||singleRun.value===row.run_id))
    .map(({row,color})=>{
       const initial=row.summary.initial_equity;
       const points=initial>0?(row.curves[kind]||[]).map(([time,value])=>[
@@ -142,6 +147,14 @@ function chart(){
    const caption=document.createElement('p');caption.style.color=color;
    caption.textContent=row.symbol+' · '+row.timeframe+' · '+row.run_id+' · '+points.length+' pontos';legend.append(caption);
  }
+}
+if(singleRun){
+ R.rows.forEach(row=>{
+   const option=document.createElement('option');
+   option.value=row.run_id;option.textContent=row.symbol+' · '+row.timeframe+' · '+row.run_id;
+   singleRun.append(option);
+ });
+ singleRun.onchange=chart;
 }
 const filter=$('curve-filter');
 if(filter)R.rows.forEach(row=>{
