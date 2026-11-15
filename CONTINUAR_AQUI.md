@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## Layout da Análise ao alternar com Robôs
+
+A Análise conserva os dados já lidos e desenha os gráficos quando a aba está
+visível. O layout também aguarda o mapeamento e usa o ciclo principal de
+eventos. A regressão Linux em Xvfb cobriu a abertura em escala 2.0 e a aba
+Robôs em 1.33 e 2.0, mantendo o timeout de 60 segundos por teste. No Windows,
+o timeout do SHA `ac0ab478` na PR 329 motivou o corretivo. O check do novo
+SHA e o aceite em Windows físico têm verificação própria.
+
 ## Laboratório — mesma estratégia entre tempos gráficos
 
 O modo `same_strategy` compara de duas a oito execuções gravadas de uma
