@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## DASH-10 — vínculo da bateria e do preset à execução
+
+O modo Robô prioriza a bateria da própria execução. A faixa nativa consulta
+o recibo pelo `run_id`, respeita o corte em UTC e confere o escopo e a revisão
+do Expert. A faixa mostra a revisão do preset e, quando comprovados no
+recibo, os hashes do pacote e dos artefatos nativos. A qualificação do host
+com sessões reais continua separada.
+
 ## DASH-07 — treino, teste e custos do Filtro C
 
 O recibo conserva limites, amostra e tentativas por janela, configuração

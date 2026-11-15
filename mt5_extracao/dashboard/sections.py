@@ -456,23 +456,74 @@ def robot_run_section(data, record, run, others):
     return section
 
 
-def robot_battery_section(data, check):
+def robot_battery_section(data, check, *, linked):
     approved = bool(check.get("approved"))
-    section = empty(data, "robot:battery", "robot", "Bateria de segurança", "")
+    title = "Bateria da execução selecionada" if linked else "Outra bateria do robô"
+    section = empty(data, "robot:battery", "robot", title, "")
     section.update(
         source_refs=[{"table": "_robot_checks", "check_id": check.get("check_id"), "run_id": check.get("run_id")}],
         status_namespace="robot", source_status="BATTERY_APPROVED" if approved else "BATTERY_REJECTED",
-        display_state="AVAILABLE", default_visible=True, hidden_reason_code=None, hidden_reason_short=None,
+        display_state="AVAILABLE", default_visible=linked,
+        hidden_reason_code=None if linked else "BATTERY_NOT_LINKED",
+        hidden_reason_short=None if linked else "Bateria sem vínculo com a execução selecionada.",
         n_observations=None, unit=None,
         temporal={"created_at_local_naive": check.get("created_at")},
         evidence={"approved": approved, "allows_real": bool(check.get("allows_real")),
                   "static_status": check.get("static_status"), "statistical_status": check.get("statistical_status"),
                   "preset": check.get("preset"), "fingerprint": check.get("fingerprint"),
                   "symbol": check.get("symbol"), "timeframe": check.get("timeframe"),
-                  "items": check.get("items"), "battery_is_hypothesis": False},
+                  "items": check.get("items"), "linked_to_selected_run": linked, "battery_is_hypothesis": False},
         visual={"value": "Aprovada" if approved else "Reprovada", "direction": None, "series": []},
-        details={"reason": "Etapa de bateria do catálogo de robôs; não é hipótese estatística aprovada nem "
-                           "autorização de operação.", "status_label": "Bateria"})
+        details={"reason": ("Bateria vinculada pelo identificador da execução e pelo contexto registrado."
+                            if linked else "Recibo de referência. O vínculo com a execução selecionada está ausente."),
+                 "status_label": "Bateria"})
+    return section
+
+
+def robot_native_section(data, run, receipt):
+    fingerprint = run["metrics"].get("source_fingerprint")
+    reason = "A execução tem o identificador do fonte registrado quando fornecido pelo Tester. Recibo do preset ausente no corte."
+    section = empty(data, "robot:native-identity", "robot", "Preset e identidade MQL5", reason)
+    section.update(default_visible=True, hidden_reason_code=None, hidden_reason_short=None,
+                   status_namespace="robot",
+                   source_refs=[{"table": "_robot_runs", "run_id": run["run_id"], "robot_key": run["robot_key"]}],
+                   evidence={"run_fingerprint": fingerprint, "preset_receipt_state": "NO_RECEIPT_AT_CUT"})
+    if receipt is None:
+        return section
+    source, context, preset = (receipt.get(k) for k in ("source", "context", "preset"))
+    if (receipt.get("preset_native_evidence_schema_version") != 1
+            or not all(isinstance(value, dict) for value in (source, context, preset))
+            or not fingerprint or receipt.get("run_id") != run["run_id"]
+            or source.get("key") != run["robot_key"] or source.get("fingerprint") != fingerprint
+            or context.get("symbol") != run["symbol"] or context.get("timeframe") != run["timeframe"]):
+        section["evidence"]["preset_receipt_state"] = "SCOPE_MISMATCH"
+        section["details"]["reason"] = "Identidade ou escopo do recibo diverge da execução. Confira o registro de origem."
+        return section
+    inputs = receipt.get("inputs")
+    runtime = inputs.get("runtime_binding") if isinstance(inputs, dict) else None
+    runtime_verified = (isinstance(runtime, dict) and runtime.get("native_verified") is True
+                        and runtime.get("session_id") == receipt.get("session") and bool(receipt.get("session"))
+                        and runtime.get("preset_hash") == receipt.get("package_hash") and bool(receipt.get("package_hash"))
+                        and runtime.get("revision") == preset.get("revision")
+                        and runtime.get("symbol") == run["symbol"] and runtime.get("timeframe") == run["timeframe"])
+    section["source_refs"].append({"table": "_preset_native_runs", "run_id": run["run_id"],
+                                   "execution_hash": receipt.get("execution_hash")})
+    revision = preset.get("revision")
+    section.update(display_state="AVAILABLE", source_status="PRESET_RECEIPT_RECORDED",
+                   unit=f"Revisão {revision}" if type(revision) is int else None,
+                   temporal={"created_at_utc": receipt["created_at"]},
+                   visual={"value": str(preset.get("label") or preset.get("id") or "Preset registrado"),
+                           "direction": None, "series": []})
+    section["evidence"].update(
+        preset_receipt_state="RECORDED", preset={k: preset.get(k) for k in ("id", "revision", "category", "label")},
+        source_version=source.get("version"),
+        **{k: receipt.get(k) for k in ("config_hash", "execution_hash", "package_hash", "set_sha256", "mode", "status",
+                                      "reference_backtest_run_id", "reference_match", "cash_reconciled")},
+        runtime_verified=runtime_verified,
+        runtime_artifacts={k: runtime.get(k) for k in ("source_hash", "binary_hash", "wrapper_hash", "inputs_hash",
+                                                       "receipt_sha256")} if runtime_verified else None)
+    section["details"] = {"reason": "Recibo do preset identificado na própria execução. "
+                                   "A evidência descreve a sessão do Tester ou Replay.", "status_label": "Preset gravado"}
     return section
 
 

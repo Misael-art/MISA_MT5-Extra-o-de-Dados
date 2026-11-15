@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from mt5_extracao.analytics import datasets, feature_store, query_service
 
 SCHEMA_VERSION = 1
-GENERATOR_VERSION = "DASH-02/2"
+GENERATOR_VERSION = "DASH-02/3"
 MAX_FACTS = 20_000
 MAX_BYTES = 8 * 1024 * 1024
 MAX_DAYS = 31
@@ -277,8 +277,8 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
 def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
     """Modo Robô: execução persistida + contexto do ativo/TF dela. Nunca inicia backtest, bateria ou sessão."""
     from mt5_extracao.robots import store
-    from .sections import (_within_cut, robot_battery_section, robot_no_result_section,
-                           robot_other_runs_section, robot_run_section)
+    from .sections import (_within_cut, robot_battery_section, robot_native_section,
+                           robot_no_result_section, robot_other_runs_section, robot_run_section)
     if not isinstance(robot_key, str) or not robot_key.strip() or len(robot_key) > 256:
         raise ValueError("Informe a chave do robô (até256 caracteres).")
     if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
@@ -335,13 +335,19 @@ def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
     data.pop("integrity", None)
     if chosen is not None and context_error is not None:
         data["errors"] = [context_error]
-    raw_checks = store.load_checks(db, robot_key, runs=[])
-    referenced = {c.get("run_id") for c in raw_checks if c.get("run_id")}
-    # Projeção de PF das baterias exige as métricas das execuções que elas citam; só essas são carregadas.
-    cited = [r for run in referenced for r in store.load_runs(db, robot_key, run_id=run)]
-    checks = [c for c in store.load_checks(db, robot_key, runs=cited) if _within_cut(c.get("created_at"), cut)]
+    checks = [c for c in store.load_checks(db, robot_key, runs=[]) if _within_cut(c.get("created_at"), cut)]
+    source_fingerprint = chosen["metrics"].get("source_fingerprint") if chosen else None
+    linked = next((c for c in checks if chosen and c.get("run_id") == chosen["run_id"]
+                   and c.get("symbol") in ("", chosen["symbol"])
+                   and c.get("timeframe") in ("", chosen["timeframe"])
+                   and (not source_fingerprint or c.get("fingerprint") in ("", source_fingerprint))), None)
+    check = linked or next(iter(checks), None)
+    if check is not None and check.get("run_id") in {r["run_id"] for r in known}:
+        cited = [chosen] if chosen and check["run_id"] == chosen["run_id"] else store.load_runs(db, robot_key, run_id=check["run_id"])
+        check = next((c for c in store.load_checks(db, robot_key, runs=cited) if c["check_id"] == check["check_id"]), check)
+    battery_fingerprint = linked.get("fingerprint") if linked else None
     identity = {"mode": "robot", "robot_key": robot_key, "robot_name": record.get("name"), "kind": record.get("kind"),
-                "stage": record.get("stage"), "fingerprint": (checks[0].get("fingerprint") or None) if checks else None,
+                "stage": record.get("stage"), "fingerprint": source_fingerprint or battery_fingerprint or None,
                 "run_id": chosen["run_id"] if chosen else None, "run_selection": rule if chosen else "no_run_at_cut",
                 "symbol": chosen["symbol"] if chosen else None, "timeframe": chosen["timeframe"] if chosen else None,
                 "params": chosen.get("params") if chosen else None}
@@ -351,8 +357,19 @@ def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
                          "start_utc": data["selection"]["start_utc"], "end_utc": data["selection"]["end_utc"],
                          "as_of_utc": cut.isoformat(), "versions": data["selection"]["versions"]}
     robot = [robot_run_section(data, record, chosen, others) if chosen else robot_no_result_section(data, record, late)]
-    if checks:
-        robot.append(robot_battery_section(data, checks[0]))
+    if check is not None:
+        robot.append(robot_battery_section(data, check, linked=linked is not None))
+    if chosen is not None and (record.get("kind") == "mql5" or source_fingerprint):
+        from mt5_extracao.presets.execution import load_evidence
+        receipts = load_evidence(db, run_id=chosen["run_id"])
+        receipt = next((r for r in receipts if isinstance(r, dict)), None)
+        if receipt is not None:
+            try:
+                if _stamp(receipt.get("created_at"), "created_at") > cut:
+                    receipt = None
+            except (TypeError, ValueError):
+                receipt = None
+        robot.append(robot_native_section(data, chosen, receipt))
     if others:
         robot.append(robot_other_runs_section(data, others))
     data["sections"] = robot + [s for s in data["sections"] if s["id"] != "surprise"]
