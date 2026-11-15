@@ -1,5 +1,11 @@
 # Plano de trabalho detalhado
 
+## T20.24 — interrupção do Tester por orçamento
+
+A sessão histórica aplica seu fluxo de cancelamento quando o orçamento
+interrompe a compilação ou o Tester. O recibo preserva o motivo e o estado
+de liberação dos processos da sessão.
+
 ## T20.25 — recusa de pasta do Tester fora do Wine
 
 Valida o caminho do perfil antes de registrar a sessão no controle de posse.

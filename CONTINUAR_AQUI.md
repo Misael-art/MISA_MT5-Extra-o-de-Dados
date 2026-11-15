@@ -1,5 +1,12 @@
 # Retomar MT5X em um host limpo
 
+## Interrupção do Tester pelo prazo do lote
+
+O prazo do lote interrompe a sessão e registra o motivo no recibo. A mesma
+limpeza de cancelamento encerra os processos próprios e libera a posse para
+uma nova sessão. Um relato de interrupção durante a compilação não produz
+evidência de execução ou de paridade.
+
 ## Posse do Tester com pasta personalizada no Wine
 
 O registro de posse confere se a pasta da sessão é acessível pela unidade C:

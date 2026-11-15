@@ -3,7 +3,7 @@ import configparser
 import json
 from pathlib import Path
 import pytest
-from mt5_extracao.robots import sessions,mt5_tools,backtest
+from mt5_extracao.robots import sessions,mt5_tools,backtest,budget
 from tests.test_s09_native_profile import robot
 
 @pytest.mark.parametrize("mode",["backtest","replay"])
@@ -57,6 +57,32 @@ def test_failed_history_keeps_failure_and_uses_existing_owned_cleanup(robot,tmp_
     monkeypatch.setattr(mt5_tools,"release_native_context",lambda s:True)
     job.run()
     assert job.state=="failed" and job.error=="relatório ausente" and job.record is None and stopped==[1]
+
+
+def test_budget_expiry_cancels_session_and_releases_next_tester(robot, tmp_path, monkeypatch):
+    cfg = configparser.ConfigParser()
+    prefix = tmp_path / 'wine'
+    cfg.read_dict({'MT5': {'path': str(tmp_path / 'main'), 'wine_prefix': str(prefix)}})
+    job = sessions.Session(None, cfg, robot, 'EURUSD', 'M5', mode='backtest',
+                           root=prefix / 'drive_c' / 'sessions', native_options={})
+    events = []
+
+    def prepare(**kwargs):
+        job.directory.mkdir(parents=True)
+        job.child_config = sessions._private_config(cfg, job.directory)
+        mt5_tools.register_native_context(job)
+        raise budget.Interrupted('Prazo do lote atingido durante a compilação.')
+
+    monkeypatch.setattr(job, '_prepare_expert', prepare)
+    monkeypatch.setattr(job, '_stop_owned', lambda: events.append('stopped'))
+    monkeypatch.setattr(mt5_tools, '_native_context_processes', lambda _context: [])
+    job.run()
+    receipt = json.loads(job.report.read_text())
+    assert job.state == 'cancelled' and job.record is None and events == ['stopped']
+    assert receipt['state'] == 'cancelled' and receipt['resources_released']
+    assert receipt['error'] == 'Prazo do lote atingido durante a compilação.'
+    with mt5_tools.tester_lease():
+        assert not (mt5_tools.paths.state_dir() / 'native-active.json').exists()
 
 
 @pytest.mark.parametrize("mode",["backtest","replay"])
