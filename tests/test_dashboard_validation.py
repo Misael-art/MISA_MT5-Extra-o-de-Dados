@@ -58,13 +58,15 @@ def test_new_receipt_exposes_actual_training_and_execution_assumptions(db):
     spec = SymbolSpec(symbol="QA", known=False, spread_points=8, provenance={
         "historical_validity": "not_established", "source": "synthetic", "private_note": "not for sharing"})
     original = validation.validate(bars, "donchian", spec, config, validation.Criteria(n_windows=2, is_parts=1, mc_runs=20))
-    before_save = datetime.now(timezone.utc)
     validation.save_validation(db, "QA", "M5", original)
-    _, before = sections_of(db, before_save)
+    saved, = validation.load_validations(db, ["QA"], "M5", include_result=True)["result"]
+    created = datetime.fromisoformat(saved["created_at_utc"])
+    assert created.utcoffset() == timedelta(0)
+    _, before = sections_of(db, created - timedelta(microseconds=1))
     assert [s["id"] for s in before] == ["validation:late"]
-    snapshot, found = sections_of(db, datetime.now(timezone.utc))
+    snapshot, found = sections_of(db, created)
     section = found[0]
-    assert datetime.fromisoformat(section["temporal"]["created_at_utc"]) >= before_save
+    assert section["temporal"]["created_at_utc"] == saved["created_at_utc"]
     assert section["visual"]["folds"][0]["is_start"] == str(bars["time"].iloc[0])
     assert section["visual"]["folds"][0]["is_end"] == str(bars["time"].iloc[102])
     assert section["visual"]["folds"][1]["oos_bars"] == 104

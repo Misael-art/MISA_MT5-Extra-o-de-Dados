@@ -1,5 +1,12 @@
 # Retomar MT5X em um host limpo
 
+## Corte UTC do Filtro C no CI Windows
+
+A suíte Windows da PR 338 encontrou uma comparação dependente de duas
+leituras seguidas do relógio. O teste recupera o instante persistido e
+verifica o corte imediatamente anterior e o corte no próprio instante.
+O registro entra no Dashboard a partir do instante gravado.
+
 ## Relação descritiva entre tempos gráficos
 
 No modo da mesma estratégia, o Laboratório mostra Pearson entre retornos de
