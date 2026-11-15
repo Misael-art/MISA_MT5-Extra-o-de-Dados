@@ -10,7 +10,7 @@ from tests.test_s09_native_profile import robot
 @pytest.mark.parametrize("native_options",[None,{}],ids=["card","preset"])
 def test_completed_report_closes_own_children_before_release_but_keeps_result(robot,tmp_path,monkeypatch,mode,native_options):
     cfg=configparser.ConfigParser();cfg.read_dict({"MT5":{"path":str(tmp_path/"main"),"wine_prefix":str(tmp_path/"wine")}})
-    job=sessions.Session(None,cfg,robot,"EURUSD","M5",mode=mode,root=tmp_path/"sessions",native_options=native_options)
+    job=sessions.Session(None,cfg,robot,"EURUSD","M5",mode=mode,root=tmp_path/"wine"/"drive_c"/"sessions",native_options=native_options)
     events=[];record={"run_id":"preserved","metrics":{"trades":2},"trades":[["native",1,1]]}
     alive=[]
     def prepare(**kwargs):
@@ -45,7 +45,7 @@ def test_completed_report_closes_own_children_before_release_but_keeps_result(ro
 @pytest.mark.parametrize("mode",["backtest","replay"])
 def test_failed_history_keeps_failure_and_uses_existing_owned_cleanup(robot,tmp_path,monkeypatch,mode):
     cfg=configparser.ConfigParser();cfg.read_dict({"MT5":{"path":str(tmp_path/"main"),"wine_prefix":str(tmp_path/"wine")}})
-    job=sessions.Session(None,cfg,robot,"EURUSD","M5",mode=mode,root=tmp_path/"sessions",native_options={})
+    job=sessions.Session(None,cfg,robot,"EURUSD","M5",mode=mode,root=tmp_path/"wine"/"drive_c"/"sessions",native_options={})
     stopped=[]
     def prepare(**kwargs):
         job.directory.mkdir(parents=True);job.child_config=sessions._private_config(cfg,job.directory)
@@ -62,7 +62,7 @@ def test_failed_history_keeps_failure_and_uses_existing_owned_cleanup(robot,tmp_
 @pytest.mark.parametrize("mode",["backtest","replay"])
 def test_surviving_child_keeps_owner_and_blocks_next_tester_without_losing_result(robot,tmp_path,monkeypatch,mode):
     cfg=configparser.ConfigParser();cfg.read_dict({"MT5":{"path":str(tmp_path/"main"),"wine_prefix":str(tmp_path/"wine")}})
-    job=sessions.Session(None,cfg,robot,"EURUSD","M5",mode=mode,root=tmp_path/"sessions",native_options={})
+    job=sessions.Session(None,cfg,robot,"EURUSD","M5",mode=mode,root=tmp_path/"wine"/"drive_c"/"sessions",native_options={})
     record={"run_id":"preserved","metrics":{"trades":2}}
     alive=[];stopped=[]
     def prepare(**kwargs):

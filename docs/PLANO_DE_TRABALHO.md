@@ -1,5 +1,11 @@
 # Plano de trabalho detalhado
 
+## T20.25 — recusa de pasta do Tester fora do Wine
+
+Valida o caminho do perfil antes de registrar a sessão no controle de posse.
+A mesma conversão de caminho serve para iniciar o Wine e identificar os
+processos a encerrar. O teste cobre a recusa e a reserva válida em seguida.
+
 ## DASH-10 — vínculo da bateria e do preset à execução
 
 O modo Robô prioriza a bateria da própria execução. A faixa nativa consulta

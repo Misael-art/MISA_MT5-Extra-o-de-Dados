@@ -282,6 +282,24 @@ def test_native_context_release_never_removes_other_sessions_marker(tmp_path, mo
     assert json.loads(marker.read_text())["session"] == "someone-else"
 
 
+def test_native_context_rejects_unreachable_wine_directory_before_writing_owner(tmp_path, monkeypatch):
+    prefix = tmp_path / "wine"
+    monkeypatch.setattr(mt5_tools, "wine_prefix", lambda _config: prefix)
+    monkeypatch.setattr(mt5_tools, "_native_context_processes", lambda _context: [])
+    marker = paths.state_dir() / "native-active.json"
+    invalid = SimpleNamespace(id="invalid", directory=tmp_path / "outside", child_config=None)
+    valid = SimpleNamespace(id="valid", directory=prefix / "drive_c" / "inside", child_config=None)
+
+    with mt5_tools.tester_lease(), pytest.raises(ValueError, match="fora do prefixo Wine"):
+        mt5_tools.register_native_context(invalid)
+    assert not marker.exists()
+
+    with mt5_tools.tester_lease():
+        mt5_tools.register_native_context(valid)
+        assert marker.is_file()
+        assert mt5_tools.release_native_context(valid)
+
+
 def test_unreadable_native_owner_fails_closed_but_releases_os_lock(monkeypatch):
     marker = paths.state_dir() / "native-active.json"
     marker.parent.mkdir(parents=True, exist_ok=True)

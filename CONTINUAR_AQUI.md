@@ -1,5 +1,12 @@
 # Retomar MT5X em um host limpo
 
+## Posse do Tester com pasta personalizada no Wine
+
+O registro de posse confere se a pasta da sessão é acessível pela unidade C:
+antes de gravar `native-active.json`. Uma pasta fora do prefixo ativo falha
+antes de reservar essa posse. A regressão verifica que uma nova sessão com
+pasta válida pode prosseguir depois da recusa.
+
 ## Preset, bateria e identidade MQL5 no Dashboard
 
 A bateria aparece junto ao resultado quando está vinculada à execução e ao
