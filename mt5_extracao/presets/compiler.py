@@ -101,6 +101,23 @@ def _serialize_set(parameters):
         return data
 
 
+def _require_seed_before_test(composition,test_context):
+    """Seed de prefixo (relógio broker) posterior ao início do Tester reprova no OnInit.
+
+    O Expert exige InpSeedStart <= TimeCurrent(); no Tester o relógio começa em `start` 00:00 broker.
+    Recusar aqui evita compilar e baixar ticks para uma sessão que já nasce recusada.
+    """
+    if test_context is None:
+        return
+    seed=composition.to_dict()["strategy"]["params"].get("seed_start_broker")
+    if not isinstance(seed,str) or seed.startswith("1970-01-01"):
+        return
+    start=date.fromisoformat(test_context.start).isoformat()+"T00:00"
+    if seed>start:
+        raise ValueError(f"Seed {seed} é posterior ao início do Tester ({start}, relógio broker); "
+                         "escolha uma barra real anterior ou adie o início da janela.")
+
+
 def compile_package(composition, robot, identity, test_context=None, *, canonical_filename=False):
     if not isinstance(identity,PresetIdentity):
         raise ValueError("Compile com identidade tipada do preset; não adivinhar nome/versão.")
@@ -108,6 +125,7 @@ def compile_package(composition, robot, identity, test_context=None, *, canonica
         raise ValueError("Use contexto tipado de teste ou mantenha o preset como rascunho sem janela.")
     composition=composition if isinstance(composition,Composition) else Composition(composition)
     native=native_adapter(composition,robot).describe(identity.id)
+    _require_seed_before_test(composition,test_context)
     if type(canonical_filename) is not bool:
         raise ValueError("Convenção do filename exige escolha explícita booleana.")
     filename="parameters.set"
