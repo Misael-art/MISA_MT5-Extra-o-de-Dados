@@ -51,8 +51,8 @@ Os dois atalhos `mt5-extracao.desktop` usam o mesmo destino estável
 uma release criada do commit publicado. `mt5x-release.json` nessa release registra
 SHA, composição, hashes dos arquivos e modalidade `development_preview`.
 
-A referência aceita `app-current` e sua release permanecem disponíveis para
-retorno. Só a prévia é usada pelo atalho habitual solicitado. A configuração,
+A release anterior da prévia permanece disponível para retorno (o alias
+`app-current` não existe neste host; ver [CONTINUAR_AQUI](../CONTINUAR_AQUI.md)). Só a prévia é usada pelo atalho habitual solicitado. A configuração,
 base, preferências, logs, exportações e `.venv` existentes são reutilizados por
 links; não se copia banco nem instalação Wine/MT5 para publicar uma interface.
 Não publicar configuração, credenciais ou conteúdo da base no GitHub.
@@ -84,34 +84,53 @@ ou referências, após a validação. Preservar fontes, histórico, WIP e diagn�
 relevantes; não limpar caches globais ou worktrees do proprietário.
 
 
-## Reconferência de composição em12/11/2026
+## Prévia candidata conferida em 12/11/2026
 
-Composição revisável na branch `codex/composicao-diagnostico-20261112`,
-com as fontes publicadas PR293–300,303–307. Estado, owners, SHAs, evidências
-e próximos passos estão na fila de [continuidade](../CONTINUAR_AQUI.md). Prévia identificada
-pelo manifesto e com retorno preservado. Integração financeira, Windows físico,
-OAuth real, entrada física e observação prolongada conservam aceites próprios.
+PR308 `561152b` contém o runtime das correções de relógio/restauração, lease e
+retenção. Os 365 hashes do artefato de 6.378.666 B foram conferidos. O launcher
+do próprio artefato abriu no compositor XWayland com configuração e duas bases
+SQLite próprias. Recuperação 7→99, recusa de relógio incompatível, cópia e
+consulta de retenção pelo worker passaram. Foram 25 pulsos, intervalo máximo
+0,571 s, pico 275,2 MiB, mínimo disponível 7,90 GiB e máximo 59 °C.
 
-Os commits aplicados na composição são ancestrais da prévia. Patches de PRs
-independentes mantêm o vínculo entre SHA original e SHA aplicado no manifesto.
-Confira ambos e os hashes runtime. O checkout único e seu índice principal
-permanecem preservados. Retorno primário `development-650656fac67d`,
-com retorno histórico adicional `development-57d13ee91620`. Os ambientes,
-dados e configuração atuais são reutilizados por links.
+Observação contínua adicional, limitada a 180 s, teve 4.168 pulsos, seis
+atualizações, três alternâncias de tema e zero erros de callback. Pico
+272,6 MiB, mínimo 7,73 GiB e máximo 68 °C. Quatro hashes de preferências e
+favoritos do proprietário permaneceram iguais em ambos os ensaios. Os
+controladores solicitaram as ações na janela visível. Entrada física,
+acessibilidade, login, maior duração, hardware nativo e energia seguem próprios.
+A ponta pública da retenção `97da399` reposiciona somente recibos documentais
+para liberar CI após a atualização da dependência, com merge-tree limpo. O
+runtime conserva o SHA de origem `fdbe0d9` usado na composição e no artefato.
+O link estável continua em `650656f` até a conferência dos gates pertinentes.
 
 
-## Composição de diagnóstico em12/11/2026
+## Disponibilização conferida da prévia2b
 
-A branch `codex/composicao-diagnostico-20261112` reúne as fontes públicas
-revisadas de configuração, dados, Laboratório, Drive e restauração. A fila
-com owners, SHAs, evidências e próximos passos está em [continuidade](../CONTINUAR_AQUI.md).
-O destino efetivo de `app-development` e o `mt5x-release.json` identificam
-a prévia usada pelo atalho. A conferência do artefato e os checks se referem
-à fonte publicada. Retorno, ambiente e dados são preservados.
+O atalho e o menu agora resolvem a composição `2b3b274`, com365 arquivos
+conferidos. Linux completo, PostgreSQL, lint e os dois instaladores passaram
+no SHA publicado. Windows permanece em curso. O procedimento de ativação
+a674860c2d9a4d6398587a43e80513a4 registrou intenção e resultado duráveis e
+revalidou destino/atalhos/estado compartilhado antes da troca atômica. O pico
+do processo de ativação foi23,3MiB. A conferência pelo launcher estável teve
+saída0, três cópias próprias consultadas, valor99 preservado, pico134,6MiB,
+mínimo8,21GiB disponíveis e duração4,09s. Retornos650/57 estão preservados.
 
-A restauração inclui intenção durável, consulta e recuperação explícita.
-Teve31 regressões focadas, seis casos existentes em lote próprio, CLI oficial
-e GUI XWayland em SQLite sintético, com preferências isoladas. O CI do SHA
-publicado e os aceites de hardware, entrada física, login, falha de energia
-e operação nativa têm registros próprios. Seções datadas anteriores conservam
-suas fotografias históricas.
+A primeira preparação ligava uma lista legada de símbolos do checkout. A
+comparação com a prévia efetiva mostrou que esse arquivo estava ausente.
+O vínculo novo foi retirado antes da ativação e o arquivo legado foi preservado.
+O método de produção `load_symbols` tem o mesmo conteúdo nas duas versões;
+executado com objeto controlado e ausência real do arquivo, devolveu os mesmos
+cinco símbolos e configuração de tempos. Essa validação foi controlada. A GUI
+XWayland2b foi exercitada antes da reconciliação desse vínculo, no mesmo código.
+A comprovação de hash/existência de preferências cobre os ensaios finais
+isolados; o estado anterior aos primeiros ensaios permanece sem comprovação.
+
+A admissão inicial de carga pesada foi aplicada à troca de metadados e adiou
+a tentativa. A operação final foi dimensionada como leve, com128MiB previstos,
+32MiB de leitura,256KiB de gravação e reserva mínima de4GiB. A GUI, builds e
+suítes locais ficaram adiados durante a pressão de I/O. Foi observado copiador
+de outra tarefa,13MiB lidos e13MiB gravados em3s, preservado em execução.
+Kernel sem avisos nos30min consultados e Btrfs com6.741 corrupções acumuladas,
+sem mudança dos contadores. Essas observações mantêm a causa dos reinícios
+indeterminada. Recibos completos em state/qa-tmp/diagnostico-20261112/.

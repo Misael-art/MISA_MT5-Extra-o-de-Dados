@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from .adapter import base_composition
+from .native import PANEL_SCOPE_FIX_HADOUKEN_REVISION, PANEL_STANDARD_INCLUDES
 from .registry import BASE_MODES, EXECUTION_ORDER
 from .schema import Capabilities, Composition
 from ..robots import catalog, native_inputs
@@ -11,6 +12,7 @@ PROFILE_ID = "hadouken.ha_hilo"
 ROBOT_KEY = "mql5:hdk_hahilo"
 ROBOT_VERSION = "1.20"
 APPROVED_FINGERPRINT = "5dad3bbabab0343f"
+PANEL_SCOPE_FIX_FINGERPRINT = "8f8cf589fd084e85"
 HADOUKEN_REVISION = "6b4f9ec8800afcd50158e5991dfde89a14b28264"
 STRATEGY_INPUTS = {
     "hilo_period": ("InpHiLoPeriod", "int", "bar"),
@@ -27,12 +29,15 @@ STRATEGY_FIELDS = (("hilo_period", "Período HiLo (barras)"), ("hilo_offset", "D
 
 def require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
+    fingerprint = catalog.fingerprint(robot)
+    revisions = {APPROVED_FINGERPRINT: HADOUKEN_REVISION,
+                 PANEL_SCOPE_FIX_FINGERPRINT: PANEL_SCOPE_FIX_HADOUKEN_REVISION}
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY
-            or robot.version != ROBOT_VERSION or catalog.fingerprint(robot) != APPROVED_FINGERPRINT
+            or robot.version != ROBOT_VERSION or fingerprint not in revisions
             or actual != INPUT_TYPES or len(robot.inputs) != len(INPUT_TYPES)
-            or set(robot.missing_includes) - {"Canvas/Canvas.mqh"}):
+            or set(robot.missing_includes) - PANEL_STANDARD_INCLUDES):
         raise ValueError("HA/HiLo exige fonte/versão/fingerprint aprovados e os 10 inputs conhecidos; atualize a biblioteca completa pela revisão indicada.")
-    return APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION
+    return fingerprint, INPUT_TYPES, 1, revisions[fingerprint]
 
 
 def default_composition(robot, *, symbol, timeframe):
@@ -51,7 +56,7 @@ class HaHiLoNativeAdapter:
         self._validate()
 
     def _validate(self):
-        require_robot(self.robot)
+        profile = require_robot(self.robot)
         data = self.composition.to_dict()
         if data["strategy"]["key"] != "ha_hilo":
             raise ValueError("Perfil HA/HiLo exige a estratégia ha_hilo.")
@@ -66,10 +71,10 @@ class HaHiLoNativeAdapter:
         sizing = data["sizing"]["params"]
         if not sizing["compound"] or not 0 < sizing["risk_fraction"] <= .005:
             raise ValueError("HA/HiLo nativa usa saldo composto e orçamento até 0,5%; não aumente o limite para executar.")
-        return data
+        return data, profile
 
     def describe(self, preset_id):
-        data = self._validate()
+        data, (fingerprint, _, profile_version, hadouken_revision) = self._validate()
         preset_id = native_inputs.scalar(preset_id, "token")
         if not preset_id or len(preset_id) > 80:
             raise ValueError("ID do preset deve ter de 1 a 80 caracteres portáteis.")
@@ -81,12 +86,12 @@ class HaHiLoNativeAdapter:
             values[name] = format(Decimal(str(data["strategy"]["params"][key])), "f")
             bindings["strategy.params."+key] = {"input": name, "type": "int" if kind == "int" else "number", "unit": unit}
         capabilities = Capabilities({"capabilities_schema_version": 1,
-            "robot": {"key": self.robot.key, "version": self.robot.version, "fingerprint": APPROVED_FINGERPRINT},
+            "robot": {"key": self.robot.key, "version": self.robot.version, "fingerprint": fingerprint},
             "backend": "mql5", "strategy_key": "ha_hilo",
             "modules": {**{slot: [mode] for slot, mode in BASE_MODES.items()}, "filters": []}, "bindings": bindings}, self.composition)
         fields = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "bool" for name, kind in INPUT_TYPES.items()}
-        return {"native_profile_schema_version": 1, "profile_id": PROFILE_ID, "profile_version": 1,
-                "hadouken_revision": HADOUKEN_REVISION, "robot": capabilities.to_dict()["robot"],
+        return {"native_profile_schema_version": 1, "profile_id": PROFILE_ID, "profile_version": profile_version,
+                "hadouken_revision": hadouken_revision, "robot": capabilities.to_dict()["robot"],
                 "capabilities": capabilities.to_dict(), "parameters": values, "receipt_fields": fields,
                 "expected_native_inputs": native_inputs.expected_values(values, fields), "inactive_paths": [],
                 "conversions": {"sizing.params.risk_fraction": "fraction × 100 → InpRiskPct percent"},

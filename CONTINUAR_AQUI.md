@@ -1,12 +1,29 @@
 # Retomar MT5X em um host limpo
 
+## Presets estáticos e fontes do HADOUKEN atual
+
+HA/HiLo, Madrid, Pullback nativo, StochEMA9/S10 e VWAP Bands aceitam a
+identidade exata do HADOUKEN `d3dd3a5e9a68`. Os 10, 13, 23, 15 e 11 inputs
+mantêm o contrato anterior. Default e Manual vinculam a identidade de fonte
+e a revisão no manifesto e recusam pacote cruzado. O exportador reabre os
+pacotes com o mesmo `.set`, sem alterar revisões anteriores. A candidata
+`981bc49ba28c` da PR 351 gerou, selecionou, exportou e reabriu 14 pacotes
+dos sete Experts reais em SQLite de QA. Passaram 43 regressões focadas e
+dois cenários de interface. A aceitação técnica do pacote habilita o percurso do
+Tester DEMO. Os resultados nativos e os seletores Defensivo e FatorLucro têm
+aceites próprios.
+
 ## Regressões Windows na candidata da PR 350
 
 O teste da Análise offline carrega as 600 barras com a janela oculta e
 confere os três gráficos quando a guia fica visível. Continua verificando
 que a sessão não chama o SDK do MetaTrader. Os testes de encerramento do
 Tester leem o recibo em UTF-8 e conferem os acentos e a liberação da sessão.
-A revisão é uma extensão da PR 350 e conserva o runtime da candidata.
+A revisão `ec2237aa11cd` passou nas duas regressões no Linux e na etapa
+focada do CI Windows. As duas suítes completas, o lint, PostgreSQL e os dois
+instaladores terminaram com sucesso no mesmo SHA. O launcher oficial abriu
+a Análise offline com 600 barras e zero chamadas ao SDK. Os 370 hashes
+conferem com o runtime da candidata original da PR 350.
 
 ## Qualidade das barras com conversão compartilhada
 
@@ -24,6 +41,8 @@ A escolha da revisão, os recibos e as alterações do bruto continuam na
 mesma transação. A regressão confere os lotes e a reversão de falha parcial.
 Na bancada, a gravação das mesmas 753 barras passou de 9,58 s para 2,98 s.
 Passaram 27 testes de gravação, revisões, consultas e retomada em SQLite.
+O caso de comparação com três ativos passou no prazo original. O de seis
+chegou ao limite de 60 s na montagem do plano do executor.
 
 ## Captura retorna o snapshot validado na gravação
 
@@ -134,8 +153,9 @@ A Análise conserva os dados já lidos e desenha os gráficos quando a aba está
 visível. O layout também aguarda o mapeamento e usa o ciclo principal de
 eventos. A regressão Linux em Xvfb cobriu a abertura em escala 2.0 e a aba
 Robôs em 1.33 e 2.0, mantendo o timeout de 60 segundos por teste. No Windows,
-o timeout do SHA `ac0ab478` na PR 329 motivou o corretivo. O check do novo
-SHA e o aceite em Windows físico têm verificação própria.
+o timeout do SHA `ac0ab478` na PR 329 motivou o corretivo. A etapa visual
+isolada do SHA `b93586289333` passou no CI. A suíte completa seguia em
+execução e o aceite no Windows físico continua pendente.
 
 ## Laboratório — mesma estratégia entre tempos gráficos
 
@@ -173,6 +193,39 @@ o instante da decisão, a abertura encontrada e o estado da execução.
 Quinze verificações no Linux cobriram atraso, gap, validade dos inputs,
 reconciliação de preço e reabertura do recibo persistido. Custos observados e
 paridade com o Tester seguem com aceites próprios.
+
+Os incrementos abaixo estão nas PRs [330](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/330),
+[331](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/331) e
+[332](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/332).
+O estado dos checks por SHA e o orçamento nativo estão na bancada privada
+`state/qa-tmp/corretivos-20261113/qualificacao-wine/estado-qualificacao.json`.
+A prévia ativa é `ec2237aa11cd` da PR 350, com retorno `6e48e9010e38` e
+370 hashes em ambas. O doctor offline registrou 16 OK, dois avisos e zero
+falhas. Na candidata original `2d8122e57762`, o launcher congelou e reabriu
+502 barras M1 e 251 M2 em SQLite sintético, com os mesmos manifestos e a
+mesma resposta da PR 349. As candidatas anteriores registram a prova das grades divergentes,
+de Dia do mês e de M7/M9. As PRs 333–350 estão encadeadas por SHA. O teste com
+três ativos passou. O de seis atingiu 60 s na execução e, na reabertura de uma
+cópia da sessão, confirmou 12 execuções gravadas e uma comparação compatível
+de 126 células. O aceite de duração segue pendente.
+A tentativa anterior chegou ao limite de 300 s. A compilação isolada
+posterior `836a967c579c425b926ab6eb6594e052`, na candidata `bff77391bee8`,
+gerou o `.ex5` em 196,36 s de sessão, com zero erros e avisos e liberação
+dos processos. A sessão `d31440fc74dd4e5d8c135e1048532162` retomou o Triplo
+1.02 desarmado no fluxo oficial. A compilação atingiu o limite de 300 s em
+95% da geração de código, antes de iniciar o Tester, e os processos foram
+liberados. O recibo `compiler-input-parity-d31440fc74dd.json` confirma o
+mesmo MetaEditor, 292 entradas idênticas e fonte instrumentado com diferença
+apenas nos identificadores de sessão. A bancada `qualificar_launcher.py`
+verificou os quatro pacotes na candidata `2d8122e57762` e reconferiu o Triplo
+desarmado na prévia ativa `ec2237aa11cd`. O `./run.sh` aciona o workflow
+com SQLite de QA e um único job. O prazo de compilação é 300 s. A pressão
+sustentada de CPU adiou a nova sessão. Retomar pelo Triplo desarmado e exigir
+consenso confirmado, caixa conciliado e zero entradas. Seguir com os armados,
+o par visual, S09 e a comparação com Replay e Python. Para `iCCI` e AggrVolBalance,
+`MT5X_IndicadoresQA.mq5` prepara preços sintéticos e a leitura de `CopyBuffer`;
+o comparador foi aferido em cinco estágios, e a coleta no terminal segue pendente.
+O recibo `preset-profile-audit.json` identifica as fontes do mapper.
 
 ## Cobertura de ticks no relatório do Tester — 14/11/2026
 
@@ -220,7 +273,8 @@ pendente.
   MetaEditor/Wine detectou funções de cobertura fora da classe do painel.
   O HADOUKEN `d3dd3a5` (PR92) corrigiu a classe. Painel 7.12, S09 2.18 e
   Triplo 1.02 compilaram com zero erros e avisos em perfil isolado. A PR322
-  (`4fa0bd4`) acompanha o pin e as novas identidades de fonte.
+  (`4fa0bd4`) acompanha o pin e as novas identidades de fonte. O indicador
+  AggrVolBalance do mesmo pin também compilou com zero erros e avisos.
 - O atalho e o menu usam a prévia `6e48e9010e38` (PR329), com 370 arquivos
   verificados, HADOUKEN `d3dd3a5`, Safety `27b8599` e retorno `3d2447243704`.
   GUI Linux em Xvfb, CCI versionado, doctor offline e percurso de pacotes
@@ -245,6 +299,29 @@ pendente.
   ligado/desligado, o aceite com dados elegíveis do M1, os percursos de
   configurador/dashboard e a custódia via Drive do proprietário. O aceite
   físico do Windows continua aguardando host qualificado.
+
+## Parecer consolidado e repasse — 14/11/2026
+
+Fotografia atual conferida no parecer local
+`../../state/qa-tmp/corretivos-20261113/PARECER_CONTINUIDADE_20261114.md`.
+Os marcos abaixo são históricos; este recorte atualiza sua leitura sem apagar evidências.
+
+- App: checkout550b6d5/codex/launcher-classes preservado, índice vazio; ponta
+  publicada18fd5a76/PR320, dependente de3bca8c87/PR319 e da cadeia313–318.
+- HADOUKEN566c8e32/PR91 e Safety27b8599 limpos; manifesto local reconciliado.
+  Prévia habitual ainda2b3b274,365 hashes reconferidos; corretivos novos não ativados.
+- PRs313–318: CI completo aprovado. PR319/320: Linux/PG/instaladores/lint
+  aprovados; jobs Windows ainda em execução no corte20:18UTC, sem aceite físico.
+- Nova admissão após boot16:34:53-03 permitiu101 testes focados App,195 do
+  framework,checker174,27 CCI/SA-REF e doctor16OK/2avisos. Quatro warnings NumPy
+  na referência de pesquisa ficam registrados. Não é prova de MT5/launcher final.
+- WIP de pacotes: package_plan.py, resources/commands.py e test_asset_package_plan.py;
+ 15 testes passaram dentro do lote101, mas não há commit/PR da frente nem ref local
+  codex/pacotes-inventario-qa. Planejador não é exportação/reunião integral.
+  Checkpoint TAR/manifesto verificado em parecer-handoff-20261114, no mesmo disco.
+- Próxima ação: fechar CI319/320, revisar/compilar/qualificar composição nativa e
+  GUI/prévia exata; depois retomar transporte por famílias/owners e QA de reunião.
+  Windows físico, dados/conta/destino pessoais e qualificação M1 têm aceites próprios.
 
 ## Prioridade corretiva definida pelo proprietário — 13/11/2026
 
@@ -289,6 +366,60 @@ MT5/build quando aplicável, conta permitida sem segredos, recursos/sensores,
 dados de QA, recuperação e periféricos do percurso. Não transferir aceite de
 CI ou mocks para esse host. Não há autorização de negociação REAL nesta tarefa.
 
+## Execução corrente dos corretivos — 14/11/2026
+
+Um escritor Codex nesta tarefa. App550b6d5/codex/launcher-classes e índice vazio
+preservados;93 WIPs originais conferidos em wip-recheck-20261114.json. Somente
+hunks próprios em handoff/plano/Biblioteca diferem da fotografia. Publicação
+usa índices isolados e docs reconstruídos do pai publicado, sem levar o WIP.
+
+E14-CALC: H569/PR85, App72/PR313 e seis jobs de produto aprovados. CCI:
+PR314/2b8bb96; Linux4655 passed/473 skipped, núcleo81%, PG/instaladores/lint
+aprovados; Windows em curso. Corrige as quatro falhas BD01/catálogo do CIe0.
+Versão matemática2.0+15dc1f90361c,19 testes finais/63 únicos entre lotes locais.
+CLI/GUI anteriores pertencem à fonte276/versão7c344 e não certificam a precisão final.
+
+IND-AGGR: H438/PR86 (fonte461),174 testes/checker171 aprovados; Appadf31e4/PR315
+com Linux completo/PG/instaladores/lint aprovados, Windows em curso. E14-METRIC:
+H231343f/PR87,181 testes/checker171 aprovados; Appeb3a2dd/PR316 integra o pin.
+E14-SCOPE: H4982259/PR88,184 testes/checker171 aprovados; Appd136f7c/PR317 integra
+o pin. Duas regressões de escopo e o timeout local10s estão preservados; a nova
+admissão do checker no c964 passou171 arquivos em1,67s. Safety27b8599 detached.
+
+Candidato d136 preparado e365 hashes conferidos,6.383.983B, com pinH498/Safety27.
+O link habitual permanece2b e conserva retorno. O controlador GUI e a CLI de QA
+agora apontam só para o artefato d136; consultar recibos antes de repetir.
+GUI CCI final, MetaEditor e testes compilados locais seguem adiados por RAM/swap/
+PSI; os quatro testes curtos de consumidores CCI também não foram admitidos.
+Não reduzir gates nem encerrar processos alheios. Recibos privados:
+state/qa-tmp/corretivos-20261113. Não há negociação, merge/release, novo ambiente,
+limpeza compartilhada ou processo próprio residente.
+
+E14-EXEC: H95af71a/PR89,185 testes/checker171/sintaxe aprovados; App7ec6476/PR318.
+Journal conserva a barreira de reentrada na barra do fechamento após reinício.
+Legado sem vínculo só pesquisa Tester DEMO; sem gestão automática de posições
+ao vivo. Fonte S09 2.14/perfil16 passou gate leve exato; mapper completo/Session
+aguardam CI próprio e admissão local. CCI2b8 concluiu os seis checks, incluindo
+Windows CI. Prévia segue2b; d136 preparado é anterior ao pinH95, não ativado.
+
+SA-01-CONTRATO assumido emH `codex/sa01-triplo-contrato`, base95af71a. Fechar
+variante própria com três curvas no mesmo TF, fórmula existente, seed e consenso,
+intenção por episódio e SL absoluto/TP ausente no executor vinculado existente.
+Vídeo5ABRHXAaEKU indisponível à leitura por throttling; ajuda primária Nelogica
+confirma TR/suavização, não prova seed/catraca. Equivalência externa permanece
+hipótese. SA-REF-01 congelada; SA-01-PLOT ainda livre. Windows físico aguarda host.
+
+
+Marco14:10UTC: PRsApp315/adf,316/eb3,317/d136 e318/7ec concluíram seis checks
+de produto; Windows CI não certifica alvo físico. TriploH PR90 publica kernel
+composto5d73, referência Decimal/binary64 corrigida4511 (CI43602602936 aprovado),
+e API de SL absoluto/TP0 explícito84140d3. CI43602957255 da API falhou, em investigação.
+S09 passa a2.15 pela nova closure; App318 ainda fixaH95/2.14, portanto não
+tratar o checkoutH em desenvolvimento como composição instalada aprovada.
+RAM4,2–4,3GiB, swap contínuo e PSI adiaram nova admissão local; não há filho
+próprio de QA em execução. Continuar pelo erro de CI, depois Expert/inputs/
+vínculo App, integração do pin e prévia. TestesApp devem usar cwd repos/app.
+
 ## Fila de diagnóstico e correções — 13/11/2026
 
 Codex assumiu a escrita desta passagem no checkout canônico `repos/app`, em
@@ -318,7 +449,7 @@ Os aceites possuem escopo explícito e dependências próprias.
 | ID | Objetivo / owner | Estado | Branch/PR e último SHA publicado | Evidência, dependência e próximo passo |
 |---|---|---|---|---|
 | E14-CALC-01 | P0 · Comissões, fills, parciais e ciclos / Codex nesta tarefa, HADOUKEN-E14 e Analytics | em validação | HADOUKEN PR85 `569718c`; App PR313 `72f95e9`, `codex/e14-calc-integracao` | Consumidor comum reproduziu a falha e corrige26→28 com rateio por volume, taxas, INOUT e entradas antigas. 169 testes únicos passaram em lotes:162 antes de interrupção própria por reserva, sete restantes e sete afetados repetidos. MetaEditor/Wine0erros/0avisos,39fontes idênticas. Manifesto App em reconciliação explícita; prévia continua2b até gates. Aceite de histórico nativo/visual é próprio; Windows aguarda host qualificado |
-| IND-CCI-01 | P0 · Fórmula, aquecimento e precisão CCI / Codex nesta tarefa, Dados/App | em validação | App PR314, branch `codex/ind-cci-01`; base276e479, precisão em novo SHA | 63 testes únicos;19 casos numéricos finais aprovados. Janela/MAD compartilhados, TP por soma compensada e escala só para overflow/underflow, sem arredondar DTO. Fonte276 passou launcher/GUI XWayland com19 WARMUP/26 AVAILABLE e preferências preservadas; ruído de arredondamento foi reproduzido e corrigido. Launcher/GUI da precisão e prévia em validação, carga adiada por recursos. Snapshots/versões antigas preservados; iCCI/Windows têm aceites próprios |
+| IND-CCI-01 | P0 · Fórmula, aquecimento e precisão CCI / Codex nesta tarefa, Dados/App | em validação | App PR314 `e0eae5d`, `codex/ind-cci-01` | 63 testes únicos/19 finais aprovados. Fórmula compartilhada, BD06, produtor aditivo e precisão por soma compensada/centralização sem quantizar valores. Fonte276 passou CLI e GUI XWayland; precisão15dc publicada, novo artefato/GUI em QA. Versões anteriores/snapshots preservados. Prévia/CI pendentes; iCCI e Windows físico têm aceites próprios |
 | IND-AGGR-01 | P0 · Atualização incremental do AggrVolBalance / Codex nesta tarefa, indicadores HADOUKEN | em validação | HADOUKEN PR86 `461a067`, recibo `438e49e`; App `codex/ind-aggr-integracao` | CI Linux executou174 testes e checker171: aprovados. A regressão anterior falhou em quatro cenários. Corrigidos AS_SERIES, ausência vs zero válido e interrupção; candle/volume continua aproximação. Pin revisado no manifesto. Execução local/MetaEditor/CopyBuffer e prévia aguardam recursos; Windows físico aguarda host qualificado |
 | E14-METRIC-01 | P0 · Indisponibilidade, frescor e cobertura / Codex nesta tarefa, painel HADOUKEN/Analytics | em validação | HADOUKEN PR87, pin231343f; App `codex/e14-metric-integracao` | CI reproduziu total parcial8 substituindo28; correção passou181 testes e checker171. Estados explícitos, último snapshot válido, idade/recortes, DTO/painel e leitor ativo de marcações qualificados. O pin final rejeita EMPTY_VALUE e passou181 testes no CI43581200274. MetaEditor/GUI/prévia aguardam recursos; Windows físico aguarda host qualificado |
 | E14-SCOPE-01 | P0 · Escopos de métricas, risco e zeragem / Codex nesta tarefa, Safety/painel/Analytics | em validação | HADOUKEN PR88 `4982259`; App `codex/e14-scope-integracao` | Duas falhas reproduzidas em182 testes. Correção final passou184 testes/checker171 em CI. Snapshot vincula conta/servidor/moeda; painel explicita bases patrimoniais, Magic/todos os ativos e contribuição netting não qualificada. Zeragem exige inventário legível; executor revalida posse/tipo/símbolo/volume e preserva alheios. Native/GUI/prévia aguardam recursos; Windows físico aguarda host |
@@ -472,24 +603,66 @@ Checkout do App continua em `codex/launcher-classes`/`550b6d5`, com WIP alheio p
 
 Próximos incrementos, em PRs distintas e dependentes: contas múltiplas com identidade estável e cofre isolado; pacotes por ativo com inventário/dependências; reunião em QA com conflitos explícitos e consumidores existentes. O proprietário fará consentimento e testes reais só depois da aprovação sintética conjunta. Nenhum dado privado enviado.
 
-## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+## Lote de lacunas — 06/11/2026
 
-Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
-1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
-verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
-A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
-receber o valor padrão. O incremento propaga o orçamento existente à análise.
-O serviço de produção mantém seu contrato de memória e o cenário conserva o
-mesmo teto entre etapas.
+Um incremento por PR, todos sobre `master` `06b78eb`; nenhum merge feito.
 
-Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
-análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
-do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
-passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
-Os valores do sampler representam simulação, com memória física limitada ao
-processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
-validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
-runtime. Logs e falhas anteriores permanecem como evidência.
+| Passo | PR | Estado |
+|---|---|---|
+| 1 Composição e retorno | [295](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/295) | Docs/registro; retorno `57d13ee` conferido por hash, arranque não exercitado |
+| 2 B3/Binance | [293](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/293) `35ad88c` | Recusa sem gravar, relógio por fonte, MN1 por calendário, filtro e erro estruturado; amostra pública real conferida; CI verde |
+| 3 LAB-08 | [294](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/294) | Selo de conteúdo v1, leitura legada declarada, envelope do estudo; CI verde. LAB-01…10 pelo atalho, tema/DPI/monitor físico pendentes |
+| 4 Launcher, Python, BD18a | [296](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/296) | Consultas locais sem ponte, Python ≥3.11, bancada BD18a (linear na seleção; sem otimização) |
+| 5 T13.4-M1 | [297](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/297) | Cadeia real EURUSD H1 em SQLite/PostgreSQL, zero aprovados; simulação econômica bloqueada pelo contrato de custo |
+| 6 E14 painel | [298](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/298) | Compila 0/0; bateria estática aprovada; backtest real 0 operações (painel só manual) |
+| Achado | [299](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/299) | `config.ini` sem interpolação na CLI/conector |
+
+Pendentes com dono: passo 7 (Drive) aguarda cliente OAuth do proprietário; DEMO ao vivo
+exige autorização vigente e janela; netting exige conta netting; Windows físico exige host;
+recuperação/capacidade/pendentes/risco agregado exigem escopo nos pins HADOUKEN/Safety;
+M1 econômico exige custo conhecido antes de janela prospectiva e plano P04. Teste Windows
+`test_backtest_scope_assets` expira de forma intermitente só no Windows CI (PR 299 `[ram]`, PR 298
+`[3]`, esta só de docs): o worker espera o lock SQLite em `ledger.ensure_table` sem outra thread
+ativa, indicando conexão ociosa com lock (journal rollback, timeout 30 s). Defeito do `master`, não
+das PRs; corrigir exige reprodução no Windows e decisão sobre WAL/vida das conexões em ficha própria.
+
+## Composição conferida — 06/11/2026
+
+Conferência local deste host, sem instalar, trocar nem limpar releases.
+
+| Elemento | Estado verificado |
+|---|---|
+| `master` remoto | `06b78eb` (merge da PR292 sobre `784a252`; acréscimo só no handoff) |
+| Prévia do atalho | `~/.local/share/mt5x/app-development` → `releases/development-784a25210b04`, App `784a252`; 350 arquivos conferidos pelo `mt5x-release.json`, sem divergência |
+| Atalhos | `~/.local/share/applications/` e área de trabalho: mesmo `mt5-extracao.desktop` (SHA-256 `bf617cb5…`), executável, `Exec` no `run.sh` da prévia |
+| Retorno | `releases/development-57d13ee91620`, App `57d13ee` (ancestral do master); 341 arquivos conferidos, sem divergência; links de dados resolvem |
+| PR293 dados públicos | `35ad88c` (correções B3/Binance sobre `e5fa91e`/`7bb510f`) |
+| PR294 LAB-08 | `46cfc2e` (selo de conteúdo v1 e envelope do estudo) |
+| Pins | HADOUKEN `d4d389ee`, Safety `27b8599`, detached |
+
+Correções de registros anteriores: o recibo `state/development-preview.json`
+citado abaixo não existe neste host; o recibo efetivo é o `mt5x-release.json`
+de cada release. O alias `app-current` não existe; o destino de retorno é a
+release `57d13ee` acima.
+
+Retorno (troca atômica do link, com a janela do App fechada):
+
+```bash
+cd ~/.local/share/mt5x && ln -sfn releases/development-57d13ee91620 app-development.next && mv -T app-development.next app-development
+```
+
+Antes de usar, conferir de novo os hashes do manifesto da release. Limitação:
+a release de retorno reutiliza `.venv`, base, configuração e logs atuais por
+links; o arranque de `57d13ee` sobre esse estado não foi exercitado nesta
+conferência. Para voltar à prévia, repetir o comando com
+`releases/development-784a25210b04`.
+
+## Backup no Google Drive — planejamento de 06/11/2026
+
+A tarefa entra após a criação do cliente OAuth e o aceite do consentimento.
+Cobre validação automática do destino privado, cópia íntegra das bases e ensaio
+de restauração isolado. A recuperação atual continua pelo caminho privado
+documentado abaixo. [T20.30-HOST1-DRIVE](docs/PLANO_DE_TRABALHO.md#t2030-host1-drive).
 
 ## Integração no master e prévia — 04/11/2026
 
@@ -1306,6 +1479,29 @@ resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
 
+## Excursões nas lentes e no cache — 12/11/2026
+
+Owner Dados/Laboratório, fila DIAG-EXCURSOES, branch `codex/lab-excursoes`.
+As lentes agora preenchem MAE/MFE ausentes com o enriquecimento e preservam
+valores registrados no livro. Vendas usam o ask modelado pela regra de spread
+do backtester, incluindo o piso calibrado. Falta ou invalidade do point mantém
+as excursões indisponíveis. O campo `excursion_basis` identifica livro,
+combinação de fontes, envelope bid/ask ou ask indisponível. A versão de cálculo 2
+invalida caches anteriores e acrescenta a coluna pelo mecanismo aditivo existente.
+As amplitudes continuam em unidades de preço sobre envelopes de barras. A ordem
+dos eventos intrabarra e o instante dos extremos da barra de saída permanecem desconhecidos.
+
+Reprodução inicial com quatro falhas. No Linux, lotes separados tiveram 38 testes
+aprovados e 21 de cache/livro/importação/CLI aprovados, incluindo 50 mil operações.
+Após ajustar tipos e cobrir cache legado, o lote final teve 13 aprovados e um teste
+PostgreSQL pendente por ausência de `MT5X_TEST_PG_URL`. As contagens se sobrepõem.
+O lote de cache levou 56,46 s e atingiu 400 MiB de RSS. A medição durante o lote
+registrou RAM disponível acima de 7,9 GiB, swap inativo e ACPI até 59 °C nas amostras.
+Doctor offline aprovado com 16 OK e dois avisos. Launcher oficial CLI com SQLite
+sintético confirmou MAE 4, MFE 2 e `ask_bar_envelope`, conservando o livro.
+CI do novo SHA, PostgreSQL real, Windows físico e percurso GUI desta correção
+permanecem pendentes. Evidência local em `state/qa-tmp/diagnostico-20261112`.
+
 ## Auditoria de ticks versão 2 — 12/11/2026
 
 Owner Dados/Laboratório, fila DIAG-TICKS, continuação da PR304.
@@ -1327,71 +1523,18 @@ que passou a ocupar cerca de 2 GiB com pressão de I/O. A suíte Windows da pont
 anterior falha no lote de cancelamento SQLite, item DIAG-CI304. O CI da nova
 ponta terá estado próprio. Windows físico, Tester e DEMO conservam seus aceites.
 
-## DIAG-AMOSTRA — agrupamento de execuções em 12/11/2026
 
-Owner escritor Codex, Laboratório. Branch `codex/lab-amostra-execucoes`,
-encadeada na PR304 `dc17f49`, sem alterar a branch do checkout único.
-O índice principal e os WIPs anteriores foram preservados.
+### Continuação operacional da composição em12/11
 
-O agrupamento padrão nas lentes exige execução Python qualificada pelo
-produtor existente, com identidade v1, snapshot íntegro e mesmo escopo,
-código, parâmetros, custos/avaliação/moeda e conteúdo integral do livro.
-A janela de exibição usa a equivalência do run completo. Legados com identidade
-incompleta são preservados com incerteza explícita. Referência de snapshot
-quebrada interrompe a análise. A consulta integral está na CLI por
-`trades report --include-repeated-runs` e na GUI pelo controle correspondente.
-A seleção explícita de run no roteador mantém acesso às repetições guardadas.
-As contagens excluídas acompanham os filtros exibidos. O livro continua íntegro.
-
-Reprodução e validação locais em SQLite próprio, Python 3.11 do `.venv`,
-BLAS/OMP com um thread. Dois limites novos falharam antes do ajuste, moeda e
-diferença fora do período visível. Lote de regressão 47 aprovados em 42,16 s,
-com sobreposição com os lotes anteriores de 35 e 43 casos. Três backtests
-reais do produtor em 600 barras sintéticas guardaram nove operações.
-Launcher CLI e janela própria XWayland mostraram três na visão padrão e nove
-na integral. Recibos em `state/qa-tmp/diagnostico-20261112` da raiz MT5X.
-A primeira chamada `--offline --cli` foi recusada pelo wrapper e a primeira
-sonda GUI falhou por configuração da instrumentação; os percursos corrigidos
-estão registrados no handoff local e nos recibos.
-
-A regressão adicional de referência de snapshot ausente e o recorte PostgreSQL
-foram adicionados após o lote local. A validação final da árvore publicada
-foi direcionada ao CI existente enquanto a VM de outro projeto mantém pressão
-de I/O no host. O CI completo permanece um gate. O último ajuste de integridade
-aguarda evidência do CI. QA descrito corresponde à composição do checkout com
-PR304 e PR305, com o overlay de amostra. A árvore desta PR conserva o
-recorte de amostra sobre PR304, com as excursões em PR própria.
-
-Aceite deste incremento exige os novos testes no CI, preservação de seleção
-explícita/legado/filtros/moeda, regressões do livro/cache/roteador e validação
-da composição da próxima prévia. Entrada física, acessibilidade, login,
-Windows físico, MT5 e negociação têm aceites próprios.
-
-## DIAG-AMOSTRA — leitura legada e validação retomada em 12/11/2026
-
-A retomada reconferiu fonte, processos e PRs. O host estava sem VM ou build
-concorrente, com aproximadamente 7,8 GiB disponíveis e swap sem atividade.
-As regressões foram divididas em lotes proporcionais ao orçamento.
-
-A leitura integral de cada execução agora ocorre após qualificar os metadados
-do produtor. Uma regressão com banco e produtor próprios confirmou a leitura
-redundante para um run legado antes do ajuste e sua eliminação depois dele.
-O livro legado e a indicação de equivalência desconhecida são preservados.
-As execuções qualificadas passam pela comparação integral e validação de snapshot.
-
-Depois do ajuste, lotes de 9 e 26 casos passaram, com 14 casos da amostra e
-21 de assinaturas/cache no conjunto. O lote anterior de contexto/roteador passou
-com 14 casos. Os resultados têm sobreposição com os recibos anteriores.
-Doctor novamente com 16 OK, 2 avisos e zero falhas. O teste de 50 mil operações
-continua com seu limite original e integra o gate completo do CI.
-
-O primeiro lote orçamentado de 60 s terminou após 11 casos, com pico observado
-de 159,3 MiB. O processo próprio foi encerrado e as duas fontes temporariamente
-usadas na validação, junto com o índice principal, foram restauradas. O ensaio
-parcial permanece em `sample-final-tests.json`; os lotes separados concluídos
-estão no handoff local. A QA local usa a composição do checkout, com os corretivos
-de excursões. O CI da PR valida a árvore publicada sobre PR304. Sua conclusão
-e a próxima prévia continuam pendentes.
+PR307 publicada em `9c2c7eb`, PR308 em `f6b6274`. O novo artefato
+`development-f6b6274d7221` tem365 hashes conferidos e6.357.807B de runtime,
+com ambiente/dados por links e retorno650656f preservado. O link estável
+continua em650656f. A primeira admissão de QA do artefato foi recusada antes
+de iniciar a GUI porque outra VM voltou a executar. A pasta própria
+`preview-f6-qa` contém apenas o recibo de admissão e pode ser reutilizada
+após reconferência. Usar PYTHONPATH da própria release no hook e afirmar
+os caminhos dos módulos para impedir importação acidental do checkout
+editável. Próxima investigação independente é DIAG-LEASE-REBOOT.
 
 
 ## DIAG-LEASE-REBOOT — identidade e retomada em 12/11/2026
@@ -1461,6 +1604,46 @@ incerto e a consulta reconciliou ausência. Recibos locais em
 descartáveis. QA gráfico do artefato final aguarda capacidade do host, ocupado
 pela VM alheia. CI do SHA publicado, Windows físico e perda de energia possuem
 aceites próprios. A causa dos reinícios do host continua sem diagnóstico.
+
+
+## Ponto de retomada — composição 2066d7b em 12/11/2026
+
+PR309 publicou `2a5638d49be4043576fa27f2d56169cc1bcaae56`; PR310 publicou
+`ba8963cd66cb48d0c4860a766ad762da56c3623d`, dependente da PR307. A PR308
+integrou ambos em `2066d7bce6a787dbb0c80d37072d278f613f0042`, SHA remoto
+conferido. Índice principal e HEAD `550b6d5` preservados. Os 337 arquivos dos
+caminhos de runtime coincidem com a árvore publicada. Recibos em
+`composition-runtime-proof.json`, `composition-lease.json`,
+`composition-retention.json`, `lease-publication.json` e `retention-publication.json`.
+
+`development-2066d7bce6a7` está preparado com 365 arquivos/6.374.036 B e hashes
+conferidos. É artefato de runtime sem Git. O link efetivo continua em 650656f.
+`state/development-preview.json` foi reconciliado com essa release/354 hashes,
+sem trocar o link. O recibo anterior foi conservado em
+`preview-record-before-reconciliation.json`. O QA do artefato exato está
+preparado em `preview-2066-qa`, com duas bases próprias, preferências isoladas,
+checagem de importação pela release, restauração incerta/recuperação e consulta
+de retenção pela GUI. Ainda não foi executado. Reavaliar host antes de iniciar.
+
+A VM externa Deck-SD-offline-DISM continua com aproximadamente 2 GiB RSS.
+Medições posteriores mantiveram cerca de 6,2 GiB disponíveis, 48–52 °C e PSI
+de I/O variável, frequentemente acima de 10%. Nenhum processo alheio foi
+interrompido. CI remoto continua rodando, sem polling contínuo.
+
+O contrato do próximo pacote foi registrado em `package-contract-current.json`.
+Há uma pergunta de escopo pendente ao proprietário sobre o destino da reunião.
+Enquanto isso, preservar fontes, investigar somente contratos/metadata e
+concluir aceites independentes. A conexão normal do DatabaseManager assegura
+tabelas de controle ao iniciar. Um plano prometido somente leitura precisa
+usar leitura existente/URI SQLite ro para garantir ausência de DDL/criação.
+Não afirmar que snapshot-export conserva toda coluna legada ou reconstitui
+base bruta, pois o leitor OHLCV ativo projeta oito campos.
+
+Próximas ações exatas são conferir resultados dos checks de PR307/308/309/310
+em marcos úteis, completar GUI do artefato com orçamento quando houver margem,
+só então atualizar a prévia pelo procedimento existente e reconciliar registros.
+A decisão pendente determina o contrato do pacote/reunião. Persistem os aceites
+físicos e financeiros delimitados na fila.
 
 
 ## DIAG-RETENCAO — fronteiras ampliadas em 12/11/2026
@@ -1534,6 +1717,27 @@ A reprodução anterior teve duas falhas e um caso compatível aprovado. CI dest
 SHA e QA do artefato composto permanecem em validação.
 
 
+## Prévia candidata conferida em 12/11/2026
+
+PR308 `561152b` contém o runtime das correções de relógio/restauração, lease e
+retenção. Os 365 hashes do artefato de 6.378.666 B foram conferidos. O launcher
+do próprio artefato abriu no compositor XWayland com configuração e duas bases
+SQLite próprias. Recuperação 7→99, recusa de relógio incompatível, cópia e
+consulta de retenção pelo worker passaram. Foram 25 pulsos, intervalo máximo
+0,571 s, pico 275,2 MiB, mínimo disponível 7,90 GiB e máximo 59 °C.
+
+Observação contínua adicional, limitada a 180 s, teve 4.168 pulsos, seis
+atualizações, três alternâncias de tema e zero erros de callback. Pico
+272,6 MiB, mínimo 7,73 GiB e máximo 68 °C. Quatro hashes de preferências e
+favoritos do proprietário permaneceram iguais em ambos os ensaios. Os
+controladores solicitaram as ações na janela visível. Entrada física,
+acessibilidade, login, maior duração, hardware nativo e energia seguem próprios.
+A ponta pública da retenção `97da399` reposiciona somente recibos documentais
+para liberar CI após a atualização da dependência, com merge-tree limpo. O
+runtime conserva o SHA de origem `fdbe0d9` usado na composição e no artefato.
+O link estável continua em `650656f` até a conferência dos gates pertinentes.
+
+
 ## DIAG-LEASE — leitura do teste sob bloqueio em 12/11/2026
 
 A tentativa Windows1 foi cancelada prematuramente por esta tarefa após mais
@@ -1549,6 +1753,72 @@ assertivas de estado ativo/liberado. Também prova a recusa do leitor externo.
 O bloqueio real e a produção conservam seu fluxo.66 casos locais passaram
 em39,14s, um processo e BLAS/OMP com um thread. O novo Windows CI ainda
 precisa confirmar a portabilidade. Os logs anteriores permanecem preservados.
+
+
+### Prévia adiada por pressão do host
+
+Os cinco jobs de produto, incluindo Linux completo, passaram nas PR295/307/
+308/309/310; Windows permanece em execução. O artefato2b está preparado e seu
+launcher XWayland já passou. A tentativa de troca do atalho parou na verificação
+de swap antes de criar a intenção ou alterar o link. A consulta confirmou
+app-development→650656f e ausência de intenção de ativação. Três amostras em
+20s mostraram swap-in contínuo, incremento de swap-out na terceira janela,
+MemAvailable6,4–6,5GiB, PSI de memória avg10 até0,99 e I/O avg60 de12,94–17,78.
+Temperatura58°C. A ativação aguarda nova admissão com margem; fonte, manifestos
+e recibos permanecem preservados. Nenhum processo alheio foi encerrado.
+Próxima ação exata é reconferir pressão/carga/swap/processos e, com margem,
+retomar a ativação2b seguindo o procedimento de docs/TESTAR_DESENVOLVIMENTO.md.
+
+
+## Disponibilização conferida da prévia2b
+
+O atalho e o menu agora resolvem a composição `2b3b274`, com365 arquivos
+conferidos. Linux completo, PostgreSQL, lint e os dois instaladores passaram
+no SHA publicado. Windows permanece em curso. O procedimento de ativação
+a674860c2d9a4d6398587a43e80513a4 registrou intenção e resultado duráveis e
+revalidou destino/atalhos/estado compartilhado antes da troca atômica. O pico
+do processo de ativação foi23,3MiB. A conferência pelo launcher estável teve
+saída0, três cópias próprias consultadas, valor99 preservado, pico134,6MiB,
+mínimo8,21GiB disponíveis e duração4,09s. Retornos650/57 estão preservados.
+
+A primeira preparação ligava uma lista legada de símbolos do checkout. A
+comparação com a prévia efetiva mostrou que esse arquivo estava ausente.
+O vínculo novo foi retirado antes da ativação e o arquivo legado foi preservado.
+O método de produção `load_symbols` tem o mesmo conteúdo nas duas versões;
+executado com objeto controlado e ausência real do arquivo, devolveu os mesmos
+cinco símbolos e configuração de tempos. Essa validação foi controlada. A GUI
+XWayland2b foi exercitada antes da reconciliação desse vínculo, no mesmo código.
+A comprovação de hash/existência de preferências cobre os ensaios finais
+isolados; o estado anterior aos primeiros ensaios permanece sem comprovação.
+
+A admissão inicial de carga pesada foi aplicada à troca de metadados e adiou
+a tentativa. A operação final foi dimensionada como leve, com128MiB previstos,
+32MiB de leitura,256KiB de gravação e reserva mínima de4GiB. A GUI, builds e
+suítes locais ficaram adiados durante a pressão de I/O. Foi observado copiador
+de outra tarefa,13MiB lidos e13MiB gravados em3s, preservado em execução.
+Kernel sem avisos nos30min consultados e Btrfs com6.741 corrupções acumuladas,
+sem mudança dos contadores. Essas observações mantêm a causa dos reinícios
+indeterminada. Recibos completos em state/qa-tmp/diagnostico-20261112/.
+
+
+## DIAG-CI-MACRO — orçamento coerente do cenário em 12/11/2026
+
+Windows2a/131574907486 reprovou o cenário macro por RSS do processo acima de
+1024MiB. Windows7df/131581528852 passou nesse cenário e reprovou somente na
+verificação Node de10s. A atribuição anterior a7df foi corrigida após ler o log.
+A fixture já mede RSS e declara um orçamento na coleta; a análise passava a
+receber o valor padrão. O incremento propaga o orçamento existente à análise.
+O serviço de produção mantém seu contrato de memória e o cenário conserva o
+mesmo teto entre etapas.
+
+Regressão com sampler controlado em1536MiB reproduziu MemoryError na primeira
+análise, em3,12s. Após a correção, o cenário concluiu e recusou2048MiB, acima
+do teto já declarado de1792MiB. Cinco testes de fases, relatório e limites
+passaram em8,40s no Linux. Dados próprios de95 barras, um processo e um thread.
+Os valores do sampler representam simulação, com memória física limitada ao
+processo de teste normal. Regressão gráfica Windows e CI da ponta seguem em
+validação. Integração requerida nas PR309/308; artefato2b conserva o mesmo
+runtime. Logs e falhas anteriores permanecem como evidência.
 
 ## IND-AGGR-01 · integração Linux em validação — 14/11/2026
 

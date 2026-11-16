@@ -884,6 +884,27 @@ ponta terá estado próprio. Windows físico, Tester e DEMO conservam seus aceit
 
 ## Excursões nas lentes e no cache — 12/11/2026
 
+## Auditoria de ticks versão 2 — 12/11/2026
+
+Owner Dados/Laboratório, fila DIAG-TICKS, continuação da PR304.
+Foram reproduzidas 15 falhas em flags não finitas, fracionárias ou fora do
+intervalo, sequência inválida/duplicada e auditoria vazia com promoção de classe.
+A versão 2 registra metadados inválidos e mantém a captura original. A classe A
+exige auditoria atual com linhas, e a certificação intrabarra exige sequência
+sem defeitos bloqueantes. Point inválido ou conversão que exceda o número finito
+é diagnosticado, conservando o spread em unidades de preço. Arrays inteiros
+nullable têm seus valores ausentes contabilizados. O corretivo de timestamps
+inválidos e seus seis testes já presentes no checkout foram revisados e preservados
+neste incremento.
+
+Regressão Linux em lote único com elegibilidade e recuperação teve 80 aprovados.
+Após cobrir booleanos e inteiros nullable, o recorte final teve 34 aprovados em
+3,47 s. Contagens sobrepostas. Doctor offline teve 16 OK e dois avisos.
+O percurso CLI dedicado e a GUI aguardam uma janela sem a VM de outra tarefa,
+que passou a ocupar cerca de 2 GiB com pressão de I/O. A suíte Windows da ponta
+anterior falha no lote de cancelamento SQLite, item DIAG-CI304. O CI da nova
+ponta terá estado próprio. Windows físico, Tester e DEMO conservam seus aceites.
+
 Owner Dados/Laboratório, fila DIAG-EXCURSOES, branch `codex/lab-excursoes`.
 As lentes agora preenchem MAE/MFE ausentes com o enriquecimento e preservam
 valores registrados no livro. Vendas usam o ask modelado pela regra de spread

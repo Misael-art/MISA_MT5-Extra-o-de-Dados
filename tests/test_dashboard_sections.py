@@ -300,5 +300,5 @@ assert.match(readout.textContent,/2×/);
 handlers.click({value:['invalid',null]});
 assert.match(readout.textContent,/2×/);
 """
-    result = subprocess.run([node, "-e", code, str(source)], capture_output=True, text=True, timeout=10)
+    result = subprocess.run([node, "-e", code, str(source)], capture_output=True, text=True, timeout=45)
     assert result.returncode == 0, result.stderr

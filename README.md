@@ -15,8 +15,8 @@ incluindo Linux 4.636/473 e Windows 4.904/205 aprovados/não executados. A prév
 do atalho e menu é `2b3b274`, com 365 arquivos de execução idênticos por hash.
 GUI XWayland visível e launcher oficial foram exercitados em dados próprios.
 
-A fila tem 28 itens, com 14 concluídos, seis bloqueados e oito livres.
-A observação controlada
+A fila atual tem 28 itens, com 14 concluídos, seis bloqueados e oito livres,
+incluindo os achados corretivos e seus contratos de integração. A observação controlada
 de 30 min foi aprovada com solicitações instrumentadas. Entrada física,
 acessibilidade, login, integração nativa e qualificação financeira possuem
 aceites próprios.
@@ -40,12 +40,13 @@ com HADOUKEN na [PR84](https://github.com/Misael-art/projeto-indicadores-mt5/pul
 e Safety na [PR11](https://github.com/Misael-art/mt5x-safety/pull/11). São
 revisões abertas; não equivalem a merge ou aceite operacional.
 
-O atalho de desenvolvimento instalado ainda executa a prévia `57d13ee`. No
+O atalho de desenvolvimento instalado executa a prévia `784a252`; o retorno
+conferido é `57d13ee` ([composição e retorno](CONTINUAR_AQUI.md)). No
 checkout, `./run.sh` abre a GUI e `./run.sh --cli` abre a CLI. A branch local
 separada de correção da GUI permite `./run.sh --offline --config <arquivo-de-QA>`
 para uma configuração/base isolada; ela ainda não está nesta fonte.
-O estudo documental T13.4-P00 e os incrementos P01–P07 estão em branches locais
-encadeadas, com implementação e ensaios sintéticos até os consumidores. A GUI
+O estudo documental T13.4-P00 e os incrementos P01–P07 estão integrados no
+master, com implementação e ensaios sintéticos até os consumidores. A GUI
 da composição local de QA anterior exibiu um recibo sintético persistido em
 Padrões pelo launcher; essa composição não está instalada;
 nenhum candidato ou dado real foi aprovado por isso. A branch LAB-03 acrescenta
