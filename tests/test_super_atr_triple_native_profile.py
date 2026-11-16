@@ -77,14 +77,32 @@ def test_ui_default_manual_explicit_seed_save_reopen_and_export(view):
     assert view.fields["seed_start_broker"].get() == "" and not view.fields["entries_enabled"].get()
     assert view.backtest.instate(["disabled"])
     own = named(view)
-    view.fields["seed_start_broker"].set("2026-11-01T00:00")
+    view.fields["seed_start_broker"].set("2026-10-09T00:00")
     view.fields["entries_enabled"].set(True); view.fields["period"].set("25")
     view.save.invoke(); assert not view.dirty, view.status.get()
     view.reopen.invoke()
     assert view.current.identity.id == own.identity.id and view.current.identity.revision == 2
-    assert view.fields["entries_enabled"].get() and view.fields["seed_start_broker"].get() == "2026-11-01T00:00"
+    assert view.fields["entries_enabled"].get() and view.fields["seed_start_broker"].get() == "2026-10-09T00:00"
     assert view.current.manifest["native"]["configuration_ready"]
     strategy_entries = view.entries[:len(view.strategy_fields)]
     assert all(entry.master is view.save.master for entry in strategy_entries)
     assert int(view.save.grid_info()["row"]) > max(int(entry.grid_info()["row"]) for entry in strategy_entries)
     view.export.invoke(); assert "Pacote exportado" in view.status.get(), view.status.get()
+
+
+@pytest.mark.parametrize("seed,accepted", [("2026-11-02T00:00", True), ("2026-10-30T23:55", True),
+                                           ("2026-11-02T02:20", False), ("2026-11-03T00:00", False)])
+def test_package_refuses_seed_after_tester_start(robot, seed, accepted):
+    """OnInit exige InpSeedStart <= TimeCurrent(); o Tester começa em start 00:00 broker."""
+    from mt5_extracao.presets.compiler import TestContext, compile_package
+    from mt5_extracao.presets.compiler import PresetIdentity
+    data = configured(robot).to_dict()
+    data["strategy"]["params"]["seed_start_broker"] = seed
+    context = TestContext(start="2026-11-02", end="2026-11-04", deposit=10000, model="4")
+    identity = PresetIdentity("a" * 32, category="Manual", label="QA", default_origin="b" * 32)
+    if accepted:
+        assert compile_package(Composition(data), robot, identity, context).manifest["test_context"]["start"] == "2026-11-02"
+    else:
+        with pytest.raises(ValueError, match="posterior ao início do Tester"):
+            compile_package(Composition(data), robot, identity, context)
+    compile_package(Composition(data), robot, identity)  # sem janela continua rascunho exportável

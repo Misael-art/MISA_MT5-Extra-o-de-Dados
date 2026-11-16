@@ -512,3 +512,25 @@ def test_windows_exact_executable_does_not_depend_on_nonempty_arguments(home,mon
     monkeypatch.setattr(paths,'is_windows',lambda:True)
     monkeypatch.setattr(psutil,'process_iter',lambda:iter([process]))
     assert sessions.owned_processes(home.config,strict=True)==[process]
+
+
+@pytest.mark.parametrize("raw,expected",[(None,300),("600",600)])
+def test_session_compile_uses_configured_metaeditor_deadline(home,monkeypatch,raw,expected):
+    """Sessão oculta no Xvfb compila Experts grandes mais devagar; o prazo vem de [ROBOTS]."""
+    from mt5_extracao.robots import sessions
+    seen=[]
+    def compile_source(source,editor,prefix,**kwargs):
+        seen.append(kwargs.get("timeout"))
+        source.with_suffix(".ex5").write_bytes(b"own compiled wrapper")
+        return SimpleNamespace(ok=True,warnings=0)
+    if raw is not None:
+        if not home.config.has_section("ROBOTS"):home.config.add_section("ROBOTS")
+        home.config.set("ROBOTS","compile_timeout_seconds",raw)
+    monkeypatch.setattr(mt5_tools,"compile_source",compile_source)
+    job=sessions.Session(home.db,home.config,home.robot,"EURUSD","H1",mode="backtest",
+                         root=home.prefix/"drive_c/private-runs",
+                         native_options=dict(run=lambda *args:None,run_uses_session_launcher=True))
+    with mt5_tools.tester_lease():
+        try:job._prepare_expert(allow_binary=True)
+        finally:mt5_tools.release_native_context(job)
+    assert seen==[expected]

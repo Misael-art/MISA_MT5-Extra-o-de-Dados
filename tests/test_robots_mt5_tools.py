@@ -247,3 +247,20 @@ def test_cli_install_copies_without_compiling_and_usage_errors(cli_args, mt5_hom
     (mt5_home.home / "MetaEditor64.exe").unlink()
     assert cli.main(cli_args + ["robots", "compile", "demoguard"]) == cli.EXIT_FAIL
     assert "metaeditor_path" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("raw,expected", [(None, 300), ("", 300), (" 600 ", 600), ("60", 60), ("1800", 1800)])
+def test_compile_timeout_reads_robots_setting_with_safe_default(raw, expected):
+    config = configparser.ConfigParser(interpolation=None)
+    if raw is not None:
+        config.read_dict({"ROBOTS": {"compile_timeout_seconds": raw}})
+    assert mt5_tools.compile_timeout(config) == expected
+    assert mt5_tools.compile_timeout(None) == mt5_tools.COMPILE_TIMEOUT == 300
+
+
+@pytest.mark.parametrize("raw", ["59", "1801", "5m", "-1"])
+def test_compile_timeout_rejects_values_outside_contract(raw):
+    config = configparser.ConfigParser(interpolation=None)
+    config.read_dict({"ROBOTS": {"compile_timeout_seconds": raw}})
+    with pytest.raises(ValueError, match="compile_timeout_seconds"):
+        mt5_tools.compile_timeout(config)
