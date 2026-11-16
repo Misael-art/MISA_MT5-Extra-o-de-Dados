@@ -5,6 +5,13 @@ Leia este arquivo inteiro antes de alterar o projeto. O que fazer está em
 [docs/PLANO_DE_TRABALHO.md](docs/PLANO_DE_TRABALHO.md). Estado atual, frentes integradas e como
 retomar: [docs/continuidade.md](docs/continuidade.md) (harmonização de 2026-10-14).
 
+<!-- BEGIN HOST RESOURCE CHECK -->
+## Capacidade do host antes de operações pesadas
+
+- Antes de builds, testes longos, instalações, extrações, cópias grandes ou VMs, meça carga de CPU, RAM disponível, atividade de swap, pressão de I/O e espaço livre no destino e nos temporários. Confira os processos concorrentes e estime o pico de RAM, o volume de entrada e saída e o paralelismo da sua ação.
+- Prossiga quando houver margem para a carga prevista. Se houver pressão sustentada ou pouca margem, espere e meça de novo ou reduza o lote e os jobs. Em host com histórico de reinícios sob pressão de RAM ou disco, reserve margem maior e reavalie durante a execução. Se a pressão aumentar, pause trabalho próprio quando for seguro e preserve os processos das outras tarefas.
+<!-- END HOST RESOURCE CHECK -->
+
 ## Fluxo obrigatório
 
 1. **Uma tarefa do plano por PR** (ex.: T1.1). Não misture tarefas nem faça "melhorias" extras.
@@ -75,7 +82,7 @@ Reutilizar ambiente/dados, conservar retorno e remover somente temporários pró
 - Política comum: [../../../AGENTS.md](../../../AGENTS.md), especialmente autonomia, testes, GitHub e recursos (§§5–10); raiz/branch em [registro central](../../../.workspace/projects.json). A orientação atual de raiz única substitui recomendações históricas de criar worktrees/clones por tarefa; os contratos técnicos e gates deste projeto permanecem obrigatórios. Em outro host, preserve este mesmo método em um único checkout registrado, sem recriar caminhos antigos.
 - Antes de implementar, leia `CONTINUAR_AQUI.md`, `docs/continuidade.md`, `docs/ROADMAP.md` e `docs/PLANO_DE_TRABALHO.md`, identifique causa, owner, dependências e aceite. Procure a solução oficial existente e integre nela; não introduza soluções concorrentes, aliases ambíguos ou refatorações fora do pedido. Neste host, a única raiz é `/home/misael/Projects/MT5X`.
 - Execute o lote até implementar, testar, revisar e preservar a continuidade. Resolva decisões reversíveis pelo contexto; não pare em planos nem peça confirmação para editar/testar o que já está autorizado. Comunique descobertas, bloqueios e entrega, sem narrar cada comando ou pequeno avanço.
-- Antes de operações pesadas, confira espaço do destino, RAM e carga; estime saídas e retenção. Reutilize ferramentas/ambientes compatíveis, limite jobs e encerre somente processos temporários próprios. Não mate trabalhos alheios, limpe caches compartilhados ou apague evidência para obter um gate verde.
+- Planeje a retenção das saídas. Reutilize ferramentas/ambientes compatíveis, limite jobs e encerre somente processos temporários próprios. Não mate trabalhos alheios, limpe caches compartilhados ou apague evidência para obter um gate verde.
 - A raiz da composição é `MT5X/`: App somente em `repos/app`, HADOUKEN em `repos/hadouken`, Safety em `repos/safety`; um ambiente App em `repos/app/.venv`, insumos/recibos nos destinos do wrapper. Respeite os commits fixados; não altere pins nem crie outro motor de dados, cache, scheduler ou executor para contornar integração.
 - Faça os checks pertinentes a toda alteração; para documentos, revise diff, referências e coerência. Para código, cubra comportamento/regressão e execute os gates aplicáveis, sem desativá-los. Use o launcher/atalho central para validar GUI e CLI no host atual, preservando os dados. O doctor offline é `doctor --development --no-probe`; não qualifica MT5/Wine/Windows nem contas. Integração nativa exige ambiente permitido, ownership/lease e evidência real; nunca usar negociação REAL como teste.
 - Reutilize a autenticação válida e os helpers existentes. Nunca peça senha/token no chat, copie sessões ou grave credenciais em código/log. Se faltar acesso indispensável, solicite uma única ação pelo fluxo oficial, preserve o estado e avance no trabalho independente; não repita permissões já concedidas.

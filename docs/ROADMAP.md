@@ -59,7 +59,7 @@ GUI e Dashboard. Os testes sintéticos e o launcher offline de QA passaram nos
 recortes registrados em [continuidade](continuidade.md). Publicação das PRs,
 Windows CI/físico, PostgreSQL da campanha, fonte real elegível e seus gates nativos
 permanecem abertos; o marco T13.4-M1 não está aceito. P08–P11 seguem planejados.
-A prévia instalada continua em `57d13ee`, anterior à ponta E14 e ao estudo.
+A prévia instalada é `784a252` desde 04/11/2026; o retorno conferido é `57d13ee`.
 Em LAB-03, a matriz já alinhava cabeçalho e corpo nesta fonte e uma regressão
 de rolagem/resize passou; em LAB-04, os testes existentes de cores por magnitude,
 zero/ausência e amostra no detalhe passaram (3 casos). LAB-01…10 ainda têm os
@@ -167,6 +167,16 @@ do novo agente. Reutiliza instaladores/shortcuts e `.venv` do projeto; não cria
 outro stack de instalação ou automação financeira. O novo host precisa validar
 seu ambiente e os dados restaurados antes da sequência LAB/Expert/Dados acima.
 Instalação/preparação não altera o aceite reaberto nem remove gates operacionais.
+
+**T20.30-HOST1-DRIVE — validação automática do Google Drive e backup das bases
+(planejado).** Depois de criar o cliente OAuth do MT5X, habilitar a Drive API e
+validar o consentimento, o App deve verificar automaticamente a conta autorizada,
+a pasta privada e a capacidade de gravar antes de enviar uma cópia. Recursos/Dados
+reutiliza o backup consistente, a manutenção e a verificação de recuperação do
+projeto. A ativação é por base, começando com SQLite. PostgreSQL tem aceite
+próprio de dump e restauração. A entrega exige integridade remota e restauração
+comprovada em destino isolado.
+[Dependências, sequência e aceite](PLANO_DE_TRABALHO.md#t2030-host1-drive).
 
 ## Fases
 

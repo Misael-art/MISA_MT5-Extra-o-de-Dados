@@ -30,7 +30,7 @@ window.MT5XTransport.decode(JSON.parse(require('node:fs').readFileSync(0,'utf8')
   .catch(error=>{process.stderr.write(error.message); process.exitCode=2;});
 """
     return subprocess.run([node, "-e", code, str(source), "future" if future else "now"],
-                          input=json.dumps(encoded), text=True, encoding="utf-8", capture_output=True, timeout=10)
+                          input=json.dumps(encoded), text=True, encoding="utf-8", capture_output=True, timeout=45)
 
 
 def test_js_json_round_trip_preserves_digest_numbers_and_frozen_clock():

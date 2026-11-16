@@ -91,7 +91,7 @@ jobs:
           test -f config/config.ini
           test -f config/default_symbols.json
           .venv/bin/python -c "import pandas, sqlalchemy, tkinter, rpyc"
-          .venv/bin/python -m mt5_extracao.bootstrap doctor --no-probe || true
+          .venv/bin/python -m mt5_extracao.bootstrap doctor --development --no-probe
 
   installer-windows:
     name: Instalador Windows (sem MT5)
@@ -111,5 +111,5 @@ jobs:
           if (-not (Test-Path config\config.ini)) { throw "config.ini não criado" }
           .venv\Scripts\python.exe -c "import pandas, sqlalchemy, tkinter, MetaTrader5"
           if ($LASTEXITCODE -ne 0) { throw "dependências ausentes" }
-          .venv\Scripts\python.exe -m mt5_extracao.bootstrap doctor
-          exit 0
+          .venv\Scripts\python.exe -m mt5_extracao.bootstrap doctor --development --no-probe
+          if ($LASTEXITCODE -ne 0) { throw "diagnóstico de desenvolvimento reprovado" }
