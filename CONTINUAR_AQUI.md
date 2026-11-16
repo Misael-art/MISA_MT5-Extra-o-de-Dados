@@ -1,5 +1,23 @@
 # Retomar MT5X em um host limpo
 
+## Triplo desarmado no Tester — 16/11/2026 (PR 352)
+
+Quatro sessões pelo launcher, na candidata `43240c4`/`97688c8` sobre a PR 351.
+Primeiro bloqueio: a sessão compila na tela virtual oculta (Xvfb `:99`, sem
+DRI3). O mesmo fonte levou 225 s ali e 37 s na tela real, e o prazo fixo de
+300 s cortava a compilação em 95%. `[ROBOTS] compile_timeout_seconds` (60–1800,
+vazio = 300) resolve: com 600 s o `.ex5` saiu nas quatro sessões. Segundo
+bloqueio: os pacotes da revisão 1 tinham seed `2026-10-12T02:20`, posterior ao
+início do Tester, e a sessão `d27fd590` reprovou no `OnInit` (`TRIPLE_DENY`).
+A revisão 2 usa `2026-10-09T00:00` (`preparar_seed_triplo.py`), e o App passa a
+recusar essa combinação ao gerar o pacote. Bloqueio atual, de ambiente: o
+download preliminar de ticks reais do MetaQuotes-Demo (Access Point BR 1,
+215 ms, ~300–360 KB/s) foi cancelado pelo MT5 em 3 de 4 sessões, entre 40 e
+120 s. Semear o cache de ticks do terminal principal não evitou o novo download
+e foi revertido. Retomar com rede estável, pelo mesmo comando da bancada com
+`--compile-timeout 600`; o aceite (consenso, caixa conciliado, zero entradas)
+continua pendente.
+
 ## Presets estáticos e fontes do HADOUKEN atual
 
 HA/HiLo, Madrid, Pullback nativo, StochEMA9/S10 e VWAP Bands aceitam a
