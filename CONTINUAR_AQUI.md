@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## Presets estáticos e fontes do HADOUKEN atual
+
+HA/HiLo, Madrid, Pullback nativo, StochEMA9/S10 e VWAP Bands aceitam a
+identidade exata do HADOUKEN `d3dd3a5e9a68`. Os 10, 13, 23, 15 e 11 inputs
+mantêm o contrato anterior. Default e Manual vinculam a identidade de fonte
+e a revisão no manifesto e recusam pacote cruzado. O exportador reabre os
+pacotes com o mesmo `.set`, sem alterar revisões anteriores. Passaram 43
+regressões focadas. A aceitação técnica do pacote habilita o percurso do
+Tester DEMO. Os resultados nativos e os seletores Defensivo e FatorLucro têm
+aceites próprios.
+
 ## Regressões Windows na candidata da PR 350
 
 O teste da Análise offline carrega as 600 barras com a janela oculta e

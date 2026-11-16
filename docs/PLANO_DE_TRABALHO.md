@@ -1,5 +1,13 @@
 # Plano de trabalho detalhado
 
+## T19.23/25 — contratos de preset no HADOUKEN fixado
+
+Cinco perfis agora mapeiam os mesmos inputs da revisão anterior para as
+identidades exatas do pin `d3dd3a5e9a68`. A revisão efetiva acompanha o Default
+e o Manual. Pacotes históricos permanecem vinculados ao código de origem.
+As regressões verificam seleção, exportação, importação e a recusa de fonte,
+versão ou inputs incompatíveis. O aceite nativo de execução continua pendente.
+
 ## T17.22/T20.24 — regressões da candidata no CI Windows
 
 A verificação da Análise offline separa a conclusão da carga das barras da
