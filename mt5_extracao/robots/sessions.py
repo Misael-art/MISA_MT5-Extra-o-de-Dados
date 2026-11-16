@@ -791,7 +791,8 @@ class Session:
         result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
                                           mt5_tools.wine_prefix(self.child_config),
                                           run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
-                                               lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True)))
+                                               lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True)),
+                                          timeout=mt5_tools.compile_timeout(self.child_config))
         if not result.ok:
             raise RuntimeError(result.summary)
         self.expert_wrapper = wrapper

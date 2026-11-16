@@ -55,6 +55,28 @@ def _wine_env(prefix) -> dict:
 
 METAEDITOR_EXE = "MetaEditor64.exe"
 COMPILE_TIMEOUT = 300      # segundos
+COMPILE_TIMEOUT_RANGE = (60, 1800)
+
+
+def compile_timeout(config) -> int:
+    """Prazo do MetaEditor em `[ROBOTS] compile_timeout_seconds` (60–1800 s; vazio = 300).
+
+    No Linux com `[MT5] hidden`, o MetaEditor compila na tela virtual (Xvfb, sem DRI3) e o
+    mesmo Expert grande levou 225 s contra 37 s na tela real; o padrão continua 300 s.
+    """
+    raw = ""
+    if config is not None and config.has_section("ROBOTS"):
+        raw = config.get("ROBOTS", "compile_timeout_seconds", fallback="").strip()
+    if not raw:
+        return COMPILE_TIMEOUT
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError(f"[ROBOTS] compile_timeout_seconds deve ser um inteiro em segundos, não {raw!r}.") from None
+    low, high = COMPILE_TIMEOUT_RANGE
+    if not low <= value <= high:
+        raise ValueError(f"[ROBOTS] compile_timeout_seconds deve ficar entre {low} e {high} s; recebido {value}.")
+    return value
 TESTER_TIMEOUT = 3600
 TESTER_MODELS = {"0": "cada tick", "1": "OHLC de 1 minuto", "2": "só preços de abertura",
                  "4": "cada tick com ticks reais"}

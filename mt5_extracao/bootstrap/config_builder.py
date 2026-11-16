@@ -99,6 +99,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
     ("ROBOTS", OrderedDict([         # catálogo de robôs (mt5x robots; aba Robôs)
         ("library_dirs", ""),            # pastas com robôs MQL5 (Experts/, Include/, Presets/), separadas por ;
         ("metaeditor_path", ""),         # vazio = MetaEditor64.exe da instalação do MT5 ([MT5] path)
+        ("compile_timeout_seconds", ""), # prazo do MetaEditor por Expert de sessão (60–1800 s); vazio = 300
         ("tester_model", "4"),           # Strategy Tester: 4 ticks reais (padrão), 0 cada tick; 1 e 2 não valem na bateria
         ("max_real_risk_pct", "1.0"),    # teto de risco por operação (%) aceito pela bateria de segurança
         ("min_demo_days", "7"),          # período comprovado em demo antes de disponibilizar PLAY real
