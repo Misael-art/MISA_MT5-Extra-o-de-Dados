@@ -90,9 +90,11 @@ def has_account(mt5_dir, wine_prefix=None, env=None) -> bool:
 def _terminal_running() -> bool:
     try:
         if paths.is_windows():
+            # Bytes, não texto: o tasklist escreve na página OEM (pt-BR: "Sessão"); decodificar como
+            # UTF-8 (PYTHONUTF8=1 do instalador) falha na thread leitora e o stdout volta None.
             out = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {paths.MT5_TERMINAL_EXE}"],
-                                 capture_output=True, text=True, timeout=20).stdout
-            return paths.MT5_TERMINAL_EXE.lower() in out.lower()
+                                 capture_output=True, timeout=20).stdout or b""
+            return paths.MT5_TERMINAL_EXE.lower() in out.decode("ascii", errors="ignore").lower()
         # -x: nome exato do processo (com -f, qualquer linha de comando que cite o nome casaria)
         return subprocess.run(["pgrep", "-x", paths.MT5_TERMINAL_EXE],
                               capture_output=True, timeout=20).returncode == 0

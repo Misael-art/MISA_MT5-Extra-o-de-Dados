@@ -203,3 +203,21 @@ def test_login_from_env_failure_is_reported_without_password(connector, fake_mt5
 def test_account_summary_reports_demo_account(connector, fake_mt5):
     fake_mt5.logged = __import__("types").SimpleNamespace(login=42, server="MetaQuotes-Demo", trade_mode=0)
     assert connector.account_summary() == {"login": 42, "server": "MetaQuotes-Demo", "demo": True}
+
+
+def test_terminal_detection_reads_tasklist_bytes_in_oem_codepage(monkeypatch):
+    """Windows físico pt-BR: a saída do tasklist vem em cp850 ('Sessão'); com PYTHONUTF8=1 o modo texto
+    devolvia stdout None e o comando de conta demo caía. A detecção lê bytes."""
+    import subprocess
+    from mt5_extracao.bootstrap import demo_account as module
+    header = "Nome da imagem   Sessão   Uso de memória\n".encode("cp850")
+    outputs = {"running": header + b"terminal64.exe   14960 Console   1   250.000 K\r\n",
+               "stopped": "INFORMAÇÕES: não há tarefas em execução.\r\n".encode("cp850"),
+               "empty": None}
+    monkeypatch.setattr(module.paths, "is_windows", lambda: True)
+    for state, expected in (("running", True), ("stopped", False), ("empty", False)):
+        def run(command, **kwargs):
+            assert "text" not in kwargs and kwargs.get("capture_output")
+            return subprocess.CompletedProcess(command, 0, stdout=outputs[state], stderr=b"")
+        monkeypatch.setattr(module.subprocess, "run", run)
+        assert module._terminal_running() is expected
