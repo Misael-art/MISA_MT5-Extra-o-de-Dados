@@ -741,6 +741,17 @@ removendo perdas depois de vê-las). O primeiro recorte de estudo (T19.52a,
 (T16.15) estão em [ANALYTICS_OPERACOES §11.11–11.12](ANALYTICS_OPERACOES.md); não geram `.set`
 nem dispensam T19.52–54.
 
+**Identidade da avaliação (T19.52, 18/11/2026).** O estudo separa `policy_id` (regras, contexto,
+fallback e runs) de `evaluation_id`, que inclui o `policy_id`, frações e instantes dos cortes,
+origem dos cortes (calculados ou congelados pelo chamador), piso de PF, mínimos, capital inicial,
+escolha de run (`explicit` ou `lowest_run_id`, com runs ignorados) e a proveniência declarada de
+cada run (moeda, manifesto de dados, identidade de execução, janela). Moedas declaradas diferentes
+recusam o estudo (conta única). `promotion_blockers` impede promover a T19.53/54 mesmo com parecer
+"elegível" quando a comparabilidade não está comprovada: moeda/manifesto/execução ausentes,
+manifestos diferentes, run sem operações depois do início da reserva ou escolha implícita entre
+runs repetidos. Cortes congelados (`cuts=`) reaplicam a mesma segmentação; não se recalculam cortes
+depois de consultar a reserva.
+
 ## 9. Pilar estratégico e HADOUKEN
 
 O [catálogo](CATALOGO_F19_INDICADORES_SETUPS.md) cobre todos os itens do segundo estudo.

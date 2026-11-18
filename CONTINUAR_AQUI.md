@@ -2107,3 +2107,9 @@ Validação: regressões novas `tests/test_platform_environment.py` (resolvedor,
 Achado lateral: com Python 3.14 `robots.backtest._execution_code_digest` falha (`marshal`: "unmarshallable object"), deixando execuções sem `cache_eligible`. Fora da faixa suportada 3.11–3.13; registrar antes de ampliar a faixa.
 
 Próximo passo: o proprietário roda o instalador fora do app; então repetir aqui `install.bat` (idempotência), `doctor --development --no-probe`, `run.bat` GUI/CLI com base de QA separada e a suíte serializada em 3.11; só depois descoberta MT5 (BD03–05/T2.6) a partir de sessão não virtualizada.
+
+## T19.52 — identidade da avaliação do estudo condicional — 18/11/2026
+
+Resolve a "investigação delimitada" da auditoria (seleção de run, cortes temporais e identidade completa) em `presets/conditional_policy.py`, sem alterar regras, piso ou o parecer estatístico: `policy_id` inalterado; novo `evaluation` com `evaluation_id` (política + frações/instantes/origem dos cortes + piso + mínimos + capital + escolha de run + proveniência por run), `comparability` e `promotion_blockers`. Moedas declaradas diferentes recusam o estudo; proveniência ausente, manifestos diferentes, run sem operações na reserva ou escolha implícita entre runs repetidos bloqueiam a promoção mesmo com "elegível". `cuts=` reaplica cortes congelados. `mt5x trades router` mostra avaliação, cortes, modo de escolha e bloqueios. Contrato em PILARES §8.5.
+
+Validação: `tests/test_conditional_policy.py` 10 aprovados (5 novos) no harness temporário Python 3.14 do Windows. `tests/test_trade_repeated_runs.py` não roda nesse harness (fixture exige `cache_eligible`, que o 3.14 não produz — achado registrado acima); fica com o CI 3.11. Não é Ultra executável: T19.53 (política no HADOUKEN e backtest causal completo) e T19.54 continuam pendentes e dependem dos aceites nativos.
