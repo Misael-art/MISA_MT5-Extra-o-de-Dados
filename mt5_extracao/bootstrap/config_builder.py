@@ -248,6 +248,24 @@ def platform_seed(source: Path, windows: Optional[bool] = None) -> Optional[conf
     return seed
 
 
+# Windows: antivírus/indexadores abrem o arquivo recém-gravado ou a pasta sem compartilhar exclusão e o
+# os.replace falha com PermissionError por alguns instantes (observado no Windows físico, 18/11/2026).
+REPLACE_RETRY_SECONDS = (0.05, 0.1, 0.2, 0.4, 0.8)
+
+
+def _replace(source, target, *, windows=None, sleep=None) -> None:
+    import time
+    windows = paths.is_windows() if windows is None else windows
+    sleep = time.sleep if sleep is None else sleep
+    for delay in (REPLACE_RETRY_SECONDS if windows else ()):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            sleep(delay)
+    os.replace(source, target)      # última tentativa (ou única, fora do Windows): o erro segue para quem chamou
+
+
 def atomic_write_text(path: Path, text: str, private: bool = False) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -257,7 +275,7 @@ def atomic_write_text(path: Path, text: str, private: bool = False) -> None:
             f.write(text)
         if private and os.name != "nt":
             os.chmod(tmp, 0o600)
-        os.replace(tmp, path)
+        _replace(tmp, path)
     except BaseException:
         if os.path.exists(tmp):
             os.remove(tmp)
