@@ -170,3 +170,33 @@ def test_set_config_value_does_not_touch_a_same_named_key_of_another_section(tmp
     config_builder.set_config_value(path, "B", "path", "9")
     config_builder.set_config_value(path, "B", "novo", "s")
     assert path.read_text(encoding="utf-8") == "[A]\npath = 1\n[B]\npath = 9\nnovo = s\n[C]\nx = 3\n"
+
+
+def test_atomic_replace_retries_transient_windows_sharing_violation(tmp_path, monkeypatch):
+    """Windows físico: violação de compartilhamento transitória no os.replace não perde a gravação;
+    persistente, o erro chega a quem chamou e o temporário é removido. Fora do Windows não há espera."""
+    import os
+    from mt5_extracao.bootstrap import config_builder as cb
+    real = os.replace
+    failures = {"n": 2}
+    def flaky(source, target):
+        if failures["n"]:
+            failures["n"] -= 1
+            raise PermissionError(32, "sharing violation")
+        return real(source, target)
+    slept = []
+    monkeypatch.setattr(cb.os, "replace", flaky)
+    monkeypatch.setattr(cb.paths, "is_windows", lambda: True)
+    monkeypatch.setattr("time.sleep", lambda s: slept.append(s))
+    target = tmp_path / "recibo.json"
+    cb.atomic_write_text(target, "{}")
+    assert target.read_text(encoding="utf-8") == "{}" and slept == [0.05, 0.1]
+    monkeypatch.setattr(cb.os, "replace", lambda s, t: (_ for _ in ()).throw(PermissionError(32, "x")))
+    with pytest.raises(PermissionError):
+        cb.atomic_write_text(target, "novo")
+    assert target.read_text(encoding="utf-8") == "{}" and not list(tmp_path.glob("*.tmp"))
+    monkeypatch.setattr(cb.paths, "is_windows", lambda: False)
+    slept.clear()
+    with pytest.raises(PermissionError):
+        cb.atomic_write_text(target, "novo")
+    assert slept == []
