@@ -159,6 +159,9 @@ except ImportError as e:
 class MT5Extracao:
     def __init__(self, root, offline=False, config_path=services.DEFAULT_CONFIG_PATH):
         self.offline = bool(offline)
+        # Padrão: config.ini ou config.<sistema>.ini da pasta em que será lido (services.resolve_config_path).
+        if os.fspath(config_path) == services.DEFAULT_CONFIG_PATH:
+            config_path = services.resolve_config_path(config_path)
         self.config_path = os.fspath(config_path)
         """
         Inicializa a aplicação principal.

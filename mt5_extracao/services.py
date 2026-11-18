@@ -34,7 +34,11 @@ def resolve_config_path(config_path: str = DEFAULT_CONFIG_PATH) -> str:
     """Caminho relativo que não existe no diretório atual é procurado na pasta do projeto
     (permite rodar o mt5x de qualquer pasta)."""
     if config_path == DEFAULT_CONFIG_PATH:
-        # O padrão calculado na importação vale para a raiz deste checkout; a raiz efetiva decide.
+        # O padrão calculado na importação vale para a raiz deste checkout. O nome é decidido pela pasta
+        # onde o caminho relativo será lido: primeiro a pasta atual, depois a raiz efetiva do projeto.
+        local = default_config_path(os.getcwd())
+        if os.path.exists(local):
+            return local
         config_path = default_config_path()
     if os.path.isabs(config_path) or os.path.exists(config_path):
         return config_path
