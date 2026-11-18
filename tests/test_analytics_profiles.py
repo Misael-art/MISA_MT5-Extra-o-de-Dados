@@ -260,6 +260,33 @@ def test_late_session_corrections_propagate_only_to_dependent_outputs():
     assert level["available_at"] == correction
 
 
+def test_precomputed_bar_times_give_the_same_dependencies_as_pandas_lookups():
+    """Timeout no Windows (APU do Deck): dependências liam `bars[col].iloc[i]` por índice. O cache de
+    tempos por posição/rótulo precisa devolver exatamente as mesmas dependências."""
+    bars = bars_frame(sessions=8, bars_per_session=5)
+    bars["computed_at_utc"] = pd.Timestamp("2026-09-01", tz=UTC)
+    cases = [("rvol", {"lookback": 3, "min_sessions": 1, "same_weekday": True},
+              lambda: volume_profiles.intraday_rvol(bars, lookback=3, min_sessions=1, same_weekday=True)[0]),
+             ("rvol", {"lookback": 3, "min_sessions": 1, "same_weekday": False},
+              lambda: volume_profiles.intraday_rvol(bars, lookback=3, min_sessions=1)[0]),
+             ("structure", {"opening_minutes": 10, "atr_n": 1, "last_session_open": True},
+              lambda: session_structure.structure_features(bars, opening_minutes=10, atr_n=1,
+                                                           last_session_open=True))]
+    session_indices = {sid: list(ix) for sid, ix in bars.groupby("session_id", sort=False).groups.items()}
+    order = sorted(session_indices, key=lambda sid: bars["bar_start_utc"].iloc[session_indices[sid][0]])
+    positions = {sid: i for i, sid in enumerate(order)}
+    by_start = {pd.Timestamp(s): i for i, s in enumerate(bars["bar_start_utc"])}
+    times = producers._bar_times(bars)
+    checked = 0
+    for family, params, build in cases:
+        for row in build().itertuples(index=False):
+            args = (bars, family, row.feature_id, row.session_id, row, params, session_indices, order,
+                    positions, by_start)
+            assert producers._session_dependencies(*args, times) == producers._session_dependencies(*args)
+            checked += 1
+    assert checked > 50
+
+
 def test_finite_correction_window_expires_but_recursive_provenance_does_not():
     bars = bars_frame(sessions=1, bars_per_session=100)
     correction = pd.Timestamp("2026-10-01", tz=UTC)

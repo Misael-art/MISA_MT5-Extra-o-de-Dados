@@ -171,8 +171,12 @@ def _bar_rows(bars, frame, columns, corrections, window, cumulative_columns=()):
     revision_cache = {}
     cumulative_columns = set(cumulative_columns)
     prefix_revisions = _prefix_source_revisions(tokens) if cumulative_columns else None
+    # Mesmos valores que `.iloc[k]` devolveria, lidos uma vez por coluna (sem consulta pandas por valor).
+    times = _bar_times(bars)
+    fixes_by_column = {}
     for column, feature_id in columns.items():
         values = frame[column]
+        column_fixes = None
         for k, value in values.items():
             if value is None or (isinstance(value, float) and not np.isfinite(value)):
                 continue
@@ -184,12 +188,17 @@ def _bar_rows(bars, frame, columns, corrections, window, cumulative_columns=()):
                 revision_cache[int(k)] = source_revision
             if column in cumulative_columns:
                 source_revision = prefix_revisions[int(k)]
-            available = bars["bar_end_utc"].iloc[k]
-            correction_series = corrections.get(column) if isinstance(corrections, dict) else corrections
-            fix = correction_series.iloc[k]
+            available = times["end"][k]
+            if column_fixes is None:
+                correction_series = corrections.get(column) if isinstance(corrections, dict) else corrections
+                key = id(correction_series)
+                if key not in fixes_by_column:
+                    fixes_by_column[key] = (correction_series, list(correction_series))
+                column_fixes = fixes_by_column[key][1]
+            fix = column_fixes[k]
             if pd.notna(fix) and fix > available:
                 available = fix
-            rows.append({"observation_time": bars["bar_start_utc"].iloc[k], "available_at": available,
+            rows.append({"observation_time": times["start"][k], "available_at": available,
                          "feature_id": feature_id, "value": value,
                          "source_revision": source_revision,
                          "metadata": {"source_window_bars": int(k) + 1 if column in cumulative_columns else
@@ -197,9 +206,19 @@ def _bar_rows(bars, frame, columns, corrections, window, cumulative_columns=()):
     return rows
 
 
+def _bar_times(bars):
+    """Inícios/fins por posição e inícios por rótulo, lidos uma vez (mesmos objetos que `.iloc`/`.loc` devolvem)."""
+    return {"start": list(bars["bar_start_utc"]), "end": list(bars["bar_end_utc"]),
+            "start_by_label": dict(zip(bars.index, bars["bar_start_utc"]))}
+
+
 def _session_dependencies(bars, family, feature_id, session_id, row, params, session_indices, session_order,
-                          session_positions, bar_by_start):
-    """Índices de barras consultadas pelo valor; inclui uma margem conservadora por família."""
+                          session_positions, bar_by_start, times=None):
+    """Índices de barras consultadas pelo valor; inclui uma margem conservadora por família.
+
+    `times` (de `_bar_times`) evita uma consulta pandas por dependência; o resultado é o mesmo."""
+    times = _bar_times(bars) if times is None else times
+    starts, ends, start_by_label = times["start"], times["end"], times["start_by_label"]
     position = session_positions[session_id]
     current = session_indices[session_id]
     if family == "volume":
@@ -224,13 +243,13 @@ def _session_dependencies(bars, family, feature_id, session_id, row, params, ses
         lookback = int(params.get("lookback", 20))
         prior = session_order[:position]
         if params.get("same_weekday"):
-            weekday = bars.loc[current[0], "bar_start_utc"].weekday()
-            prior = [sid for sid in prior if bars.loc[session_indices[sid][0], "bar_start_utc"].weekday() == weekday]
+            weekday = start_by_label[current[0]].weekday()
+            prior = [sid for sid in prior if start_by_label[session_indices[sid][0]].weekday() == weekday]
         minute = int(row.metadata.get("minute_of_session", 0))
         deps = []
         for sid in prior[-lookback:]:
-            cutoff = bars["bar_start_utc"].iloc[session_indices[sid][0]] + pd.Timedelta(minutes=minute)
-            deps.extend(i for i in session_indices[sid] if bars["bar_end_utc"].iloc[i] <= cutoff)
+            cutoff = starts[session_indices[sid][0]] + pd.Timedelta(minutes=minute)
+            deps.extend(i for i in session_indices[sid] if ends[i] <= cutoff)
         current_idx = bar_by_start.get(pd.Timestamp(row.observation_time))
         if current_idx is not None:
             deps.extend(i for i in current if i <= current_idx)
@@ -254,10 +273,10 @@ def _session_dependencies(bars, family, feature_id, session_id, row, params, ses
             if feature_id == "session.gap":
                 deps = [current[0]] + ([previous_close] if previous_close is not None else [])
             else:
-                reached = [i for i in current if bars["bar_end_utc"].iloc[i] <= row.available_at]
+                reached = [i for i in current if ends[i] <= row.available_at]
                 deps = reached + ([previous_close] if previous_close is not None else [])
         else:
-            deps = [i for i in current if bars["bar_end_utc"].iloc[i] <= row.available_at]
+            deps = [i for i in current if ends[i] <= row.available_at]
         return deps
     else:
         deps = [session_id]
@@ -270,20 +289,24 @@ def _long_rows(frame, bars, family, params):
     if frame.empty:
         return rows
     session_indices = {sid: list(indexes) for sid, indexes in bars.groupby("session_id", sort=False).groups.items()}
-    session_order = sorted(session_indices, key=lambda sid: bars["bar_start_utc"].iloc[session_indices[sid][0]])
+    times = _bar_times(bars)
+    session_order = sorted(session_indices, key=lambda sid: times["start"][session_indices[sid][0]])
     session_positions = {sid: position for position, sid in enumerate(session_order)}
     bar_by_start = {pd.Timestamp(start): i for i, start in enumerate(bars["bar_start_utc"])}
     corrected = bars["computed_at_utc"].where(bars["revision"].astype(int) > 1)
+    corrected_values = list(corrected)
+    corrected_known = [pd.notna(value) for value in corrected_values]
     tokens = _source_tokens(bars)
     revision_cache = {}
     for row in frame.itertuples(index=False):
         available = row.available_at
         dependencies = _session_dependencies(bars, family, row.feature_id, row.session_id, row, params,
-                                             session_indices, session_order, session_positions, bar_by_start)
+                                             session_indices, session_order, session_positions, bar_by_start,
+                                             times)
         if dependencies:
-            fixes = corrected.iloc[dependencies].dropna()
-            if not fixes.empty and fixes.max() > available:
-                available = fixes.max()
+            fixes = [corrected_values[i] for i in dependencies if corrected_known[i]]
+            if fixes and max(fixes) > available:
+                available = max(fixes)
         source_key = tuple(dependencies or session_indices[row.session_id])
         if source_key not in revision_cache:
             revision_cache[source_key] = _source_revision(tokens, source_key)
