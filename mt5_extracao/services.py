@@ -25,9 +25,17 @@ def project_root() -> str:
     return str(paths.PROJECT_ROOT)
 
 
+def default_config_path(root=None) -> str:
+    """Configuração padrão da raiz efetiva (config.ini ou config.<sistema>.ini), decidida no uso."""
+    return os.path.join("config", _paths.config_file_name(project_root() if root is None else root))
+
+
 def resolve_config_path(config_path: str = DEFAULT_CONFIG_PATH) -> str:
     """Caminho relativo que não existe no diretório atual é procurado na pasta do projeto
     (permite rodar o mt5x de qualquer pasta)."""
+    if config_path == DEFAULT_CONFIG_PATH:
+        # O padrão calculado na importação vale para a raiz deste checkout; a raiz efetiva decide.
+        config_path = default_config_path()
     if os.path.isabs(config_path) or os.path.exists(config_path):
         return config_path
     candidate = os.path.join(project_root(), config_path)

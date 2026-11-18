@@ -157,7 +157,15 @@ def test_resource_kernel_lease_survives_age_and_recovers_after_own_process_exit(
         with pytest.raises(actions.Busy):
             with actions.exclusive(tmp_path/'different-config'):pytest.fail('configuration bypassed lease')
     finally:
+        # No Windows, o python.exe de um venv é um lançador: o interpretador que detém a trava é um
+        # processo filho dele e encerra alguns milissegundos depois. A recuperação exige o detentor encerrado.
+        import psutil
+        try:
+            holders=psutil.Process(child.pid).children(recursive=True)
+        except psutil.Error:
+            holders=[]
         child.terminate();child.communicate(timeout=10)
+        psutil.wait_procs(holders,timeout=10)
     with actions.exclusive(folder,'recovered own crashed child'):
         # No Windows, o byte travado não pode ser lido por outro handle.
         assert path.is_file()

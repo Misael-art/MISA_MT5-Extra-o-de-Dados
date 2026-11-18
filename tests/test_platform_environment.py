@@ -239,3 +239,24 @@ def test_bootstrap_dev_reuses_own_composition_and_preserves_wip(tmp_path):
         assert manual.returncode == 3, (manual.stdout + manual.stderr).decode('utf-8', 'replace')
         assert b'winget install --id BrechtSanders.WinLibs' in manual.stdout
         assert not record.exists()
+
+
+def test_default_config_follows_the_effective_project_root(tmp_path, monkeypatch):
+    """Regressão: o padrão não pode ficar congelado na raiz deste checkout (achado no Windows físico)."""
+    from mt5_extracao import services
+    monkeypatch.setattr(paths, 'is_windows', lambda: True)
+    dual, single = tmp_path / 'dupla', tmp_path / 'simples'
+    linux_venv(dual)
+    for root, name in ((dual, 'config.windows.ini'), (single, 'config.ini')):
+        (root / 'config').mkdir(parents=True)
+        (root / 'config' / name).write_text('[DATABASE]\n', encoding='utf-8')
+    elsewhere = tmp_path / 'outra pasta'
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    for root, name in ((dual, 'config.windows.ini'), (single, 'config.ini')):
+        monkeypatch.setattr(services, 'project_root', lambda root=root: str(root))
+        assert Path(services.resolve_config_path()) == root / 'config' / name
+        assert Path(services.resolve_config_path(services.DEFAULT_CONFIG_PATH)) == root / 'config' / name
+    explicit = tmp_path / 'qa.ini'
+    explicit.write_text('[APP]\n', encoding='utf-8')
+    assert services.resolve_config_path(str(explicit)) == str(explicit)
