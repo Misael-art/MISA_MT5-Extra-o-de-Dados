@@ -367,6 +367,12 @@ def _router(args, ctx) -> int:
         f"{len(report['policy']['rules'])} regra(s) de contexto; sem regra, a entrada é bloqueada).")
     for reason in report["reasons"]:
         out(f"  {reason}")
+    evaluation = report["evaluation"]
+    out(f"  Avaliação {evaluation['evaluation_id'][:12]} (política {report['policy']['policy_id'][:12]}); cortes "
+        f"{', '.join(evaluation['segmentation']['cuts'])}; runs {evaluation['run_selection']['mode']}; "
+        f"comparabilidade {report['comparability']}.")
+    for blocker in report["promotion_blockers"]:
+        out(f"  Impede promover: {blocker}")
     for name, label in (("search", "procura"), ("validation", "validação"), ("holdout", "reserva final")):
         part = report["segments"][name]
         got, static = part["policy"], part["static_best"]

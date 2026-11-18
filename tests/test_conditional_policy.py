@@ -113,3 +113,95 @@ def test_cli_router(db, tmp_path, capsys):
     out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert code == cli.EXIT_OK and out["data"]["router"]["status"] in ("elegível", "reprovada", "sem candidato elegível")
     assert out["data"]["router"]["min_profit_factor"] == 2.0
+
+
+def _record(db, run_id, robot, currency="BRL", manifest="m" * 64, digest="d" * 64):
+    """Só os metadados declarados que o estudo lê (o produtor real também vincula o manifesto)."""
+    import json
+    from sqlalchemy import text
+    from mt5_extracao.robots import store
+    metrics = {"currency": currency, "execution_identity": {"digest": digest, "code_sha256": "c" * 64}}
+    if manifest:
+        metrics["data_manifest_id"] = manifest
+    with db.engine.begin() as conn:
+        conn.execute(text(store._CREATE_RUNS))
+        conn.execute(text("INSERT INTO _robot_runs (run_id, robot_key, source, symbol, timeframe, metrics_json, "
+                          "created_at) VALUES (:r, :k, 'backtest', 'X', 'M15', :m, '2026-11-18T00:00:00+00:00')"),
+                     {"r": run_id, "k": robot, "m": json.dumps(metrics)})
+
+
+def test_evaluation_identity_is_separate_from_policy_and_freezes_cuts(db):
+    """Risco T19.52: hash da política não incluía frações, piso, datas de corte nem a escolha de run."""
+    _context_edge(db)
+    base = cp.study(db, None, "X", "M15", dims=("period",), min_rule_trades=20)
+    evaluation = base["evaluation"]
+    assert evaluation["policy_id"] == base["policy"]["policy_id"]
+    assert len(evaluation["segmentation"]["cuts"]) == 2 and not evaluation["segmentation"]["cuts_frozen_by_caller"]
+    assert evaluation["run_selection"] == {"mode": "lowest_run_id", "chosen": {"python:a": "a", "python:b": "b"},
+                                           "ignored": {}}
+    # Mesma política, piso diferente: avaliação diferente, política idêntica.
+    stricter = cp.study(db, None, "X", "M15", dims=("period",), min_rule_trades=20, min_profit_factor=2.5)
+    assert stricter["policy"]["policy_id"] == base["policy"]["policy_id"]
+    assert stricter["evaluation"]["evaluation_id"] != evaluation["evaluation_id"]
+    # Cortes congelados reproduzem a mesma avaliação, mesmo com operações novas depois.
+    frozen = cp.study(db, None, "X", "M15", dims=("period",), min_rule_trades=20,
+                      cuts=evaluation["segmentation"]["cuts"])
+    assert frozen["evaluation"]["segmentation"]["cuts"] == evaluation["segmentation"]["cuts"]
+    assert frozen["segments"]["holdout"]["policy"] == base["segments"]["holdout"]["policy"]
+    assert frozen["evaluation"]["evaluation_id"] != evaluation["evaluation_id"]   # origem dos cortes é declarada
+    with pytest.raises(ValueError, match="ordem"):
+        cp.study(db, None, "X", "M15", dims=("period",), cuts=list(reversed(evaluation["segmentation"]["cuts"])))
+
+
+def test_implicit_choice_among_repeated_runs_blocks_promotion(db):
+    _context_edge(db)
+    _save(db, "a2", "python:a", _trades(100, 9, lambda i: 3.0))
+    report = cp.study(db, None, "X", "M15", dims=("period",), min_rule_trades=20)
+    assert report["evaluation"]["run_selection"]["ignored"] == {"python:a": ["a2"]}
+    assert any("menor identificador" in b for b in report["promotion_blockers"])
+    explicit = cp.study(db, None, "X", "M15", runs=["a", "b"], dims=("period",), min_rule_trades=20)
+    assert explicit["evaluation"]["run_selection"]["mode"] == "explicit"
+    assert not any("menor identificador" in b for b in explicit["promotion_blockers"])
+
+
+def test_undeclared_provenance_never_promotes_an_eligible_study(db):
+    _context_edge(db)
+    report = cp.study(db, None, "X", "M15", dims=("period",), min_rule_trades=20)
+    assert report["status"] == "elegível"                       # parecer estatístico preservado
+    assert report["comparability"] == "não comprovada" and report["promotion_blockers"]
+    _record(db, "a", "python:a", manifest=None)
+    _record(db, "b", "python:b", manifest=None)
+    declared = cp.study(db, None, "X", "M15", dims=("period",), min_rule_trades=20)
+    assert declared["evaluation"]["runs"]["a"]["currency"] == "BRL"
+    assert any("Manifesto de dados ausente" in b for b in declared["promotion_blockers"])
+    assert not any("Moeda" in b for b in declared["promotion_blockers"])
+    assert declared["evaluation"]["evaluation_id"] != report["evaluation"]["evaluation_id"]
+
+
+def _lab(windows):
+    rows = []
+    for run_id, (start, end) in windows.items():
+        for moment in pd.date_range(start, end, periods=3):
+            rows.append({"run_id": run_id, "entry_time": moment, "exit_time": moment + pd.Timedelta(minutes=30)})
+    return pd.DataFrame(rows)
+
+
+def _declared(currency="BRL", manifest="m" * 64, digest="d" * 64):
+    return {"currency": currency, "data_manifest_id": manifest, "execution_digest": digest}
+
+
+def test_comparability_requires_same_currency_manifest_execution_and_window():
+    lab = _lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-04-01")})
+    cuts = (pd.Timestamp("2026-02-15"), pd.Timestamp("2026-03-15"))
+    proven = cp._comparability(lab, {"a": _declared(), "b": _declared()}, cuts)
+    assert proven["status"] == "comprovada" and proven["currency"] == "BRL" and proven["blockers"] == []
+    with pytest.raises(ValueError, match="moedas diferentes"):
+        cp._comparability(lab, {"a": _declared(), "b": _declared(currency="USD")}, cuts)
+    other = cp._comparability(lab, {"a": _declared(), "b": _declared(manifest="n" * 64)}, cuts)
+    assert any("manifestos de dados diferentes" in b for b in other["blockers"])
+    unknown = cp._comparability(lab, {"a": _declared(), "b": _declared(currency=None, digest=None)}, cuts)
+    assert {"Moeda", "Identidade"} <= {b.split()[0] for b in unknown["blockers"]}
+    short = cp._comparability(_lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-03-01")}),
+                              {"a": _declared(), "b": _declared()}, cuts)
+    assert short["status"] == "não comprovada"
+    assert any("depois do início da reserva: b" in b for b in short["blockers"])

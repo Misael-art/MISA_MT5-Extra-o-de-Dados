@@ -13,6 +13,11 @@ melhor setup olhando o próprio trecho avaliado sai rotulado como não executáv
 É diagnóstico: não gera `.set`, não altera o HADOUKEN e não substitui T19.52–54 (predicados tipados, pacote, execução
 nativa, UI). Contrato completo: docs/propostas/PILARES_DADOS_OPERACAO_PRESETS.md, seção 8.5, e
 docs/propostas/ANALYTICS_OPERACOES.md, seção 11.12.
+
+Identidade: `policy_id` identifica só a política (regras, contexto, fallback, runs). `evaluation_id` identifica a
+avaliação inteira: política, frações e datas dos cortes, piso, mínimos, capital, escolha de run e a proveniência de
+cada run (moeda, manifesto de dados, execução). `promotion_blockers` lista o que impede promover o estudo a Ultra
+(T19.53/54) mesmo quando o parecer é "elegível": comparabilidade não comprovada não vira aprovação por omissão.
 """
 import hashlib
 import json
@@ -42,27 +47,109 @@ def _context(lab: pd.DataFrame, dims) -> pd.Series:
         lambda row: None if any(pd.isna(v) for v in row) else " | ".join(str(v) for v in row), axis=1)
 
 
-def _one_run_per_setup(lab: pd.DataFrame, runs: Optional[Iterable[str]]) -> pd.DataFrame:
-    """Um run por setup: repetir o mesmo backtest não aumenta a amostra."""
+def _one_run_per_setup(lab: pd.DataFrame, runs: Optional[Iterable[str]]):
+    """Um run por setup: repetir o mesmo backtest não aumenta a amostra. Devolve (linhas, escolha explícita)."""
+    available = {str(robot): sorted(str(r) for r in part.run_id.unique()) for robot, part in lab.groupby("robot_key")}
     if runs:
         chosen = lab[lab.run_id.isin(list(runs))]
         if chosen.groupby("robot_key").run_id.nunique().max() > 1:
             raise ValueError("Informe no máximo um run por robô; runs repetidos inflariam a amostra.")
-        return chosen
-    first = lab.groupby("robot_key").run_id.min()
-    return lab[lab.run_id.isin(set(first))]
+        mode = "explicit"
+    else:
+        first = lab.groupby("robot_key").run_id.min()
+        chosen = lab[lab.run_id.isin(set(first))]
+        mode = "lowest_run_id"
+    picked = {str(robot): str(part.run_id.iloc[0]) for robot, part in chosen.groupby("robot_key")}
+    ignored = {robot: [r for r in ids if r != picked.get(robot)] for robot, ids in available.items()}
+    selection = {"mode": mode, "chosen": picked, "ignored": {k: v for k, v in ignored.items() if v}}
+    return chosen, selection
 
 
-def _segments(lab: pd.DataFrame, fractions) -> pd.Series:
-    """Procura / validação / reserva por tempo de entrada; operação que cruza um corte fica fora (embargo)."""
+def _cut_points(lab: pd.DataFrame, fractions, cuts=None):
+    """Instantes dos cortes: calculados pela distribuição das entradas ou congelados pelo chamador."""
+    if cuts is not None:
+        tz = getattr(pd.to_datetime(lab.entry_time).dt, "tz", None)
+        first, second = (pd.Timestamp(c) for c in cuts)
+        if tz is not None:
+            first, second = (c.tz_localize(tz) if c.tzinfo is None else c.tz_convert(tz) for c in (first, second))
+        elif first.tzinfo is not None or second.tzinfo is not None:
+            raise ValueError("Cortes com fuso não se aplicam a horários de entrada sem fuso.")
+        if not first < second:
+            raise ValueError("Os cortes congelados devem estar em ordem: procura < validação < reserva.")
+        return first, second
     order = lab.entry_time.sort_values()
     first = order.iloc[min(len(order) - 1, int(len(order) * fractions[0]))]
     second = order.iloc[min(len(order) - 1, int(len(order) * (fractions[0] + fractions[1])))]
+    return pd.Timestamp(first), pd.Timestamp(second)
+
+
+def _segments(lab: pd.DataFrame, fractions, cuts=None) -> pd.Series:
+    """Procura / validação / reserva por tempo de entrada; operação que cruza um corte fica fora (embargo)."""
+    return _label(lab, *_cut_points(lab, fractions, cuts))
+
+
+def _label(lab: pd.DataFrame, first, second) -> pd.Series:
     label = pd.Series("embargo", index=lab.index)
     label[lab.exit_time < first] = "search"
     label[(lab.entry_time >= first) & (lab.exit_time < second)] = "validation"
     label[lab.entry_time >= second] = "holdout"
     return label
+
+
+def _iso(value) -> Optional[str]:
+    return None if value is None or pd.isna(value) else pd.Timestamp(value).isoformat()
+
+
+def _run_records(db, lab: pd.DataFrame) -> dict:
+    """Metadados declarados de cada run usado (sem criar outro contrato): moeda, manifesto, execução."""
+    if db is None or getattr(db, "engine", None) is None:
+        return {}
+    from mt5_extracao.trade_analytics import cache
+    with db.consistent_read() as connection:
+        rows = cache._run_part(db, lab[["run_id"]].drop_duplicates(), connection=connection)
+    records = {}
+    for row in rows:
+        try:
+            metrics = json.loads(row.get("metrics_json") or "{}")
+        except (TypeError, ValueError):
+            metrics = {}
+        identity = metrics.get("execution_identity") if isinstance(metrics.get("execution_identity"), dict) else {}
+        records[str(row["run_id"])] = {
+            "source": row.get("source"), "currency": metrics.get("currency"),
+            "data_manifest_id": metrics.get("data_manifest_id"),
+            "execution_digest": identity.get("digest"), "code_sha256": identity.get("code_sha256"),
+            "comparison_context": metrics.get("comparison_context")}
+    return records
+
+
+def _comparability(lab: pd.DataFrame, records: dict, cuts) -> dict:
+    """Runs combinados numa conta única precisam de mesma moeda e de janela que cubra a reserva."""
+    windows, blockers = {}, []
+    for run_id, part in lab.groupby("run_id"):
+        windows[str(run_id)] = {"first_entry": _iso(part.entry_time.min()), "last_exit": _iso(part.exit_time.max())}
+    runs = sorted(windows)
+    currencies = {r: (records.get(r) or {}).get("currency") for r in runs}
+    known = {c for c in currencies.values() if c}
+    if len(known) > 1:
+        raise ValueError("Runs em moedas diferentes não podem ser combinados numa conta única: "
+                         + ", ".join(f"{r}={c}" for r, c in currencies.items()) + ".")
+    if not known or len(known) != 1 or any(not c for c in currencies.values()):
+        blockers.append("Moeda de algum run não declarada; resultados combinados sem comparabilidade comprovada.")
+    manifests = {r: (records.get(r) or {}).get("data_manifest_id") for r in runs}
+    if any(not m for m in manifests.values()):
+        blockers.append("Manifesto de dados ausente em algum run; fonte e revisão das barras não comprovadas.")
+    elif len(set(manifests.values())) > 1:
+        blockers.append("Runs com manifestos de dados diferentes; confirme mesma fonte, revisão e custos antes de promover.")
+    if any(not (records.get(r) or {}).get("execution_digest") for r in runs):
+        blockers.append("Identidade de execução ausente em algum run; código e parâmetros não comprovados.")
+    second = cuts[1]
+    short = [r for r, w in windows.items() if w["last_exit"] is None or pd.Timestamp(w["last_exit"]) < second]
+    if short:
+        blockers.append("Run(s) sem operações depois do início da reserva: " + ", ".join(short)
+                        + "; a reserva não compara os setups na mesma janela.")
+    status = "comprovada" if not blockers else "não comprovada"
+    return {"status": status, "currency": next(iter(known)) if len(known) == 1 else None,
+            "windows": windows, "runs": {r: records.get(r) for r in runs}, "blockers": blockers}
 
 
 def _metrics(part: pd.DataFrame, initial: float) -> dict:
@@ -103,7 +190,8 @@ def _walk(part: pd.DataFrame, accept) -> pd.DataFrame:
 def study(db, config, symbol: str, timeframe: str, *, runs: Optional[Iterable[str]] = None,
           dims: Iterable[str] = DIMENSIONS, min_profit_factor: float = MIN_PROFIT_FACTOR,
           min_rule_trades: Optional[int] = None, top: int = TOP_SETUPS,
-          fractions=(0.6, 0.2, 0.2)) -> dict:
+          fractions=(0.6, 0.2, 0.2), cuts=None) -> dict:
+    """`cuts=(início da validação, início da reserva)` reaplica cortes já congelados em vez de recalculá-los."""
     dims = tuple(dims)
     if abs(sum(fractions) - 1) > 1e-9 or any(f <= 0 for f in fractions) or len(fractions) != 3:
         raise ValueError("As frações de procura, validação e reserva devem ser três valores positivos somando 1.")
@@ -117,13 +205,14 @@ def study(db, config, symbol: str, timeframe: str, *, runs: Optional[Iterable[st
     if not lab.empty:
         lab = lab[(lab.completeness == "completo") & lab.entry_time.notna() & lab.exit_time.notna()
                   & lab.pnl.notna()]
-        lab = _one_run_per_setup(lab, runs)
+        lab, selection = _one_run_per_setup(lab, runs)
     if lab.empty or lab.robot_key.nunique() < 2:
         raise ValueError(f"São necessários runs completos de ao menos dois setups em {symbol} {timeframe} "
                          "(veja mt5x trades runs).")
     lab = lab.reset_index(drop=True)
     lab["context"] = _context(lab, dims)
-    lab["segment"] = _segments(lab, fractions)
+    cut_points = _cut_points(lab, fractions, cuts)
+    lab["segment"] = _label(lab, *cut_points)
     initial = aggregate._initial_equity(config)
     search = lab[(lab.segment == "search") & lab.context.notna()]
     rules = _rules(search, min_rule_trades, int(top))
@@ -176,8 +265,26 @@ def study(db, config, symbol: str, timeframe: str, *, runs: Optional[Iterable[st
         if reference is not None and segments["holdout"]["policy"]["net"] <= reference["net"]:
             reasons.append(f"Na reserva final a política não supera o melhor setup estático ({reference['setup']}).")
         status = "reprovada" if reasons else "elegível"
+    comparability = _comparability(lab, _run_records(db, lab), cut_points)
+    segmentation = {"fractions": [float(f) for f in fractions], "cuts": [_iso(c) for c in cut_points],
+                    "cuts_frozen_by_caller": cuts is not None, "basis": "entry_time; cruzamento de corte = embargo"}
+    evaluation = {"schema_version": VERSION, "kind": "conditional_policy_evaluation",
+                  "policy_id": policy["policy_id"], "segmentation": segmentation,
+                  "min_profit_factor": float(min_profit_factor), "min_trades": int(minimum),
+                  "min_rule_trades": int(min_rule_trades), "initial_equity": float(initial),
+                  "run_selection": selection, "runs": comparability["runs"], "windows": comparability["windows"]}
+    evaluation["evaluation_id"] = hashlib.sha256(json.dumps(
+        evaluation, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str).encode("utf-8")).hexdigest()
+    blockers = list(comparability["blockers"])
+    if selection["mode"] != "explicit" and selection["ignored"]:
+        blockers.append("Havia outros runs do mesmo robô e a escolha foi pelo menor identificador; informe os runs "
+                        "explicitamente antes de promover.")
+    if status != "elegível":
+        blockers.insert(0, f"Parecer do estudo: {status}.")
     return {"schema_version": VERSION, "status": status, "reasons": reasons, "study_only": True,
             "min_profit_factor": float(min_profit_factor), "policy": policy, "segments": segments,
+            "evaluation": evaluation, "comparability": comparability["status"],
+            "promotion_blockers": blockers,
             "embargoed": int((lab.segment == "embargo").sum()),
             "context_missing": int(lab.context.isna().sum()),
             "note": "Piso de fator de lucro é condição de elegibilidade, não garantia; resultado sobre barras e "
