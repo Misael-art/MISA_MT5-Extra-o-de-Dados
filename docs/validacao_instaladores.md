@@ -635,3 +635,15 @@ do prazo e distinguem transporte da conta. Reuso/posse e modo offline foram
 regredidos, sem reset/novo login na sondagem. Cold start real Wine, conta e
 Windows físico permanecem verificação própria; não encerrar o terminal do usuário
 para produzir o ensaio. Mensagem final de prazo não afirma abertura impossível.
+
+
+### HOST1/T10.W — composição usada por Windows e Linux (18/11/2026)
+
+Implementado e testado no Windows real com harness temporário; aceites abaixo exigem terminal comum (fora de app empacotado MSIX).
+
+- [ ] `install.bat -Yes -NoMT5` cria `.venv-windows` e `config\config.windows.ini` com `.venv`/`config.ini` do Linux intactos (impressão digital antes/depois).
+- [ ] Segunda execução idempotente: nada reinstalado indevidamente, preferências do Windows preservadas.
+- [ ] `run.bat` (GUI) e `run.bat --cli status` pela pasta local e por UNC, com base de QA separada; `doctor --development --no-probe` sem FALHA.
+- [ ] `bootstrap-dev.ps1 -Yes` com WIP: recibo `state\setup-windows.json` com `wip_entries_preserved`, sem clone/worktree.
+- [x] Terminal virtualizado por app empacotado é recusado antes do MSI, com orientação (reproduzido no app Claude).
+- [ ] Descoberta MT5 e QA nativo apenas de sessão não virtualizada (`%APPDATA%\MetaQuotes`).

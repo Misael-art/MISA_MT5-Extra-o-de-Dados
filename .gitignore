@@ -1,6 +1,9 @@
 # Arquivos de ambiente e credenciais
 .env
 .venv/
+# Ambiente do segundo sistema na mesma composição (mt5_extracao/bootstrap/paths.py)
+.venv-windows/
+.venv-posix/
 .cache/
 credentials.json
 *.key

@@ -74,7 +74,7 @@ class Bridge:
     def __init__(self, root, *, timeout=60):
         self.root = Path(root).resolve()
         self.config = configparser.ConfigParser(interpolation=None)
-        self.config.read(self.root / 'config/config.ini', encoding='utf-8')
+        self.config.read(paths.config_path(self.root), encoding='utf-8')
         self.folder = self.root / 'logs'
         self.folder.mkdir(parents=True, exist_ok=True)
         self.pid_file = self.folder / 'mt5_bridge.pid'

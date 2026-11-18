@@ -38,7 +38,10 @@ except ImportError:
 # Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = "config/config.ini"
+from mt5_extracao.bootstrap import paths as _bootstrap_paths
+
+# Mesmo arquivo resolvido pelo app/CLI (config.ini ou o do sistema atual na composição dupla).
+DEFAULT_CONFIG_PATH = "config/" + _bootstrap_paths.config_file_name()
 
 # Colunas devolvidas pelo MT5 em copy_rates_* (usadas para DataFrames vazios)
 RATES_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']

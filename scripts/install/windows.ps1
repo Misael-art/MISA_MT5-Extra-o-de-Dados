@@ -45,11 +45,16 @@ $MT5SetupUrl = "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/m
 $PythonMinor = @(3, 11)     # mínimo aceito (coberto pelo CI)
 $PythonMaxMinor = 13        # máximo testado (3.13)
 
-$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+# ProviderPath: caminho do sistema de arquivos (UNC \\servidor\... ou unidade), sem prefixo do provedor
+$ProjectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).ProviderPath
 $LogDir = Join-Path $ProjectRoot "logs"
 $CacheDir = Join-Path $env:LOCALAPPDATA "mt5-extracao\cache"
-$VenvDir = Join-Path $ProjectRoot ".venv"
-$VenvPy = Join-Path $VenvDir "Scripts\python.exe"
+# Definidos depois de localizar o Python, pelo mesmo resolvedor do app (mt5_extracao/bootstrap/paths.py):
+# .venv é reutilizado se for do Windows ou estiver ausente; um .venv do Linux na mesma composição
+# (dual boot/WSL) é preservado e o Windows usa .venv-windows, com config\config.windows.ini.
+$VenvDir = $null
+$VenvPy = $null
+$ConfigFile = $null
 New-Item -ItemType Directory -Force -Path $LogDir, $CacheDir | Out-Null
 $LogFile = Join-Path $LogDir "install-windows.log"
 try { Start-Transcript -Path $LogFile -Append | Out-Null } catch { }
@@ -147,26 +152,84 @@ function Find-Python {
     return $null
 }
 
-function Install-Python {
+function Install-PythonWinget {
     $short = ($PythonVersion.Split(".")[0..1]) -join "."
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Info "Instalando Python $short via winget (somente para o usuário atual)..."
-        Invoke-Quiet "winget" @("install", "--id", "Python.Python.$short", "-e", "--scope", "user", "--silent",
-            "--accept-package-agreements", "--accept-source-agreements") | Out-Null
-        $found = Find-Python
-        if ($found) { return $found }
-        Write-Warn "winget não concluiu a instalação; usando o instalador oficial."
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { return $null }
+    Write-Info "Instalando Python $short via winget (somente para o usuário atual)..."
+    Invoke-Quiet "winget" @("install", "--id", "Python.Python.$short", "-e", "--scope", "user", "--silent",
+        "--accept-package-agreements", "--accept-source-agreements") | Out-Null
+    return Find-Python
+}
+
+function Test-VirtualizedAppData {
+    # Processos iniciados por apps empacotados (MSIX) podem ter %LOCALAPPDATA% redirecionado para
+    # Packages\<app>\LocalCache. O Windows Installer (SYSTEM) não enxerga esse destino e um Python
+    # instalado ali ficaria invisível fora do app: detectar antes de instalar.
+    $probe = "mt5x-probe-" + [guid]::NewGuid().ToString("N")
+    $path = Join-Path $env:LOCALAPPDATA $probe
+    try {
+        New-Item -ItemType Directory -Path $path | Out-Null
+        $packages = Join-Path $env:LOCALAPPDATA "Packages"
+        $redirected = @(Get-ChildItem -LiteralPath $packages -Directory -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "LocalCache\Local\$probe") })
+        if ($redirected.Count -gt 0) { return $redirected[0].Name }
+        return $null
+    } finally {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Install-Python {
+    $package = Test-VirtualizedAppData
+    if ($package) {
+        throw ("Este terminal foi aberto por um aplicativo empacotado ($package) e o Windows redireciona " +
+               "%LOCALAPPDATA% para a pasta privada dele: o Python não pode ser instalado daqui. " +
+               "Rode install.bat pelo Explorador de Arquivos ou por um terminal comum do Windows.")
+    }
+    # Instalador oficial primeiro: assinatura conferida e PATH do usuário inalterado.
     $installer = Join-Path $CacheDir "python-$PythonVersion-amd64.exe"
-    Get-File "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-amd64.exe" $installer
-    Write-Info "Instalando Python $PythonVersion (silencioso, somente usuário atual)..."
+    try {
+        Get-File "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-amd64.exe" $installer
+    } catch {
+        Write-Warn "Download oficial indisponível ($($_.Exception.Message)); tentando winget."
+        $found = Install-PythonWinget
+        if ($found) { return $found }
+        throw
+    }
+    $signature = Get-AuthenticodeSignature -LiteralPath $installer
+    if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notmatch "Python Software Foundation") {
+        throw "Instalador do Python sem assinatura válida da Python Software Foundation ($($signature.Status)): $installer. Apague o arquivo e repita."
+    }
+    Write-Info "Instalando Python $PythonVersion (silencioso, somente usuário atual, sem alterar o PATH)..."
+    # PrependPath=0: o app usa o ambiente do projeto; o `python` padrão do usuário não muda.
     $proc = Start-Process -FilePath $installer -Wait -PassThru -ArgumentList @(
-        "/quiet", "InstallAllUsers=0", "PrependPath=1", "Include_launcher=1",
+        "/quiet", "InstallAllUsers=0", "PrependPath=0", "Include_launcher=0",
         "Include_tcltk=1", "Include_pip=1", "Include_test=0")
     if ($proc.ExitCode -ne 0) { throw "O instalador do Python retornou código $($proc.ExitCode)." }
     $found = Find-Python
     if (-not $found) { throw "Python instalado, mas não localizado. Feche e abra o terminal e rode install.bat novamente." }
     return $found
+}
+
+function Resolve-ProjectEnvironment($python) {
+    # Fonte única: mt5_extracao/bootstrap/paths.py (somente stdlib), executado em modo isolado.
+    $ErrorActionPreference = "Continue"
+    $code = "import sys; sys.path.insert(0, sys.argv[1]); from mt5_extracao.bootstrap import paths as p; " +
+            "r = sys.argv[1]; e = p.environment_dir(r); f = p.foreign_environment(r); " +
+            "print(e); print(p.venv_platform(e) or ''); print(p.config_path(r)); print(f or '')"
+    $out = @(& $python.Exe @($python.Args + @("-I", "-c", $code, $ProjectRoot)) 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $out.Count -lt 4) { throw "Não foi possível resolver o ambiente do projeto em $ProjectRoot." }
+    $script:VenvDir = $out[0].Trim()
+    $script:VenvPy = Join-Path $script:VenvDir "Scripts\python.exe"
+    $script:ConfigFile = $out[2].Trim()
+    if ($out[1].Trim() -eq "mixed") {
+        throw "$($script:VenvDir) mistura arquivos de Windows e Linux. Nada foi instalado sobre ele: mova-o para fora da composição e repita."
+    }
+    $foreign = $out[3].Trim()
+    if ($foreign) {
+        Write-Info "Ambiente de outro sistema preservado sem alteração: $foreign"
+        Write-Info "Este Windows usa $($script:VenvDir) e $($script:ConfigFile)"
+    }
 }
 
 function Initialize-PythonEnv {
@@ -179,11 +242,12 @@ function Initialize-PythonEnv {
         $python = Install-Python
         Write-Ok "Python $($python.Version) instalado"
     }
-    if (-not (Test-Path $VenvPy)) {
+    Resolve-ProjectEnvironment $python
+    if (-not (Test-Path -LiteralPath $VenvPy)) {
         Invoke-Native $python.Exe ($python.Args + @("-m", "venv", $VenvDir)) "Falha ao criar o ambiente virtual"
-        Write-Ok "Ambiente virtual criado em .venv"
+        Write-Ok "Ambiente virtual criado em $VenvDir"
     } else {
-        Write-Ok "Ambiente virtual já existe (.venv)"
+        Write-Ok "Ambiente virtual já existe ($VenvDir)"
     }
 
     Write-Step "Dependências Python"
@@ -267,7 +331,7 @@ function Complete-Install {
 try {
     Write-Host "MT5 Extração - instalação automática (Windows)" -ForegroundColor White
     Write-Info "Projeto: $ProjectRoot"
-    Set-Location $ProjectRoot
+    Set-Location -LiteralPath $ProjectRoot
     Initialize-PythonEnv
     Install-MT5
     Invoke-Configure
@@ -279,7 +343,7 @@ try {
         Write-Host "Instalação concluída com pendências. Corrija os itens [FALHA] acima e rode install.bat novamente." -ForegroundColor Yellow
     }
     Write-Host "  Iniciar o aplicativo: run.bat (ou atalho 'MT5 Extração' na Área de Trabalho)"
-    Write-Host "  Diagnóstico:          .venv\Scripts\python -m mt5_extracao.bootstrap doctor"
+    if ($VenvPy) { Write-Host "  Diagnóstico:          `"$VenvPy`" -m mt5_extracao.bootstrap doctor" }
     Write-Host "  Log da instalação:    $LogFile"
     $exitCode = 0
 } catch {

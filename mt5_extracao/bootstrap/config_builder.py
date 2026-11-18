@@ -208,6 +208,46 @@ def build_config(existing: Optional[configparser.ConfigParser] = None,
     return result
 
 
+# Chaves que descrevem a instalação de um sistema (terminal, Wine, ponte, bibliotecas no disco).
+PLATFORM_BOUND_KEYS = {
+    "MT5": {"path", "windows_path", "wine_prefix"},
+    "BRIDGE": None,          # seção inteira: ponte RPyC só existe no Linux/Wine
+    "ROBOTS": {"library_dirs", "safety_lib_dir", "metaeditor_path"},
+}
+_WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[\\/]|^\\\\")
+
+
+def _foreign_absolute(value: str, windows: bool) -> bool:
+    parts = [p.strip() for p in re.split(r"[;,\n]", value or "") if p.strip()]
+    if windows:
+        return any(p.startswith(("/", "~/")) for p in parts)
+    return any(_WINDOWS_ABSOLUTE.match(p) for p in parts)
+
+
+def platform_seed(source: Path, windows: Optional[bool] = None) -> Optional[configparser.ConfigParser]:
+    """Semente da configuração de outro sistema a partir do `config.ini` existente (somente leitura).
+
+    Conserva preferências (estratégia, símbolos, banco relativo, recursos) e descarta valores
+    que só valem na instalação de origem: terminal/Wine/ponte/bibliotecas e caminhos absolutos
+    do outro sistema. O configurador e o wrapper preenchem esses valores para o sistema atual."""
+    source = Path(source)
+    if not source.is_file():
+        return None
+    windows = paths.is_windows() if windows is None else windows
+    original = load_config(source)
+    seed = _new_parser()
+    for section in original.sections():
+        bound = PLATFORM_BOUND_KEYS.get(section, set())
+        if bound is None:
+            continue
+        seed.add_section(section)
+        for key, value in original.items(section, raw=True):
+            if key in bound or _foreign_absolute(value, windows):
+                continue
+            seed[section][key] = value
+    return seed
+
+
 def atomic_write_text(path: Path, text: str, private: bool = False) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
