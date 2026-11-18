@@ -243,6 +243,10 @@ setup_python_env() {
     py="$(pick_python)"
     [[ -n "$py" ]] || die "Python 3.$MIN_PY_MINOR+ não encontrado. Instale python3 e rode novamente."
     info "Usando $("$py" --version 2>&1) ($(command -v "$py"))"
+    # .venv criado pelo Windows na mesma composição (dual boot): nunca instalar por cima nem apagar.
+    if [[ -f "$VENV_DIR/Scripts/python.exe" && ! -e "$VENV_DIR/bin" ]]; then
+        die "$VENV_DIR pertence ao Windows e foi preservado. Rode o instalador Linux numa composição cujo .venv seja do Linux; o Windows usa .venv-windows quando o .venv é do Linux."
+    fi
     if [[ -x "$VENV_PY" ]] && ! py_ok "$VENV_PY" tk && py_ok "$py" tk; then
         warn "O .venv atual não tem tkinter; recriando com $py"
         rm -rf "$VENV_DIR"

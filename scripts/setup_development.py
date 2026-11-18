@@ -16,6 +16,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'docs' / 'repasse' / 'NOVO_HOST_MANIFESTO_20261024.json'
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from mt5_extracao.bootstrap import paths as bootstrap_paths  # noqa: E402  (somente stdlib)
 
 
 class SetupError(ValueError):
@@ -23,8 +26,8 @@ class SetupError(ValueError):
 
 
 def venv_python(app, windows=None):
-    windows = os.name == 'nt' if windows is None else windows
-    return app / '.venv' / ('Scripts/python.exe' if windows else 'bin/python')
+    # Mesmo resolvedor dos lançadores: `.venv` de outro sistema nunca é reaproveitado.
+    return bootstrap_paths.venv_python(bootstrap_paths.environment_dir(app, windows), windows)
 
 
 def command(args, cwd, log=None):
@@ -43,31 +46,34 @@ def same_origin(actual, expected):
     return actual.removesuffix('.git').rstrip('/') == expected.removesuffix('.git').rstrip('/')
 
 
-def inspect_checkout(path, url, commit=None, run=command):
+def inspect_checkout(path, url, commit=None, run=command, wip=None):
+    """Valida um checkout existente sem alterá-lo. WIP é preservado e contado em `wip`."""
     if not path.exists():
         return None
     if path.is_symlink() or not (path / '.git').exists():
-        raise SetupError('Destino existente não é um clone próprio: %s. Escolha outra pasta.' % path)
+        raise SetupError('Destino existente não é um clone próprio: %s. Nada foi alterado; '
+                         'corrija a composição registrada em vez de criar outra.' % path)
     if Path(run(['git', 'rev-parse', '--show-toplevel'], path)).resolve() != path.resolve():
         raise SetupError('Destino não é a raiz do clone: %s.' % path)
     if not same_origin(run(['git', 'remote', 'get-url', 'origin'], path), url):
         raise SetupError('Origem diferente em %s; nada foi substituído.' % path)
-    if run(['git', 'status', '--porcelain'], path):
-        raise SetupError('WIP em %s; preserve-o e use outra pasta.' % path)
+    status = run(['git', 'status', '--porcelain'], path)
     head = run(['git', 'rev-parse', 'HEAD'], path)
     if commit and head != commit:
         raise SetupError('Commit diferente em %s; não será feito checkout/reset automático.' % path)
+    if wip is not None:
+        wip[path.name] = len([line for line in status.splitlines() if line.strip()])
     return head
 
 
-def ensure_checkout(path, spec, run=command):
-    head = inspect_checkout(path, spec['url'], spec['commit'], run)
+def ensure_checkout(path, spec, run=command, wip=None):
+    head = inspect_checkout(path, spec['url'], spec['commit'], run, wip)
     if head:
         return head
     path.parent.mkdir(parents=True, exist_ok=True)
     run(['git', 'clone', '--config', 'core.autocrlf=false', '--no-checkout', spec['url'], str(path)], path.parent)
     run(['git', 'checkout', '--detach', spec['commit']], path)
-    return inspect_checkout(path, spec['url'], spec['commit'], run)
+    return inspect_checkout(path, spec['url'], spec['commit'], run, wip)
 
 
 def load_manifest(path=MANIFEST):
@@ -88,7 +94,7 @@ def configure_libraries(app, workspace):
     if str(app) not in sys.path:
         sys.path.insert(0, str(app))
     from mt5_extracao.bootstrap.config_builder import load_config, set_config_value
-    target = app / 'config' / 'config.ini'
+    target = bootstrap_paths.config_path(app)
     if not target.is_file():
         raise SetupError('Configuração ausente; execute o instalador oficial primeiro.')
     config = load_config(target)
@@ -111,15 +117,20 @@ def prepare(workspace, plan=False, checks=True, run=command):
     workspace = workspace.expanduser().resolve()
     app = workspace / 'repos' / 'app'
     manifest = load_manifest()
+    environment = bootstrap_paths.environment_dir(app)
     if plan:
         return {'mode': 'plan', 'workspace': str(workspace), 'sources': manifest['repositories'],
-                'environment': str(app / '.venv'), 'private_database_required': False,
+                'environment': str(environment), 'private_database_required': False,
                 'native_installation': 'somente com --with-mt5 / -WithMT5 no launcher'}
     if app.resolve() != ROOT:
-        raise SetupError('Execute o wrapper do clone em WORKSPACE/repos/app; não use a árvore do proprietário.')
-    if Path(sys.prefix).resolve() != (app / '.venv').resolve():
-        raise SetupError('Execute pelo Python do .venv criado pelo instalador oficial.')
-    app_head = inspect_checkout(app, manifest['repositories']['app']['url'], run=run)
+        raise SetupError('A Workspace informada não contém este wrapper; use a composição registrada %s '
+                         '(nenhum checkout novo é criado).' % ROOT.parents[1])
+    if bootstrap_paths.venv_platform(environment) == bootstrap_paths.MIXED:
+        raise SetupError('%s mistura Windows e Linux; nada foi instalado sobre ele.' % environment)
+    if Path(sys.prefix).resolve() != environment.resolve():
+        raise SetupError('Execute pelo Python de %s, criado pelo instalador oficial deste sistema.' % environment)
+    wip = {}
+    app_head = inspect_checkout(app, manifest['repositories']['app']['url'], run=run, wip=wip)
     run(['git', 'merge-base', '--is-ancestor', manifest['repositories']['app']['commit'], app_head], app)
     # Validar destinos existentes ANTES de pip/config/atalhos.
     for key in ('hadouken', 'safety'):
@@ -129,13 +140,21 @@ def prepare(workspace, plan=False, checks=True, run=command):
     state.mkdir(parents=True, exist_ok=True)
     if os.name != 'nt':
         state.chmod(0o700)
+    foreign = bootstrap_paths.foreign_environment(app)
     receipt = {'status': 'preparing', 'app': app_head, 'checks_requested': checks,
-               'native_qualified': False, 'database_restored': False, 'repositories': {}}
-    receipt_path = state / 'setup.json'
+               'native_qualified': False, 'database_restored': False, 'repositories': {},
+               'platform': bootstrap_paths.host_platform(), 'environment': str(environment),
+               'config': str(bootstrap_paths.config_path(app)),
+               'foreign_environment_preserved': str(foreign) if foreign else None,
+               'wip_entries_preserved': wip}
+    # O recibo do outro sistema é preservado: cada sistema grava o seu.
+    receipt_path = state / ('setup.json' if foreign is None else 'setup-%s.json' % bootstrap_paths.host_platform())
     try:
         for key in ('hadouken', 'safety'):
             receipt['repositories'][key] = ensure_checkout(workspace / 'repos' / key,
-                                                          manifest['repositories'][key], run)
+                                                          manifest['repositories'][key], run, wip)
+        # Com WIP, HEAD não identifica o conteúdo: a composição não é declarada fixada.
+        receipt['composition_pinned'] = not any(wip.values())
         python = venv_python(app)
         run([python, '-m', 'pip', 'install', '--disable-pip-version-check', '-r',
              app / 'requirements-dev.txt'], app, state / 'dependencies.log')

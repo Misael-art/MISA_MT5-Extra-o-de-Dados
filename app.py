@@ -67,7 +67,7 @@ from mt5_extracao.logging_setup import setup_logging
 setup_logging()
 
 # Função para verificar dependências críticas antes de continuar
-def verificar_dependencias_criticas(offline=False, config_path="config/config.ini"):
+def verificar_dependencias_criticas(offline=False, config_path=services.DEFAULT_CONFIG_PATH):
     """Verifica se as dependências críticas estão disponíveis"""
     dependencias_faltantes = [package for module, package in bootstrap_doctor.REQUIRED_MODULES
                              if bootstrap_doctor.check_module(module, package).status == bootstrap_doctor.FAIL]
@@ -157,7 +157,7 @@ except ImportError as e:
 
 # Função verificar_mt5_em_execucao() removida - Lógica movida para MT5Connector
 class MT5Extracao:
-    def __init__(self, root, offline=False, config_path="config/config.ini"):
+    def __init__(self, root, offline=False, config_path=services.DEFAULT_CONFIG_PATH):
         self.offline = bool(offline)
         self.config_path = os.fspath(config_path)
         """
@@ -269,8 +269,8 @@ class MT5Extracao:
         if not os.path.exists(config_path):
             logging.error("Arquivo de configuração não encontrado")
             messagebox.showerror("Erro de Configuração",
-                               "Arquivo 'config/config.ini' não encontrado.\n\n"
-                               "Execute 'install.py' ou 'verificador.py' para configurar.")
+                               f"Arquivo '{config_path}' não encontrado.\n\n"
+                               "Execute o instalador do seu sistema (install.bat / install.sh) para configurar.")
             return False # Indica falha
 
         try:
@@ -923,10 +923,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Analise sua base local ou conecte ao MetaTrader 5.")
     parser.add_argument("--offline", action="store_true",
                         help="Abre a base local com a conexão MT5 desativada nesta sessão.")
-    parser.add_argument("--config", default="config/config.ini",
+    parser.add_argument("--config", default=services.DEFAULT_CONFIG_PATH,
                         help="configuração explícita para sessão offline de QA")
     args = parser.parse_args(argv)
-    if args.config != "config/config.ini" and not args.offline:
+    if os.path.normpath(args.config) != os.path.normpath(services.DEFAULT_CONFIG_PATH) and not args.offline:
         parser.error("--config alternativo exige --offline.")
     app = None
     try:

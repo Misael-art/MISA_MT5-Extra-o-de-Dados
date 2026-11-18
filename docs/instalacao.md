@@ -17,13 +17,35 @@ O instalador:
 
 | Etapa | O que acontece |
 |---|---|
-| Python | Procura um Python 3.11–3.13 com tkinter (CI cobre 3.11; 3.12 e 3.13 são aceitos sem cobertura do CI). Se não houver, instala o Python 3.11 via `winget`; se o winget não existir, usa o instalador oficial do python.org (somente para o usuário atual) |
-| Dependências | Cria `.venv` e instala `requirements.txt` (inclui o pacote `MetaTrader5`) |
+| Python | Procura um Python 3.11–3.13 com tkinter (CI cobre 3.11; 3.12 e 3.13 são aceitos sem cobertura do CI). Se não houver, baixa o instalador oficial do python.org, confere a assinatura da Python Software Foundation e instala somente para o usuário atual, sem alterar o PATH; o `winget` fica como alternativa quando o download oficial falha |
+| Dependências | Cria o ambiente do projeto e instala `requirements.txt` (inclui o pacote `MetaTrader5`): `.venv`, ou `.venv-windows` quando o `.venv` da pasta pertence ao Linux (veja abaixo) |
 | MetaTrader 5 | Procura instalações existentes, incluindo as de corretoras. Se não houver, baixa o `mt5setup.exe` oficial e instala em modo automático (`/auto`) |
-| Configuração | Gera `config\config.ini`, `config\default_symbols.json` e, se você quiser, o `.env` com as credenciais |
+| Configuração | Gera `config\config.ini` (ou `config\config.windows.ini`, veja abaixo), `config\default_symbols.json` e, se você quiser, o `.env` com as credenciais |
 | Final | Cria o atalho e roda o diagnóstico |
 
 Opções (pelo terminal): `install.bat -Yes -NoMT5 -NoShortcut -MT5Path "C:\Program Files\Minha Corretora MT5"`
+
+Rode `install.bat` pelo Explorador de Arquivos ou por um terminal comum. Terminais abertos por aplicativos
+empacotados (MSIX) podem ter `%LOCALAPPDATA%` redirecionado para a pasta privada do aplicativo; o instalador
+detecta isso e para antes de instalar o Python, porque o Windows Installer não enxerga esse destino e o Python
+ficaria invisível fora daquele aplicativo.
+
+### Mesma pasta usada pelo Windows e pelo Linux (dual boot, WSL, disco compartilhado)
+
+Cada sistema usa um único ambiente próprio, escolhido por `mt5_extracao/bootstrap/paths.py` (o mesmo critério em
+`install.bat`, `run.bat`, `bootstrap-dev.ps1` e no diagnóstico):
+
+| Situação do `.venv` | Ambiente do Windows | Configuração do Windows |
+|---|---|---|
+| ausente ou criado pelo Windows | `.venv` | `config\config.ini` |
+| criado pelo Linux (`bin/`, `pyvenv.cfg` com caminho POSIX) | `.venv-windows` | `config\config.windows.ini` |
+| misturado (Windows e Linux no mesmo diretório) | recusado: nada é instalado sobre ele | — |
+
+O `.venv` e o `config.ini` do outro sistema nunca são alterados. Na primeira configuração o Windows copia as
+preferências do `config.ini` existente, sem caminhos do terminal/Wine/ponte/bibliotecas nem caminhos absolutos do
+Linux; o configurador e o wrapper preenchem esses valores para o Windows. A base relativa (`database/…`) continua
+a mesma. O instalador Linux recusa um `.venv` criado pelo Windows. `run.bat` usa `pushd`, então funciona em pasta
+com espaços, acentos e caminho UNC (`\\servidor\pasta`).
 
 ## Linux (Ubuntu, Debian, Mint, Fedora, Arch, openSUSE)
 

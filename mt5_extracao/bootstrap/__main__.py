@@ -109,6 +109,12 @@ def cmd_configure(args) -> int:
     # 3. Escrever config.ini (preservando valores existentes)
     cfg_path = paths.config_path(root)
     existing = config_builder.load_config(cfg_path) if cfg_path.exists() and not args.reset else None
+    shared = paths.shared_config_path(root)
+    if existing is None and not args.reset and cfg_path != shared:
+        # Composição usada por outro sistema: parte das preferências dele sem alterar o arquivo.
+        existing = config_builder.platform_seed(shared)
+        if existing is not None:
+            _print(f"Preferências de {shared} copiadas sem caminhos de outro sistema; original preservado.")
     cfg = config_builder.build_config(existing, overrides)
     config_builder.write_config(cfg_path, cfg)
     _print(f"Configuração salva em {cfg_path}")

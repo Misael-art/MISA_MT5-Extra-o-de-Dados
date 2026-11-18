@@ -119,9 +119,18 @@ def test_existing_work_is_never_replaced(repository, change):
     if change == 'wrong_origin': git(path, 'remote', 'set-url', 'origin', 'https://example.invalid/other.git')
     expected = '0' * 40 if change == 'wrong_commit' else sha
     before = {p.name: p.read_bytes() for p in path.iterdir() if p.is_file()}
-    with pytest.raises(host.SetupError):
-        host.ensure_checkout(path, {'url': 'https://github.com/Misael-art/fixture.git', 'commit': expected})
+    index = (path / '.git' / 'index').read_bytes()
+    spec = {'url': 'https://github.com/Misael-art/fixture.git', 'commit': expected}
+    if change in ('wip', 'untracked'):
+        # Composição registrada com WIP: reutilizada, preservada e contada; nunca clonada de novo.
+        wip = {}
+        assert host.ensure_checkout(path, spec, wip=wip) == sha
+        assert wip == {path.name: 1}
+    else:
+        with pytest.raises(host.SetupError):
+            host.ensure_checkout(path, spec)
     assert before == {p.name: p.read_bytes() for p in path.iterdir() if p.is_file()}
+    assert (path / '.git' / 'index').read_bytes() == index
     assert git(path, 'rev-parse', 'HEAD') == sha
 
 
@@ -216,3 +225,40 @@ def test_real_checkout_orchestration_preserves_data_and_records_failure(reposito
     if not fail_install:
         assert any('doctor' in c and '--development' in c for c in calls)
         assert not (workspace / 'worktrees').exists()
+        assert receipt['composition_pinned'] is True and receipt['foreign_environment_preserved'] is None
+
+
+def test_setup_preserves_wip_of_registered_root_and_reports_it(repository, tmp_path, monkeypatch):
+    source, sha = repository
+    workspace = tmp_path / 'workspace com espaço'
+    app = workspace / 'repos' / 'app'
+    spec = {'url': str(source), 'commit': sha}
+    host.ensure_checkout(app, spec)
+    git(app, 'remote', 'set-url', 'origin', 'https://github.com/Misael-art/fixture.git')
+    (app / '.git/info/exclude').write_text('.venv/\nconfig/\n')
+    (app / '.venv').mkdir()
+    (app / 'config').mkdir()
+    (app / 'config/config.ini').write_text('[ROBOTS]\nlibrary_dirs =\nsafety_lib_dir =\n')
+    (app / 'source.txt').write_text('WIP do proprietário')
+    manifest = {'repositories': {'app': {'url': 'https://github.com/Misael-art/fixture.git', 'commit': sha},
+                                 'hadouken': spec, 'safety': spec}}
+    monkeypatch.setattr(host, 'ROOT', app)
+    monkeypatch.setattr(host.sys, 'prefix', str(app / '.venv'))
+    monkeypatch.setattr(host, 'load_manifest', lambda: manifest)
+    monkeypatch.setattr(host.shutil, 'which', lambda name: 'compiler' if name == 'g++' else None)
+    def run(args, cwd, log=None):
+        if str(args[0]) == 'git': return host.command(args, cwd, log)
+        return ''
+    receipt = host.prepare(workspace, run=run)
+    assert receipt['status'] == 'development_ready'
+    assert receipt['wip_entries_preserved']['app'] == 1 and receipt['composition_pinned'] is False
+    assert (app / 'source.txt').read_text() == 'WIP do proprietário'
+    assert git(app, 'rev-parse', 'HEAD') == sha
+    assert not (workspace.parent / 'MT5X').exists()
+
+
+def test_setup_refuses_other_workspace_without_creating_it(tmp_path):
+    other = tmp_path / 'outra workspace'
+    with pytest.raises(host.SetupError, match='composição registrada'):
+        host.prepare(other, run=lambda *a: pytest.fail('nada pode rodar'))
+    assert not other.exists()

@@ -57,12 +57,23 @@ def check_python() -> Check:
     return Check("Python", OK, f"Python {text} em {sys.executable}")
 
 
-def check_venv() -> Check:
+def check_venv(root: Optional[Path] = None) -> Check:
     in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
-    if in_venv:
+    if not in_venv:
+        return Check("Ambiente virtual", WARN, "Executando fora de um ambiente virtual",
+                     "Use os lançadores run.bat / run.sh, que ativam o ambiente do projeto.")
+    if root is None:
         return Check("Ambiente virtual", OK, sys.prefix)
-    return Check("Ambiente virtual", WARN, "Executando fora de um ambiente virtual",
-                 "Use os lançadores run.bat / run.sh, que ativam o .venv do projeto.")
+    expected = paths.environment_dir(root)
+    foreign = paths.foreign_environment(root)
+    note = f"; {foreign.name} de outro sistema preservado" if foreign is not None else ""
+    if paths.venv_platform(expected) == paths.MIXED:
+        return Check("Ambiente virtual", FAIL, f"{expected} contém Windows e Linux misturados",
+                     "Não instale sobre ele; mova-o para fora da composição e rode o instalador do sistema.")
+    if expected.is_dir() and Path(sys.prefix).resolve() != expected.resolve():
+        return Check("Ambiente virtual", WARN, f"{sys.prefix} difere do ambiente da composição {expected}{note}",
+                     "Use os lançadores run.bat / run.sh do projeto.")
+    return Check("Ambiente virtual", OK, f"{sys.prefix}{note}")
 
 
 def check_module(module: str, package: str, required: bool = True) -> Check:
@@ -243,7 +254,7 @@ def _bridge_enabled(root: Path) -> bool:
 def run_checks(root: Path = paths.PROJECT_ROOT, probe_bridge_conn: bool = True,
                development: bool = False) -> List[Check]:
     root = Path(root)
-    checks = [check_python(), check_venv()]
+    checks = [check_python(), check_venv(root)]
     checks += [check_module(m, p) for m, p in REQUIRED_MODULES]
     checks += [check_module(m, p, required=False) for m, p in OPTIONAL_MODULES]
     checks.append(check_tkinter())

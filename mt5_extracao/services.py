@@ -12,7 +12,10 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = os.path.join("config", "config.ini")
+from mt5_extracao.bootstrap import paths as _paths
+
+# config.ini, ou config.<sistema>.ini quando o .venv da composição pertence a outro sistema.
+DEFAULT_CONFIG_PATH = os.path.join("config", _paths.config_file_name())
 DEFAULT_DB_PATH = os.path.join("database", "mt5_data.db")
 APP_NAME = "mt5-extracao"
 

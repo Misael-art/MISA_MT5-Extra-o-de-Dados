@@ -29,7 +29,90 @@ def is_windows() -> bool:
     return os.name == "nt" or sys.platform == "win32"
 
 
-def config_path(root: Path = PROJECT_ROOT) -> Path:
+# Ambiente Python do projeto. Uma composição pode ser aberta por dois sistemas no mesmo disco
+# (dual boot / WSL): o `.venv` pertence ao sistema que o criou e nunca é reaproveitado nem
+# sobrescrito pelo outro. Esse outro usa um único diretório próprio, com configuração própria.
+VENV_DIR_NAME = ".venv"
+PLATFORM_VENV_DIR_NAMES = {"windows": ".venv-windows", "posix": ".venv-posix"}
+WINDOWS, POSIX, MIXED = "windows", "posix", "mixed"
+
+
+def host_platform(windows=None) -> str:
+    return WINDOWS if (is_windows() if windows is None else windows) else POSIX
+
+
+def venv_platform(directory: Path):
+    """Sistema dono de um ambiente virtual: WINDOWS, POSIX, MIXED (as duas árvores) ou None (ausente).
+
+    Lê só a estrutura: um `bin/python` Linux pode ser link quebrado quando visto do Windows."""
+    directory = Path(directory)
+    if not directory.is_dir():
+        return None
+    has_windows = (directory / "Scripts" / "python.exe").is_file()
+    posix_python = directory / "bin" / "python"
+    has_posix = posix_python.is_symlink() or posix_python.exists()
+    if has_windows and has_posix:
+        return MIXED
+    if has_windows:
+        return WINDOWS
+    if has_posix:
+        return POSIX
+    cfg = directory / "pyvenv.cfg"
+    if cfg.is_file():
+        for line in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "home":
+                value = value.strip()
+                return WINDOWS if len(value) > 1 and value[1] == ":" else POSIX
+    return None
+
+
+def environment_dir(root: Path = PROJECT_ROOT, windows=None) -> Path:
+    """Único ambiente do projeto para este sistema.
+
+    1. diretório próprio do sistema (`.venv-windows`/`.venv-posix`) se já contém ambiente dele;
+    2. `.venv` se é deste sistema ou ainda não existe (instalação comum, inalterada);
+    3. diretório próprio quando `.venv` é de outro sistema ou está misturado (preservado)."""
+    root = Path(root)
+    own = host_platform(windows)
+    dedicated = root / PLATFORM_VENV_DIR_NAMES[own]
+    if venv_platform(dedicated) == own:
+        return dedicated
+    primary = root / VENV_DIR_NAME
+    if venv_platform(primary) in (own, None):
+        return primary
+    return dedicated
+
+
+def venv_python(directory: Path, windows=None) -> Path:
+    windows = is_windows() if windows is None else windows
+    return Path(directory) / ("Scripts/python.exe" if windows else "bin/python")
+
+
+def foreign_environment(root: Path = PROJECT_ROOT, windows=None):
+    """`.venv` de outro sistema preservado ao lado do ambiente atual (ou None)."""
+    primary = Path(root) / VENV_DIR_NAME
+    if environment_dir(root, windows) == primary:
+        return None
+    return primary
+
+
+def config_file_name(root: Path = PROJECT_ROOT, windows=None) -> str:
+    """`config.ini` pertence ao dono do `.venv`; o outro sistema usa `config.<sistema>.ini`.
+
+    Caminhos de terminal, Wine e bibliotecas diferem entre sistemas: compartilhar o arquivo
+    faria cada um sobrescrever a configuração do outro."""
+    if foreign_environment(root, windows) is None:
+        return CONFIG_FILE_NAME
+    return "config.%s.ini" % host_platform(windows)
+
+
+def config_path(root: Path = PROJECT_ROOT, windows=None) -> Path:
+    return Path(root) / CONFIG_DIR_NAME / config_file_name(root, windows)
+
+
+def shared_config_path(root: Path = PROJECT_ROOT) -> Path:
+    """`config.ini` do dono do `.venv` (semente somente leitura para o outro sistema)."""
     return Path(root) / CONFIG_DIR_NAME / CONFIG_FILE_NAME
 
 
