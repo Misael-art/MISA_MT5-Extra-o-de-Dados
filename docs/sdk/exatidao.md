@@ -60,8 +60,13 @@ Cada uma com o que ela significa para quem vai operar.
 4. **Os limites de perda (diário, semanal, drawdown) não são provados por teste.** A bateria confere os valores
    declarados e, no teste, só a presença do stop. No Strategy Tester a parada por arquivo é ignorada pela própria
    biblioteca (`!m_is_tester`), então também não é testável ali.
-5. **A qualidade do histórico do Tester não é lida.** Se a corretora não tem ticks reais do ativo, o Tester gera
-   os ticks e o programa não avisa. Confira "Qualidade do histórico" no relatório `.htm`.
+5. **A qualidade do histórico do Tester só vale pelo que o relatório declara.** Desde a T20.6/T16.14 o backtest
+   MQL5 lê do relatório `.htm` (`data_eligibility.tester_report`, gravado em `metrics.data_quality`) a qualidade do
+   histórico e a fração **rotulada** de ticks reais; a classe de fidelidade (A–E, `analytics/tick_fidelity.py`) não
+   sobe para ticks reais completos sem declaração explícita de 100% na mesma execução, e relatório sem o campo ou
+   divergente do modelo pedido fica `unknown`. **O que continua valendo:** o programa não verifica a fonte da
+   corretora nem a fila de ordens, e a leitura ainda não foi conferida com relatório de Tester no Windows físico.
+   (Correção documental de 18/11/2026; a versão anterior deste item dizia que a qualidade não era lida.)
 6. **A paridade casa pelo horário de saída, sem a direção**, que não é gravada com as operações.
 7. **Tempo real em demo (T8.7) nunca rodou em um terminal de verdade.** As chaves do `.ini` de início vieram da
    documentação. `mt5x robots stop` não fecha posições e só é obedecido por robôs com a biblioteca de segurança.
