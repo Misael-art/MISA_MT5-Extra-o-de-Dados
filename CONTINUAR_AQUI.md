@@ -2113,3 +2113,78 @@ Próximo passo: o proprietário roda o instalador fora do app; então repetir aq
 Resolve a "investigação delimitada" da auditoria (seleção de run, cortes temporais e identidade completa) em `presets/conditional_policy.py`, sem alterar regras, piso ou o parecer estatístico: `policy_id` inalterado; novo `evaluation` com `evaluation_id` (política + frações/instantes/origem dos cortes + piso + mínimos + capital + escolha de run + proveniência por run), `comparability` e `promotion_blockers`. Moedas declaradas diferentes recusam o estudo; proveniência ausente, manifestos diferentes, run sem operações na reserva ou escolha implícita entre runs repetidos bloqueiam a promoção mesmo com "elegível". `cuts=` reaplica cortes congelados. `mt5x trades router` mostra avaliação, cortes, modo de escolha e bloqueios. Contrato em PILARES §8.5.
 
 Validação: `tests/test_conditional_policy.py` 10 aprovados (5 novos) no harness temporário Python 3.14 do Windows. `tests/test_trade_repeated_runs.py` não roda nesse harness (fixture exige `cache_eligible`, que o 3.14 não produz — achado registrado acima); fica com o CI 3.11. Não é Ultra executável: T19.53 (política no HADOUKEN e backtest causal completo) e T19.54 continuam pendentes e dependem dos aceites nativos.
+
+## Windows físico — instalação, MT5 nativo e suíte completa — 18/11/2026
+
+Continuação das seções anteriores, por instrução do proprietário de instalar e validar tudo. Recibos em `MT5X/state/qa-tmp/windows-20261118/` (fora do Git). PRs empilhadas em draft, sem merge: #353 → #354 → #355 → #356 → #357 → #358 → #359 → #360 → #361 → #362.
+
+**Execução fora do contêiner do app:** o app Claude virtualiza `%LOCALAPPDATA%`/`%APPDATA%`. Instalação, launcher, MT5 e suíte rodaram em processos criados pelo provedor WMI (`Win32_Process.Create`, mesmo usuário). Uma sonda confirmou gravação no caminho real.
+
+**Ambiente Windows (HOST1/T10.W):**
+- `windows.ps1 -Yes -NoMT5`: Python 3.11.9 por usuário (PSF, PATH inalterado), `.venv-windows`, `config.windows.ini` semeado sem caminhos Linux.
+- 2ª execução idempotente: `pip freeze` idêntico, configuração byte a byte igual com marcador preservado.
+- `requirements-dev.txt`, `pip check` limpo; `doctor --development --no-probe` sem FALHA.
+- `run.bat --cli` (`status`/`tables`) local e por UNC com `qa.ini` próprio.
+- GUI `run.bat --offline` aberta (`gui-window.png`) e encerrada limpa.
+- `.venv`/`config.ini` do Linux com impressão digital idêntica do início ao fim.
+
+**MT5 nativo:**
+- `install.bat -Yes`: `mt5setup.exe` oficial (assinatura MetaQuotes válida); licença aceita pelo proprietário na tela; MT5 em `C:\Program Files\MetaTrader 5` (build 6324).
+- Achado corrigido (#359): `Start-Process -Wait` esperava o terminal aberto pelo setup; a instalação ficava parada até o MT5 ser fechado.
+- Reexecução: configuração, atalho e doctor completo sem FALHA.
+- Conta demo MetaQuotes-Demo (hedging, dados fictícios do projeto) aberta pelo comando oficial, com autorização explícita do proprietário.
+- Achado corrigido (#360): o `tasklist` em cp850 com `PYTHONUTF8=1` devolvia `stdout None` e derrubava o comando.
+
+**Compilação nativa (T8.4):**
+- Fontes instalados na pasta de dados real (`%APPDATA%\MetaQuotes\Terminal\D0E8…\MQL5`, sem modo portátil), código de saída coerente.
+- `HDK_SuperATRTriplo` e `HDK_HADOUKEN_Painel`: 0 erros, 0 avisos.
+- `HDK_S09_Referencia`: 36,7 s sem contenção. O estouro anterior de 300 s ocorreu com a suíte rodando em paralelo; o prazo não foi alterado para isso.
+- Na sessão do Tester o Triplo compilou em 110–221 s, com o prazo oficial de 600 s (PR352).
+
+**Tester (T19.23/29, SA-01):**
+- Duas sessões do Triplo desarmado pelo `PresetExecution` (pacote `b8daf176`, seed `2026-10-09`, EURUSD M5, ticks reais).
+- Ambas pararam porque o próprio MT5 cancelou o download preliminar de ticks: 202611 completo e 202610 a 81%, em cerca de 13 s, a 1,3–2,8 MB/s, ping de 280 ms pelo Access Point BR 1. Depois veio "no history data, stop testing".
+- O App não interrompeu (`process.log` vazio, sem prazo excedido).
+- Mesmo sintoma do Wine: o bloqueio não é do Wine.
+- Aceite (consenso, zero entradas, caixa) continua pendente. Trocar o modelo do pacote mudaria o aceite e não foi feito.
+- Achado corrigido (#361): com o terminal principal aberto, a cópia do `.hcc` falhava com `shutil.Error` cru; agora a sessão para com a ação "feche o terminal ou `--close-terminal`".
+
+**Dados (BD03–05/T2.6):**
+- Extração real EURUSD M5 de 10–17/11 pelo launcher na base de QA: 1.728 barras (6 pregões × 288) e 0 duplicatas após duas execuções.
+- Achado corrigido (#362): a 1ª estratégia de conexão passava a pasta do MT5 e o tratador de IPC encerrava o terminal desta instalação. Agora o `terminal64.exe` vem primeiro, como já era no Wine.
+- Em aberto, contrato BD03: `--from/--to` chegam sem fuso ao `copy_rates_range` e são interpretados no fuso do host (GMT-3). Barras gravadas de `2026-11-10 03:00` a `2026-11-18 02:55`. Confirmar a base de tempo prevista antes de qualquer correção; nada foi alterado por suposição.
+- Paridade Windows×Linux não executada (o Linux não está acessível nesta sessão).
+
+**Achados de ambiente que distorcem medições locais:**
+- `C:` é cartão SD: commit SQLite ~400 ms contra ~25 ms no NVMe. Suítes locais usam `TEMP`/`--basetemp` no NVMe.
+- O contêiner do app deixa testes até 5× mais lentos.
+- A raiz `repos\app` fica intermitentemente inacessível: abrir o diretório retorna `ERROR_SHARING_VIOLATION`, por até ~5 min, sem detentor visível ao Restart Manager. Afeta import e `git status`; o trabalho seguiu com uma junção de import.
+- Concorrência alheia constante: Fôlego (PowerShell ~0,7 núcleo) e ChatGPT/Codex.
+
+**Correções de código desta etapa:**
+- #357: padrão de configuração pela raiz efetiva; teste de lease aguardando o interpretador do venv.
+- #358: configuração lida da pasta corrente primeiro; `bootstrap-dev.ps1` em UTF-8. Com acentos em console cp850 o wrapper falhava; a regressão reprova a versão anterior.
+- #356: produtores sem consultas pandas por dependência (59,4 s → 16,4 s).
+- #359–#362: descritos acima.
+
+**Ainda pendente:**
+- Aceite do Tester (ticks), S09/plot e o par Tester/Replay, que dependem do mesmo download.
+- E14 nativo, DEMO operacional com roteiro próprio (não autorizado nem executado), paridade Windows×Linux, percurso integrado completo, DPI/teclado físico.
+- T19.53/54.
+- WinLibs (g++, >70 MB) para os testes que compilam headers MQL.
+
+**Suíte completa local:** Windows 11 físico, Python 3.11, fora do contêiner, um arquivo por processo, temporários no NVMe.
+- Resultado bruto: 418 arquivos; 383 com junit = 4.691 testes, 37 falhas, 212 pulados. Outros 38 arquivos foram abortados por timeout (no Windows o `pytest-timeout` encerra o processo) ou parados manualmente.
+- Corrigidas (#357/#358): `test_data_paths` e `test_offline_startup`, regressões da #353 no `.venv` dual.
+- Corrigidas (#363): `test_restore_*`/`test_resources`/`test_backup_retention_identity` (30 falhas por recibo não regravado). Fora do contêiner: 95/95.
+- Ambiente: `test_native_inputs` sem g++ (WinLibs >70 MB, ação do proprietário); `test_process_management` viu o terminal MT5 real aberto naquele instante.
+- Intermitentes: `test_panel_server`, `test_ui_dashboard` e o lease filho que não imprimiu em 15 s.
+- Timeouts: concentrados em produtores Analytics, backtest em lote, UI Tk e subprocessos da CLI. Coincidiram com o host saturado por outros apps, que chegaram a ~5 núcleos (WebView, ChatGPT, Fôlego, `git`/`pwsh` de outro agente).
+- A reexecução isolada foi interrompida para respeitar a política de recursos. O CI Windows de cada PR (runner limpo) é a referência de tempo: #353–#359 e #361 com todos os checks verdes; #354 e #360 tiveram falhas intermitentes de UI/tempo que passaram no rerun ou na PR seguinte.
+- Recibos: `state/qa-tmp/windows-20261118/suite/` (logs, junit, `summary.tsv`) e `rerun/`.
+
+**Próximo passo:**
+1. Proprietário: decidir o tratamento do download de ticks reais (rede ou outra conta/servidor) para fechar o Triplo desarmado, o par Tester/Replay e o S09; instalar o WinLibs.
+2. Contrato BD03: confirmar a base de tempo de `--from/--to`.
+3. Repetir a suíte em host sem saturação.
+4. Revisar e mesclar a pilha #353→#363 na ordem.

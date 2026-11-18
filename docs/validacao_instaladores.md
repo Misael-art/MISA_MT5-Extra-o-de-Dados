@@ -124,13 +124,13 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 
 | Origem | O que conferir | Comando | Resultado esperado | Data | Situação |
 |---|---|---|---|---|---|
-| T8.4 | Pasta de dados fora do modo portátil | `mt5x robots install <robô>` | Arquivos em `%APPDATA%\MetaQuotes\Terminal\<id>\MQL5` (achada por `origin.txt`), não na pasta do programa | — | ⏳ pendente |
-| T8.4 | Compilação sem o `.bat` do Wine | `mt5x robots compile <robô>` | `.ex5` gerado; erros e avisos lidos do log; caminho com espaço funciona | — | ⏳ pendente |
-| T8.4 | Código de saída do MetaEditor | o mesmo | Resultado correto mesmo com o código de saída invertido (1 = compilou) | — | ⏳ pendente |
-| T8.5 | Strategy Tester sem `/portable` | `mt5x robots backtest <robô> --symbol EURUSD --tf H1` | Relatório `.htm` na pasta de dados; métricas iguais às do MT5 | — | ⏳ pendente |
+| T8.4 | Pasta de dados fora do modo portátil | `mt5x robots install <robô>` | Arquivos em `%APPDATA%\MetaQuotes\Terminal\<id>\MQL5` (achada por `origin.txt`), não na pasta do programa | 2026-11-18 | ✅ Windows 11 físico, MT5 build 6324: fontes HADOUKEN/Safety em `Terminal\D0E8…\MQL5` |
+| T8.4 | Compilação sem o `.bat` do Wine | `mt5x robots compile <robô>` | `.ex5` gerado; erros e avisos lidos do log; caminho com espaço funciona | 2026-11-18 | ✅ Triplo, Painel e S09: 0 erros/0 avisos (S09 em 36,7 s sem contenção; 300 s estourado só com a suíte em paralelo) |
+| T8.4 | Código de saída do MetaEditor | o mesmo | Resultado correto mesmo com o código de saída invertido (1 = compilou) | 2026-11-18 | ✅ `ok=true`/`exit_code=0` coerentes com o log do MetaEditor |
+| T8.5 | Strategy Tester sem `/portable` | `mt5x robots backtest <robô> --symbol EURUSD --tf H1` | Relatório `.htm` na pasta de dados; métricas iguais às do MT5 | 2026-11-18 | ❌ bloqueado: em duas sessões o MT5 cancelou o download preliminar de ticks reais (MetaQuotes-Demo, BR 1, 280 ms) — mesmo sintoma do Wine |
 | T8.5 | Idioma do relatório | o mesmo, com o terminal em inglês e em português | Mesmas operações lidas nos dois idiomas | — | ⏳ pendente |
 | T8.5 | `Common\Files` | backtest de um robô com `InpExportTrades` | `HDK_trades_<magic>.csv` lido de `%APPDATA%\MetaQuotes\Terminal\Common\Files` | — | ⏳ pendente |
-| T8.5 | Terminal aberto | o mesmo comando com o MT5 aberto, sem e com `--close-terminal` | Sem a opção: para e explica; com ela: fecha, testa (não há ponte para religar) | — | ⏳ pendente |
+| T8.5 | Terminal aberto | o mesmo comando com o MT5 aberto, sem e com `--close-terminal` | Sem a opção: para e explica; com ela: fecha, testa (não há ponte para religar) | 2026-11-18 | 🟡 com o terminal aberto a sessão nativa falhava com `shutil.Error` cru; agora explica (#361). Fechamento oficial (`close_terminal`) conferido |
 | T8.6 | Bateria | `mt5x robots battery <robô>` | Mesmo resultado que no Linux para o mesmo backtest | — | ⏳ pendente |
 | T8.7 | Início em demo | `mt5x robots start <robô> --symbol EURUSD --tf H1 --close-terminal` | Só depois de validada no Linux (lista da T8.7 no plano): robô no gráfico, na conta conferida | — | ⏳ pendente |
 | T8.7 | PARAR TUDO | `mt5x robots stop` e `--release` | `HDK_KILL.txt` criado e removido em `Common\Files` | — | ⏳ pendente |
@@ -639,11 +639,12 @@ para produzir o ensaio. Mensagem final de prazo não afirma abertura impossível
 
 ### HOST1/T10.W — composição usada por Windows e Linux (18/11/2026)
 
-Implementado e testado no Windows real com harness temporário; aceites abaixo exigem terminal comum (fora de app empacotado MSIX).
+Executado em 18/11/2026 no Windows 11 físico (Steam Deck, APU 4C/8T, 14,85 GiB), fora do contêiner do app empacotado (processo criado via WMI). Recibos em `MT5X/state/qa-tmp/windows-20261118/`.
 
-- [ ] `install.bat -Yes -NoMT5` cria `.venv-windows` e `config\config.windows.ini` com `.venv`/`config.ini` do Linux intactos (impressão digital antes/depois).
-- [ ] Segunda execução idempotente: nada reinstalado indevidamente, preferências do Windows preservadas.
-- [ ] `run.bat` (GUI) e `run.bat --cli status` pela pasta local e por UNC, com base de QA separada; `doctor --development --no-probe` sem FALHA.
+- [x] `install.bat -Yes -NoMT5` cria `.venv-windows` e `config\config.windows.ini` com `.venv`/`config.ini` do Linux intactos (impressão digital antes/depois). Python 3.11.9 por usuário, PATH inalterado.
+- [x] Segunda execução idempotente: `pip freeze` idêntico, `config.windows.ini` byte a byte igual com marcador de preferência preservado.
+- [x] `run.bat` (GUI) e `run.bat --cli status` pela pasta local e por UNC, com base de QA separada; `doctor --development --no-probe` sem FALHA. GUI abriu e encerrou limpo; DPI/teclado/foco/temas continuam pendentes (sem entrada física).
 - [ ] `bootstrap-dev.ps1 -Yes` com WIP: recibo `state\setup-windows.json` com `wip_entries_preserved`, sem clone/worktree.
 - [x] Terminal virtualizado por app empacotado é recusado antes do MSI, com orientação (reproduzido no app Claude).
 - [ ] Descoberta MT5 e QA nativo apenas de sessão não virtualizada (`%APPDATA%\MetaQuotes`).
+- [ ] Suíte completa local: rodar com temporários no NVMe (`TEMP`/`--basetemp`); neste host `C:` é cartão SD (commit SQLite ~400 ms) e o `%LOCALAPPDATA%` do app empacotado é virtualizado (falsos negativos em restauração/lease).
