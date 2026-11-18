@@ -23,6 +23,18 @@ from . import backtest, battery, budget, catalog, contract, controls, live, mql,
 log = logging.getLogger(__name__)
 
 
+def _copy_market_data(copy):
+    """Cópia do histórico do terminal principal para o perfil privado.
+
+    No Windows o terminal aberto bloqueia os arquivos de histórico/ticks em uso; a cópia falha com
+    erro de permissão. Nada é forçado: a sessão para com a ação correta para o usuário."""
+    try:
+        copy()
+    except (shutil.Error, PermissionError) as error:
+        raise RuntimeError("O MetaTrader 5 principal está aberto e bloqueia o histórico que a sessão copia. "
+                           "Feche o terminal (ou repita com --close-terminal) e rode de novo.") from error
+
+
 class Cancelled(RuntimeError):
     pass
 
@@ -201,11 +213,11 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
             actual = next((p for p in server.iterdir() if p.is_dir() and p.name.lower() == folder), server / folder)
             selected = actual / symbol
             if selected.is_dir():
-                shutil.copytree(selected, directory / bases.name / server.name / actual.name / symbol,
-                                copy_function=copy_file)
+                _copy_market_data(lambda: shutil.copytree(
+                    selected, directory / bases.name / server.name / actual.name / symbol, copy_function=copy_file))
         for file in server.glob("*"):
             if file.is_file():
-                copy_file(file, directory / bases.name / server.name / file.name)
+                _copy_market_data(lambda file=file: copy_file(file, directory / bases.name / server.name / file.name))
     target = mt5_tools.install_plan(robot, directory)
     for item in target:
         if not item.target.resolve().is_relative_to(directory.resolve()):
