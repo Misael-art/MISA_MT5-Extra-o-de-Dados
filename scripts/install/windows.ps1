@@ -286,7 +286,10 @@ function Install-MT5 {
     Get-File $MT5SetupUrl $setup
     Write-Info "Executando o instalador do MT5 em modo automático (/auto)."
     Write-Info "O Windows pode pedir permissão de administrador: clique em 'Sim'."
-    Start-Process -FilePath $setup -ArgumentList "/auto" -Wait | Out-Null
+    # Espera só o processo do setup: -Wait também aguardaria o terminal que o setup abre ao terminar,
+    # e a instalação ficaria parada até o usuário fechar o MetaTrader 5. A detecção abaixo confirma o fim.
+    $setupProcess = Start-Process -FilePath $setup -ArgumentList "/auto" -PassThru
+    $setupProcess.WaitForExit()
     $deadline = (Get-Date).AddMinutes(10)
     while (-not (Test-MT5Installed)) {
         if ((Get-Date) -gt $deadline) { throw "O MT5 não foi instalado em 10 minutos. Execute manualmente: $setup" }
