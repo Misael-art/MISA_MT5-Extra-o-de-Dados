@@ -10,6 +10,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
+# git/Python escrevem UTF-8; sem isto o PowerShell 5.1 decodifica pela pagina OEM do console (ex.: 850)
+# e caminhos com acentos deixam de coincidir.
+try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false) } catch { }
+$OutputEncoding = [Text.UTF8Encoding]::new($false)
 function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
     # Windows PowerShell 5.1 trata stderr nativo como erro mesmo com exit0.
     $ErrorActionPreference = 'Continue'

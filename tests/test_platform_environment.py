@@ -184,9 +184,12 @@ def _git(path, *args):
 
 @pytest.mark.skipif(_powershell() is None or shutil.which('git') is None,
                     reason='wrapper PowerShell exige Windows e Git')
-def test_bootstrap_dev_reuses_own_composition_and_preserves_wip(tmp_path):
+@pytest.mark.parametrize('codepage', ['850', '65001'])
+def test_bootstrap_dev_reuses_own_composition_and_preserves_wip(tmp_path, codepage):
     """bootstrap-dev.ps1 real: deriva a Workspace da própria pasta, aceita WIP sem alterá-lo,
-    recusa outra Workspace e chama o orquestrador com o Python do ambiente Windows."""
+    recusa outra Workspace e chama o orquestrador com o Python do ambiente Windows.
+
+    Console novo em OEM 850 (padrão pt-BR) e em UTF-8: a saída do git com acentos precisa coincidir."""
     import sys
     workspace = tmp_path / 'Composição com espaço'
     app = workspace / 'repos' / 'app'
@@ -215,8 +218,15 @@ def test_bootstrap_dev_reuses_own_composition_and_preserves_wip(tmp_path):
     status_before = _git(app, 'status', '--porcelain')
     index_before = (app / '.git' / 'index').read_bytes()
     env = {**os.environ, 'PATH': str(tools) + os.pathsep + os.environ['PATH']}
-    base = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(app / 'bootstrap-dev.ps1')]
-    result = subprocess.run(base + ['-Yes'], capture_output=True, timeout=180, env=env, stdin=subprocess.DEVNULL)
+    wrapper = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(app / 'bootstrap-dev.ps1')]
+
+    def run(extra, environment):
+        command = 'chcp %s >nul & %s' % (codepage, subprocess.list2cmdline(wrapper + extra))
+        # Linha pronta: o cmd não entende aspas escapadas com barra invertida (list2cmdline externo).
+        return subprocess.run('cmd /d /s /c "%s"' % command, capture_output=True, timeout=180,
+                              env=environment, stdin=subprocess.DEVNULL,
+                              creationflags=getattr(subprocess, 'CREATE_NEW_CONSOLE', 0))
+    result = run(['-Yes'], env)
     out = (result.stdout + result.stderr).decode('utf-8', 'replace')
     assert result.returncode == 0, out
     args = record.read_text(encoding='utf-8').splitlines()
@@ -226,15 +236,14 @@ def test_bootstrap_dev_reuses_own_composition_and_preserves_wip(tmp_path):
     assert (app / '.git' / 'index').read_bytes() == index_before
     assert (app / 'source.txt').read_text(encoding='utf-8') == 'WIP do proprietário'
     other = tmp_path / 'Outra'
-    refused = subprocess.run(base + ['-Yes', '-Workspace', str(other)], capture_output=True, timeout=180,
-                             env=env, stdin=subprocess.DEVNULL)
+    refused = run(['-Yes', '-Workspace', str(other)], env)
     assert refused.returncode != 0
     assert not other.exists()
     # Sem g++: prepara a instrução (pacote >70 MB) e não baixa nada.
     no_tools = {**os.environ, 'PATH': os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep)
                                                        if not (Path(p) / 'g++.exe').exists())}
     record.unlink()
-    manual = subprocess.run(base + ['-Yes'], capture_output=True, timeout=180, env=no_tools, stdin=subprocess.DEVNULL)
+    manual = run(['-Yes'], no_tools)
     if shutil.which('g++', path=no_tools['PATH']) is None:
         assert manual.returncode == 3, (manual.stdout + manual.stderr).decode('utf-8', 'replace')
         assert b'winget install --id BrechtSanders.WinLibs' in manual.stdout
@@ -260,3 +269,22 @@ def test_default_config_follows_the_effective_project_root(tmp_path, monkeypatch
     explicit = tmp_path / 'qa.ini'
     explicit.write_text('[APP]\n', encoding='utf-8')
     assert services.resolve_config_path(str(explicit)) == str(explicit)
+
+
+def test_default_config_is_read_from_the_current_folder_first(tmp_path, monkeypatch):
+    """Regressão do Windows físico: app/CLI iniciados numa pasta com config/config.ini própria a usam,
+    mesmo quando a raiz do código tem .venv de outro sistema (config.windows.ini)."""
+    from mt5_extracao import services
+    monkeypatch.setattr(paths, 'is_windows', lambda: True)
+    code_root = tmp_path / 'checkout'
+    linux_venv(code_root)
+    (code_root / 'config').mkdir(parents=True)
+    (code_root / 'config' / 'config.windows.ini').write_text('[DATABASE]\n', encoding='utf-8')
+    monkeypatch.setattr(services, 'project_root', lambda: str(code_root))
+    project = tmp_path / 'projeto do usuário'
+    (project / 'config').mkdir(parents=True)
+    (project / 'config' / 'config.ini').write_text('[DATABASE]\n', encoding='utf-8')
+    monkeypatch.chdir(project)
+    assert Path(services.resolve_config_path()) == Path('config') / 'config.ini'
+    monkeypatch.chdir(code_root)
+    assert Path(services.resolve_config_path()) == Path('config') / 'config.windows.ini'
