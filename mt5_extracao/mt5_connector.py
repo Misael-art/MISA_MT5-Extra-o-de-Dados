@@ -48,6 +48,24 @@ RATES_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread'
 # Colunas devolvidas pelo MT5 em copy_ticks_*
 TICK_COLUMNS = ['time', 'bid', 'ask', 'last', 'volume', 'time_msc', 'flags', 'volume_real']
 
+def connection_strategies_for(init_path, path_mod=os.path):
+    """Ordem das tentativas de mt5.initialize.
+
+    1ª: caminho completo do terminal64.exe. Com o MT5 real, a pasta dá "Process create failed"
+    (-10003) tanto no Wine (T0.3) quanto no Windows nativo (18/11/2026); no Windows esse erro ainda
+    acionava a correção de IPC, que encerra o terminal desta instalação. As demais ficam como reserva.
+    """
+    return [
+        {"description": "Terminal direto", "params": {"path": path_mod.join(init_path, "terminal64.exe"),
+                                                      "timeout": 30000}},
+        {"description": "Padrão", "params": {"path": init_path, "timeout": 30000}},
+        {"description": "Portátil", "params": {"path": init_path, "timeout": 30000, "portable": True}},
+        {"description": "Servidor local", "params": {"server": "127.0.0.1", "timeout": 30000}},
+        {"description": "Timeout longo", "params": {"timeout": 60000}},
+        {"description": "Caminho pai", "params": {"path": path_mod.dirname(init_path), "timeout": 30000}},
+    ]
+
+
 class MT5Connector:
     """
     Gerencia a conexão com a plataforma MetaTrader 5.
@@ -288,29 +306,7 @@ class MT5Connector:
         # Verifica se está rodando como administrador (apenas uma vez)
         if is_running:
             # Lista de estratégias de conexão para tentar
-            connection_strategies = [
-                # Estratégia 1: Conexão padrão
-                {"description": "Padrão", "params": {"path": init_path, "timeout": 30000}},
-                
-                # Estratégia 2: Modo portátil
-                {"description": "Portátil", "params": {"path": init_path, "timeout": 30000, "portable": True}},
-                
-                # Estratégia 3: Servidor local
-                {"description": "Servidor local", "params": {"server": "127.0.0.1", "timeout": 30000}},
-                
-                # Estratégia 4: Apenas timeout maior
-                {"description": "Timeout longo", "params": {"timeout": 60000}},
-                
-                # Estratégia 5: Caminho alternativo (pasta pai)
-                {"description": "Caminho pai", "params": {"path": path_mod.dirname(init_path), "timeout": 30000}},
-                
-                # Estratégia 6: Caminho direto para terminal64.exe
-                {"description": "Terminal direto", "params": {"path": path_mod.join(init_path, "terminal64.exe"), "timeout": 30000}}
-            ]
-            if remote:
-                # No Wine só o caminho completo do terminal64.exe inicia o terminal; as demais
-                # falham com "Process create failed" e só atrasam (validado com MT5 real, T0.3).
-                connection_strategies.insert(0, connection_strategies.pop())
+            connection_strategies = connection_strategies_for(init_path, path_mod)
 
             # Tenta cada estratégia até que uma funcione
             for strategy in connection_strategies:
