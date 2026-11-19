@@ -200,7 +200,10 @@ class HistoricalExtractor:
         Returns:
             dict: {símbolo: data inicial usada}
         """
-        now = now or datetime.now()
+        if now is None:
+            # "Agora" no relógio do servidor (eixo do MT5, BD03–05); sem tick informado, o legado do computador.
+            server_now = getattr(self.connector, "server_now", None)
+            now = (server_now(symbols) if callable(server_now) else None) or datetime.now()
         bar = timedelta(minutes=TIMEFRAME_MINUTES.get(timeframe_val, 1))
         start_dates = {}
         for symbol in symbols:

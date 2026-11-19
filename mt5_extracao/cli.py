@@ -192,6 +192,8 @@ def _parse_tf(text):
 
 
 def _parse_date(text, end_of_day=False):
+    """AAAA-MM-DD sem fuso: o comando decide o relógio. Nas extrações do MT5 é o relógio do servidor
+    (eixo de tempo das barras/ticks), de 00:00:00 do início a 23:59:59 do fim, inclusivos."""
     try:
         d = datetime.strptime(text, "%Y-%m-%d")
     except ValueError:
@@ -508,6 +510,15 @@ def _extract_common(args):
 _B3_SYMBOL = re.compile(r"^([A-Z]{3}\$[A-Z]?|[A-Z]{4}\d{1,2}F?|(WIN|WDO|IND|DOL)[A-Z]\d{2})$")
 
 
+def _server_now(connector, symbols):
+    """"Agora" no relógio do servidor (último tick); nunca o relógio/fuso do computador."""
+    now = connector.server_now(symbols) if hasattr(connector, "server_now") else None
+    if now is None:
+        raise ValueError("o MT5 não informou o horário do servidor para estes símbolos; informe --to AAAA-MM-DD "
+                         "(relógio do servidor)")
+    return now
+
+
 def _warn_missing_symbols(connector, symbols):
     """Explica, antes de extrair, quais símbolos o servidor da conta atual não tem e o que fazer."""
     check = getattr(connector, "missing_symbols", None)
@@ -528,7 +539,7 @@ def _warn_missing_symbols(connector, symbols):
 def cmd_extract(args, ctx):
     symbols, tf = _extract_common(args)
     start = _parse_date(args.date_from)
-    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else datetime.now()
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else _server_now(ctx.connector(), symbols)
     if end <= start:
         raise ValueError("--to deve ser posterior a --from")
     extractor = ctx.extractor()
@@ -565,7 +576,7 @@ def cmd_ticks(args, ctx):
     from mt5_extracao.tick_extractor import TickExtractor
     symbols = _parse_symbols(args.symbols)
     start = _parse_date(args.date_from)
-    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else datetime.now()
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else _server_now(ctx.connector(), symbols)
     if end <= start:
         raise ValueError("--to deve ser posterior a --from")
     extractor = TickExtractor(ctx.connector(), ctx.db, chunk_hours=args.chunk_hours)
@@ -2255,8 +2266,10 @@ def build_parser():
 
     p = sub.add_parser("extract", help="extração histórica de um período")
     add_common(p)
-    p.add_argument("--from", dest="date_from", required=True, help="data inicial AAAA-MM-DD")
-    p.add_argument("--to", dest="date_to", help="data final AAAA-MM-DD (padrão: agora)")
+    p.add_argument("--from", dest="date_from", required=True,
+                   help="data inicial AAAA-MM-DD no relógio do servidor do MT5, desde 00:00:00")
+    p.add_argument("--to", dest="date_to",
+                   help="data final AAAA-MM-DD no relógio do servidor, até 23:59:59 (padrão: último tick do servidor)")
     p.add_argument("--overwrite", action="store_true", help="apaga o período antes de gravar")
     p.set_defaults(func=cmd_extract)
 
@@ -2267,8 +2280,10 @@ def build_parser():
 
     p = sub.add_parser("ticks", help="extrai ticks (bid/ask/last) por blocos, com retomada")
     p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")
-    p.add_argument("--from", dest="date_from", required=True, help="data inicial AAAA-MM-DD")
-    p.add_argument("--to", dest="date_to", help="data final AAAA-MM-DD (padrão: agora)")
+    p.add_argument("--from", dest="date_from", required=True,
+                   help="data inicial AAAA-MM-DD no relógio do servidor do MT5, desde 00:00:00")
+    p.add_argument("--to", dest="date_to",
+                   help="data final AAAA-MM-DD no relógio do servidor, até 23:59:59 (padrão: último tick do servidor)")
     p.add_argument("--chunk-hours", type=int, default=24, help="horas por bloco (padrão 24)")
     p.add_argument("--overwrite", action="store_true", help="busca de novo blocos já concluídos")
     p.set_defaults(func=cmd_ticks)

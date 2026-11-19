@@ -7,9 +7,17 @@ Este é o ÚNICO módulo que importa o pacote MetaTrader5. O restante do código
     mt5 = get_mt5(config_path)   # None se o MT5 estiver indisponível
 
 No Linux, o pacote MetaTrader5 roda no Python do Windows dentro do Wine
-(scripts/mt5_bridge_server.py) e é acessado por RPyC. As datas são enviadas como
-inteiros epoch (segundos, datetime sem fuso = UTC) e os resultados voltam como
+(scripts/mt5_bridge_server.py) e é acessado por RPyC. Os resultados voltam como
 tipos puros do Python e são reconstruídos aqui (arrays numpy e namedtuples).
+
+Contrato de datas (BD03–05/T2.6), igual nos dois sistemas: toda data enviada ao MT5
+vira inteiro epoch em segundos por `_to_epoch`. O MT5 grava o horário de barras, ticks
+e negócios no relógio do servidor, como se fosse UTC (o mesmo número que volta em `time`).
+Por isso um datetime SEM fuso é lido como esse relógio do servidor, campo a campo, sem
+usar o fuso do computador; um datetime COM fuso é convertido para o instante UTC, como
+na documentação oficial (que pede datetime em UTC). No Windows o módulo nativo é
+envolvido por `LocalMT5`: sem isso ele leria o datetime sem fuso no fuso local do
+computador e deslocaria a janela pedida (GMT-3: +3 h).
 """
 import calendar
 import collections
@@ -27,7 +35,7 @@ BRIDGE_PROTOCOL = "mt5x-bridge/2"
 
 
 def _to_epoch(v):
-    """datetime -> epoch em segundos (sem fuso = UTC); outros valores inalterados."""
+    """datetime -> epoch em segundos (sem fuso = relógio do servidor no eixo do MT5); outros valores inalterados."""
     if isinstance(v, _dt.datetime):
         if v.tzinfo is not None:
             v = v.astimezone(_dt.timezone.utc).replace(tzinfo=None)
@@ -93,6 +101,23 @@ class RemoteMT5:
         return fn
 
 
+class LocalMT5:
+    """Módulo MetaTrader5 nativo (Windows) com o mesmo contrato de datas da ponte; o resto passa direto."""
+
+    def __init__(self, module):
+        self._module = module
+
+    def __getattr__(self, name):
+        value = getattr(self._module, name)
+        if not callable(value) or isinstance(value, type):
+            return value
+
+        def fn(*args, **kwargs):
+            return value(*[_to_epoch(a) for a in args], **{k: _to_epoch(v) for k, v in kwargs.items()})
+        fn.__name__ = name
+        return fn
+
+
 _instance = None
 _instance_lock = threading.Lock()
 
@@ -121,7 +146,7 @@ def get_mt5(config_path="config/config.ini"):
         else:
             try:
                 import MetaTrader5 as mt5
-                _instance = mt5
+                _instance = LocalMT5(mt5)
             except ImportError:
                 log.error("Pacote MetaTrader5 não encontrado (só existe para Windows; no Linux use a ponte).")
                 return None

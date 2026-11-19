@@ -1,5 +1,45 @@
 # BD05 — Tempo, sessões e derivação entre timeframes
 
+## Datas pedidas ao MT5 (19/11/2026, BD03–05/T2.6)
+
+**Contrato:** o MT5 grava barras, ticks e negócios no relógio do servidor como se fosse UTC (o número
+`time` que volta do SDK). Toda data enviada ao SDK vira inteiro epoch por `mt5_backend._to_epoch`, igual
+nos dois sistemas:
+
+| Entrada | Interpretação |
+|---|---|
+| datetime sem fuso | relógio do servidor, campo a campo (`calendar.timegm`); o fuso do computador não entra |
+| datetime com fuso | instante convertido para UTC, como na documentação oficial do pacote (que pede datetime em UTC) |
+| `--from/--to AAAA-MM-DD` (`extract`, `ticks`) | dia do relógio do servidor, de 00:00:00 do início a 23:59:59 do fim, inclusivos |
+| sem `--to` | último tick do servidor (`symbol_info_tick().time`); sem ele o comando pede `--to`, nunca usa o relógio do PC |
+| texto com hora, fuso ou outro formato | recusado ("use AAAA-MM-DD") |
+
+**Defeito corrigido:** a ponte Linux já seguia esse contrato. No Windows, o módulo nativo recebia o datetime
+sem fuso e o lia no fuso local do computador: com GMT-3, `--from 2026-11-10 --to 2026-11-17` trazia barras de
+`2026-11-10 03:00` a `2026-11-18 02:55`. Agora `get_mt5` envolve o módulo nativo em `LocalMT5`, que aplica o
+mesmo `_to_epoch`. Os horários gravados nunca foram reescritos; só a janela pedida mudava.
+
+**Provas:** `tests/test_bd03_clock_contract.py` simula os fusos UTC, GMT-3, GMT+9 e EST5EDT por `TZ` em processos
+filhos. O pedido fica idêntico em todos; a grade M5 vai de 00:00 a 23:55, sem DST inventado. Também cobre o
+aninhamento em `get_mt5`, a entrada ambígua recusada e o "agora" do servidor em `extract`, `ticks` e `update`. Extração real
+de QA pelo `run.bat` no Windows (fuso E. South America, GMT-3; base própria em
+`state/qa-tmp/windows-20261119-fuso`): EURUSD M5 de 10–11/11 deu 576 barras, de `2026-11-10 00:00` a
+`2026-11-11 23:55`. Os ticks de 10/11 deram 302.070 linhas, com o último às `23:59:58.811`.
+
+**Revalidar:** extrações feitas pelo Windows nativo antes desta correção, com `--from/--to` ou com as datas da
+interface, têm a janela deslocada pelo fuso do computador. Isso vale para a QA de 18/11 em
+`state/qa-tmp/windows-20261118/qa.sqlite`. As barras gravadas são corretas, mas a cobertura do pedido não. As
+extrações pela ponte Linux não são afetadas.
+
+**Limites:**
+- O fim inclusivo é em segundos; ticks dentro do último segundo dependem do critério do terminal e não
+  foram observados.
+- A atualização incremental (`update`, interface, painel) termina no último tick do servidor. Sem tick
+  informado, ela volta ao relógio do computador, como no legado.
+- `robots/live.py` ainda usa `datetime.now()` com margem de um dia, só para a janela de acompanhamento.
+- O offset real do servidor continua desconhecido até ser declarado (`broker_timezone`/`broker_utc_offset`).
+- A paridade com o Linux continua pendente (T2.6).
+
 ## Estado atual (23/10/2026, 2º recorte) — PARCIAL
 
 **Zona do corretor (R06), dono T1.6 (base de tempo):** nova chave `[APP] broker_timezone` (IANA;
