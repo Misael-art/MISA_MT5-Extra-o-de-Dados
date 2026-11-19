@@ -2267,3 +2267,12 @@ Escopo: Tester DEMO; sem operação ao vivo. `native_visual_qualified=false` e `
   - Hipótese não confirmada: a varredura do Defender sobre milhares de arquivos pequenos.
   - Excluir a pasta do projeto do Defender é decisão de segurança do proprietário; não foi feito.
   - O CI Windows de cada PR continua sendo a referência de tempo.
+- **2ª passada diagnóstica (limite 600 s, sem mudar o gate; `rerun/pass4/`):** dos 30 arquivos que estouraram 60 s, 23 passam integralmente. Exemplos: `test_analytics_profiles` 62/62 em 336 s, `test_ui_main_window` 78/78 em 39 min, `test_ui_laboratory` 25/25 em 18 min.
+  - Os outros 7 têm 11 falhas, todas em esperas internas dos próprios testes com o host lento, sem asserção funcional divergente: `join(40/45)` do lote real em `test_backtest_scope_assets`/`test_scope_comparison`; `wait`/`pump` de 30 s e "Dashboard não concluiu" em `test_ui_backtest_assets`, `test_ui_backtest_scope`, `test_ui_dashboard`, `test_ui_laboratory_series` e `test_ui_super_atr`.
+  - `test_offline_startup` falha do mesmo modo: subprocesso com prazo de 30 s.
+  - O CI Windows de #363–#366 está verde nesses arquivos.
+- **Próximo passo:**
+  1. Proprietário: revisar e mesclar a pilha #353→#366 na ordem.
+  2. Proprietário: decidir sobre exclusão do Defender/LongPaths (configuração de segurança/sistema, não alterada).
+  3. Proprietário: confirmar a base de tempo BD03.
+  4. Seguir com E14 nativo e T19.53/54.
