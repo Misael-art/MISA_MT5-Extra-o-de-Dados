@@ -407,7 +407,7 @@ def tester_report(report_text, model):
                 continue
             match = re.fullmatch(
                 r"([0-9]+(?:[.,][0-9]+)?)\s*%"
-                r"(?:\s+(?:real ticks|ticks reais|\((?:real ticks|ticks reais)\)))?", value)
+                r"(?:\s+(?:real ticks|(?:de )?ticks reais|\((?:real ticks|ticks reais)\)))?", value)
             pct = float(match[1].replace(",", ".")) if match else None
             measurements = real if known_real or "real ticks" in value or "ticks reais" in value else historical
             measurements.append(pct if pct is not None and 0 <= pct <= 100 else None)

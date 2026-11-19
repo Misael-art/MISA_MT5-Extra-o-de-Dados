@@ -26,6 +26,51 @@ from .protocol import strict_events
 from .manual import _publish
 
 _EVIDENCE_LOCK=threading.Lock()
+
+
+_SOURCE_HASHES={}
+
+
+def content_sha256(data):
+    """sha256 do conteúdo com CRLF→LF: o mesmo no Windows, no Linux e no blob publicado."""
+    return hashlib.sha256(data.replace(b"\r\n",b"\n")).hexdigest()
+
+
+def source_digest(hashes):
+    """sha256 do mapa canônico {caminho posix: content_sha256}."""
+    return hashlib.sha256(canonical_json(hashes).encode("utf-8")).hexdigest()
+
+
+def _cached_sha256(path):
+    info=path.stat();key=(str(path),info.st_mtime_ns,info.st_size)
+    if key not in _SOURCE_HASHES:
+        _SOURCE_HASHES[key]=content_sha256(path.read_bytes())
+    return _SOURCE_HASHES[key]
+
+
+def app_source_identity(modules=None,root=None):
+    """Código do App carregado no processo que executou a sessão (BD21–22), sem Git e sem depender do EOL.
+
+    Cada arquivo dos módulos mt5_extracao carregados entra com content_sha256; o revisor confere arquivo a
+    arquivo contra `git show <commit>:<caminho>` de um commit publicado. Texto livre como "WIP equivalente"
+    não prova a fonte; este mapa prova."""
+    import sys
+    base=Path(root) if root is not None else Path(__file__).resolve().parents[2]
+    hashes={}
+    for name,module in sorted((dict(sys.modules) if modules is None else modules).items()):
+        origin=getattr(module,"__file__",None)
+        if not (name=="mt5_extracao" or name.startswith("mt5_extracao.")) or not origin or not str(origin).endswith(".py"):
+            continue
+        path=Path(origin).resolve()
+        try:
+            relative=path.relative_to(base.resolve()).as_posix()
+        except ValueError:
+            relative=path.as_posix()
+        hashes[relative]=_cached_sha256(path)
+    return dict(schema="mt5x-app-source/v1",scope="módulos mt5_extracao carregados",normalization="CRLF->LF",
+                files=hashes,digest=source_digest(hashes))
+
+
 _EVIDENCE="""CREATE TABLE IF NOT EXISTS _preset_native_runs (
  run_id TEXT PRIMARY KEY, execution_hash TEXT NOT NULL, mode TEXT NOT NULL,
  status TEXT NOT NULL,evidence_json TEXT NOT NULL,created_at TEXT NOT NULL)"""
@@ -364,6 +409,7 @@ class PresetExecution:
             if read_package(self.manifest_path,self.robot)!=self.package:
                 raise ValueError("Pacote mudou desde a seleção; reabra-o antes de iniciar a sessão.")
             self.session._check_cancel()
+            app_source=app_source_identity()
             self._admit_budget()
             called_session=True
             self.session.run()
@@ -374,6 +420,9 @@ class PresetExecution:
             if isinstance(control,budget.JobBudget) and self.session.record.get("run_id")!=control.run_id:
                 raise ValueError("Run nativo difere da tentativa admitida no orçamento; preserve ambos sem aprovar o resultado.")
             proof=self._proof()
+            final_source=app_source_identity()     # inclui validadores importados só na conferência
+            proof["app_source"]=dict(final_source,changed_during_run=any(
+                final_source["files"].get(path)!=sha for path,sha in app_source["files"].items()))
             if isinstance(control,budget.JobBudget):
                 from dataclasses import asdict
                 proof["resource_budget"]=dict(batch_id=control.parent.batch_id,job_key=control.key,
