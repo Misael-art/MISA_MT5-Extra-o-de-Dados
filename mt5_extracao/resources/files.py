@@ -553,6 +553,52 @@ def _restore_id(value):
     return value
 
 
+# Windows sem caminhos longos: MAX_PATH (260 com o NUL) para arquivos e MAX_PATH-12 para pastas.
+_WINDOWS_FILE_LIMIT = 259
+_WINDOWS_DIR_LIMIT = 247
+_TEMP_SUFFIX = ".XXXXXXXX.tmp"   # atomic_write_text: nome + "." + 8 aleatórios + ".tmp"
+
+
+def _long_paths_enabled():
+    """Lê (sem alterar) a política LongPathsEnabled; fora do Windows não há esse limite."""
+    if os.name != "nt":
+        return True
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as key:
+            return winreg.QueryValueEx(key, "LongPathsEnabled")[0] == 1
+    except OSError:
+        return False
+
+
+def _path_limits():
+    return None if _long_paths_enabled() else (_WINDOWS_FILE_LIMIT, _WINDOWS_DIR_LIMIT)
+
+
+def _require_path_budget(file_paths, dir_paths, action):
+    """Recusa antes de qualquer efeito quando um caminho que a operação criará excede o limite do Windows."""
+    limits = _path_limits()
+    if limits is None:
+        return
+    over = [(len(os.path.abspath(str(p))), limit, p) for paths, limit in ((file_paths, limits[0]), (dir_paths, limits[1]))
+            for p in paths if len(os.path.abspath(str(p))) > limit]
+    if over:
+        size, limit, path = max(over, key=lambda item: item[0] - item[1])
+        raise ValueError(f"{action}: o caminho {path} teria {size} caracteres e o Windows sem caminhos longos aceita "
+                         f"até {limit}; nada foi alterado. Use uma pasta de dados/cópias mais curta ou peça ao "
+                         "administrador para habilitar caminhos longos do Windows.")
+
+
+def _restore_paths(manifest, safety_path):
+    """Arquivos e pastas que uma restauração cria: recibos, temporários atômicos, cópia, parcial e diários SQLite."""
+    partial = safety_path.with_suffix(".parcial")
+    receipt = _backup_receipt(safety_path)
+    created = [manifest, Path(str(manifest) + _TEMP_SUFFIX), safety_path, partial, receipt,
+               Path(str(receipt) + _TEMP_SUFFIX)]
+    created += [Path(str(path) + side) for path in (safety_path, partial) for side in ("-journal", "-wal", "-shm")]
+    return created, [manifest.parent, safety_path.parent]
+
+
 def _restore_manifest_path(folder, owner_key, operation_id):
     return Path(folder) / f"restore__{owner_key}_{_restore_id(operation_id)}.restore.json"
 
@@ -761,6 +807,7 @@ def restore_backup(db, config, backup_path, origin: str = "ui", *, operation_id=
                 operation_id = uuid.uuid4().hex
                 manifest = _restore_manifest_path(_restore_control_dir(), owner_key, operation_id)
                 safety_path = folder / (manifest.name.removesuffix(".restore.json") + ".db")
+                _require_path_budget(*_restore_paths(manifest, safety_path), "Voltar à cópia")
                 if manifest.exists() or safety_path.exists():
                     raise ValueError("Este ID já existe; consulte seu resultado antes de continuar.")
                 folder.mkdir(mode=0o700, parents=True, exist_ok=True)
