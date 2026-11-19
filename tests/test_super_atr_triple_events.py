@@ -111,3 +111,26 @@ def test_unavailable_is_distinct_from_valid_mixed_consensus(example):
     _starts, bars, decisions = events._observations(text, example["params"], 300)
     assert not bars and decisions == [dict(bar_at=example["at"], available=False, reason="histórico ausente")]
     assert "consensus" not in decisions[0]
+
+
+def _gap_trace(seed, first_confirmed):
+    monday = seed+3*86400
+    return "\n".join([f"HDK_TRIPLE_START schema=1 at={monday} seed_at={seed}",
+        f"HDK_TRIPLE_BAR schema=1 at={seed} received_at={monday} open=100 high=101 low=99 close=100",
+        f"HDK_TRIPLE_BAR schema=1 at={monday} received_at={monday+300} open=100 high=101 low=99 close=100",
+        f"HDK_TRIPLE_DECISION schema=1 bar_at={seed} confirmed_at={first_confirmed} available_at={monday+300} seed_at={seed} available=1 consensus=0 episode_at=0 gaps=0 first=90 second=88 third=86",
+        f"HDK_TRIPLE_DECISION schema=1 bar_at={monday} confirmed_at={monday+300} available_at={monday+300} seed_at={seed} available=1 consensus=0 episode_at=0 gaps=1 first=90 second=88 third=86"])+"\n"
+
+
+def test_confirmation_after_weekend_gap_is_the_next_observed_open(example):
+    # Tester Windows 19/11/2026: a barra de sexta só fecha na abertura de segunda.
+    seed = example["seed"]; monday = seed+3*86400
+    _starts, bars, decisions = events._observations(_gap_trace(seed, monday), example["params"], 300)
+    assert [row["at"] for row in bars] == [seed, monday]
+    assert [row["confirmed_at"] for row in decisions] == [monday, monday+300]
+
+
+@pytest.mark.parametrize("offset", [0, 300, 3*86400+300, 3*86400+1], ids=["aberta", "antes-da-lacuna", "pula-barra", "fora-da-grade"])
+def test_confirmation_cannot_anticipate_skip_or_leave_the_bar_grid(example, offset):
+    with pytest.raises(ValueError, match="confirmação não corresponde"):
+        events._observations(_gap_trace(example["seed"], example["seed"]+offset), example["params"], 300)

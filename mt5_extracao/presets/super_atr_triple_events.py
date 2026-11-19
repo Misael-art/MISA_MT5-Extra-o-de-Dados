@@ -3,6 +3,7 @@
 Esta conferência não implementa ATR em Python e não autoriza negociação ao vivo.
 Indisponibilidade, intenção, resposta e efeito confirmado são estados distintos.
 """
+import bisect
 import calendar
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -80,7 +81,9 @@ def _observations(text, params, seconds):
             bars[at] = row; last = at
     ordered = list(bars.values())
     _require(not ordered or ordered[0]["at"] == seed, "primeira barra real da seed ausente")
-    decisions = []; seen = set()
+    # A barra fecha quando a seguinte abre; após fim de semana/lacuna isso ocorre
+    # depois de at+TF. Confirmação exige essa abertura exata, sem pular barra observada.
+    decisions = []; seen = set(); opens = [row["at"] for row in ordered]
     for match in strict_events(text, "HDK_TRIPLE_DECISION", _DECISION):
         at, reason, confirmed, available, declared_seed, consensus, episode, gaps, *levels = match.groups()
         at = int(at)
@@ -89,7 +92,10 @@ def _observations(text, params, seconds):
         if reason is not None:
             decisions.append(dict(bar_at=at, available=False, reason=reason)); continue
         confirmed, available, declared_seed, consensus, episode, gaps = map(int, (confirmed, available, declared_seed, consensus, episode, gaps))
-        _require(confirmed == at+seconds and available >= confirmed and declared_seed == seed and consensus in (-1, 0, 1))
+        following = bisect.bisect_right(opens, at)
+        _require(confirmed >= at+seconds and confirmed % seconds == 0 and (following == len(opens) or opens[following] == confirmed),
+                 "confirmação não corresponde à abertura da barra seguinte observada")
+        _require(available >= confirmed and declared_seed == seed and consensus in (-1, 0, 1))
         decisions.append(dict(bar_at=at, available=True, confirmed_at=confirmed, available_at=available,
                               consensus=consensus, episode_at=episode, gaps=gaps, levels=list(map(_number, levels))))
     _require(decisions, "nenhuma decisão conhecida ou indisponível foi registrada")
