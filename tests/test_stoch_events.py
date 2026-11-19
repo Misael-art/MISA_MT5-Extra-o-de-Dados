@@ -91,6 +91,29 @@ def test_no_target_is_an_explicit_profile_choice_and_stop_stays_required(monkeyp
     with pytest.raises(ValueError):execution._ledger_rows(None,record,signals,target_required=False)
 
 
+def test_imported_absent_target_is_zero_only_for_a_profile_without_target(monkeypatch,tmp_path):
+    # Caminho real: o importador grava TP 0 do CSV nativo como ausente (Tester Windows 19/11/2026).
+    from mt5_extracao.database_manager import DatabaseManager
+    from mt5_extracao.trade_analytics import importers,ledger
+    import calendar
+    csv=tmp_path/"trades.csv"
+    csv.write_text("time;symbol;type;volume;result;entry_time;direction;entry_price;exit_price;sl;tp;exit_reason\n"
+                   "2026.10.21 00:05:00;EURUSD;buy;0.1;-1;2026.10.21 00:00:00;buy;100;99;99;0;sl\n",encoding="utf-8")
+    db=DatabaseManager(db_path=str(tmp_path/"ledger.sqlite"))
+    try:
+        record=dict(run_id="s10-csv",robot_key="mql5:s10",symbol="EURUSD",timeframe="M5",params={},metrics={"trades":1},
+                    trades=[["2026-10-21 00:05:00",-1.,.1]])
+        assert importers.record_mql5_run(db,record,csv)==1
+        frame=ledger.load(db,run_id="s10-csv")
+        assert frame["target_price"].isna().all()
+        at=calendar.timegm(frame.entry_time.iloc[0].to_pydatetime().timetuple())
+        signals=[dict(direction=1,available_at=at,opened=True,filled_volume=.1)]
+        with pytest.raises(ValueError,match="SL/TP nativos"):execution._ledger_rows(db,record,signals)
+        assert execution._ledger_rows(db,record,signals,target_required=False)[0]["target_price"]==0
+    finally:
+        db.close()
+
+
 def write_contexts(path,contexts,snapshots):
     lines=[]
     for row,bars in zip(contexts,snapshots):
@@ -126,3 +149,17 @@ def test_every_selected_signal_marker_must_be_consumed(tmp_path,marker):
     path.write_text(f"MT5 prefix {marker} event_at=100 confirmed_at=200 available_at=200 direction=1 opened=1 execution_state=4 volume=1 order=2 deal=2 reason=ok\n"
                     f"MT5 prefix {marker} event_at=200 confirmed_at=300 available_at=300 direction=-1 opened=0 execution_state=6 volume=0 order=0 deal=0\n")
     with pytest.raises(ValueError,match="marcador"):execution.native_signals(tmp_path,marker=marker)
+
+
+def test_native_volume_neighbour_double_matches_the_exported_lot_only(monkeypatch):
+    import pandas as pd
+    from mt5_extracao.trade_analytics import ledger
+    at=1792454700
+    frame=pd.DataFrame([dict(direction=1,entry_time=pd.Timestamp(at,unit="s"),exit_time=pd.Timestamp(at+300,unit="s"),
+        entry_price=100.,exit_price=99.,stop_price=99.,target_price=0.,volume=4.69,pnl=-1.,exit_reason="stop",completeness=ledger.COMPLETE)])
+    monkeypatch.setattr(execution.ledger,"load",lambda *a,**k:frame)
+    record={"run_id":"s10","metrics":{"trades":1},"trades":[[frame.exit_time.iloc[0].strftime("%Y-%m-%d %H:%M:%S"),-1.,4.69]]}
+    signals=[dict(direction=1,available_at=at,opened=True,filled_volume=4.6899999999999995)]
+    assert execution._ledger_rows(None,record,signals,target_required=False)[0]["volume"]==4.69
+    signals[0]["filled_volume"]=4.68
+    with pytest.raises(ValueError,match="Posição não corresponde"):execution._ledger_rows(None,record,signals,target_required=False)

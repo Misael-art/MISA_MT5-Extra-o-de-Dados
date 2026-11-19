@@ -195,6 +195,12 @@ def _epoch(value):
     return calendar.timegm(value.to_pydatetime().timetuple())
 
 
+def _same_volume(native,exported):
+    # O deal nativo pode usar o double vizinho do texto do CSV (4.6899999999999995 × "4.69");
+    # mesma tolerância de representação dos verificadores, não uma faixa de lote.
+    return math.isfinite(native) and math.isfinite(exported) and abs(native-exported)<=8*max(math.ulp(native),math.ulp(exported))
+
+
 def _ledger_rows(db,record,signals, *, target_required=True):
     frame=ledger.load(db,run_id=record["run_id"])
     if len(frame)!=record["metrics"]["trades"] or not frame["completeness"].eq(ledger.COMPLETE).all():
@@ -204,11 +210,15 @@ def _ledger_rows(db,record,signals, *, target_required=True):
         raise ValueError("Entradas do diário não correspondem às posições encerradas; confira sinais/fechamento final.")
     output=[]
     for row in frame.itertuples():
+        # O importador grava TP 0 do CSV nativo como ausente (None/NaN). Só um perfil sem alvo
+        # declarado o lê como 0 explícito; com alvo exigido a ausência continua recusada.
+        if not target_required and (row.target_price is None or row.target_price!=row.target_price):
+            row=row._replace(target_price=0.)
         numbers=[row.entry_price,row.exit_price,row.stop_price,row.target_price,row.volume,row.pnl]
         if not all(value is not None and math.isfinite(value) for value in numbers) or min(numbers[:3])<=0 or row.volume<=0 or row.target_price<0 or (target_required and row.target_price==0):
             raise ValueError("Livro sem preços, volume ou SL/TP nativos completos; não aprovar por preenchimento presumido.")
         matches=[s for s in filled if s["direction"]==row.direction and s["available_at"]==_epoch(row.entry_time)
-                 and s["filled_volume"]==row.volume]
+                 and _same_volume(s["filled_volume"],row.volume)]
         if len(matches)!=1 or row.exit_time<row.entry_time:
             raise ValueError("Posição não corresponde a uma entrada disponível após confirmação; confira relógio/volume e diário.")
         stop_valid=row.stop_price<row.entry_price if row.direction==1 else row.stop_price>row.entry_price

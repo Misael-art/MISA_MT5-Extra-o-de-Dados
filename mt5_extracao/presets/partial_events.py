@@ -29,6 +29,11 @@ def _same_price(native,display,digits):
     return _same_quote(native,display,digits) and (native==display or round(display,digits)==display)
 
 
+def _same_volume(native,exported):
+    # Deal nativo × texto do CSV: o double vizinho (4.6899999999999995 × "4.69") é o mesmo lote.
+    return abs(native-exported)<=8*max(math.ulp(native),math.ulp(exported))
+
+
 def _history_fields(tail):
     pairs=[part.split('=',1) for part in tail.split()]
     if not pairs:return {}
@@ -82,7 +87,7 @@ def read_events(directory,plan,signals,sizing,ledger):
         net=sum((sum((Decimal(str(d[k])) for k in ('profit','commission','swap','fee')),Decimal(0)) for d in rows),Decimal(0))
         price=sum((Decimal(str(d['price']))*Decimal(str(d['volume'])) for d in exits),Decimal(0))/total
         quantum=Decimal(10)**(-opened['digits'])
-        if (total!=Decimal(str(opened['volume'])) or opened['volume']!=expected['volume']
+        if (total!=Decimal(str(opened['volume'])) or not _same_volume(opened['volume'],expected['volume'])
                 or opened['volume']!=signal['filled_volume'] or Decimal(str(expected['pnl']))!=net
                 or not (_same_price(opened['price'],expected['entry_price'],opened['digits']) if 'entry_tp' in opened else opened['price']==expected['entry_price'])
                 or abs(price-Decimal(str(expected['exit_price'])))>quantum/2):
