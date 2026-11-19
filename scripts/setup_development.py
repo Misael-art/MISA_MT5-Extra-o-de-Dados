@@ -147,8 +147,11 @@ def prepare(workspace, plan=False, checks=True, run=command):
                'config': str(bootstrap_paths.config_path(app)),
                'foreign_environment_preserved': str(foreign) if foreign else None,
                'wip_entries_preserved': wip}
-    # O recibo do outro sistema é preservado: cada sistema grava o seu.
+    # O recibo e os logs do outro sistema são preservados: cada sistema grava os seus.
     receipt_path = state / ('setup.json' if foreign is None else 'setup-%s.json' % bootstrap_paths.host_platform())
+    logs = state if foreign is None else state / bootstrap_paths.host_platform()
+    logs.mkdir(parents=True, exist_ok=True)
+    receipt['logs'] = str(logs)
     try:
         for key in ('hadouken', 'safety'):
             receipt['repositories'][key] = ensure_checkout(workspace / 'repos' / key,
@@ -157,17 +160,17 @@ def prepare(workspace, plan=False, checks=True, run=command):
         receipt['composition_pinned'] = not any(wip.values())
         python = venv_python(app)
         run([python, '-m', 'pip', 'install', '--disable-pip-version-check', '-r',
-             app / 'requirements-dev.txt'], app, state / 'dependencies.log')
+             app / 'requirements-dev.txt'], app, logs / 'dependencies.log')
         configure_libraries(app, workspace)
-        verify_readiness(app, python, state, run)
+        verify_readiness(app, python, logs, run)
         if checks:
             run([python, '-m', 'pytest', '-q', 'tests/test_recovery_verification.py',
-                 'tests/test_packaging.py', 'tests/test_development_host.py'], app, state / 'tests.log')
-            run([python, 'Tools/check_repo.py'], workspace / 'repos' / 'hadouken', state / 'hadouken-check.log')
+                 'tests/test_packaging.py', 'tests/test_development_host.py'], app, logs / 'tests.log')
+            run([python, 'Tools/check_repo.py'], workspace / 'repos' / 'hadouken', logs / 'hadouken-check.log')
             run([python, '-m', 'unittest', 'discover', '-s', 'Tools/tests', '-p', 'test_super_atr.py'],
-                workspace / 'repos' / 'hadouken', state / 'super-atr-tests.log')
+                workspace / 'repos' / 'hadouken', logs / 'super-atr-tests.log')
         # O mesmo criador de atalhos usado pelo instalador: desktop e menu coerentes.
-        run([python, '-m', 'mt5_extracao.bootstrap', '--root', app, 'shortcuts'], app, state / 'shortcuts.log')
+        run([python, '-m', 'mt5_extracao.bootstrap', '--root', app, 'shortcuts'], app, logs / 'shortcuts.log')
         for folder in ('studies', 'downloads'):
             (workspace / folder).mkdir(exist_ok=True)
         receipt['status'] = 'development_ready' if checks else 'environment_only_checks_pending'
