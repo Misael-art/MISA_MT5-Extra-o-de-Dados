@@ -2188,3 +2188,21 @@ Continuação das seções anteriores, por instrução do proprietário de insta
 2. Contrato BD03: confirmar a base de tempo de `--from/--to`.
 3. Repetir a suíte em host sem saturação.
 4. Revisar e mesclar a pilha #353→#363 na ordem.
+### Atualização — rede estável, limpeza e atalhos (18/11/2026, noite)
+
+- **Tester do Triplo desarmado, 3ª sessão (`8a53fb97`):** com a rede estável os ticks reais de outubro baixaram ("real ticks begin from 2026.10.12"). O Expert iniciou (`HDK_TRIPLE_START`, `MT5X_NATIVE_MODE tester=1 demo=1`) e emitiu as barras `HDK_TRIPLE_BAR`. Compilação dentro da sessão: 294,5 s, sem erros.
+  - A sessão foi interrompida pela guarda de recursos da bancada: RAM livre de 4.036 MiB, abaixo da reserva obrigatória de 4 GiB, com MT5, Tester e apps de terceiros abertos. Temperatura máxima 63 °C.
+  - O bloqueio de ticks deixou de ocorrer com a rede estável. Aceite (consenso, zero entradas, caixa) pendente de nova sessão após reiniciar, com mais memória livre.
+- **WinLibs/g++:** não instalado. Não há `g++.exe` no `C:`, nem `WinGet\Packages` no perfil, nem cópia redirecionada para apps empacotados. Instalar num PowerShell comum, fora do app Claude:
+  `winget install --id BrechtSanders.WinLibs.POSIX.UCRT --exact --source winget --scope user`.
+- **Limpeza:**
+  - Sessões nativas (1,5 GB de cópias de histórico e binários do MT5) removidas; logs, `relatorio.json`, `.ini` e `.htm` arquivados em `state/qa-tmp/windows-20261118/tester/sessoes/`.
+  - Rascunhos de commit e temporários removidos. Bancada consolidada em `state/qa-tmp/windows-20261118/bancada/` (`run_native.cmd`, `executar_preset_windows.py`, `run_suite.sh`, `rerun_failed.sh`, `watch.ps1`, junção de import `pyroot`).
+  - Resíduos do instalador na pasta privada do app Claude removidos.
+  - O arquivo de nome inválido na raiz (`)` + quebra de linha + `panel.strategy.set(Sem`, de sessão Linux anterior) não pode ser endereçado pelo Windows. Remover no Linux com `rm -i -- MT5X/)*panel.strategy.set*` após conferir com `ls -lb`.
+- **Atalhos:** "MT5 Extração" na área de trabalho e no menu Iniciar, pelo comando oficial `bootstrap shortcuts`. Apontam para `repos\app\run.bat`, com ícone do app. Usam `config.windows.ini` e a base principal `database/mt5_data.db`.
+- **Após reiniciar:**
+  1. `run_native.cmd triplo-desarmado backtest <log>` da bancada, com ≥4 GiB livres antes e durante.
+  2. Plot ligado/desligado e S09.
+  3. Reexecução isolada dos arquivos da suíte com timeout (`rerun_failed.sh`).
+  4. Conferir se o bloqueio intermitente da raiz `repos\app` persiste.
