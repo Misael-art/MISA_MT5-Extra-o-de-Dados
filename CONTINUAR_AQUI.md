@@ -2206,3 +2206,13 @@ Continuação das seções anteriores, por instrução do proprietário de insta
   2. Plot ligado/desligado e S09.
   3. Reexecução isolada dos arquivos da suíte com timeout (`rerun_failed.sh`).
   4. Conferir se o bloqueio intermitente da raiz `repos\app` persiste.
+### WinLibs e preparação de desenvolvimento completa (18/11/2026, noite)
+
+- **Instalação:** o `winget` deste Windows não executa nada nem fora do contêiner (o alias de App Installer encerra sem saída), por isso a tentativa anterior não instalou.
+  - Instalação equivalente à do winget, autorizada pelo proprietário: pacote x64 oficial `winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r3.zip`, 263,6 MB, SHA256 `3C69305081E4A647144339A936244FCF7D3D9E558319E1AD7BE2CD2886D4B6A1`, igual ao manifesto `microsoft/winget-pkgs` 16.2.0-14.0.0-r3.
+  - Pacote mantido em `MT5X/downloads/`. Extraído no layout do winget (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_…\mingw64`); a pasta `bin` foi acrescentada ao PATH do usuário, preservando as entradas existentes. `g++ 16.2.0` responde.
+- **`bootstrap-dev.ps1 -Yes`:** `development_ready`. Testes focados 47 aprovados / 2 pulados, `check_repo` do HADOUKEN com 174 arquivos OK, `pip check` limpo. Testes Super ATR do HADOUKEN: 2 OK em 26,8 s; a 1ª execução a frio do toolchain estourou 30 s.
+- **Defeito corrigido nesta etapa:** os logs de etapa do `setup_development.py` usavam nomes fixos e sobrescreveram, na 1ª execução Windows, os recibos Linux de 26/10 em `state/` (`dependencies.log`, `doctor.json`, `hadouken-check.log`, `imports.log`, `pip-check.log`, `super-atr-tests.log`, `tests.log`).
+  - Os originais Linux foram perdidos (eram recibos históricos pequenos, regeneráveis pelo setup Linux). Os conteúdos Windows foram movidos para `state/windows/primeira-execucao/`.
+  - Com a correção, o sistema não dono do `.venv` grava em `state/<sistema>/`. Há regressão para isso.
+- **Testes do App que dependem de g++:** fora do contêiner, 38/38 funcionalmente. `test_super_atr_reference` leva 127 s e 84 s em dois testes neste APU, acima do limite de 60 s; medido com limite diagnóstico de 300 s, sem mudar o gate.

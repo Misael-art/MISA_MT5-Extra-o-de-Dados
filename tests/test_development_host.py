@@ -262,3 +262,45 @@ def test_setup_refuses_other_workspace_without_creating_it(tmp_path):
     with pytest.raises(host.SetupError, match='composição registrada'):
         host.prepare(other, run=lambda *a: pytest.fail('nada pode rodar'))
     assert not other.exists()
+
+
+def test_second_system_writes_its_own_logs_and_keeps_the_other_receipts(repository, tmp_path, monkeypatch):
+    """Windows físico (18/11/2026): os logs de etapa sobrescreviam os recibos do Linux em state/."""
+    source, sha = repository
+    workspace = tmp_path / 'workspace'
+    app = workspace / 'repos' / 'app'
+    spec = {'url': str(source), 'commit': sha}
+    host.ensure_checkout(app, spec)
+    git(app, 'remote', 'set-url', 'origin', 'https://github.com/Misael-art/fixture.git')
+    (app / '.git/info/exclude').write_text('.venv/\n.venv-windows/\nconfig/\n')
+    (app / '.venv' / 'bin').mkdir(parents=True)
+    (app / '.venv' / 'bin' / 'python').write_text('linux')
+    (app / '.venv-windows' / 'Scripts').mkdir(parents=True)
+    (app / '.venv-windows' / 'Scripts' / 'python.exe').write_bytes(b'windows')
+    (app / 'config').mkdir()
+    (app / 'config/config.windows.ini').write_text('[ROBOTS]\nlibrary_dirs =\nsafety_lib_dir =\n')
+    state = workspace / 'state'
+    state.mkdir()
+    linux = {name: f'recibo Linux {name}' for name in ('tests.log', 'doctor.json', 'dependencies.log', 'setup.json')}
+    for name, text in linux.items():
+        (state / name).write_text(text)
+    manifest = {'repositories': {'app': {'url': 'https://github.com/Misael-art/fixture.git', 'commit': sha},
+                                 'hadouken': spec, 'safety': spec}}
+    monkeypatch.setattr(host.bootstrap_paths, 'is_windows', lambda: True)
+    monkeypatch.setattr(host, 'ROOT', app)
+    monkeypatch.setattr(host.sys, 'prefix', str(app / '.venv-windows'))
+    monkeypatch.setattr(host, 'load_manifest', lambda: manifest)
+    monkeypatch.setattr(host.shutil, 'which', lambda name: 'compiler' if name == 'g++' else None)
+    written = []
+    def run(args, cwd, log=None):
+        if str(args[0]) == 'git':
+            return host.command(args, cwd, log)
+        if log:
+            written.append(Path(log))
+            log.write_text('windows')
+        return ''
+    receipt = host.prepare(workspace, run=run)
+    assert receipt['status'] == 'development_ready' and Path(receipt['logs']) == state / 'windows'
+    assert written and all(path.parent == state / 'windows' for path in written)
+    assert {name: (state / name).read_text() for name in linux} == linux
+    assert (state / 'setup-windows.json').is_file()

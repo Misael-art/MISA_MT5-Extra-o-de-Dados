@@ -240,8 +240,10 @@ def test_bootstrap_dev_reuses_own_composition_and_preserves_wip(tmp_path, codepa
     assert refused.returncode != 0
     assert not other.exists()
     # Sem g++: prepara a instrução (pacote >70 MB) e não baixa nada.
-    no_tools = {**os.environ, 'PATH': os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep)
-                                                       if not (Path(p) / 'g++.exe').exists())}
+    # Sem g++ no PATH e sem pacote do winget: o wrapper também procura em %LOCALAPPDATA%\Microsoft\WinGet.
+    no_tools = {**os.environ, 'LOCALAPPDATA': str(tmp_path / 'sem-winget'),
+                'PATH': os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep)
+                                        if not (Path(p) / 'g++.exe').exists())}
     record.unlink()
     manual = run(['-Yes'], no_tools)
     if shutil.which('g++', path=no_tools['PATH']) is None:
