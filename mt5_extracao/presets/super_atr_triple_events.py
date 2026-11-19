@@ -3,6 +3,7 @@
 Esta conferência não implementa ATR em Python e não autoriza negociação ao vivo.
 Indisponibilidade, intenção, resposta e efeito confirmado são estados distintos.
 """
+import bisect
 import calendar
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -39,12 +40,15 @@ def _require(condition, detail="prefixo/decisão/risco/diário/fills divergentes
         raise ValueError("Triplo: "+detail+"; preserve a sessão para revisão.")
 
 
+_EMPTY = float.fromhex("0x1.fffffffffffffp+1023")  # EMPTY_VALUE/DBL_MAX do MQL5
+
+
 def _number(value):
     try:
         number = float(value)
     except (TypeError, ValueError):
         raise ValueError("Triplo: número indisponível no trace.") from None
-    _require(math.isfinite(number) and abs(number) != float.fromhex("0x1.fffffffffffffp+1023"))
+    _require(math.isfinite(number) and abs(number) != _EMPTY)
     return number
 
 
@@ -80,7 +84,9 @@ def _observations(text, params, seconds):
             bars[at] = row; last = at
     ordered = list(bars.values())
     _require(not ordered or ordered[0]["at"] == seed, "primeira barra real da seed ausente")
-    decisions = []; seen = set()
+    # A barra fecha quando a seguinte abre; após fim de semana/lacuna isso ocorre
+    # depois de at+TF. Confirmação exige essa abertura exata, sem pular barra observada.
+    decisions = []; seen = set(); opens = [row["at"] for row in ordered]
     for match in strict_events(text, "HDK_TRIPLE_DECISION", _DECISION):
         at, reason, confirmed, available, declared_seed, consensus, episode, gaps, *levels = match.groups()
         at = int(at)
@@ -89,7 +95,10 @@ def _observations(text, params, seconds):
         if reason is not None:
             decisions.append(dict(bar_at=at, available=False, reason=reason)); continue
         confirmed, available, declared_seed, consensus, episode, gaps = map(int, (confirmed, available, declared_seed, consensus, episode, gaps))
-        _require(confirmed == at+seconds and available >= confirmed and declared_seed == seed and consensus in (-1, 0, 1))
+        following = bisect.bisect_right(opens, at)
+        _require(confirmed >= at+seconds and confirmed % seconds == 0 and (following == len(opens) or opens[following] == confirmed),
+                 "confirmação não corresponde à abertura da barra seguinte observada")
+        _require(available >= confirmed and declared_seed == seed and consensus in (-1, 0, 1))
         decisions.append(dict(bar_at=at, available=True, confirmed_at=confirmed, available_at=available,
                               consensus=consensus, episode_at=episode, gaps=gaps, levels=list(map(_number, levels))))
     _require(decisions, "nenhuma decisão conhecida ou indisponível foi registrada")
@@ -150,9 +159,13 @@ def _attempts(text, params, starts, decisions, signals, ledger, seconds):
     for match in strict_events(text, "HDK_TRIPLE_SIZING", _SIZING):
         at, known, *raw = match.groups(); at = int(at)
         _require(at in entries and at not in sizes)
-        values = [None if v == "unavailable" and i in (5, 6) else _number(v) for i, v in enumerate(raw)]
+        # Tentativa sem plano (ex.: limite de posições) imprime o stop vazio do MQL (DBL_MAX);
+        # só nesse estado ele vira ausência, nunca um preço, e não pode ter preenchimento.
+        values = [None if (v == "unavailable" and i in (5, 6)) or (known == "0" and i == 3 and float(v) == _EMPTY)
+                  else _number(v) for i, v in enumerate(raw)]
         volume, risk, budget, stop, tick, margin, free, minimum, maximum, step = values
         signal = by_signal[at]; entry = entries[at]; direction = signal["direction"]
+        _require(stop is not None or not signal["opened"], "tentativa preenchida sem stop planejado")
         _require(volume >= 0 and risk >= 0 and budget >= 0 and volume == entry["planned_volume"])
         margin_known = margin is not None and free is not None
         spec_known = minimum > 0 and maximum >= minimum and step > 0

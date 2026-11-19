@@ -2216,3 +2216,63 @@ Continuação das seções anteriores, por instrução do proprietário de insta
   - Os originais Linux foram perdidos (eram recibos históricos pequenos, regeneráveis pelo setup Linux). Os conteúdos Windows foram movidos para `state/windows/primeira-execucao/`.
   - Com a correção, o sistema não dono do `.venv` grava em `state/<sistema>/`. Há regressão para isso.
 - **Testes do App que dependem de g++:** fora do contêiner, 38/38 funcionalmente. `test_super_atr_reference` leva 127 s e 84 s em dois testes neste APU, acima do limite de 60 s; medido com limite diagnóstico de 300 s, sem mudar o gate.
+
+### Tester/Replay nativo após reiniciar (19/11/2026)
+
+Bancada: `state/qa-tmp/windows-20261118/bancada/` (`run_native.cmd`, `run_sequence.ps1`, `executar_preset_windows.py`), pacotes da qualificação Wine (`corretivos-20261113/qualificacao-wine`, HADOUKEN `d3dd3a5`), EURUSD M5, 12–14/10/2026, "cada tick com ticks reais", conta MetaQuotes-Demo, MT5 build 6324. Recibos `tester/run-<sessão>.json`; resumo `tester/sequencia-{1,2,3}.tsv`.
+
+**Resultados (todos aceitos pela prova oficial do `PresetExecution`):**
+
+| Caso | Modo | Sessão | Resultado |
+|---|---|---|---|
+| Triplo desarmado | backtest | `bb9f2829` | `contract_only`: 863 barras e 576 decisões reconciliadas com o header fixado (g++ 16.2.0), 146/138/292 consenso +1/−1/0, 0 entradas, caixa conciliado |
+| Triplo plot desligado | backtest | `9924ae99` | `reconciled_backtest`: 14 posições, +198,88, 278 tentativas, 5 saídas por sinal, 28 fills |
+| Triplo plot desligado | replay visual | `77e5f130` | `reconciled_replay`, `reference_match=True`, ciclo funcional, 0 pontos de plot |
+| Triplo plot ligado | backtest | `49e67c96` | `reconciled_backtest`: mesmas 14 posições e +198,88 |
+| Triplo plot ligado | replay visual | `52221529` | `reconciled_replay`, `reference_match=True`, ciclo funcional, 576 pontos de curva iguais às decisões |
+| Par ligado × desligado | consulta | `tester/par-plot.json` | `compare_presentation_pair`: mesmas decisões e fills fechados, sem diferença |
+| S09 referência | backtest | `96173cc6` | `reconciled_backtest`: 4 posições, −50,49 |
+| S09 referência | replay visual | `a1b0f50a` | `reconciled_replay`, `reference_match=True`, ciclo funcional |
+
+Escopo: Tester DEMO; sem operação ao vivo. `native_visual_qualified=false` e `operational_acceptance=false` continuam como a função oficial devolve. Cobertura de ticks reais do relatório consta como `conflicting` em `data_quality`; nada foi alterado para isso.
+
+**Correções de contrato (PR #366, empilhada sobre #365)** — cada uma apareceu só com dados reais do Tester e mantém as recusas:
+1. Confirmação após lacuna: o verificador Triplo exigia `confirmed_at == bar_at+TF`; o Expert confirma na abertura da barra seguinte (sexta 23:55 → segunda 00:00). Agora exige a próxima barra observada, na grade do TF.
+2. TP ausente: o importador grava TP 0 do CSV como `None`; `_ledger_rows` recusava perfis sem alvo. Só perfil sem alvo lê ausência como 0.
+3. Volume: o deal nativo pode ser o double vizinho do texto do CSV (`4.6899999999999995` × `4.69`); livro e fills comparam com 8 ULPs, como os verificadores.
+4. Tentativa sem plano (limite de posições) imprime `stop=DBL_MAX`; só com `plan_known=0` vira ausência.
+
+**Download de ticks:** 7 das 20 sessões (18–19/11) pararam porque o próprio MT5 cancelou o download preliminar ("no history data, stop testing"), sempre a 79–97%.
+- Coincide com a varredura de pontos de acesso logo após o login (Access Point BR 1, ping 227–280 ms) e com quedas de conexão. Numa delas o IPv6 do provedor mudou no meio da sessão.
+- Repetir a sessão resolveu em todos os casos.
+- Semear o cache do terminal principal com o `202610.tkc` completo de uma sessão anterior (SHA256 `7D8D6D33…2A88`, mesmo servidor) não evitou o novo download.
+
+**Ajustes só da bancada (fora do Git):**
+- PATH do processo com o `bin` do WinLibs. Processos criados pelo WMI não herdaram o PATH do usuário atualizado.
+- Junção `pyroot\scripts` para a referência Super ATR.
+- Orçamento do lote: compilação + 1.200 s no backtest e + 3.600 s no replay. O replay visual de 2 pregões leva ~22–27 min aqui.
+- A compilação dentro da sessão levou ~9 min em cada execução.
+
+**Ainda pendente:**
+- Reexecução isolada da suíte: ver abaixo.
+- E14 nativo, DEMO operacional (roteiro próprio, não autorizado), paridade Windows×Linux, BD03 (`--from/--to` no fuso do host), DPI/teclado físico, T19.53/54.
+
+**Reexecução isolada da suíte (19/11, host sem carga própria concorrente, fora do contêiner, um arquivo por processo):** 48 arquivos que falharam ou abortaram em 18/11 (`state/qa-tmp/windows-20261118/rerun/`).
+- 1ª passada, gate normal (60 s por teste): 13 verdes, entre eles `test_native_inputs` (agora com g++) e `test_process_management`. Outros 30 estouraram 60 s e 5 falharam sem timeout.
+- As 5 falhas sem timeout:
+  - `test_restore_operations`, `test_restore_backup_identity`, `test_backup_retention_identity` e `test_resources` falharam por **MAX_PATH**. O recibo `native-state\resources\restore_receipts\restore__<64 hex>_<32 hex>.restore.json(.tmp)` passava de 260 caracteres com o `--basetemp` longo da bancada, e este Windows está com `LongPathsEnabled=0`. Com basetemp curto: 20/20, 14/14, 36/36 e 45/45 (`rerun/pass3/`).
+  - `test_offline_startup`: o subprocesso `import app` passa de 30 s.
+- Risco real a registrar: numa instalação em pasta profunda, sem LongPaths, o recibo de restauração pode não ser gravado. A restauração fica `unknown`/`uncertain` e não quebra em silêncio. Não foi alterado.
+- **Lentidão de import:** `import app` leva 87 s a frio e 29 s a quente (`pandas` 4 s, `matplotlib.pyplot` 6,9 s). O venv está no E: (Btrfs via WinBtrfs), e o Defender em tempo real ficou ~60% de CPU durante o pytest.
+  - Hipótese não confirmada: a varredura do Defender sobre milhares de arquivos pequenos.
+  - Excluir a pasta do projeto do Defender é decisão de segurança do proprietário; não foi feito.
+  - O CI Windows de cada PR continua sendo a referência de tempo.
+- **2ª passada diagnóstica (limite 600 s, sem mudar o gate; `rerun/pass4/`):** dos 30 arquivos que estouraram 60 s, 23 passam integralmente. Exemplos: `test_analytics_profiles` 62/62 em 336 s, `test_ui_main_window` 78/78 em 39 min, `test_ui_laboratory` 25/25 em 18 min.
+  - Os outros 7 têm 11 falhas, todas em esperas internas dos próprios testes com o host lento, sem asserção funcional divergente: `join(40/45)` do lote real em `test_backtest_scope_assets`/`test_scope_comparison`; `wait`/`pump` de 30 s e "Dashboard não concluiu" em `test_ui_backtest_assets`, `test_ui_backtest_scope`, `test_ui_dashboard`, `test_ui_laboratory_series` e `test_ui_super_atr`.
+  - `test_offline_startup` falha do mesmo modo: subprocesso com prazo de 30 s.
+  - O CI Windows de #363–#366 está verde nesses arquivos.
+- **Próximo passo:**
+  1. Proprietário: revisar e mesclar a pilha #353→#366 na ordem.
+  2. Proprietário: decidir sobre exclusão do Defender/LongPaths (configuração de segurança/sistema, não alterada).
+  3. Proprietário: confirmar a base de tempo BD03.
+  4. Seguir com E14 nativo e T19.53/54.

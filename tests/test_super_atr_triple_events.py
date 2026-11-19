@@ -111,3 +111,65 @@ def test_unavailable_is_distinct_from_valid_mixed_consensus(example):
     _starts, bars, decisions = events._observations(text, example["params"], 300)
     assert not bars and decisions == [dict(bar_at=example["at"], available=False, reason="histórico ausente")]
     assert "consensus" not in decisions[0]
+
+
+def _gap_trace(seed, first_confirmed):
+    monday = seed+3*86400
+    return "\n".join([f"HDK_TRIPLE_START schema=1 at={monday} seed_at={seed}",
+        f"HDK_TRIPLE_BAR schema=1 at={seed} received_at={monday} open=100 high=101 low=99 close=100",
+        f"HDK_TRIPLE_BAR schema=1 at={monday} received_at={monday+300} open=100 high=101 low=99 close=100",
+        f"HDK_TRIPLE_DECISION schema=1 bar_at={seed} confirmed_at={first_confirmed} available_at={monday+300} seed_at={seed} available=1 consensus=0 episode_at=0 gaps=0 first=90 second=88 third=86",
+        f"HDK_TRIPLE_DECISION schema=1 bar_at={monday} confirmed_at={monday+300} available_at={monday+300} seed_at={seed} available=1 consensus=0 episode_at=0 gaps=1 first=90 second=88 third=86"])+"\n"
+
+
+def test_confirmation_after_weekend_gap_is_the_next_observed_open(example):
+    # Tester Windows 19/11/2026: a barra de sexta só fecha na abertura de segunda.
+    seed = example["seed"]; monday = seed+3*86400
+    _starts, bars, decisions = events._observations(_gap_trace(seed, monday), example["params"], 300)
+    assert [row["at"] for row in bars] == [seed, monday]
+    assert [row["confirmed_at"] for row in decisions] == [monday, monday+300]
+
+
+@pytest.mark.parametrize("offset", [0, 300, 3*86400+300, 3*86400+1], ids=["aberta", "antes-da-lacuna", "pula-barra", "fora-da-grade"])
+def test_confirmation_cannot_anticipate_skip_or_leave_the_bar_grid(example, offset):
+    with pytest.raises(ValueError, match="confirmação não corresponde"):
+        events._observations(_gap_trace(example["seed"], example["seed"]+offset), example["params"], 300)
+
+
+def _blocked_attempt(example, *, opened, plan_known="0", stop="1.7976931348623157e+308"):
+    seed, at, available = example["seed"], example["at"], example["available"]
+    filled = "1 state=4 order=77 deal=78 planned_volume=2" if opened else "0 state=0 order=0 deal=0 planned_volume=0"
+    text = "\n".join([f"HDK_TRIPLE_START schema=1 at={seed+1} seed_at={seed}"]
+        + [f"HDK_TRIPLE_BAR schema=1 at={seed+i*300} received_at={available} open=100 high=101 low=99 close=100" for i in range(3)]
+        + [f"HDK_TRIPLE_DECISION schema=1 bar_at={at} confirmed_at={at+300} available_at={available} seed_at={seed} available=1 consensus=1 episode_at={at} gaps=0 first=90 second=88 third=86",
+           f"HDK_TRIPLE_ENTRY schema=1 event_at={at} episode_at={at} direction=1 opened={filled} curve_stop=90 reason=máximo de 1 posições abertas",
+           f"HDK_TRIPLE_SIZING schema=1 event_at={at} plan_known={plan_known} planned_volume={2 if opened else 0} risk_money=0 risk_budget=0 stop={stop} price_tick=1 margin_required=unavailable margin_free=unavailable volume_min=0.1 volume_max=100 volume_step=0.1"])+"\n"
+    signal = dict(event_at=at, confirmed_at=at+300, available_at=available, direction=1, opened=opened,
+                  execution_state=4 if opened else 0, filled_volume=2. if opened else None,
+                  order_ticket=77 if opened else 0, deal_ticket=78 if opened else 0, reason="")
+    starts, _bars, decisions = events._observations(text, example["params"], 300)
+    return lambda: events._attempts(text, example["params"], starts, decisions, [signal], [], 300)
+
+
+def test_blocked_attempt_without_plan_reads_the_empty_mql_stop_as_absence(example):
+    # Tester Windows 19/11/2026: tentativa barrada pelo limite de posições imprime stop=DBL_MAX.
+    entries, sizing = _blocked_attempt(example, opened=False)()
+    assert sizing[0]["initial_stop"] is None and not sizing[0]["plan_known"] and sizing[0]["filled_volume"] is None
+
+
+@pytest.mark.parametrize("opened,plan_known", [(True, "0"), (False, "1")], ids=["preenchida", "plano-conhecido"])
+def test_empty_stop_is_never_a_price_for_a_fill_or_a_known_plan(example, opened, plan_known):
+    with pytest.raises(ValueError, match="Triplo"):
+        _blocked_attempt(example, opened=opened, plan_known=plan_known)()
+
+
+def test_native_fill_volume_neighbour_double_reconciles_with_exported_lot(example):
+    # O deal nativo pode ser o double vizinho do texto do CSV (4.6899999999999995 × 4.69).
+    log = example["log"]; text = log.read_text()
+    text = text.replace("volume=2 price", "volume=1.9999999999999998 price").replace(
+        "execution_state=4 volume=2 order", "execution_state=4 volume=1.9999999999999998 order")
+    log.write_text(text)
+    reference, sizing, deals = example["validate"]()
+    assert all(d["volume"] == 1.9999999999999998 for d in deals) and example["rows"][0]["volume"] == 2
+    log.write_text(text.replace("volume=1.9999999999999998 price", "volume=1.99 price"))
+    with pytest.raises(ValueError): example["validate"]()
