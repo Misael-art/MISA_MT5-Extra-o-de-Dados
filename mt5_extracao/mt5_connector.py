@@ -782,6 +782,23 @@ class MT5Connector:
             except Exception as e:
                 log.debug(f"market_book_release({symbol}): {e}")
 
+    def server_now(self, symbols):
+        """Horário do último tick dos símbolos no relógio do servidor (eixo do MT5), sem usar o fuso do
+        computador; None quando o MT5 não informa. É o "agora" das extrações sem --to (BD03–05/T2.6)."""
+        if not self.is_initialized or not mt5:
+            return None
+        seen = []
+        for symbol in symbols:
+            try:
+                tick = mt5.symbol_info_tick(symbol)
+            except Exception as e:
+                log.debug(f"symbol_info_tick({symbol}): {e}")
+                continue
+            seconds = getattr(tick, "time", None) if tick is not None else None
+            if isinstance(seconds, (int, float)) and seconds > 0:
+                seen.append(int(seconds))
+        return pd.to_datetime(max(seen), unit="s").to_pydatetime() if seen else None
+
     def get_rates_range(self, symbol, timeframe, date_from, date_to):
         """Encapsula mt5.copy_rates_range()"""
         if not self.is_initialized or not mt5:
