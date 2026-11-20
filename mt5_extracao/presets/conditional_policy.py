@@ -26,6 +26,7 @@ from typing import Iterable, Optional
 import pandas as pd
 
 from mt5_extracao import profit_factor
+from mt5_extracao.laboratory import preset_assets
 from mt5_extracao.trade_analytics import aggregate, stats
 
 VERSION = 1
@@ -34,6 +35,8 @@ PERIOD_HOURS = 4
 MIN_PROFIT_FACTOR = 2.0
 TOP_SETUPS = 2            # setups validados aceitos por contexto, em ordem de prioridade
 FALLBACK = "R00"
+# O estudo combina setups diferentes de propósito; só isto pode variar entre os runs.
+INTENTIONAL_DIFFERENCES = ("setup (robô)", "parâmetros e regras da estratégia")
 
 
 def _context(lab: pd.DataFrame, dims) -> pd.Series:
@@ -123,7 +126,7 @@ def _run_records(db, lab: pd.DataFrame) -> dict:
 
 
 def _comparability(lab: pd.DataFrame, records: dict, cuts) -> dict:
-    """Runs combinados numa conta única precisam de mesma moeda e de janela que cubra a reserva."""
+    """Runs combinados numa conta única: mesma moeda, manifesto, contexto econômico e janela que cubra a reserva."""
     windows, blockers = {}, []
     for run_id, part in lab.groupby("run_id"):
         windows[str(run_id)] = {"first_entry": _iso(part.entry_time.min()), "last_exit": _iso(part.exit_time.max())}
@@ -142,6 +145,28 @@ def _comparability(lab: pd.DataFrame, records: dict, cuts) -> dict:
         blockers.append("Runs com manifestos de dados diferentes; confirme mesma fonte, revisão e custos antes de promover.")
     if any(not (records.get(r) or {}).get("execution_digest") for r in runs):
         blockers.append("Identidade de execução ausente em algum run; código e parâmetros não comprovados.")
+    # Conta única: motor, código, capital/risco/custos, início, origem, relógio, moeda e especificação precisam
+    # coincidir pelo contrato canônico de recibos. Manifesto igual não prova custos iguais; recibo ausente bloqueia.
+    contexts = {r: (records.get(r) or {}).get("comparison_context") for r in runs}
+    complete = []
+    for run_id in runs:
+        issues = preset_assets.context_receipt_problems(contexts[run_id])
+        if not issues and contexts[run_id].get("currency") != currencies[run_id]:
+            issues = ["moeda do recibo de execução diverge da moeda declarada do run"]
+        if issues:
+            blockers.append(f"Run {run_id}: " + "; ".join(issues)
+                            + "; capital, risco e custos não comprovados para uma conta única.")
+        else:
+            complete.append(run_id)
+    for run_id in complete[1:]:
+        reference, other = contexts[complete[0]], contexts[run_id]
+        differences = preset_assets.context_differences(reference, other)
+        if (preset_assets.comparable_instrument_spec(reference.get("instrument_spec"))
+                != preset_assets.comparable_instrument_spec(other.get("instrument_spec"))):
+            differences.append("Especificação do instrumento diferente")
+        if differences:
+            blockers.append(f"Runs {complete[0]} e {run_id} economicamente incomparáveis numa conta única: "
+                            + ", ".join(differences) + ".")
     second = cuts[1]
     short = [r for r, w in windows.items() if w["last_exit"] is None or pd.Timestamp(w["last_exit"]) < second]
     if short:
@@ -149,7 +174,10 @@ def _comparability(lab: pd.DataFrame, records: dict, cuts) -> dict:
                         + "; a reserva não compara os setups na mesma janela.")
     status = "comprovada" if not blockers else "não comprovada"
     return {"status": status, "currency": next(iter(known)) if len(known) == 1 else None,
-            "windows": windows, "runs": {r: records.get(r) for r in runs}, "blockers": blockers}
+            "windows": windows, "runs": {r: records.get(r) for r in runs}, "blockers": blockers,
+            "checked": [label for _, label in preset_assets.ACCOUNT_CONTEXT]
+            + ["Especificação do instrumento", "Manifesto de dados", "Identidade de execução", "Janela da reserva"],
+            "intentional": list(INTENTIONAL_DIFFERENCES)}
 
 
 def _metrics(part: pd.DataFrame, initial: float) -> dict:
@@ -284,6 +312,7 @@ def study(db, config, symbol: str, timeframe: str, *, runs: Optional[Iterable[st
     return {"schema_version": VERSION, "status": status, "reasons": reasons, "study_only": True,
             "min_profit_factor": float(min_profit_factor), "policy": policy, "segments": segments,
             "evaluation": evaluation, "comparability": comparability["status"],
+            "comparability_detail": {key: comparability[key] for key in ("blockers", "checked", "intentional")},
             "promotion_blockers": blockers,
             "embargoed": int((lab.segment == "embargo").sum()),
             "context_missing": int(lab.context.isna().sum()),

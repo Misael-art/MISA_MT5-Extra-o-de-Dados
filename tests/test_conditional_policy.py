@@ -115,7 +115,7 @@ def test_cli_router(db, tmp_path, capsys):
     assert out["data"]["router"]["min_profit_factor"] == 2.0
 
 
-def _record(db, run_id, robot, currency="BRL", manifest="m" * 64, digest="d" * 64):
+def _record(db, run_id, robot, currency="BRL", manifest="m" * 64, digest="d" * 64, context=None):
     """Só os metadados declarados que o estudo lê (o produtor real também vincula o manifesto)."""
     import json
     from sqlalchemy import text
@@ -123,8 +123,11 @@ def _record(db, run_id, robot, currency="BRL", manifest="m" * 64, digest="d" * 6
     metrics = {"currency": currency, "execution_identity": {"digest": digest, "code_sha256": "c" * 64}}
     if manifest:
         metrics["data_manifest_id"] = manifest
+    if context is not None:
+        metrics["comparison_context"] = context
     with db.engine.begin() as conn:
         conn.execute(text(store._CREATE_RUNS))
+        conn.execute(text("DELETE FROM _robot_runs WHERE run_id = :r"), {"r": run_id})
         conn.execute(text("INSERT INTO _robot_runs (run_id, robot_key, source, symbol, timeframe, metrics_json, "
                           "created_at) VALUES (:r, :k, 'backtest', 'X', 'M15', :m, '2026-11-18T00:00:00+00:00')"),
                      {"r": run_id, "k": robot, "m": json.dumps(metrics)})
@@ -193,8 +196,10 @@ def _declared(currency="BRL", manifest="m" * 64, digest="d" * 64):
 def test_comparability_requires_same_currency_manifest_execution_and_window():
     lab = _lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-04-01")})
     cuts = (pd.Timestamp("2026-02-15"), pd.Timestamp("2026-03-15"))
-    proven = cp._comparability(lab, {"a": _declared(), "b": _declared()}, cuts)
+    proven = cp._comparability(lab, {"a": _economic(), "b": _economic()}, cuts)
     assert proven["status"] == "comprovada" and proven["currency"] == "BRL" and proven["blockers"] == []
+    # Sem o recibo econômico (moeda, manifesto e execução declarados apenas) já não é comprovada.
+    assert cp._comparability(lab, {"a": _declared(), "b": _declared()}, cuts)["status"] == "não comprovada"
     with pytest.raises(ValueError, match="moedas diferentes"):
         cp._comparability(lab, {"a": _declared(), "b": _declared(currency="USD")}, cuts)
     other = cp._comparability(lab, {"a": _declared(), "b": _declared(manifest="n" * 64)}, cuts)
@@ -205,3 +210,103 @@ def test_comparability_requires_same_currency_manifest_execution_and_window():
                               {"a": _declared(), "b": _declared()}, cuts)
     assert short["status"] == "não comprovada"
     assert any("depois do início da reserva: b" in b for b in short["blockers"])
+
+
+def _receipt(**changes):
+    """Recibo comparison_context completo, como o produtor do backtest Python grava (T19.52)."""
+    from dataclasses import asdict
+    from mt5_extracao.strategies.backtester import BacktestConfig
+    settings = asdict(BacktestConfig())
+    settings.update(changes.pop("settings", {}))
+    context = {"schema_version": 1, "engine": "python_ohlcv_stop_first", "settings": settings, "trade_from": None,
+               "source": "mt5", "clock": "broker_time", "instrument_spec": {"known": True, "point": 0.01},
+               "currency": "BRL", "currency_source": "user_declared_account_currency",
+               "external_cashflows": False, "code_sha256": "c" * 64}
+    context.update(changes)
+    return context
+
+
+def _economic(currency="BRL", **changes):
+    return {**_declared(currency=currency), "comparison_context": _receipt(currency=currency, **changes)}
+
+
+def test_same_manifest_does_not_prove_same_costs_or_risk():
+    """Defeito da revisão de 19/11: custos/risco diferentes saíam como comparabilidade comprovada."""
+    lab = _lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-04-01")})
+    cuts = (pd.Timestamp("2026-02-15"), pd.Timestamp("2026-03-15"))
+    cheap = _economic(settings={"commission_per_lot": 0.0, "risk_per_trade": 0.001})
+    costly = _economic(settings={"commission_per_lot": 7.0, "risk_per_trade": 0.1})
+    result = cp._comparability(lab, {"a": cheap, "b": costly}, cuts)
+    assert result["status"] == "não comprovada"
+    assert any("capital/risco/custos" in b for b in result["blockers"])
+    assert cp._comparability(lab, {"a": _economic(), "b": _economic()}, cuts)["status"] == "comprovada"
+
+
+@pytest.mark.parametrize("change, expected", [
+    ({"engine": "outro"}, "Run b: configuração de execução incompleta/incompatível"),
+    ({"code_sha256": "e" * 64}, "Código do motor"),
+    ({"settings": {"slippage_points": 3.0}}, "capital/risco/custos"),
+    ({"settings": {"initial_equity": 5000.0}}, "capital/risco/custos"),
+    ({"settings": {"compound": False}}, "capital/risco/custos"),
+    ({"trade_from": "2026-02-01 00:00:00"}, "Início efetivo"), ({"source": "csv"}, "Origem"),
+    ({"clock": "utc"}, "Relógio"), ({"instrument_spec": {"known": True, "point": 0.1}}, "Especificação")])
+def test_every_material_dimension_blocks_a_single_account(change, expected):
+    lab = _lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-04-01")})
+    cuts = (pd.Timestamp("2026-02-15"), pd.Timestamp("2026-03-15"))
+    result = cp._comparability(lab, {"a": _economic(), "b": _economic(**change)}, cuts)
+    assert result["status"] == "não comprovada" and any(expected in b for b in result["blockers"])
+
+
+@pytest.mark.parametrize("receipt", [None, {}, {"schema_version": 1}, "legado",
+                                     "sem_custos", "fluxo_externo", "spec_desconhecida", "moeda_divergente"])
+def test_missing_or_legacy_receipt_never_yields_proven(receipt):
+    lab = _lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-04-01")})
+    cuts = (pd.Timestamp("2026-02-15"), pd.Timestamp("2026-03-15"))
+    broken = _declared()
+    if receipt == "legado":
+        pass                                                # run antigo: sem comparison_context
+    elif receipt == "sem_custos":
+        context = _receipt()
+        context["settings"].pop("commission_per_lot")
+        broken["comparison_context"] = context
+    elif receipt == "fluxo_externo":
+        broken["comparison_context"] = _receipt(external_cashflows=None)
+    elif receipt == "spec_desconhecida":
+        broken["comparison_context"] = _receipt(instrument_spec={"known": False})
+    elif receipt == "moeda_divergente":
+        broken["comparison_context"] = _receipt(currency="USD")
+    else:
+        broken["comparison_context"] = receipt
+    result = cp._comparability(lab, {"a": _economic(), "b": broken}, cuts)
+    assert result["status"] == "não comprovada" and any(b.startswith("Run b:") for b in result["blockers"])
+
+
+def test_strategy_differences_are_intentional_not_blockers():
+    lab = _lab({"a": ("2026-01-01", "2026-04-01"), "b": ("2026-01-01", "2026-04-01")})
+    cuts = (pd.Timestamp("2026-02-15"), pd.Timestamp("2026-03-15"))
+    a, b = _economic(), _economic()
+    b["execution_digest"] = "f" * 64                    # parâmetros/regras do setup entram só no digest
+    result = cp._comparability(lab, {"a": a, "b": b}, cuts)
+    assert result["status"] == "comprovada"
+    assert "Configuração de capital/risco/custos" in result["checked"]
+    assert result["intentional"] == ["setup (robô)", "parâmetros e regras da estratégia"]
+
+
+def test_study_propagates_economic_blockers_and_reopens_the_evaluation(db):
+    _context_edge(db)
+    # Sem snapshot real o manifesto fica não declarado (bloqueio próprio); o foco aqui é o contexto econômico.
+    _record(db, "a", "python:a", manifest=None, context=_receipt(settings={"commission_per_lot": 0.0}))
+    _record(db, "b", "python:b", manifest=None, context=_receipt(settings={"commission_per_lot": 7.0}))
+    split = cp.study(db, None, "X", "M15", runs=["a", "b"], dims=("period",), min_rule_trades=20)
+    assert split["status"] == "elegível" and split["comparability"] == "não comprovada"
+    assert any("capital/risco/custos" in b for b in split["promotion_blockers"])
+    detail = split["comparability_detail"]["blockers"]
+    assert any("capital/risco/custos" in b for b in detail) and set(detail) <= set(split["promotion_blockers"])
+    cuts = split["evaluation"]["segmentation"]["cuts"]
+    _record(db, "b", "python:b", manifest=None, context=_receipt(settings={"commission_per_lot": 0.0}))
+    same = cp.study(db, None, "X", "M15", runs=["a", "b"], dims=("period",), min_rule_trades=20, cuts=cuts)
+    assert not any("capital/risco/custos" in b or b.startswith("Run ") for b in same["promotion_blockers"])
+    assert same["comparability_detail"]["blockers"] == [
+        "Manifesto de dados ausente em algum run; fonte e revisão das barras não comprovadas."]
+    assert same["policy"]["policy_id"] == split["policy"]["policy_id"]          # política não muda
+    assert same["evaluation"]["evaluation_id"] != split["evaluation"]["evaluation_id"]   # avaliação reaberta

@@ -28,6 +28,50 @@ _RELATION_STATUS = {
 def _canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
+# Contrato de comparação de recibos (comparison_context): o que precisa coincidir para resultados serem
+# economicamente comparáveis. Reusado por compare_runs e pelo estudo condicional (T19.52).
+ACCOUNT_CONTEXT = (('engine', 'Motor'), ('code_sha256', 'Código do motor'),
+                   ('settings', 'Configuração de capital/risco/custos'), ('trade_from', 'Início efetivo'),
+                   ('source', 'Origem'), ('clock', 'Relógio'), ('currency', 'Moeda da conta'))
+MISSING_RECEIPT = 'recibo de motor/configuração completo ausente'
+
+
+def context_receipt_problems(ctx):
+    """Problemas de um recibo comparison_context isolado; vazio só quer dizer recibo completo, não igualdade."""
+    from dataclasses import asdict
+    from mt5_extracao.strategies.backtester import BacktestConfig
+    if not isinstance(ctx, dict) or ctx.get('schema_version') != 1 or not ctx.get('code_sha256'):
+        return [MISSING_RECEIPT]
+    problems = []
+    required = {'engine', 'settings', 'trade_from', 'source', 'clock', 'instrument_spec', 'currency',
+                'currency_source', 'external_cashflows'}
+    settings = ctx.get('settings')
+    if (not required <= set(ctx) or ctx.get('engine') != 'python_ohlcv_stop_first' or not isinstance(settings, dict)
+            or set(settings) != set(asdict(BacktestConfig()))):
+        problems.append('configuração de execução incompleta/incompatível')
+    if not isinstance(ctx.get('instrument_spec'), dict) or ctx['instrument_spec'].get('known') is not True:
+        problems.append('especificação do instrumento desconhecida')
+    if ctx.get('external_cashflows') is not False:
+        problems.append('fluxos externos presentes/desconhecidos; comparação desta versão exige ausência explícita')
+    return problems
+
+
+def context_differences(first, other):
+    """Dimensões materiais do contrato que diferem entre dois recibos."""
+    first, other = first or {}, other or {}
+    return [label + ' diferente' for key, label in ACCOUNT_CONTEXT if first.get(key) != other.get(key)]
+
+
+def comparable_instrument_spec(spec):
+    """Especificação sem a contagem por barra da auditoria (não é revisão/valor do contrato)."""
+    if not isinstance(spec, dict):
+        return spec
+    spec = dict(spec)
+    provenance = dict(spec.get('provenance') or {})
+    provenance.pop('missing_specification_bars', None)
+    spec['provenance'] = provenance
+    return spec
+
 
 def _body(run, *, varied_dimension="symbol"):
     """Hash da composição sem a dimensão em comparação."""
@@ -339,8 +383,6 @@ def compare_runs(db,run_ids,*,mode,guard=None):
         guard=lambda:indicator_materializer._guard(started,None,None,120,1024)
     from mt5_extracao.analytics import datasets
     from mt5_extracao.composition import Composition
-    from dataclasses import asdict
-    from mt5_extracao.strategies.backtester import BacktestConfig
     rows=[];problems=[];scope_checkpoint=None;valuations={}
     reference_bar_times = None
     for ident in run_ids:
@@ -363,14 +405,9 @@ def compare_runs(db,run_ids,*,mode,guard=None):
             row['observed_interval'] = _observed_interval(row)
         if mode == 'same_strategy':
             valuations[ident] = _closing_valuations(run)
-        if not isinstance(ctx,dict) or ctx.get('schema_version')!=1 or not ctx.get('code_sha256'):
-            problems.append(ident+': recibo de motor/configuração completo ausente');continue
-        required={'engine','settings','trade_from','source','clock','instrument_spec','currency','currency_source','external_cashflows'}
-        settings=ctx.get('settings')
-        if (not required<=set(ctx) or ctx.get('engine')!='python_ohlcv_stop_first' or not isinstance(settings,dict) or set(settings)!=set(asdict(BacktestConfig()))):
-            problems.append(ident+': configuração de execução incompleta/incompatível')
-        if not isinstance(ctx.get('instrument_spec'),dict) or ctx['instrument_spec'].get('known') is not True:problems.append(ident+': especificação do instrumento desconhecida')
-        if ctx.get('external_cashflows') is not False:problems.append(ident+': fluxos externos presentes/desconhecidos; comparação desta versão exige ausência explícita')
+        receipt=context_receipt_problems(ctx)
+        problems.extend(ident+': '+p for p in receipt)
+        if receipt==[MISSING_RECEIPT]:continue
         if not ctx.get('currency') or ctx.get('currency')!=row['currency']:problems.append(ident+': moeda da conta desconhecida/inconsistente')
         if row['curve_issues']:problems.append(ident+': curva inválida')
         if any(row['summary'][k] is None for k in ('trades','net_profit','initial_equity','max_drawdown_pct','final_balance','final_equity','max_floating_drawdown_pct')):problems.append(ident+': métricas/patrimônio completo ausentes')
@@ -409,8 +446,7 @@ def compare_runs(db,run_ids,*,mode,guard=None):
                     or _canonical(row['effective_params']) != _canonical(first['effective_params'])):
                 problems.append('Estratégia ou parâmetros diferem além do timeframe')
         a,b=first['context'] or {},row['context'] or {}
-        for key,label in [('engine','Motor'),('code_sha256','Código do motor'),('settings','Configuração de capital/risco/custos'),('trade_from','Início efetivo'),('source','Origem'),('clock','Relógio'),('currency','Moeda da conta')]:
-            if a.get(key)!=b.get(key):problems.append(label+' diferente')
+        problems.extend(context_differences(a,b))
         if mode=='same_asset' and a.get('instrument_spec')!=b.get('instrument_spec'):problems.append('Especificação do instrumento diferente')
     if mode=='same_preset' and len({r['symbol'] for r in rows})<2:problems.append('Mesmo preset entre ativos exige ao menos dois ativos')
     if mode=='same_strategy' and len({r['timeframe'] for r in rows}) != len(rows):
@@ -419,13 +455,7 @@ def compare_runs(db,run_ids,*,mode,guard=None):
     if compare_timeframes:
         specs={}
         for row in rows:
-            spec=(row['context'] or {}).get('instrument_spec')
-            if isinstance(spec,dict):
-                spec=dict(spec)
-                provenance=dict(spec.get('provenance') or {})
-                # É contagem por barra da auditoria, não revisão/valor do contrato.
-                provenance.pop('missing_specification_bars',None)
-                spec['provenance']=provenance
+            spec=comparable_instrument_spec((row['context'] or {}).get('instrument_spec'))
             if row['symbol'] in specs and specs[row['symbol']]!=spec:problems.append('Especificação do instrumento difere entre TFs do mesmo ativo')
             specs.setdefault(row['symbol'],spec)
         configuration_compatible=not problems
