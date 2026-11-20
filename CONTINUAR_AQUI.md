@@ -2276,3 +2276,135 @@ Escopo: Tester DEMO; sem operação ao vivo. `native_visual_qualified=false` e `
   2. Proprietário: decidir sobre exclusão do Defender/LongPaths (configuração de segurança/sistema, não alterada).
   3. Proprietário: confirmar a base de tempo BD03.
   4. Seguir com E14 nativo e T19.53/54.
+
+## Revisão independente da implementação Windows — 19/11/2026
+
+**Veredito: entrega parcial confirmada; encerramento da plataforma/Ultra não aprovado.** A preparação Windows avançou de fato, e há evidência nativa de Tester/Replay. Reconciliação de conteúdo dos incrementos está demonstrada no recorte abaixo, mas composição integral reproduzível, aceite local completo e Ultra executável continuam abertos. Esta revisão não autoriza merge, release ou operação ao vivo.
+
+### Evidência verificada pelo revisor
+
+- O caminho WSL cadastrado no chat está indisponível; os arquivos foram encontrados na composição existente `E:\misael\Projects\MT5X`, conforme o handoff de migração. Nenhum clone, worktree ou ambiente foi criado. O cadastro do app ainda aponta para o UNC antigo; o registro central conserva caminhos Linux.
+- App permanece HEAD `550b6d5f`, branch `codex/launcher-classes`, com WIP. HADOUKEN `d3dd3a5e` e Safety `27b85992` coincidem com o manifesto. `state/setup-windows.json` diz `development_ready`, mas também `composition_pinned=false`; os estados não são equivalentes.
+- Comparados os 38 caminhos alterados entre PR352 `39bbf6d6` e PR366 `807298aec1f7bf8c18642a851b8619f1efe8f720`: 37 arquivos de implementação/testes/documentação conferiram por blob; o handoff diferiu apenas por terminações de linha (diff ignorando EOL vazio antes desta revisão). Isso valida os incrementos examinados, não todos os arquivos do WIP. Há documentos anteriores não publicados e diferenças de modo executável dos scripts Linux, sem diferença de conteúdo nos cinco scripts examinados; conferir modos no Linux antes de integrar.
+- PR366 consultada no GitHub: aberta, draft, base PR365 `21f79281`, ponta `807298ae`; CI `44606035035` completed/success. Não foi presumido aceite ou merge da pilha.
+- Inspecionados diffs de ambiente/bootstrap, instalação, dados, estudo condicional, produtores e conferência nativa. As correções nativas têm regressões para gap de confirmação, TP ausente, volume vizinho em double e stop DBL_MAX sem plano; isso não concede aceite geral E14.
+- `.venv-windows/pyvenv.cfg` confirma Python3.11.9; launcher usa `pushd`, ambiente Windows e configuração por plataforma. Teste independente no ambiente instalado: cinco testes de resolução/plataforma de `test_platform_environment.py` passaram em3,73s, nove não selecionados. Comando: `.venv-windows/Scripts/python.exe -m pytest --noconftest -o addopts= -p no:cacheprovider tests/test_platform_environment.py -k "platform_of_environment or single_system_installation or windows_never_reuses or mixed_venv" -q`, com autoload de plugins desabilitado e sem bytecode. Aviso de configuração `timeout` desconhecida devido aos plugins desabilitados; recorte leve, não execução do gate completo.
+- Percurso independente `cmd /d /c run.bat --cli --help`: terminou com código0 e catálogo de comandos. Inicialização foi lenta e a captura apresentou acentos corrompidos; não certifica UX/encoding no console físico. Nenhum MT5 foi iniciado pelo revisor.
+- Conferidos logs existentes de instalação, launcher, doctor e reexecução. Doctor de desenvolvimento arquivado:15OK/3avisos/0falhas; testes de setup em `state/windows/tests.log`:48passaram/2pulados. Não foram reexecutados instalador, GUI, compilação ou suítes pesadas.
+- Conferidos sete recibos `tester/run-*.json`: Triplo desarmado `bb9f2829` contract_only; plot off/on backtests `9924ae99`/`49e67c96`, replays `77e5f130`/`52221529`; S09 `96173cc6`/`a1b0f50a`, todos reconciled no escopo declarado. Os três replays têm reference_match=true. `par-plot.json` declara mesmas decisões/fills, sem diferença, e preserva native_visual_qualified=false/operational_acceptance=false.
+- Os caminhos originais artifact_dir foram removidos, mas os sete relatórios HTML existem em `tester/sessoes/<sessão>`. **7/7 hashes conferem** com evidence.data_quality.report_sha256 após decodificação BOM/UTF e normalização CRLF→LF, conforme o contrato de `mql.read_text`. Hash de bytes crus não é esse hash. Os sete mantêm real_tick_coverage_status=conflicting e elegibilidade unqualified; reconciliação não comprova cobertura integral de ticks reais.
+- Recursos na revisão: RAM livre aproximadamente5,0–5,3GiB, paginação0 na medição, CPU69%, sensor TZ01 cerca50°C, C:40,8GB/E:55,3GB livres. Apenas leituras e sondas pequenas, sem nova carga pesada; processo Python observado com cerca70MB RSS durante import lento. Limites térmicos completos não medidos, logo sem admissão de suíte pesada. ai-memory não está disponível nas ferramentas desta sessão; registro mantido aqui, sem banco alternativo.
+
+### Lacunas prioritárias após a revisão
+
+| Prioridade / ficha | Constatação e encaminhamento |
+|---|---|
+| P1 · T19.52 / comparabilidade | **Defeito reproduzido:** `_comparability` em `presets/conditional_policy.py:125` guarda comparison_context nos records, mas não compara custos/risco/capital/motor. Dois runs com moeda USD e manifesto iguais, digests distintos e comparison_context com comissão/risco0,001 versus0,1 retornam `status='comprovada', blockers=[]`. Prova executada com DataFrame sintético no Python3.11 gerenciado, chamando a função real; nenhum banco alterado. A identidade da avaliação melhorou, mas não resolve a comparabilidade econômica. Reusar o contrato de comparação existente; ausência ou divergência material deve impedir o selo, com regressões positivas/negativas. Não alterar apenas a mensagem. O estudo continua sem autorização nativa, portanto não houve liberação de ordens por esta falha. |
+| P0 · HOST1/BD21–22 | Reconciliação dos incrementos confirmada; fechamento da composição ainda parcial. Recibo tem composition_pinned=false; HEAD e manifesto App históricos não identificam o WIP. Recibos nativos ainda usam app_note='WIP equivalente a PR352+#353..#359', embora dependam de corretivos até366. Acrescentar vínculo verificável da fonte efetiva/closure aos recibos, preservar documentos locais e atualizar o cadastro Windows no registro oficial. Não exigir merge como substituto de prova de conteúdo. |
+| P0 · preservação/recuperação | O agente admite sobrescrita e perda dos logs Linux originais em state/. A correção de namespace de logs existe em setup_development.py, mas não recupera evidência histórica. Não declarar preservação integral nem chamar novas execuções de restauração dos recibos originais. Procurar proteção independente existente; se não houver, manter perda explicitamente registrada. Fontes/dados não foram demonstrados perdidos. |
+| P0 · BD03–05/T2.6 | CLI `_parse_date` gera datetime sem timezone e conector repassa as datas ao SDK. A janela real deslocada já consta do handoff. Resolver contrato de relógio pela documentação/implementação e teste entre fusos antes de usar o recorte em pesquisa; não inventar UTC nem depender do fuso do host. Paridade Windows×Linux permanece pendente. |
+| P1 · Recursos/restore | MAX_PATH permanece risco real: LongPathsEnabled=0 confirmado; caminho de recibo inclui hashes longos. Logs pass3 confirmam20+14+36+45 testes passando com basetemp curto, o que não corrige uma instalação profunda. Corrigir/prevalidar caminho e provar recuperação sem exigir mudança global do sistema. Não tratar habilitar LongPaths ou excluir Defender como pré-requisito obrigatório para prosseguir com correções do App. |
+| P1 · testes/desempenho | Suíte completa local não aprovada no gate original. Logs pass4 comprovam execução diagnóstica longa e falhas remanescentes (ex.: UI Super ATR2falhas); sucesso com600s não substitui60s. Separar contenção/armazenamento/import de defeitos funcionais com instrumentação. Causa Defender permanece hipótese, não motivo para excluir proteção automaticamente. CI verde não certifica tempo/UX no Deck. |
+| P1 · Tester/qualidade | Resultado reconciliado confirmado, cobertura de ticks conflicting nos sete recibos. Investigar o conteúdo do relatório e o parser com regressão; só concluir cobertura após evidência inequívoca. Preservar os gates e os arquivos arquivados; corrigir os apontadores artifact_dir/manifesto de retenção para permitir revisão. Não repetir toda a campanha antes de determinar qual evidência falta. |
+| P1 · IND-CCI/IND-AGGR/E14/aceite físico | Não foi encontrada nesta entrega nova prova que encerre todos os aceites iCCI/CopyBuffer, escopos/netting, parcial/incerto/restart E14, DPI/teclado/acessibilidade e recuperação integrada. Os pares S09/Triplo não cobrem automaticamente esses casos. Retomar as fichas com entradas controladas e execução serial. DEMO ao vivo exige roteiro/autorização próprios. |
+| P1 · T19.53/54 e pesquisa | Ultra executável, backtest causal completo, protocolo/seletores e validação final OOS continuam incompletos. Corrigir comparabilidade antes da promoção; integrar política no executor e pacote existentes, sem transformar estudo sobre ledger em backtest completo. Nenhum Ultra foi certificado nesta revisão. |
+| P2 · documentação/ambiente | O código implementa um ambiente por OS, mas AGENTS.md ainda descreve apenas `.venv`; reconciliar a política registrada com a solução adotada, sem apagar o ambiente Linux. Charset da CLI e leitura intermitente da raiz precisam reprodução específica. Scripts de bancada usam junção/PATH próprios: provar o mesmo percurso pelo launcher público antes de declarar integração de UX. |
+
+### Próximo lote e limites desta validação
+
+Prioridade: corrigir comparabilidade e contrato temporal; fechar identidade/proteção da composição e recibos; resolver restore/caminhos e obter execução local proporcional sob limites normais; concluir qualidade nativa e E14; depois T19.53/54. Atualizações de cadastro, evidência e documentação podem seguir em paralelo lógico, sem cargas locais concorrentes.
+
+O revisor não alterou código, pins, índice ou configurações de segurança, nem criou outra árvore. Acrescentou somente esta revisão ao handoff, preservando o prefixo anterior. Não fez push de todo o WIP nem merge das PRs. Validação independente limitada aos diffs/recibos e sondas descritos; a evidência nativa anterior foi auditada por conteúdo/hash, não repetida. A lista acima permanece necessária para o fechamento e deve ser consumida pelas fichas originais.
+
+
+## Correções da revisão independente — 19/11/2026 (noite, Windows)
+
+Composição usada: `E:\misael\Projects\MT5X`, montagem WinBtrfs do `@home` Linux (`/home/misael/Projects/MT5X`). Não foi criado clone, worktree ou outro ambiente. HEAD do App continua `550b6d5f` (`codex/launcher-classes`) com WIP, HADOUKEN em `d3dd3a5e` e Safety em `27b85992`. Nada foi mesclado. Toda publicação usou índice privado, sem tocar o índice, o HEAD ou as branches locais.
+
+### Pilha publicada (rascunhos sobre a #366 `807298ae`)
+
+| PR | Ponta | Lacuna | Reprodução e resultado |
+|---|---|---|---|
+| #367 | `ff7c25d8` | P1 · T19.52: comparabilidade | **Antes:** a regressão falhava (`'comprovada' == 'não comprovada'`) com custos e risco diferentes. **Correção:** o contrato canônico de recibos foi extraído de `preset_assets.compare_runs` e passou a ser exigido pelo estudo: motor, código, capital/risco/custos, início, origem, relógio, moeda e especificação. Recibo ausente ou legado bloqueia; setup e parâmetros são as diferenças intencionais. **Depois:** `test_conditional_policy` 30/30, `test_laboratory_financial` 9/9; `test_laboratory_preset_assets` e `test_scope_comparison` passam funcionalmente. |
+| #368 | `8c247568` | P0 · BD03–05/T2.6: fuso | **Antes:** o módulo nativo do Windows lia `datetime` sem fuso no fuso do PC (GMT-3: janela 03:00→02:55). **Correção:** `LocalMT5` aplica o mesmo `_to_epoch` da ponte Linux (sem fuso = relógio do servidor). `extract`, `ticks` e `update` usam como "agora" o último tick do servidor. **Depois:** `test_bd03_clock_contract` cobre fusos por `TZ` (UTC, GMT-3, GMT+9, EST5EDT), DST e entrada ambígua; também passam CLI, ticks, conexão, automação, atualização incremental e painel. Contrato em `docs/dados/BD05_TEMPO.md`. |
+| #369 | `9960b5f3` | P1 · restauração/MAX_PATH | **Antes:** o recibo tinha 257 caracteres e o temporário atômico 270; a troca falhava no meio. **Correção:** pré-validação de todos os caminhos criados antes do primeiro efeito, com "nada foi alterado". A política `LongPathsEnabled` só é lida. **Depois:** recusa sem efeito e retomada em caminho curto; 84 testes de restauração e recursos passam com basetemp curto. |
+| #370 | `ad1acbc4` | P1 · qualidade nativa e P0 · proveniência | **Antes:** o pt-BR `100% de ticks reais` virava `conflicting`. **Correção:** o parser aceita o formato, e a evidência nativa grava `app_source` (sha256 CRLF→LF por módulo carregado, conferível com `git show`). **Depois:** `test_data_eligibility` 47, `test_preset_execution` 23, consumidores nativos 102. |
+| #371 | (esta seção) | P2 · documentação e handoff | `AGENTS.md` com um ambiente por sistema; esta seção. |
+
+### Evidência do percurso real (Windows físico, launcher público, sem junção nem PATH de bancada)
+
+- Extração de QA pelo `run.bat` na base própria `state/qa-tmp/windows-20261119-fuso`:
+  - host em E. South America (GMT-3), `broker_utc_offset` vazio;
+  - EURUSD M5 de 10–11/11: 576 barras, de `2026-11-10 00:00` a `2026-11-11 23:55`;
+  - ticks de 10/11: 302.070, o último às `23:59:58.811`;
+  - log: `extrair.log`.
+- Reavaliação dirigida dos 7 relatórios arquivados, sem repetir a campanha:
+  - arquivo: `state/qa-tmp/windows-20261118/tester/cobertura-reavaliada-20261119.json`;
+  - `report_sha256` igual ao gravado nos recibos;
+  - cobertura `reported` com 100% de ticks reais; elegibilidade ainda `unqualified`.
+- Adendo das sessões: `tester/sessoes-adendo-20261119.json`.
+  - Registra os arquivos arquivados com sha256 e aponta para eles (todos os `artifact_dir` originais deixaram de existir).
+  - Avalia `app_note` como insuficiente.
+  - **Prova:** para os aceites das 04:29 em diante, todo `presets/` e `robots/` coincide por blob com `807298ae`, exceto `execution.py`/`conditional_policy.py`, reescritos hoje. Antes desta sessão eram iguais a `807298ae`, mas o mtime não prova o conteúdo exato de cada execução.
+  - `bb9f2829` (03:38) rodou antes das correções do Triplo das 04:23.
+  - Os recibos `run-*.json` não foram alterados.
+
+### Composição e recuperação
+
+- Manifesto por conteúdo (`state/composition/manifesto_composicao.py`; prévia `manifesto-20261119-previa.json`, contra a ponta `9960b5f3`):
+  - App: das 217 entradas do WIP, 211 já estão publicadas byte a byte na pilha; as 6 divergentes são 5 documentos e o teste do incremento #370.
+  - HADOUKEN: tem WIP alheio, preservado (3 docs removidos, 5 docs novos não rastreados).
+  - Safety está limpo.
+  - Não há diferença de modo entre o índice e a ponta.
+- Documentos divergentes nos dois sentidos: `docs/PLANO_DE_TRABALHO.md` (5 conflitos), `docs/continuidade.md` (1), `docs/propostas/ANALYTICS_OPERACOES.md` (2) e `docs/ROADMAP.md` (0).
+  - A ponta tem seções de 12/11 ausentes no WIP, e o WIP tem acréscimos locais.
+  - Os rascunhos da fusão de 3 vias estão em `state/composition/fusao-docs/`. Não foram publicados: a decisão é do dono dos documentos.
+- Ref privada de retorno: `refs/mt5x/composicao/20261119` com a árvore exata do WIP (ver o manifesto final `state/composition/manifesto-20261119.json`). Não é branch e não foi enviada.
+- Logs Linux de 26/10 sobrescritos em `state/`:
+  - Buscados na lixeira do E: (vazia), nos inventários do `.workspace`, no ai-memory global (sem resultado) e nos pacotes de proteção de QA (outros arquivos).
+  - Os snapshots Btrfs não aparecem pelo Windows.
+  - A perda continua registrada; reexecutar gera evidência nova, não restaura os recibos.
+  - Conferir os snapshots no Linux.
+- Entrada anômala na raiz `MT5X/`: nome criado no Linux com quebra de linha (`")\n    panel.strategy.set(Sem"`).
+  - Ilegível no Windows (WinError 123); preservada.
+  - Conferir e remover pelo Linux, se for resíduo de comando malformado.
+
+### Desempenho e suíte (contenção comprovada, gate não aprovado)
+
+- Sonda `bancada/sonda_io.py`, resultado em `rerun/sonda-io-20261119.json`:
+  - primeira abertura de cada arquivo: 82–101 ms, a frio, tanto no NVMe/WinBtrfs quanto no SD;
+  - a quente: 3–6,5 ms;
+  - leitura sequencial: 116 MiB/s;
+  - `import pandas` a frio: 23 s; `import mt5_extracao.cli`: 2,2 s;
+  - Defender em tempo real ativo (MsMpEng ~320 MB).
+- A latência por primeira abertura explica os subprocessos que estouram 30–60 s; não foi encontrado defeito funcional nesses casos. Defender continua hipótese plausível, não causa isolada: não houve exclusão, e mudar a segurança é decisão do proprietário.
+- `test_multi_asset_scope_reads_all_cells_in_one_frozen_revision[6]` passa em 77,7 s, contra o gate de 60 s. Nenhum timeout foi aumentado, e a suíte completa não rodou no gate original.
+- Saída redirecionada da CLI no Windows sai em cp1252 (`e7 e3` = "çã"), como em `_tolerant_streams`; o console interativo é Unicode. Ler o arquivo redirecionado como UTF-8 mostra acentos trocados.
+
+### Situação para a revisão
+
+1. **Corrigido e validado:**
+   - T19.52 (comparabilidade econômica);
+   - contrato de fuso com extração real no Windows;
+   - pré-validação MAX_PATH da restauração;
+   - parser pt-BR da cobertura de ticks, com reavaliação dos 7 relatórios;
+   - adendo e manifesto das sessões arquivadas.
+2. **Implementado, com aceite específico pendente:**
+   - `app_source` nos recibos nativos (a próxima execução nativa vai demonstrá-lo);
+   - `update` com o "agora" do servidor (só testes; sem extração incremental real).
+3. **Bloqueado por dependência externa:**
+   - paridade Windows×Linux (Linux inacessível nesta sessão);
+   - snapshots Btrfs dos logs;
+   - decisão sobre Defender/LongPaths;
+   - fusão dos documentos alheios;
+   - DEMO ao vivo, sem roteiro nem autorização desta janela.
+4. **Não concluído:**
+   - suíte completa local no gate de 60 s;
+   - E14 (iCCI/CopyBuffer, AggrVolBalance, escopos/netting, parcial/incerto/restart, proteção) e aceites físicos de DPI/teclado;
+   - T19.53/54: protocolo/seletores, política causal no HADOUKEN e no backtest completo, pacote/consumidores e validação fora da amostra;
+   - encurtar os nomes dos recibos de restauração (exige migração compatível).
+
+**Próxima ação:**
+- O proprietário revisa as PRs #367→#371 sobre a pilha #353→#366.
+- No Linux: conferir os snapshots, a entrada anômala, a paridade T2.6 e a fusão dos documentos.
+- Depois, E14 nativo em execução serial, com entradas controladas.

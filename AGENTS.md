@@ -15,7 +15,7 @@ retomar: [docs/continuidade.md](docs/continuidade.md) (harmonização de 2026-10
 ## Fluxo obrigatório
 
 1. **Uma tarefa do plano por PR** (ex.: T1.1). Não misture tarefas nem faça "melhorias" extras.
-2. Reutilize o ambiente preparado pelo wrapper de `CONTINUAR_AQUI.md`; diagnostique antes de instalar novamente. Se estiver ausente, use o instalador oficial e `requirements-dev.txt` no único `.venv`, respeitando os limites de download e privilégio.
+2. Reutilize o ambiente preparado pelo wrapper de `CONTINUAR_AQUI.md`; diagnostique antes de instalar novamente. Se estiver ausente, use o instalador oficial e `requirements-dev.txt` no ambiente único do sistema (`.venv` do sistema que o criou; `.venv-windows` quando o `.venv` da pasta pertence ao Linux, ver `docs/instalacao.md`), respeitando os limites de download e privilégio.
 3. Conheça o baseline dos checks afetados antes de mudar código. Execute a suíte pertinente e os gates obrigatórios ao fechar o lote; documentação isolada exige revisão de diff/referências, sem repetir uma suíte pesada sem necessidade.
 4. Siga os passos da tarefa na ordem. Se um passo não bater com o código (ex.: a linha citada
    não existe mais), investigue a divergência no código atual e registre no PR. Preserve o contrato; prossiga no escopo comprovado e nas partes independentes, solicitando decisão somente quando indispensável.
@@ -71,7 +71,7 @@ Reutilizar ambiente/dados, conservar retorno e remover somente temporários pró
 
 | Objetivo | Comando |
 |---|---|
-| Testes | `.venv/bin/python -m pytest -q` |
+| Testes | `.venv/bin/python -m pytest -q` (Windows com `.venv` do Linux: `.venv-windows\Scripts\python.exe -m pytest -q`) |
 | Diagnóstico | `.venv/bin/python -m mt5_extracao.bootstrap doctor` |
 | Reconfigurar | `.venv/bin/python -m mt5_extracao.bootstrap configure` |
 | Lint dos scripts | `shellcheck install.sh run.sh scripts/*.sh scripts/install/*.sh` |
@@ -83,7 +83,7 @@ Reutilizar ambiente/dados, conservar retorno e remover somente temporários pró
 - Antes de implementar, leia `CONTINUAR_AQUI.md`, `docs/continuidade.md`, `docs/ROADMAP.md` e `docs/PLANO_DE_TRABALHO.md`, identifique causa, owner, dependências e aceite. Procure a solução oficial existente e integre nela; não introduza soluções concorrentes, aliases ambíguos ou refatorações fora do pedido. Neste host, a única raiz é `/home/misael/Projects/MT5X`.
 - Execute o lote até implementar, testar, revisar e preservar a continuidade. Resolva decisões reversíveis pelo contexto; não pare em planos nem peça confirmação para editar/testar o que já está autorizado. Comunique descobertas, bloqueios e entrega, sem narrar cada comando ou pequeno avanço.
 - Planeje a retenção das saídas. Reutilize ferramentas/ambientes compatíveis, limite jobs e encerre somente processos temporários próprios. Não mate trabalhos alheios, limpe caches compartilhados ou apague evidência para obter um gate verde.
-- A raiz da composição é `MT5X/`: App somente em `repos/app`, HADOUKEN em `repos/hadouken`, Safety em `repos/safety`; um ambiente App em `repos/app/.venv`, insumos/recibos nos destinos do wrapper. Respeite os commits fixados; não altere pins nem crie outro motor de dados, cache, scheduler ou executor para contornar integração.
+- A raiz da composição é `MT5X/`: App somente em `repos/app`, HADOUKEN em `repos/hadouken`, Safety em `repos/safety`; um ambiente App por sistema operacional (`repos/app/.venv` do sistema dono e, no Windows sobre a mesma pasta, `repos/app/.venv-windows` com `config\config.windows.ini` e logs em `state/<sistema>/`; nunca misture as dependências), insumos/recibos nos destinos do wrapper. Respeite os commits fixados; não altere pins nem crie outro motor de dados, cache, scheduler ou executor para contornar integração.
 - Faça os checks pertinentes a toda alteração; para documentos, revise diff, referências e coerência. Para código, cubra comportamento/regressão e execute os gates aplicáveis, sem desativá-los. Use o launcher/atalho central para validar GUI e CLI no host atual, preservando os dados. O doctor offline é `doctor --development --no-probe`; não qualifica MT5/Wine/Windows nem contas. Integração nativa exige ambiente permitido, ownership/lease e evidência real; nunca usar negociação REAL como teste.
 - Reutilize a autenticação válida e os helpers existentes. Nunca peça senha/token no chat, copie sessões ou grave credenciais em código/log. Se faltar acesso indispensável, solicite uma única ação pelo fluxo oficial, preserve o estado e avance no trabalho independente; não repita permissões já concedidas.
 - Confira remoto, PRs e checks do SHA antes do lote e ao publicar; reutilize o PR da mesma branch/objetivo. Revise arquivos explícitos, segredos e tamanho, faça commit/push do incremento autorizado e confirme o SHA remoto. Sem stage global de resgates, push forçado, merge de pesquisas ou publicação de dados privados. Não faça polling contínuo de CI.
