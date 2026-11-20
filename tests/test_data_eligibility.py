@@ -174,6 +174,22 @@ def test_explicit_tester_coverage_is_reported_not_inferred(label, value, expecte
     assert report["eligibility"]["status"] == "unqualified" and report["eligibility"]["eligible"] is None
 
 
+@pytest.mark.parametrize("label,value,expected", [("Qualidade do histórico:", "100% de ticks reais", 1),
+                                                 ("Qualidade do histórico:", "37% de ticks reais", .37),
+                                                 ("Qualidade do histórico:", "100%", None)])
+def test_portuguese_native_report_declares_real_tick_coverage(label, value, expected):
+    """Relatório do Tester em pt-BR (MT5 6324): "100% de ticks reais" saía como conflitante nos sete recibos."""
+    # Estrutura do relatório arquivado (sessão 96173cc6): rótulo e valor em células vizinhas.
+    row = f'<tr align="right">\n<td nowrap colspan="3">{label}</td>\n<td nowrap><b>{value}</b></td>\n</tr>'
+    other = '<tr align="right"><td nowrap colspan="3">Barras:</td><td nowrap><b>576</b></td>' \
+            '<td nowrap colspan="3">Ticks:</td><td nowrap><b>471650</b></td></tr>'
+    report = q.tester_report(f"<table>{row}{other}</table>", "4")
+    assert report["real_tick_fraction_reported"] == expected
+    assert report["real_tick_coverage_status"] == ("reported" if expected is not None else "not_reported")
+    assert q.evaluate(report, ("complete_real_ticks",))["eligible"] == (expected == 1)
+    assert report["eligibility"]["status"] == "unqualified"       # cobertura não aprova o Expert
+
+
 def test_conflicting_report_or_unlabelled_trade_comment_is_not_coverage():
     html = "<table><tr><td>Comment</td><td>100% real ticks</td></tr></table>"
     assert q.tester_report(html, "4")["real_tick_fraction_reported"] is None
@@ -186,7 +202,8 @@ def test_conflicting_report_or_unlabelled_trade_comment_is_not_coverage():
 
 @pytest.mark.parametrize("label,value", [
     ("Real ticks", "-100%"), ("Real ticks", "−100%"), ("Real ticks", "100% / 75%"),
-    ("History Quality", "100% (real ticks: 75%)"),
+    ("History Quality", "100% (real ticks: 75%)"), ("Qualidade do histórico", "100% de ticks reais 75%"),
+    ("Qualidade do histórico", "75% de ticks reais"),
 ])
 def test_invalid_or_ambiguous_tester_percent_never_qualifies_full_coverage(label, value):
     rows = f"<tr><td>{label}</td><td>{value}</td></tr><tr><td>Real ticks</td><td>100%</td></tr>"

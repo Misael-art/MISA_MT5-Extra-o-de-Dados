@@ -210,6 +210,10 @@ def test_exported_set_and_ini_are_exactly_loaded_then_native_contracts_reopen_wi
     assert proof["tester_capture"]["matches_exported_set"] and proof["actual_mode"]==dict(tester=True,visual=False,demo=True)
     assert proof["functional_native_activity"] and not proof["functional_cycle"]
     assert not proof["allows_live"] and not proof["statistical_approval"] and not proof["cache_eligible"]
+    source=proof["app_source"]
+    assert source["schema"]=="mt5x-app-source/v1" and source["changed_during_run"] is False
+    assert source["files"]["mt5_extracao/presets/execution.py"]==execution.content_sha256(Path(execution.__file__).read_bytes())
+    assert "mt5_extracao/presets/compiler.py" in source["files"] and source["digest"]==execution.source_digest(source["files"])
     assert execution.load_evidence(p.db)==[proof]
     assert (run.session.directory/"preset_tester.ini").is_file()
     assert p.config.getfloat("STRATEGY","initial_equity")==9000
@@ -285,3 +289,28 @@ def test_matching_trades_can_have_a_different_native_cash_receipt(prepared, monk
         section="cash", field="native_cash_result", expected=2.0, observed=2.01)
     assert replay.evidence["ledger"] == first.evidence["ledger"]
     assert not replay.evidence["functional_cycle"]
+
+
+def test_app_source_identity_ignores_line_endings_and_foreign_modules_but_not_code(tmp_path):
+    """BD21–22: o recibo nativo identifica o código que executou, igual no Linux (LF) e no Windows (CRLF)."""
+    import types
+    identities = []
+    for host, newline in (("linux", b"\n"), ("windows", b"\r\n")):
+        root = tmp_path / host
+        (root / "mt5_extracao" / "presets").mkdir(parents=True)
+        code = root / "mt5_extracao" / "presets" / "execution.py"
+        code.write_bytes(newline.join([b"x = 1", b"y = 2", b""]))
+        (root / "mt5_extracao" / "__init__.py").write_bytes(b"")
+        modules = {"mt5_extracao": types.SimpleNamespace(__file__=str(root / "mt5_extracao" / "__init__.py")),
+                   "mt5_extracao.presets.execution": types.SimpleNamespace(__file__=str(code)),
+                   "mt5_extracao.nativo": types.SimpleNamespace(__file__=str(root / "x.pyd")),
+                   "outro": types.SimpleNamespace(__file__=str(code))}
+        identities.append((execution.app_source_identity(modules, root=root), modules, code))
+    (linux, _, _), (windows, modules, code) = identities
+    assert linux == windows and set(linux["files"]) == {"mt5_extracao/__init__.py", "mt5_extracao/presets/execution.py"}
+    # O mesmo resumo a partir do conteúdo publicado (como `git show <commit>:<caminho>` entrega).
+    published = {"mt5_extracao/__init__.py": execution.content_sha256(b""),
+                 "mt5_extracao/presets/execution.py": execution.content_sha256(b"x = 1\ny = 2\n")}
+    assert execution.source_digest(published) == linux["digest"]
+    code.write_bytes(b"x = 1\r\ny = 3\r\n")
+    assert execution.app_source_identity(modules, root=tmp_path / "windows")["digest"] != linux["digest"]
