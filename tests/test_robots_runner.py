@@ -64,6 +64,37 @@ def test_batch_runs_every_job_and_a_failure_does_not_stop_the_others():
     assert events[-1] == {"kind": runner.FINISHED, "total": 6, "ok": 5, "failed": 1, "canceled": 0}
 
 
+def test_inventory_runner_reports_ineligible_native_jobs_without_starting_them(monkeypatch):
+    robot = _robot("incompleto", catalog.MQL5)
+    jobs = [runner.Job(robot, symbol, "1 dia") for symbol in ("PETR4", "VALE3")]
+    events, launches, failures = [], [], []
+    budget = types.SimpleNamespace(
+        batch_id="qa",
+        reason="",
+        prepare=lambda requested: [{"key": symbol} for _, symbol, _ in requested],
+        recovered=lambda key: None,
+        admit=lambda key: types.SimpleNamespace(result=lambda status, reason: failures.append((key, status))),
+        finish=lambda failed: failures.append(failed),
+        cancel=lambda *args: None,
+    )
+
+    def preflight(config, robots):
+        assert list(robots) == [robot, robot]
+        return {robot.key: "robô não compilado"}
+
+    monkeypatch.setattr(runner.backtest, "batch_native_ineligibility", preflight)
+    monkeypatch.setattr(runner, "run_job", lambda *args, **kwargs: launches.append("tester"))
+    batch = runner.BatchRunner(None, None, jobs, on_event=events.append, budget=budget,
+                               governor=_governor([(5, 40)]), mql5_setup=lambda: launches.append("setup")).start()
+
+    assert batch.join(10)
+    assert launches == [] and failures == [("PETR4", "failed"), ("VALE3", "failed"), True]
+    assert [event["kind"] for event in events] == [runner.DONE, runner.DONE, runner.FINISHED]
+    assert [row["job"] for row in batch.results] == jobs
+    assert all(row["status"] == "ineligible" and row["run"] is None for row in batch.results)
+    assert events[-1]["ok"] == 0 and events[-1]["failed"] == 2
+
+
 def test_busy_machine_keeps_one_test_at_a_time_and_idle_machine_runs_in_parallel():
     def peak(readings):
         active, seen, lock = [0], [0], threading.Lock()

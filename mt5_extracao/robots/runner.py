@@ -230,6 +230,9 @@ class BatchRunner:
                     cpu, ram = governor.read()
                     self._emit(kind=DONE, completed=len(self.results), total=total, cpu=cpu, ram=ram, **result)
             pending = [job for job in pending if job not in recovered]
+            plain_jobs = [job for job in pending if not (self._entries[id(job)].get("execution") or {}).get("mode")]
+            native_errors = (backtest.batch_native_ineligibility(self.config, (job.robot for job in plain_jobs))
+                             if self._run is None else {})
             with ThreadPoolExecutor(max_workers=governor.max_workers, thread_name_prefix="mt5x-backtest") as pool:
                 while (pending and not self._cancel.is_set()) or running:
                     cpu, ram = governor.read()
@@ -243,6 +246,14 @@ class BatchRunner:
                             self.error = str(exc)
                             self._cancel.set()
                             break
+                        error = native_errors.get(job.robot.key) if job in plain_jobs else None
+                        if error:
+                            control.result("failed", error)
+                            failed += 1
+                            result = dict(job=job, run=None, error=error, status="ineligible")
+                            self.results.append(result)
+                            self._emit(kind=DONE, completed=len(self.results), total=total, cpu=cpu, ram=ram, **result)
+                            continue
                         if job.robot.kind == catalog.MQL5 and self._mql5_setup is not None:
                             setup, self._mql5_setup = self._mql5_setup, None
                             try:

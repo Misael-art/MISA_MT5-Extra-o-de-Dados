@@ -1,4 +1,5 @@
 import os
+import struct
 import subprocess
 import sys
 import time
@@ -34,6 +35,28 @@ def test_check_config_bad_mt5_path(tmp_path):
     by_name = {c.name: c for c in doctor.check_config(tmp_path)}
     assert by_name["Caminho do MT5"].status == doctor.FAIL
     assert by_name["Pasta do banco de dados"].status == doctor.OK
+
+
+@pytest.mark.parametrize("truncated", [False, True])
+def test_doctor_checks_terminal_pe_sections(tmp_path, truncated):
+    terminal = tmp_path / paths.MT5_TERMINAL_EXE
+    image = bytearray(1024 if truncated else 1536)
+    image[:2] = b"MZ"
+    struct.pack_into("<I", image, 60, 64)
+    image[64:68] = b"PE\0\0"
+    struct.pack_into("<HHIIIHH", image, 68, 0x8664, 1, 0, 0, 0, 112, 2)
+    struct.pack_into("<H", image, 88, 0x020B)
+    struct.pack_into("<II", image, 216, 1024, 512)
+    terminal.write_bytes(image)
+    cfg = config_builder.build_config(None, {"MT5": {"path": str(terminal)}})
+    config_builder.write_config(paths.config_path(tmp_path), cfg)
+    (tmp_path / "database").mkdir()
+    result = next(c for c in doctor.check_config(tmp_path) if c.name == "Caminho do MT5")
+    assert str(terminal) in result.detail
+    assert result.status == (doctor.FAIL if truncated else doctor.OK)
+    if truncated:
+        assert "dados da seção 1 ultrapassam o fim do arquivo" in result.detail
+        assert "instalação oficial" in result.hint
 
 
 def test_format_report_summary():

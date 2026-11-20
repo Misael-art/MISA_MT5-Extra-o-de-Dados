@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from . import demo_account, paths
-from .mt5_locator import has_terminal
+from .mt5_locator import InvalidWindowsImage, has_terminal, terminal_executable, validate_windows_image
 
 OK, WARN, FAIL = "OK", "AVISO", "FALHA"
 
@@ -122,11 +122,17 @@ def check_config(root: Path, require_mt5: bool = True) -> List[Check]:
                             "[MT5] path vazio",
                             "Instale o MT5 pelo instalador ou informe --mt5-path ao configurar."
                             if require_mt5 else "Desenvolvimento offline; terminal e negociação não qualificados."))
-    elif not has_terminal(Path(mt5_path)):
-        checks.append(Check("Caminho do MT5", FAIL, f"terminal64.exe não encontrado em {mt5_path}",
-                            "Reinstale o MT5 ou corrija [MT5] path em config/config.ini."))
     else:
-        checks.append(Check("Caminho do MT5", OK, mt5_path))
+        terminal = terminal_executable(mt5_path)
+        hint = f"Confira [MT5] path em {path} ou repare a instalação oficial do MT5."
+        try:
+            validate_windows_image(terminal)
+        except FileNotFoundError:
+            checks.append(Check("Caminho do MT5", FAIL, f"Terminal não encontrado em {terminal}", hint))
+        except (InvalidWindowsImage, OSError) as error:
+            checks.append(Check("Caminho do MT5", FAIL, str(error), hint))
+        else:
+            checks.append(Check("Caminho do MT5", OK, str(terminal)))
 
     db_path = cfg.get("DATABASE", "path", fallback="database/mt5_data.db")
     db_dir = (Path(root) / db_path).parent if not Path(db_path).is_absolute() else Path(db_path).parent
@@ -256,7 +262,13 @@ def run_checks(root: Path = paths.PROJECT_ROOT, probe_bridge_conn: bool = True,
     root = Path(root)
     checks = [check_python(), check_venv(root)]
     checks += [check_module(m, p) for m, p in REQUIRED_MODULES]
-    checks += [check_module(m, p, required=False) for m, p in OPTIONAL_MODULES]
+    for module, package in OPTIONAL_MODULES:
+        check = check_module(module, package, required=False)
+        if check.status == WARN and package == "pandas-ta":
+            check.hint = ("MACD e Bollinger legados indisponíveis. As versões do PyPI exigem Python 3.12+; "
+                          "o registry de pesquisa usa implementações próprias." if sys.version_info < (3, 12)
+                          else "Confira a dependência opcional em requirements-optional.txt.")
+        checks.append(check)
     checks.append(check_tkinter())
     checks += check_config(root, require_mt5=not development)
     if development:

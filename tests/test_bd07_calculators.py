@@ -17,6 +17,26 @@ def test_without_pandas_ta_missing_outputs_are_declared(monkeypatch):
     assert out["macd_line"].isna().all() and out["rsi"].notna().any()
 
 
+def test_basic_indicators_preserve_warmup_missing_values_and_causality(monkeypatch):
+    monkeypatch.setattr(legacy, "ta", None)
+    close = pd.Series(range(100, 144), index=pd.date_range("2025-01-02", periods=44, freq="min"), dtype=float)
+    data = pd.DataFrame({"open": close, "close": close, "high": close + 1, "low": close - 1})
+    calc = legacy.IndicatorCalculator()
+    result = calc.calculate_technical_indicators(data.copy())
+    assert result.attrs["indicator_backend"]["name"] == "BasicIndicators"
+    assert result.index.equals(data.index)
+    assert result["rsi"].iloc[:14].isna().all() and result["rsi"].iloc[14] == 100
+    assert result["atr"].iloc[:14].isna().all() and result["atr"].iloc[14] == 2
+    assert result["ma_20"].iloc[:19].isna().all() and result["ma_20"].iloc[19] == 109.5
+
+    prefix = calc.calculate_technical_indicators(data.iloc[:30].copy())
+    pd.testing.assert_frame_equal(result.iloc[:30], prefix)
+    data.loc[data.index[20], "close"] = float("nan")
+    with_gap = calc.calculate_technical_indicators(data.copy())
+    assert with_gap["rsi"].iloc[20:35].isna().all()
+    assert with_gap["rsi"].iloc[35] == 100
+
+
 def test_with_pandas_ta_nothing_is_declared_missing(monkeypatch):
     def frame(df, **names):
         return pd.DataFrame({name: df * 0 + 1.0 for name in names})

@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 from mt5_extracao.bootstrap import display, paths
+from mt5_extracao.bootstrap.mt5_locator import InvalidWindowsImage, validate_windows_image
 
 from . import mql, safety_lib
 from .catalog import MQL5, Robot
@@ -207,6 +208,8 @@ def install_plan(robot: Robot, data: Path) -> List[InstallItem]:
         file = Path(name)
         if file == main:
             continue
+        if not file.is_file():
+            raise FileNotFoundError(f"Arquivo do robô não encontrado: {file}")
         if file.suffix.lower() == ".set":
             plan.append(InstallItem(file, mql5 / "Presets" / file.name))
             continue
@@ -337,6 +340,14 @@ def run_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] = N
         bat.unlink(missing_ok=True)
 
 
+def _compiled_revision(path: Path):
+    try:
+        info = path.stat()
+    except FileNotFoundError:
+        return None
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
 def compile_source(source, metaeditor, prefix: Optional[Path] = None, run: Optional[Callable] = None,
                    timeout: int = COMPILE_TIMEOUT) -> CompileResult:
     """
@@ -347,6 +358,7 @@ def compile_source(source, metaeditor, prefix: Optional[Path] = None, run: Optio
     if not source.is_file():
         raise FileNotFoundError(f"Fonte não encontrado: {source}")
     log_path, compiled = source.with_suffix(".log"), source.with_suffix(".ex5")
+    previous = _compiled_revision(compiled)
     log_path.unlink(missing_ok=True)
     command_line = '"{}" /compile:"{}" /log:"{}"'.format(_windows_path(metaeditor, prefix),
                                                          _windows_path(source, prefix),
@@ -378,11 +390,15 @@ def compile_source(source, metaeditor, prefix: Optional[Path] = None, run: Optio
         result.summary = f"Log de compilação incompleto (sem a linha de resultado): veja {log_path}."
     elif result.errors:
         result.summary = f"{result.errors} erro(s) e {result.warnings} aviso(s): corrija o fonte e compile de novo."
-    elif not compiled.is_file():
-        result.summary = f"Sem erros no log, mas o arquivo {compiled.name} não foi gerado: veja {log_path}."
     else:
-        result.ok, result.compiled = True, str(compiled)
-        result.summary = f"Compilado sem erros ({result.warnings} aviso(s)): {compiled.name}"
+        current = _compiled_revision(compiled) if compiled.is_file() else None
+        if current is None or current[2] == 0:
+            result.summary = f"Sem erros no log, mas o arquivo {compiled.name} não foi gerado: veja {log_path}."
+        elif current == previous:
+            result.summary = f"O {compiled.name} anterior não foi atualizado pelo MetaEditor: veja {log_path}."
+        else:
+            result.ok, result.compiled = True, str(compiled)
+            result.summary = f"Compilado sem erros ({result.warnings} aviso(s)): {compiled.name}"
     return result
 
 
@@ -867,6 +883,18 @@ def spawn_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] =
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
 
+def validate_terminal(config) -> Path:
+    """Confere o terminal selecionado antes de alterar a organização do MT5."""
+    terminal = install_dir(config) / paths.MT5_TERMINAL_EXE
+    try:
+        validate_windows_image(terminal)
+    except FileNotFoundError as error:
+        raise FileNotFoundError(f"Terminal não encontrado em {terminal}. Confira [MT5] path.") from error
+    except InvalidWindowsImage as error:
+        raise InvalidWindowsImage(f"{error} Confira [MT5] path ou repare a instalação oficial do MT5.") from error
+    return terminal
+
+
 def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional[Callable] = None,
                    is_running: Optional[Callable] = None) -> Path:
     """
@@ -878,16 +906,22 @@ def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional
         raise RuntimeError("O MetaTrader 5 está aberto: o robô só entra no gráfico quando o terminal é iniciado "
                            "pelo programa. Feche o MT5 ou repita com --close-terminal.")
     prefix = wine_prefix(config)
-    terminal = install_dir(config) / paths.MT5_TERMINAL_EXE
-    if not terminal.is_file():
-        raise FileNotFoundError(f"Terminal não encontrado em {terminal}. Confira [MT5] path em config/config.ini.")
+    terminal = validate_terminal(config)
     ini = data / f"{name}.ini"
     ini.write_bytes(ini_text.encode("utf-16"))
     portable = prefix is not None or data.resolve() == terminal.parent.resolve()
     command_line = '"{}"{}'.format(_windows_path(terminal, prefix), " /portable" if portable else "")
     if ini_text:
         command_line += ' /config:"{}"'.format(_windows_path(ini, prefix))
-    (spawn or spawn_windows_command)(command_line, terminal.parent, prefix)
+    try:
+        (spawn or spawn_windows_command)(command_line, terminal.parent, prefix)
+    except OSError as error:
+        if getattr(error, "winerror", None) not in (191, 192, 193, 216):
+            raise
+        raise InvalidWindowsImage(
+            f"O Windows recusou iniciar {terminal} ({error}). "
+            "Confira [MT5] path, a arquitetura e repare a instalação oficial do MT5 se necessário."
+        ) from error
     return ini
 
 

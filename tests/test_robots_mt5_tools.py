@@ -187,6 +187,18 @@ def test_compile_failures_are_reported_with_the_fix(mt5_home):
         mt5_tools.compile_source(LIBRARY / "Experts" / "Demo" / "DemoGuard.mq5", editor, mt5_home.prefix, lambda *a: 0)
 
 
+def test_compile_rejects_preexisting_ex5_when_only_log_is_written(mt5_home):
+    source = mt5_tools.install(robot(), mt5_home.home)[0].target
+    editor = mt5_home.home / "MetaEditor64.exe"
+    compiled = source.with_suffix(".ex5")
+    compiled.write_bytes(b"binario anterior")
+
+    result = mt5_tools.compile_source(source, editor, mt5_home.prefix, fake_metaeditor(LOG_OK, write_ex5=False))
+
+    assert not result.ok and "anterior não foi atualizado" in result.summary
+    assert compiled.read_bytes() == b"binario anterior"
+
+
 def test_wine_runner_uses_a_bat_file_and_cleans_up(mt5_home, monkeypatch):
     seen = {}
 

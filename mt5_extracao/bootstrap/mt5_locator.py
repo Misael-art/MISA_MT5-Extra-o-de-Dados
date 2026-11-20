@@ -4,6 +4,7 @@ Localiza instalações do MetaTrader 5 no Windows e em prefixos Wine (Linux).
 Somente biblioteca padrão. Nenhuma função aqui inicia processos.
 """
 import os
+import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, List, Optional
@@ -37,6 +38,64 @@ def has_terminal(directory: Path) -> bool:
         return (Path(directory) / paths.MT5_TERMINAL_EXE).is_file()
     except OSError:
         return False
+
+
+def terminal_executable(configured_path) -> Path:
+    """Aceita a pasta da instalação ou o próprio terminal64.exe."""
+    path = Path(configured_path).expanduser()
+    return path if path.name.lower() == paths.MT5_TERMINAL_EXE else path / paths.MT5_TERMINAL_EXE
+
+
+class InvalidWindowsImage(RuntimeError):
+    """O arquivo existe, mas não pode ser usado como executável Windows."""
+
+
+def validate_windows_image(path: Path) -> None:
+    """Verifica a estrutura PE lendo só os cabeçalhos, sem iniciar o executável."""
+    def invalid(reason):
+        return InvalidWindowsImage(f"{path}: executável Windows inválido ({reason}).")
+
+    with path.open("rb") as image:
+        size = os.fstat(image.fileno()).st_size
+        dos = image.read(64)
+        if len(dos) != 64 or dos[:2] != b"MZ":
+            raise invalid("cabeçalho MZ ausente ou incompleto")
+        offset, = struct.unpack_from("<I", dos, 60)
+        if not 64 <= offset <= size - 24:
+            raise invalid("cabeçalho PE fora do arquivo")
+        image.seek(offset)
+        header = image.read(24)
+        if len(header) != 24 or header[:4] != b"PE\0\0":
+            raise invalid("assinatura PE ausente ou incompleta")
+        machine, section_count, _, _, _, optional_size, flags = struct.unpack_from("<HHIIIHH", header, 4)
+        if not (flags & 0x0002) or flags & 0x2000 or not 1 <= section_count <= 96:
+            raise invalid("imagem não executável ou tabela de seções inválida")
+
+        optional = image.read(optional_size)
+        if len(optional) != optional_size or len(optional) < 2:
+            raise invalid("cabeçalho opcional truncado")
+        magic, = struct.unpack_from("<H", optional)
+        directory_start = {0x010B: 96, 0x020B: 112}.get(magic)
+        if directory_start is None or len(optional) < directory_start:
+            raise invalid("formato PE32 ou PE32+ ausente ou incompleto")
+        if (machine, magic) not in {(0x014C, 0x010B), (0x8664, 0x020B),
+                                   (0xAA64, 0x020B), (0xA641, 0x020B), (0xA64E, 0x020B)}:
+            raise invalid(f"arquitetura PE incompatível (0x{machine:04X})")
+
+        sections = image.read(section_count * 40)
+        if len(sections) != section_count * 40:
+            raise invalid("tabela de seções truncada")
+        for index in range(section_count):
+            data_size, data_offset = struct.unpack_from("<II", sections, index * 40 + 16)
+            if data_size and (not data_offset or data_offset + data_size > size):
+                raise invalid(f"dados da seção {index + 1} ultrapassam o fim do arquivo")
+        directory_count, = struct.unpack_from("<I", optional, directory_start - 4)
+        if directory_count >= 5:
+            if len(optional) < directory_start + 40:
+                raise invalid("entrada da tabela de certificados truncada")
+            certificate, certificate_size = struct.unpack_from("<II", optional, directory_start + 32)
+            if certificate_size and (not certificate or certificate + certificate_size > size):
+                raise invalid("tabela de certificados ultrapassa o fim do arquivo")
 
 
 def _scan_program_dirs(base_dirs: Iterable[Path]) -> List[Path]:

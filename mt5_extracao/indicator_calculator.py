@@ -30,9 +30,9 @@ class BasicIndicators:
         """Implementação básica de RSI"""
         try:
             delta = close.diff()
-            gain = delta.where(delta > 0, 0)
-            loss = -delta.where(delta < 0, 0)
-            # Usa Simple Moving Average (SMA) para média, como pandas_ta faz por padrão
+            gain = delta.clip(lower=0)
+            loss = -delta.clip(upper=0)
+            # O RSI básico usa SMA de variações válidas, incluindo a janela de aquecimento.
             avg_gain = gain.rolling(window=length, min_periods=length).mean()
             avg_loss = loss.rolling(window=length, min_periods=length).mean()
             rs = avg_gain / avg_loss
@@ -118,6 +118,10 @@ class IndicatorCalculator:
         log.debug(f"Calculando indicadores para DataFrame com {len(df)} linhas...")
         try:
             if self.use_pandas_ta:
+                df.attrs["indicator_backend"] = {
+                    "name": "pandas-ta",
+                    "version": getattr(ta, "__version__", None),
+                }
                 log.debug("Usando pandas_ta para indicadores.")
                 # RSI
                 df['rsi'] = ta.rsi(df['close'], length=14)
@@ -139,7 +143,7 @@ class IndicatorCalculator:
                 # True Range (pode ser útil)
                 df['true_range'] = ta.true_range(df['high'], df['low'], df['close'])
             else:
-                # Usa implementações básicas
+                df.attrs["indicator_backend"] = {"name": "BasicIndicators", "pandas_version": pd.__version__}
                 log.debug("Usando BasicIndicators (fallback).")
                 df['rsi'] = self.basic_indicators.rsi(df['close'], length=14)
                 df['ma_20'] = self.basic_indicators.sma(df['close'], length=20)
@@ -149,8 +153,7 @@ class IndicatorCalculator:
                 # declarado, nunca um sucesso silencioso.
                 for column in self.UNAVAILABLE_WITHOUT_PANDAS_TA:
                     df[column] = np.nan
-                df.attrs["unavailable_outputs"] = {column: "pandas-ta ausente" for column in
-                                                   self.UNAVAILABLE_WITHOUT_PANDAS_TA}
+                df.attrs["unavailable_outputs"] = self.unavailable_outputs
                 if not self._unavailable_warned:
                     log.warning("pandas-ta ausente: %s ficam indisponíveis (NaN) nas colunas legadas; instale "
                                 "requirements-optional.txt ou use o registry analítico.",

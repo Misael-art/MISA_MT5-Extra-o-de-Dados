@@ -386,14 +386,15 @@ def _installed_native(config, robot, compiled_override=None):
     from . import mt5_tools
     slug = robot.key.split(":", 1)[1]
     data = mt5_tools.data_dir(config)
-    source_file = mt5_tools.install_plan(robot, data)[0].target
+    plan = mt5_tools.install_plan(robot, data)
+    source_file = plan[0].target
     compiled = Path(compiled_override) if compiled_override is not None else source_file.with_suffix(".ex5")
     if not compiled.is_file() or (source_file.suffix.lower() == ".mq5" and source_file.is_file()
                                   and compiled.stat().st_mtime < source_file.stat().st_mtime):
         raise ValueError(f"{robot.name} não está compilado na pasta do MT5. Rode antes: mt5x robots compile {slug}")
     # O que roda no Tester é o que está na pasta do MT5. Se o fonte ou um include mudou no disco depois da última
     # compilação, o teste seria de um código antigo e a bateria leria o novo: recusa e manda compilar.
-    stale = [item.target.name for item in mt5_tools.install_plan(robot, data)
+    stale = [item.target.name for item in plan
              if item.source.suffix.lower() in (".mq5", ".mqh") and
              (not item.target.is_file() or item.target.read_bytes() != item.source.read_bytes())]
     if stale:
@@ -621,6 +622,25 @@ def already_tested(db, robot, symbol: str, timeframe_name: str, preset: Optional
     return None
 
 
+def batch_native_ineligibility(config, robots, preset=None):
+    """Confere cada robô uma vez antes de iniciar o lote, sem modificar seus arquivos."""
+    from ..composition.native import runtime_binding_required
+    checked = {}
+    for robot in robots:
+        if robot.kind != catalog.MQL5 or robot.key in checked:
+            continue
+        try:
+            if runtime_binding_required(robot):
+                raise ValueError("Este perfil exige pacote de preset revisado; use a execução do preset no Tester.")
+            tester_values(robot, preset)
+            _installed_native(config, robot)
+        except (OSError, RuntimeError, ValueError) as error:
+            checked[robot.key] = str(error)
+        else:
+            checked[robot.key] = ""
+    return checked
+
+
 def run_batch(db, config, robots, symbols, timeframes, start=None, end=None, preset: Optional[str] = None,
               resume: bool = False, progress: Optional[Callable] = None, run: Optional[Callable] = None,
               is_running: Optional[Callable] = None, budget=None, batch_id=None) -> List[dict]:
@@ -637,6 +657,7 @@ def run_batch(db, config, robots, symbols, timeframes, start=None, end=None, pre
     failed = False
     try:
         plan = budget.prepare(jobs, start=start, end=end, preset=preset, resume_latest=resume and batch_id is None)
+        native_errors = batch_native_ineligibility(config, (robot for robot, _, _ in jobs), preset)
         for (robot, symbol, timeframe), entry in zip(jobs, plan):
             item = {"robot": robot.key, "symbol": symbol, "timeframe": timeframe, "run": None, "error": "", "skipped": False}
             control = None
@@ -656,6 +677,9 @@ def run_batch(db, config, robots, symbols, timeframes, start=None, end=None, pre
                     control = budget.admit(entry["key"])
                     if entry.get("preparation_error"):
                         raise ValueError(entry["preparation_error"])
+                    if native_errors.get(robot.key):
+                        item["status"] = "ineligible"
+                        raise ValueError(native_errors[robot.key])
                     if robot.kind == catalog.MQL5:
                         item["run"] = run_mql5(db, config, robot, symbol, timeframe,
                                               datetime.fromisoformat(entry["start"]), datetime.fromisoformat(entry["end"]),

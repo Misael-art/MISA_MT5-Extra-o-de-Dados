@@ -1,8 +1,7 @@
 # Dependências opcionais: o instalador tenta instalar, mas segue sem elas.
-# pandas-ta: indicadores extras (o app tem implementações básicas de reserva).
-# Obs.: versões antigas foram retiradas do PyPI; pode não haver versão
-# compatível com o seu Python.
-pandas-ta
+# pandas-ta: indicadores extras da extração legada; o registry de pesquisa é independente.
+# As versões publicadas no PyPI exigem Python 3.12 ou superior.
+pandas-ta; python_version >= "3.12"
 # pyarrow / duckdb: exportação Parquet e DuckDB (mt5x export --format parquet|duckdb)
 pyarrow
 duckdb
