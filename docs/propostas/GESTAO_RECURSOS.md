@@ -121,6 +121,20 @@ conclusão representa resultado incerto. Nova troca fica bloqueada até consulta
 o resultado e solicitar a recuperação correspondente. Leitura parcial, schema
 desconhecido, alias inconsistente e checksum divergente preservam os dados.
 
+**Caminhos longos no Windows (19/11/2026).** Com `LongPathsEnabled` desligado, o
+recibo pode caber no limite e o arquivo temporário dele não. Exemplo: 257 contra
+270 caracteres. Antes, a troca falhava no meio da operação. Agora a restauração
+calcula tudo o que vai criar antes do primeiro efeito, ou seja, antes do recibo,
+da cópia e da troca: recibo e temporário atômico, cópia, `.parcial`, diários
+SQLite (`-journal/-wal/-shm`), recibo da cópia e as pastas. Se algum caminho passar
+de 259 caracteres (247 para pastas), a operação é recusada com "nada foi alterado"
+e o pedido pode ser repetido de uma pasta mais curta. A política só é lida no
+registro, nunca alterada. Habilitar caminhos longos é decisão do administrador,
+não pré-requisito do App. Provas em `tests/test_restore_operations.py`: recusa
+sem efeito e retomada, contagem de temporários e auxiliares, e leitura da
+política. Limite: os nomes dos recibos continuam com a identidade completa
+(64+32 hex); encurtá-los exigiria migração compatível dos recibos existentes.
+
 ```bash
 rtk ./run.sh --cli resources restore-backup CAMINHO --yes
 rtk ./run.sh --cli resources restore-status --operation-id ID

@@ -311,3 +311,49 @@ files.restore_backup(db,config,sys.argv[3])
     assert pending["state"] == "uncertain"
     recovered = files.restore_backup(db, config, pending["safety_copy"], recovery_of=pending["operation_id"])
     assert recovered["ok"] and value(db.db_path) == 99
+
+
+def _receipts():
+    folder = files._restore_control_dir()
+    return sorted(p.name for p in folder.iterdir()) if folder.is_dir() else []
+
+
+def test_deep_installation_is_refused_before_any_effect_and_resumes_on_a_short_path(restoration, monkeypatch):
+    """Windows sem LongPaths: o recibo cabia (257) mas o temporário atômico (270) não; a troca ficava pela metade."""
+    db, config, chosen = restoration
+    owner = files.session_owner_key(db, physical_only=True)
+    manifest = files._restore_manifest_path(files._restore_control_dir(), owner, "0" * 32)
+    # Limite logo acima do recibo: só o temporário e os auxiliares excedem, como na instalação profunda real.
+    monkeypatch.setattr(files, "_path_limits", lambda: (len(os.path.abspath(str(manifest))) + 5, 4096))
+    before = _receipts()
+    refused = files.restore_backup(db, config, chosen)
+    assert not refused["ok"] and refused["state"] == "failed" and "nada foi alterado" in refused["error"]
+    assert "caminhos longos" in refused["error"]
+    assert value(db.db_path) == 99 and _receipts() == before
+    copies = Path(config["RESOURCES"]["backup_dir"])
+    assert not copies.exists() or not any(copies.glob("restore__*"))
+    assert files.restore_status(db, config)["operations"] == []
+    monkeypatch.setattr(files, "_path_limits", lambda: None)            # caminho curto / LongPaths habilitado
+    resumed = files.restore_backup(db, config, chosen)
+    assert resumed["ok"] and resumed["state"] == "succeeded" and value(db.db_path) == 7
+
+
+def test_path_budget_counts_directories_temporaries_and_sqlite_sidecars(tmp_path):
+    manifest = tmp_path / "r" / ("restore__" + "a" * 64 + "_" + "b" * 32 + ".restore.json")
+    safety = tmp_path / "c" / ("restore__" + "a" * 64 + "_" + "b" * 32 + ".db")
+    created, folders = files._restore_paths(manifest, safety)
+    names = {Path(p).name for p in created}
+    assert {manifest.name + files._TEMP_SUFFIX, safety.name + "-journal", safety.with_suffix(".parcial").name,
+            safety.with_suffix(".backup.json").name + files._TEMP_SUFFIX} <= names
+    assert folders == [manifest.parent, safety.parent]
+
+
+@pytest.mark.parametrize("enabled, limits", [(True, None), (False, (259, 247))])
+def test_long_path_policy_is_only_read(monkeypatch, enabled, limits):
+    monkeypatch.setattr(files, "_long_paths_enabled", lambda: enabled)
+    assert files._path_limits() == limits
+
+
+@pytest.mark.skipif(os.name != "nt", reason="política do registro do Windows")
+def test_long_path_flag_is_read_from_the_registry_without_changes():
+    assert isinstance(files._long_paths_enabled(), bool)
