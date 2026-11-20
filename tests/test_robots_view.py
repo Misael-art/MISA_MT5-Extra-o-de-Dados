@@ -6,6 +6,7 @@ import pytest
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
+from mt5_extracao.bootstrap.mt5_locator import InvalidWindowsImage
 from mt5_extracao.robots import layout, live, mt5_tools, view
 
 INI = ("[Pane-32841]\r\nID=32841\r\nIsVisible=1\r\n[Pane-32843]\r\nID=32843\r\nIsVisible=1\r\n"
@@ -39,6 +40,7 @@ def mt5(tmp_path, monkeypatch):
     monkeypatch.setattr(mt5_tools, "release_terminal", release)
     monkeypatch.setattr(mt5_tools, "restart_bridge", lambda: env.calls.append("ponte"))
     monkeypatch.setattr(mt5_tools, "start_terminal", start)
+    monkeypatch.setattr(mt5_tools, "validate_terminal", lambda config: None)
     env.shown = lambda: (data / "Config" / "terminal.ini").read_bytes().decode("utf-16")
     return env
 
@@ -48,6 +50,37 @@ def profile_chart(env, text=CHART):
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "chart01.chr").write_bytes(b"\xff\xfe" + text.encode("utf-16-le"))
     return folder / "chart01.chr"
+
+
+def test_invalid_terminal_stops_before_closing_or_rearranging(tmp_path, monkeypatch):
+    terminal = tmp_path / "terminal64.exe"
+    terminal.write_bytes(b"MZ")
+    cfg = configparser.ConfigParser()
+    cfg.read_dict({"MT5": {"path": str(tmp_path)}})
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda config: True)
+    monkeypatch.setattr(mt5_tools, "release_terminal", lambda config: pytest.fail("tentou fechar o MT5"))
+    monkeypatch.setattr(mt5_tools, "data_dir", lambda config: pytest.fail("tentou preparar a visão"))
+
+    with pytest.raises(InvalidWindowsImage, match="cabeçalho MZ ausente ou incompleto"):
+        view.open_view(cfg, close_terminal=True)
+
+
+def test_start_terminal_keeps_orig_winerror_and_binary_path(tmp_path, monkeypatch):
+    terminal = tmp_path / "terminal64.exe"
+    monkeypatch.setattr(mt5_tools, "validate_terminal", lambda config: terminal)
+    error = OSError("aplicativo Win32 inválido")
+    error.winerror = 193
+
+    def rejected(command_line, cwd, prefix):
+        assert command_line.startswith(f'"{terminal}"')
+        assert cwd == terminal.parent
+        raise error
+
+    cfg = configparser.ConfigParser()
+    with pytest.raises(InvalidWindowsImage) as raised:
+        mt5_tools.start_terminal(cfg, tmp_path, "", "visao", rejected, lambda: False)
+    assert raised.value.__cause__ is error
+    assert str(terminal) in str(raised.value)
 
 
 def test_view_with_the_terminal_closed_applies_the_options_and_opens_it(mt5):
@@ -161,7 +194,7 @@ def test_start_terminal_without_ini_opens_like_the_shortcut(tmp_path, monkeypatc
     prefix = tmp_path / "wine"
     folder = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     folder.mkdir(parents=True)
-    (folder / "terminal64.exe").write_bytes(b"")
+    monkeypatch.setattr(mt5_tools, "validate_terminal", lambda config: folder / "terminal64.exe")
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(folder), "wine_prefix": str(prefix)}})
     lines = []

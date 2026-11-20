@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from mt5_extracao.bootstrap import paths
+
 from . import mql, store
 from . import risk as risk_mod
 
@@ -164,7 +166,8 @@ def _slug(text: str) -> str:
 
 def library_dirs(config) -> List[Path]:
     raw = config.get("ROBOTS", "library_dirs", fallback="") if config is not None else ""
-    return [Path(p.strip()).expanduser() for p in raw.split(";") if p.strip()]
+    alias = paths.registered_composition_alias() if raw else None
+    return [paths.resolve_composition_path(p.strip(), alias) for p in raw.split(";") if p.strip()]
 
 
 # --- Python ---------------------------------------------------------------------------
@@ -329,22 +332,30 @@ def load_catalog(config=None, db=None) -> List[Robot]:
         for robot in scan_library(folder):
             robots.setdefault(robot.key, robot)
     records = store.load_records(db)
+    alias = paths.registered_composition_alias() if records else None
     for record in records.values():
         if record["kind"] == LIBRARY:
-            for robot in scan_library(record["path"]):
+            folder = paths.resolve_composition_path(record["path"] or "", alias)
+            if not record["path"] or not folder.is_dir():
+                log.warning("Biblioteca de robôs indisponível: %s (registro: %s)", folder, record["path"])
+                continue
+            for robot in scan_library(folder):
                 robots.setdefault(robot.key, robot)
     for key, record in records.items():
         if key in robots or record["kind"] != MQL5:
             continue
+        source = paths.resolve_composition_path(record["path"] or "", alias)
         try:
-            robots[key] = robot_from_file(record["path"])
+            robots[key] = robot_from_file(source)
         except (OSError, ValueError) as e:
-            robots[key] = Robot(key=key, kind=MQL5, name=record["name"] or key, path=record["path"] or "",
+            robots[key] = Robot(key=key, kind=MQL5, name=record["name"] or key,
+                                path=str(source) if record["path"] else "",
                                 has_source=False, risk=risk_mod.RiskRating(risk_mod.UNKNOWN, ["arquivo não encontrado"]),
                                 notes=[f"O arquivo importado não está mais disponível: {e}"])
     for key, record in records.items():      # estágio gravado só avança, nunca regride o que foi lido do disco
         robot = robots.get(key)
-        if robot and record.get("stage") in STAGES and STAGES.index(record["stage"]) > STAGES.index(robot.stage):
+        if (robot and (robot.kind != MQL5 or robot.files) and record.get("stage") in STAGES
+                and STAGES.index(record["stage"]) > STAGES.index(robot.stage)):
             robot.stage = record["stage"]
             robot.notes = [n for n in robot.notes if not n.startswith(NOT_COMPILED)]
     if db is not None and getattr(db, "engine", None) is not None:

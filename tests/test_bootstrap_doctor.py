@@ -8,6 +8,7 @@ import pytest
 
 from mt5_extracao.bootstrap import config_builder, doctor, paths
 from mt5_extracao.bootstrap.__main__ import main
+from tests.native_process import write_synthetic_pe
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -34,6 +35,21 @@ def test_check_config_bad_mt5_path(tmp_path):
     by_name = {c.name: c for c in doctor.check_config(tmp_path)}
     assert by_name["Caminho do MT5"].status == doctor.FAIL
     assert by_name["Pasta do banco de dados"].status == doctor.OK
+
+
+@pytest.mark.parametrize("truncated", [False, True])
+def test_doctor_checks_terminal_pe_sections(tmp_path, truncated):
+    terminal = tmp_path / paths.MT5_TERMINAL_EXE
+    write_synthetic_pe(terminal, truncated=truncated)
+    cfg = config_builder.build_config(None, {"MT5": {"path": str(terminal)}})
+    config_builder.write_config(paths.config_path(tmp_path), cfg)
+    (tmp_path / "database").mkdir()
+    result = next(c for c in doctor.check_config(tmp_path) if c.name == "Caminho do MT5")
+    assert str(terminal) in result.detail
+    assert result.status == (doctor.FAIL if truncated else doctor.OK)
+    if truncated:
+        assert "dados da seção 1 ultrapassam o fim do arquivo" in result.detail
+        assert "instalação oficial" in result.hint
 
 
 def test_format_report_summary():

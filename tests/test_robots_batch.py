@@ -87,6 +87,23 @@ def test_batch_runs_every_combination_in_order_and_reports_progress(env):
     assert len(store.load_runs(env.db)) == 8
 
 
+def test_batch_reports_every_combination_without_starting_ineligible_robot(env, monkeypatch):
+    from mt5_extracao.composition import native
+    monkeypatch.setattr(backtest, "_execution_code_digest", lambda: "qa-preflight")
+    robots = env.robots("alfa", "beta")
+    monkeypatch.setattr(native, "runtime_binding_required", lambda robot: robot.key == robots[1].key)
+    target = mt5_tools.install_plan(robots[0], mt5_tools.data_dir(env.config))[0].target
+    target.with_suffix(".ex5").unlink()
+    seen = []
+
+    results = batch(env, robots, progress=seen.append)
+
+    assert len(results) == 8 and results == seen and env.tested == []
+    assert all(row["status"] == "ineligible" and not row["run"] for row in results)
+    assert all("não está compilado" in row["error"] for row in results[:4])
+    assert all("pacote de preset revisado" in row["error"] for row in results[4:])
+
+
 def test_one_failure_does_not_stop_the_batch_and_resume_runs_only_what_is_missing(env):
     env.fail = {("GBPUSD", "H1")}
     first = batch(env, env.robots("alfa", "beta"))

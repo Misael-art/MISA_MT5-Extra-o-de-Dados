@@ -69,6 +69,28 @@ def test_windows_never_reuses_linux_venv_and_gets_own_config(tmp_path):
     assert sorted(p.relative_to(tmp_path).as_posix() for p in linux.rglob('*')) == before
 
 
+def test_registry_translates_only_the_same_composition(tmp_path, monkeypatch):
+    import json
+
+    workspace = tmp_path / "MT5X"
+    monkeypatch.setattr(paths, "PROJECT_ROOT", workspace / "repos" / "app")
+    registry = tmp_path / ".workspace" / "projects.json"
+    registry.parent.mkdir()
+    foreign = ("/outra-maquina/Projetos/MT5X" if paths.is_windows() else r"Z:\Projetos\MT5X")
+    project = {"id": "MT5X", "path": foreign, "windows_host": {"path": str(workspace)}}
+    if not paths.is_windows():
+        project.update(path=str(workspace), windows_host={"path": foreign})
+    registry.write_text(json.dumps({"projects": [project]}), encoding="utf-8")
+    alias = paths.registered_composition_alias()
+    assert alias is not None
+    artifact = foreign + "/state/qa-tmp/biblioteca/Experts/Ref.mq5"
+    assert paths.resolve_composition_path(artifact, alias) == workspace / "state/qa-tmp/biblioteca/Experts/Ref.mq5"
+    outside = foreign + "/../outro/Experts/Ref.mq5"
+    assert paths.resolve_composition_path(outside, alias) == Path(outside)
+    unrelated = foreign + "-backup/Experts/Ref.mq5"
+    assert paths.resolve_composition_path(unrelated, alias) == Path(unrelated)
+
+
 def test_mixed_venv_is_not_selected(tmp_path):
     mixed = windows_venv(tmp_path)
     (mixed / 'bin').mkdir()

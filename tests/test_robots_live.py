@@ -10,6 +10,7 @@ from mt5_extracao import cli, mt5_connector
 from mt5_extracao.bootstrap import paths
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.robots import battery, catalog, live, mt5_tools, store
+from tests.native_process import write_synthetic_pe
 
 WINDOWS_DIR = "C:\\Program Files\\MetaTrader 5"
 DEMO = {"login": 5001, "server": "Corretora-Demo", "demo": True}
@@ -32,7 +33,7 @@ def home(tmp_path, monkeypatch):
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
-    (mt5 / "terminal64.exe").write_bytes(b"")
+    write_synthetic_pe(mt5 / "terminal64.exe")
     common = prefix / "drive_c" / "users" / "u" / "AppData" / "Roaming" / "MetaQuotes" / "Terminal" / "Common" / "Files"
     common.mkdir(parents=True)
     library = tmp_path / "lib"
@@ -228,6 +229,8 @@ def test_recompiling_keeps_the_live_state(home, monkeypatch, capsys):
 
     def metaeditor(command_line, cwd, prefix, timeout):
         quoted = command_line.split('"')
+        source = paths.wine_to_linux_path(quoted[3], prefix)
+        source.with_suffix(".ex5").write_bytes(b"recompiled-ex5")
         paths.wine_to_linux_path(quoted[5], prefix).write_bytes("Result: 0 errors, 0 warnings\n".encode("utf-16"))
         return 1
     monkeypatch.setattr(mt5_tools, "run_windows_command", metaeditor)

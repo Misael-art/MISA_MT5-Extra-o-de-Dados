@@ -105,6 +105,28 @@ def test_enums_resolve_number_from_preset_and_name_from_source():
 
 # --- catálogo -------------------------------------------------------------------------
 
+@pytest.mark.parametrize("kind", [catalog.LIBRARY, catalog.MQL5])
+def test_catalog_reads_imported_records_after_composition_moves(tmp_path, monkeypatch, kind):
+    from pathlib import PurePosixPath
+    from mt5_extracao.bootstrap import paths
+
+    former = PurePosixPath("/origem/MT5X")
+    folder = tmp_path / "state/qa-tmp/biblioteca"
+    source = folder / "Experts/Demo/DemoGuard.mq5"
+    source.parent.mkdir(parents=True)
+    shutil.copy2(EA, source)
+    monkeypatch.setattr(paths, "registered_composition_alias", lambda: (tmp_path, former))
+    key = "library:demo" if kind == catalog.LIBRARY else "mql5:demoguard"
+    relative = (folder if kind == catalog.LIBRARY else source).relative_to(tmp_path)
+    record = {"kind": kind, "path": str(former.joinpath(*relative.parts)), "name": "Demo", "stage": catalog.COMPILED}
+    monkeypatch.setattr(store, "load_records", lambda db: {key: record})
+
+    found = catalog.get_robot(catalog.load_catalog(), "demoguard")
+
+    assert Path(found.path) == source and found.has_source
+    assert record["path"].startswith(str(former))
+
+
 def test_scan_library_finds_experts_only():
     found = robots.scan_library(LIBRARY)
     assert sorted(r.name for r in found) == ["DemoGuard", "Martingale"]      # o indicador fica de fora

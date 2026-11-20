@@ -1,7 +1,20 @@
 """Respostas do processo nativo falso; não valida compilação MQL5 real."""
 import re
+import struct
 from pathlib import Path
 from mt5_extracao.bootstrap import paths
+
+
+def write_synthetic_pe(path, *, truncated=False):
+    """Imagem PE mínima para testes que substituem o processo nativo."""
+    image = bytearray(1024 if truncated else 1536)
+    image[:2] = b"MZ"
+    struct.pack_into("<I", image, 60, 64)
+    image[64:68] = b"PE\0\0"
+    struct.pack_into("<HHIIIHH", image, 68, 0x8664, 1, 0, 0, 0, 112, 2)
+    struct.pack_into("<H", image, 88, 0x020B)
+    struct.pack_into("<II", image, 216, 1024, 512)
+    path.write_bytes(image)
 
 
 def compile_observer(command, prefix):

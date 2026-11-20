@@ -1,7 +1,8 @@
 """Caminhos padrão do projeto e do ambiente Wine (somente biblioteca padrão)."""
+import json
 import os
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 # Raiz do repositório (…/mt5_extracao/bootstrap/paths.py -> …/)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -153,6 +154,42 @@ def wine_prefix_candidates(env=None) -> list:
         if c not in unique:
             unique.append(c)
     return unique
+
+
+def registered_composition_alias():
+    """Resolve o outro endereço da composição pelo registro central, quando presente."""
+    checkout = PROJECT_ROOT
+    workspace = checkout.parent.parent
+    if checkout.name != "app" or checkout.parent.name != "repos":
+        return None
+    registry = workspace.parent / ".workspace" / "projects.json"
+    try:
+        entries = json.loads(registry.read_text(encoding="utf-8"))["projects"]
+        project = next((entry for entry in entries if entry["id"] == workspace.name), None)
+        if project is None:
+            return None
+        windows, linux = project["windows_host"]["path"], project["path"]
+        current, alias = (windows, PurePosixPath(linux)) if is_windows() else (linux, PureWindowsPath(windows))
+        if Path(current) == workspace and alias.is_absolute():
+            return workspace, alias
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    return None
+
+
+def resolve_composition_path(value, alias):
+    """Traduz caminhos da mesma composição para este host, inclusive quando o destino está ausente."""
+    local = Path(value).expanduser()
+    if alias is None:
+        return local
+    workspace, foreign_root = alias
+    foreign = type(foreign_root)(value)
+    if foreign.is_relative_to(foreign_root):
+        relative = foreign.relative_to(foreign_root)
+        target = workspace.joinpath(*relative.parts)
+        if target.is_relative_to(workspace) and ".." not in target.relative_to(workspace).parts:
+            return target
+    return local
 
 
 def linux_to_wine_path(path: Path, prefix: Path) -> str:

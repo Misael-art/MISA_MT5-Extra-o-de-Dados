@@ -86,6 +86,7 @@ def open_view(config, close_terminal: bool = False, spawn: Optional[Callable] = 
     if running and not close_terminal:
         raise TerminalOpen("O MetaTrader 5 está aberto: a organização da janela só é gravada com ele fechado. "
                            "Autorize fechar e reabrir o terminal (na linha de comando: --close-terminal).")
+    mt5_tools.validate_terminal(config)
     data = mt5_tools.data_dir(config)
     common = mt5_tools.common_files_dir(config)
     result = {"reopened": running, "organized": False, "hidden": [], "restored": False, "profile": "", "chart": "",

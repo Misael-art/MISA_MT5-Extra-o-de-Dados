@@ -895,6 +895,22 @@ def test_connect_runs_in_background_opens_mt5_organized_and_loads_the_symbols(ui
     assert ui.check_button.instate(["!disabled"])
 
 
+def test_connect_keeps_the_invalid_executable_diagnosis(ui, connecting, monkeypatch):
+    from mt5_extracao.bootstrap.mt5_locator import InvalidWindowsImage
+    from mt5_extracao.robots import view
+
+    def rejected(*args, **kwargs):
+        raise InvalidWindowsImage("terminal64.exe inválido: seção truncada")
+
+    monkeypatch.setattr(view, "open_view", rejected)
+    ui.connect_mt5()
+    ui.pump(0.8)
+
+    assert connecting.tries == 0
+    assert connecting.warned == ["terminal64.exe inválido: seção truncada"]
+    assert ui.check_button.instate(["!disabled"])
+
+
 def test_connect_does_not_reopen_a_terminal_that_is_already_open(ui, connecting):
     connecting.running = True
     ui.connect_mt5()

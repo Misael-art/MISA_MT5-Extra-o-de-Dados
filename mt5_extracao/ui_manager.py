@@ -2681,6 +2681,7 @@ class UIManager:
         tentativa de conexão (inclusive a reconexão automática depois que a pessoa fecha o MT5), porque sem isso é
         a própria conexão que abre o terminal, sem nada. Um pedido por vez; falha aqui não impede a conexão.
         """
+        from mt5_extracao.bootstrap.mt5_locator import InvalidWindowsImage
         from mt5_extracao.robots import mt5_tools, view
         if not self._terminal_lock.acquire(blocking=False):
             return
@@ -2698,6 +2699,8 @@ class UIManager:
                 self._connection_terminal_ready=connection_help.wait_ready(
                     lambda:mt5_tools.terminal_running(config),connection_help.STARTUP_WAIT_SECONDS,
                     cancelled=self._connection_cancel.is_set)
+        except InvalidWindowsImage:
+            raise
         except Exception as e:
             log.warning(f"Não foi possível abrir o MetaTrader 5 já organizado ({e}). Seguindo com a conexão.")
         finally:
@@ -2723,7 +2726,8 @@ class UIManager:
         if getattr(self, "_connecting", False):
             return
         from mt5_extracao import connection_help
-        from mt5_extracao.robots import mt5_tools, view
+        from mt5_extracao.bootstrap.mt5_locator import InvalidWindowsImage
+        from mt5_extracao.robots import mt5_tools
         self._connecting = True
         self._connection_cancel.clear()
         self._connection_terminal_prepared=False
@@ -2772,7 +2776,11 @@ class UIManager:
                 return
             app.mt5_initialized = False
             reason = reason or connection_help.CONNECTION_ERROR
-            text = connection_help.explain(reason, windows=os.name == "nt")
+            if isinstance(error, InvalidWindowsImage):
+                reason = "executável do MT5 inválido"
+                text = str(error)
+            else:
+                text = connection_help.explain(reason, windows=os.name == "nt")
             bridge_error = os.environ.get("MT5X_BRIDGE_START_ERROR", "") if os.name != "nt" else ""
             if bridge_error:
                 text += "\n\nA ponte não iniciou pelo atalho: " + bridge_error[:1000] + "\nVeja logs/mt5_bridge.log."

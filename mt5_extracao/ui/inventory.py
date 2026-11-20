@@ -321,6 +321,7 @@ class InventoryPanel:
         elif kind == runner.DONE:
             self.progress_var.set(100.0 * event["completed"] / max(1, event["total"]))
             if event["run"] is None:
-                ui.log(f"Backtest de {job.robot.name} em {job.symbol} ({job.timeframe}) não rodou: {event['error']}")
+                outcome = "inelegível" if event.get("status") == "ineligible" else "não rodou"
+                ui.log(f"Backtest de {job.robot.name} em {job.symbol} ({job.timeframe}) {outcome}: {event['error']}")
             else:
                 ui.backtest_recorded(event["run"])
