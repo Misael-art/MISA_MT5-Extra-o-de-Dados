@@ -38,10 +38,14 @@ def compatibility(composition, *, backend="python"):
     if data["strategy"]["key"] in NATIVE_STRATEGY_DEFAULTS:
         return [Problem("strategy", "Este perfil usa o consumidor MQL5 vinculado; backtest Python indisponível. "
                                     "Use o pacote no Strategy Tester DEMO, com semente explícita.")]
+    supported = {slot: {mode} for slot, mode in BASE_MODES.items()}
+    supported["profit_exit"].update(("fixed_points", "fixed_r"))
+    supported["protection"].add("fixed_points")
+    supported["conditional_policy"].update(("temporal_v1", "temporal_er_v1", "temporal_donchian_v1", "temporal_atr_v1"))
+    if data["strategy"]["key"] == "orb":
+        supported["partial_exit_plan"].add("fixed_r")
     problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
-                for slot, mode in BASE_MODES.items()
-                if data[slot]["mode"] not in ({mode, "fixed_points", "fixed_r"} if slot == "profit_exit"
-                                             else {mode, "fixed_points"} if slot == "protection" else {mode,"temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1"} if slot=="conditional_policy" else {mode})]
+                for slot, mode in BASE_MODES.items() if data[slot]["mode"] not in supported[slot]]
     if data["strategy"]["key"] == "pullback":
         problems.append(Problem("partial_exit_plan", "Pullback legado usa parcial ainda não qualificada (T19.57); "
                                                     "o novo adaptador não libera esse modo até corrigir confirmação/BE."))
@@ -92,6 +96,7 @@ class BaseAdapter:
         strategy = self.strategy()
         value = self.composition.to_dict()
         profit, protection = value["profit_exit"], value["protection"]
+        partial = value["partial_exit_plan"]
         temporal=value["conditional_policy"]
         from ..strategies.session_entry import from_filters
         entry_policy = from_filters(value["filters"])
@@ -107,7 +112,7 @@ class BaseAdapter:
         if observation_timeframe is not None:
             entry_options["observation_timeframe"] = observation_timeframe
         if cooldown is not None:entry_options["observation_timeframe"]=timeframe
-        if profit["mode"] == protection["mode"] == "strategy_default" and temporal["mode"]=="disabled":
+        if profit["mode"] == protection["mode"] == partial["mode"] == "strategy_default" and temporal["mode"] == "disabled":
             return run_backtest(bars, strategy, spec, self.backtest_config(config),
                                 **entry_options)
         selection = {}
@@ -120,6 +125,10 @@ class BaseAdapter:
             selection[key] = profit["params"][key]
         if protection["mode"] == "fixed_points":
             selection["stop_points"] = protection["params"]["stop_points"]
+        if partial["mode"] == "fixed_r":
+            params = partial["params"]
+            selection.update(partial_r=params["trigger_r"], partial_fraction=params["fraction"],
+                             breakeven_after_partial=params["breakeven_after_confirmation"])
         rules = replace(strategy.exit_rules(), **selection)
         signals = (strategy.gerar_sinais(bars, exit_rules_override=rules) if rules.stop_points is not None
                    else strategy.gerar_sinais(bars)).copy()

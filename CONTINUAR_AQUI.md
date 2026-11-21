@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-06, composição de saídas no ORB Python
+
+A composição do ORB Python aceita parcial em R, stop/alvo fixos e break-even
+após a redução confirmada. Em caixa de 500 pontos de índice, os dois WIN
+renderam R$ 240 brutos com saídas em +500/+700 e R$ 280 com as duas em +700.
+Um contrato indivisível seguiu até o alvo. A fixture confirmou -R$ 200 quando
+stop e alvos coincidem na barra e R$ 100 após parcial e retorno ao break-even.
+Passaram 100 regressões focadas de composição, ciclos e backtest no Linux.
+O trailing e os resultados econômicos comparativos seguem pendentes.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-06)
+
 ## 21/11/2026 — F19-PESQ-05, filtros estáticos do ORB
 
 `analytics orb-reference --range-minutes 15 --width 200 750 --distance 10 400`
@@ -11,7 +22,9 @@ No launcher Linux, o WINZ26 de 27 e 28/10/2026 teve dois vetos. No dia 27 a
 largura foi de 1.795 pontos e a distância de 5. No dia 28 a largura foi de
 1.635 e a distância de 55, então o veto foi apenas por largura. Recibo em
 `f19-pesq-05-b3`. O recorte comprova as decisões por barra, com aceite econômico
-e variantes de horário e normalização ainda abertos.
+e variantes de horário e normalização ainda abertos. SHA remoto confirmado
+`cf96979ca012942221ae8137ae134f1debc0f364`.
+[PR #378](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/378).
 
 ## 21/11/2026 — F19-PESQ-03, pré-registro Python dos braços
 
