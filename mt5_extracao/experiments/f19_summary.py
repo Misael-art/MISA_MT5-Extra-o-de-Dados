@@ -76,6 +76,13 @@ def query(db, protocol_id, role):
             "qualified_final_holdout": False, "economic_approval": False}
 
 
+def research_preset(db, protocol_id, role):
+    from mt5_extracao.presets.research import build_paired_research_preset
+
+    report = query(db, protocol_id, role)
+    return build_paired_research_preset(store.protocol(db, protocol_id), report)
+
+
 def _roster(snapshot, calendar, bound):
     offset = snapshot.manifest["time"]["broker_utc_offset_hours"]
     first = instruments.broker_utc(bound["first"], offset)

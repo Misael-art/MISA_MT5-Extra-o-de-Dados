@@ -4187,7 +4187,7 @@ A primeira ação executável é qualificar a janela de abertura do WIN. O estad
 | [F19-PESQ-14 — Gradiente assimétrico](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-14) | App/Composição, Laboratório e HADOUKEN | 11 | Planejada |
 | [F19-PESQ-15 — Hedge bidirecional](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-15) | HADOUKEN/Safety e Laboratório | 11 | Planejada |
 | [F19-PESQ-16 — Gradiente harmônico à vista](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16) | App/Analytics de carteira e Laboratório | 01, 02, 03 | Parcial no Linux. Fronteiras geométricas, orçamento e patrimônio nominal para grade e dois controles. Replay, liquidez e ações corporativas seguem pendentes. |
-| [F19-PESQ-17 — Gerador, paridade e promoção por candidato](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-17) | App/Presets e HADOUKEN | 02, 03 e ficha candidata | Planejada |
+| [F19-PESQ-17 — Gerador, paridade e promoção por candidato](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-17) | App/Presets e HADOUKEN | 02, 03 e ficha candidata | Parcial no Linux. Preset reproduzível de pesquisa após quatro livros conciliados. Geração nativa, paridade e promoção dependem de candidato elegível. |
 
 ## Fase 20 — Robustez da pesquisa, execução e ciclo de estratégias
 

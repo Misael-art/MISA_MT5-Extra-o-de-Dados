@@ -1,5 +1,19 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-17, preset de reprodução da pesquisa
+
+`experiments paired-preset` publica o JSON de pesquisa de uma comparação F19
+com seus quatro livros conciliados. O preset registra os dois braços,
+recorte, fonte, seed, custos, critérios, IDs dos resultados e o hash do
+relatório. A reabertura verifica o hash pelo leitor existente. Aprovação
+econômica, equivalência nativa e autorização de ativação ficam em falso.
+Geração de .set, paridade e observação prospectiva dependem de candidato
+e evidência elegíveis.
+Passaram 14 regressões focadas. Pelo launcher, o artefato da bancada
+vinculou os quatro runs e foi reaberto com o hash conferido. Recibos em
+f19-pesq-17-research-preset e f19-pesq-17-research-preset-r3.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-17)
+
 ## 21/11/2026 — F19-PESQ-03, sensibilidade pareada
 
 `experiments paired-summary` agora mede quanto a média muda ao retirar o maior
@@ -9,6 +23,8 @@ pré-registro, incluindo saldo zero em sessões sem operação.
 Passaram quatro regressões focadas. Pelo launcher, o diferencial médio
 de 150 caiu a zero ao retirar o único pregão favorável. O bloco alternativo
 teve amostra insuficiente. Recibos em f19-pesq-03-sensitivity.
+[PR #387](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/387),
+SHA remoto `38fb6ca19ea68e673637caa09af602c32a6cc703`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03)
 
 ## 21/11/2026 — F19-PESQ-11, limite do stop na re-simulação de grade

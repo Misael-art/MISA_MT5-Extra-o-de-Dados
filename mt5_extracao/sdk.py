@@ -496,6 +496,13 @@ def pattern_campaign_status(db, protocol_id):
     return experiments.pattern_campaign_status(db, protocol_id)
 
 
+def f19_research_preset(db, protocol_id, *, role):
+    """Exporta os braços e o recibo de uma comparação pareada F19 para reprodução."""
+    from mt5_extracao.experiments import f19_summary
+
+    return f19_summary.research_preset(db, protocol_id, role)
+
+
 def pattern_evaluations(db, *, protocol_id=None, symbol=None, timeframe=None, as_of=None):
     """Consulta avaliações T13.4 já persistidas; não abre produtor nem executor."""
     from mt5_extracao.analytics import pattern_queries
@@ -513,7 +520,7 @@ def pattern_evaluation(db, protocol_id, request_id, data_manifest_id, *, as_of=N
 __all__ = [
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
-    "pattern_campaign_status",
+    "pattern_campaign_status", "f19_research_preset",
     "pattern_evaluations", "pattern_evaluation",
     "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner", "compare_backtest_scope",
     "create_super_atr_research_robot",

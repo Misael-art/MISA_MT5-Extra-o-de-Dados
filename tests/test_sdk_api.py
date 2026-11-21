@@ -102,6 +102,7 @@ SURFACE = {
     "fvg_reference": ["db", "manifest_id", "as_of", "session_mode"],
     "grid_risk": ["db", "manifest_id", "definition", "as_of"],
     "harmonic_cash": ["db", "manifest_id", "definition", "as_of"],
+    "f19_research_preset": ["db", "protocol_id", "role"],
 }
 
 
