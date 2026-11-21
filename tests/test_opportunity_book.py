@@ -1,7 +1,10 @@
 import json
 
+import pytest
+
 from mt5_extracao import cli
 from mt5_extracao.analytics import datasets
+from mt5_extracao.robots import store as runs
 from mt5_extracao.strategies import ExitRules
 from mt5_extracao.strategies.backtester import BacktestConfig, SymbolSpec, run_backtest
 from mt5_extracao.trade_analytics import importers
@@ -28,6 +31,12 @@ def test_opportunities_keep_veto_and_expiration_and_link_partial_fills(market):
     model = run_backtest(snap.bars, strategy, SymbolSpec(point=1, tick_size=1, tick_value=1),
                          BacktestConfig(initial_equity=10000, risk_per_trade=0.01, commission_per_lot=0.5),
                          observation_timeframe="M1")
+    runs.save_run(db, {"run_id": "signal-ledger", "robot_key": "python:manual", "source": "fixture",
+                       "symbol": OCTOBER, "timeframe": "M1", "data_start": str(snap.bars.time.iloc[0]),
+                       "data_end": str(snap.bars.time.iloc[-1]), "bars": len(snap.bars), "equity": [],
+                       "created_at": "2026-10-30", "metrics": {"data_manifest_id": snap.manifest_id,
+                                                               "initial_equity": model.config.initial_equity},
+                       "performance_equity": [[t.isoformat(), value] for t, value in model.performance_equity.items()]})
     assert save_run(db, "signal-ledger", snap, model) == 1
     result = opportunities.query(db, "signal-ledger", calendar={**schedule, "sessions": schedule["sessions"][:1]})
     assert result["counts"] == dict(opportunities=3, vetoed=1, expired=1, executed=1,
@@ -38,6 +47,11 @@ def test_opportunities_keep_veto_and_expiration_and_link_partial_fills(market):
     assert first["fill_delay_seconds"] == 0 and first["requested_price"] == 100
     assert model.trades[0].pnl == first["net_pnl"] == result["net_pnl"]
     assert first["mae_observed"] == 5 and first["mfe_observed"] > 0
+    assert result["cash_metrics"]["top5_gross_profit_share"] == 1
+    assert result["cash_metrics"]["largest_observed_cycle_loss"] == 5
+    assert result["drawdown"]["marks"] == 5
+    assert result["drawdown"]["seconds_between_underwater_marks"] == 60
+    assert result["drawdown"]["max_drawdown_money"] == pytest.approx(model.metrics["max_floating_drawdown_money"])
     assert blocked["reason"] == "position_open" and expired["reason"] == "no_following_bar"
     assert result["sessions"][0]["opportunity_seqs"] == [0, 1, 2]
     assert save_run(db, "signal-ledger", snap, model) == 1
@@ -59,6 +73,9 @@ def test_cli_keeps_eligible_session_without_opportunity(market, tmp_path, capsys
     assert result["sessions"][0]["status"] == "eligible"
     assert result["sessions"][0]["opportunity_seqs"] == []
     assert result["sessions"][2]["status"] == "excluded"
+    assert result["cash_metrics"]["worst_eligible_signal_session"]["net_pnl"] == 0
+    assert result["cash_metrics"]["top5_gross_profit_share"] is None
+    assert result["drawdown"] is None
 
 
 def test_absence_of_legacy_opportunities_is_not_a_zero_count(market):

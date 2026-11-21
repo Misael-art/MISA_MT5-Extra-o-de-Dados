@@ -1,12 +1,13 @@
 """Livro de oportunidades observadas no backtest Python e conciliadas à trajetória."""
 from collections import Counter
-from math import fsum
+from math import fsum, isfinite
 
 import pandas as pd
 
 from mt5_extracao.analytics import datasets, opening_coverage
+from mt5_extracao.robots.store import load_runs
 from . import cycles, store
-from .clocks import Clock, bar_end_in_source
+from .clocks import Clock, bar_end_in_source, bar_intervals
 
 
 def query(db, run_id, *, calendar=None):
@@ -61,14 +62,18 @@ def query(db, run_id, *, calendar=None):
         coverage_id = coverage["manifest_id"]
         population = _sessions(coverage, rows, snapshot.manifest["symbol"])
     totals = Counter(signal["status"] for signal in rows)
-    known_cash = all(signal["net_pnl"] is not None for signal in rows if signal["status"] == "executed")
+    closed = [signal for signal in rows if signal["status"] == "executed"]
+    known_cash = all(signal["net_pnl"] is not None for signal in closed)
+    metrics = _cash_metrics(closed, population) if known_cash else None
+    drawdown = _sampled_drawdown(db, run_id, record, clock, payload["timeframe"])
     return {"version": 1, "run_id": run_id, "status": "observed_model", "trajectory_id": record["trajectory_id"],
             "data_manifest_id": record["manifest_id"], "producer_identity": record["producer_identity"],
             "population_basis": "visible_strategy_signals_in_backtest",
             "counts": {"opportunities": len(rows), "vetoed": totals["vetoed"], "expired": totals["expired"],
                        "executed": totals["executed"], "closed_cycles": len(linked),
                        "fills": sum(len(signal["fills"]) for signal in rows), "broker_rejections": None},
-            "net_pnl": fsum(row["net_pnl"] for row in rows if row["net_pnl"] is not None) if known_cash else None,
+            "net_pnl": fsum(row["net_pnl"] for row in closed) if known_cash else None,
+            "cash_metrics": metrics, "drawdown": drawdown, "max_margin": None,
             "coverage_manifest_id": coverage_id, "sessions": population, "opportunities": rows}
 
 
@@ -93,3 +98,45 @@ def _sessions(coverage, rows, contract):
             session[2]["opportunity_seqs"].append(signal["seq"])
             session[2]["executed_opportunities"] += signal["status"] == "executed"
     return population
+
+
+def _cash_metrics(closed, population):
+    gains = sorted(row["net_pnl"] for row in closed if row["net_pnl"] > 0)
+    profit_share = fsum(gains[-5:]) / fsum(gains) if gains else None
+    worst = None
+    if population is not None:
+        by_seq = {row["seq"]: row["net_pnl"] for row in closed}
+        cohorts = [(fsum(by_seq[seq] for seq in row["opportunity_seqs"] if seq in by_seq), row["date"])
+                   for row in population if row["status"] == "eligible"]
+        if cohorts:
+            cash, day = min(cohorts)
+            worst = {"date": day, "net_pnl": cash, "basis": "closed_cycles_grouped_by_signal_session"}
+    losses = [row["mae_observed"] for row in closed if row["mae_observed"] is not None]
+    return {"top5_gross_profit_share": profit_share, "worst_eligible_signal_session": worst,
+            "largest_observed_cycle_loss": max(losses) if losses else None}
+
+
+def _sampled_drawdown(db, run_id, record, clock, timeframe):
+    runs = load_runs(db, run_id=run_id)
+    if not runs or runs[0]["data_manifest_id"] != record["manifest_id"]:
+        return None
+    run = runs[0]
+    curve = run["performance_equity"]
+    initial = run["metrics"].get("initial_equity")
+    if not curve or initial is None or not record["manifest_id"] or run["timeframe"] != timeframe:
+        return None
+    times = pd.DatetimeIndex([clock.timestamp(start) for start, _ in curve])
+    marks = bar_intervals(times.tz_convert(clock.zone), timeframe, clock)
+    values = pd.Series([value for _, value in curve], dtype=float)
+    if not times.is_monotonic_increasing:
+        raise ValueError("Curva patrimonial fora da ordem do snapshot; confira o run.")
+    if not isfinite(initial) or not values.map(isfinite).all():
+        raise ValueError("Curva patrimonial com valor ausente ou inválido; confira o run.")
+    peak = values.cummax().clip(lower=initial)
+    underwater = values < peak
+    consecutive = marks.start_utc == marks.end_utc.shift(1)
+    underwater_intervals = consecutive & underwater & underwater.shift(1, fill_value=False)
+    return {"basis": "adjacent_unitized_underwater_close_marks", "marks": len(marks),
+            "underwater_marks": int(underwater.sum()),
+            "seconds_between_underwater_marks": float(marks.end_utc.diff()[underwater_intervals].dt.total_seconds().sum()),
+            "max_drawdown_money": float((peak - values).max())}
