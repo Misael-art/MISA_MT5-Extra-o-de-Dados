@@ -56,6 +56,7 @@ SURFACE = {
     "CheckResult": None, "ParityReport": None, "SignalSpec": None, "DeclaredStrategy": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
     "load_catalog": ["config", "db"],
     "query_series": ["db", "selection"],
+    "opening_coverage": ["db", "manifest_ids", "calendar", "as_of"],
     "query_catalog": ["db"],
     "define_feature_composite": ["db", "feature_id", "name", "algorithm_version", "operation", "inputs"],
     "query_composite_context": ["db", "manifest_id", "decision_times", "targets", "observation_time"],
