@@ -2070,6 +2070,11 @@ def build_parser():
     q.add_argument("--session-mode", choices=("observed", "synthetic_utc_day"), default="observed",
                    help="synthetic_utc_day usa somente dias UTC de uma bancada controlada")
     q.set_defaults(func=cmd_fvg_reference)
+    q = analytics_sub.add_parser("grid-risk", help="projeta perda nominal da cesta antes da re-simulação")
+    q.add_argument("--manifest", required=True, help="snapshot com especificação histórica do ativo")
+    q.add_argument("--as-of", required=True, help="instante da âncora, com fuso explícito")
+    q.add_argument("--file", required=True, help="plano JSON do ciclo em ticks")
+    q.set_defaults(func=cmd_grid_risk)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
@@ -2577,6 +2582,19 @@ def cmd_fvg_reference(args, ctx):
     result = sdk.fvg_reference(ctx.db, args.manifest, as_of=args.as_of, session_mode=args.session_mode)
     _data(fvg_reference=result)
     _print(f"{len(result['zones'])} zona(s) FVG em {result['symbol']} {result['timeframe']}.")
+    return 0
+
+
+def cmd_grid_risk(args, ctx):
+    from pathlib import Path
+
+    from mt5_extracao import sdk
+
+    plan = Path(args.file).read_text(encoding="utf-8-sig")
+    result = sdk.grid_risk(ctx.db, args.manifest, plan, as_of=args.as_of)
+    _data(grid_risk=result)
+    _print(f"{result['symbol']} · perda modelada no estresse {result['loss_at_stress_cash']:.2f} {result['currency']}"
+           f" · {result['risk_status']}.")
     return 0
 
 

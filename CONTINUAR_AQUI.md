@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-11, projeção de risco de grade
+
+A projeção anterior à simulação compara entrada direta, grade fixa, grade ATR
+e grade direcional com o mesmo teto declarado. Usa preços em ticks, vetor de
+volumes e a especificação conhecida no corte. Custos e estresse são explícitos.
+Passaram 33 regressões focadas no Linux. Pelo launcher, seis WIN espaçados em
+50 pontos acumularam perda bruta de 150 no sexto nível e 210 após outros
+50 pontos contra. Recibos em f19-pesq-11-grid-risk.
+Margem, sequência de preenchimentos e conciliação nativa seguem pendentes.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11)
+
 ## 21/11/2026 — F19-PESQ-10, referência causal Fair Value Gap
 
 `analytics fvg-reference` registra a zona só após fechar a terceira barra.
@@ -11,6 +22,8 @@ preços executáveis permanecem pendentes.
 Passaram 20 regressões focadas no Linux. Pelo launcher a fixture tornou
 a zona disponível às 09h03 UTC, tocou a borda em 106 na barra seguinte e
 expirou às 09h08 UTC. Recibos em f19-pesq-10-reference e f19-pesq-10-reference-r2.
+[PR #383](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/383),
+SHA remoto `3cc94598992b5de2a4738cd489e435cda6f9d294`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-10)
 
 ## 21/11/2026 — F19-PESQ-09, referência CHoCH H4

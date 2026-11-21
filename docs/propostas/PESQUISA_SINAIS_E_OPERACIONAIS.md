@@ -288,6 +288,48 @@ com controle pareado exigem evidência adicional.
 
 **Aceite e evidência.** Cobrir gap de vários níveis, barra ambígua em OHLC, ordem parcial ou fora de ordem, spread alargado, falta de margem e reinício. Reconciliar posição, pendentes, saldo e custo por fill em netting/hedging conforme suporte. Seis compras de um WIN a 50 pontos entre níveis acumulam R$ 150 de perda bruta no sexto nível. Mais 50 pontos contra levam a R$ 210. A margem tem verificação própria.
 
+**Evidência parcial Linux.** `analytics grid-risk --manifest <id> --as-of <UTC>
+--file <plano.json>` projeta todos os níveis da cesta com o stop inicial comum.
+Os mesmos campos permitem comparar os braços contra um único teto monetário.
+A versão do contrato, o corte da âncora e a revisão da especificação acompanham
+o resultado. A projeção conta compras ou vendas em preços nominais e soma custos
+de ida e volta por lote. `adverse_stop_ticks` desloca o encerramento contra a
+posição no cenário de estresse. O teto é avaliado nesse cenário.
+
+```json
+{
+  "version": 1,
+  "mode": "fixed_adverse",
+  "side": "long",
+  "anchor_ticks": 20000,
+  "stop_ticks": 19940,
+  "spacing": 10,
+  "volumes": [1, 1, 1, 1, 1, 1],
+  "currency": "BRL",
+  "risk_cap_cash": 210,
+  "round_trip_cost_per_lot": 0,
+  "adverse_stop_ticks": 0
+}
+```
+
+O primeiro volume é o da âncora. Em `direct`, use um único volume e
+`spacing: 0`. Em `directional`, os próximos níveis ficam a favor. Em
+`atr_adverse`, `spacing` contém `atr_in_ticks` conhecido antes da entrada
+e `multiplier`. O produto é arredondado para cima em ticks inteiros.
+Cada volume respeita o passo do ativo e cada nível precisa anteceder o stop
+no sentido de uma reversão. A fixture WIN replica 150 no sexto nível e
+210 mais 50 pontos contra, ambos em valor absoluto e sem custos declarados.
+
+O Laboratório T16.8 mantém os modos fixo, ATR e direcional e etiqueta o
+recorte OHLC. Seu fator usa o volume inicial e seu modo direcional pode mover o
+stop. A projeção usa os volumes declarados e conserva o stop inicial como
+referência comum. O OMS na revisão HADOUKEN `d3dd3a5e9a68` tem indicadores de
+grade fixa/dinâmica. O plano D-06/D-07 requer conciliação de fills e ensaio
+próprio. O RiskGuard do Safety `27b85992af4b` contabiliza exposição aberta e
+ordens pendentes por escopo. Acionamento de ordens, autorização Safety,
+parciais em grade, margem e reconciliação após gaps ou reinício permanecem em
+seus respectivos motores e gates.
+
 <a id="f19-pesq-12"></a>
 
 ### F19-PESQ-12 — Médio para frente e reposição
