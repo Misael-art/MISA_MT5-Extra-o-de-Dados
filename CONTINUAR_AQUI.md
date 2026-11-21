@@ -2,6 +2,8 @@
 
 ## 20/11/2026 — Roteiro de pesquisa de sinais, operacionais e presets
 
+**Para começar pela F19-PESQ-01, use o [prompt de implementação das 17 fichas](docs/propostas/PROMPT_F19_PESQ_EXECUCAO.md).**
+
 A [fila de 17 fichas](docs/PLANO_DE_TRABALHO.md#fila-f19-pesquisa) está distribuída no [roadmap](docs/ROADMAP.md#roteiro-f19-pesquisa). A primeira entrega, [F19-PESQ-01](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-01), qualifica a abertura e a cobertura do WIN por contrato. Em seguida, registrar todas as oportunidades e o protocolo de comparação e reconciliar a referência ORB Python/HADOUKEN. O [roteiro completo](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md) contém as regras dos nove temas, dependências, fixtures, critérios de rejeição e promoção. As fichas estão planejadas. Os aceites de execução e de rentabilidade serão registrados por variante.
 
 ## Triplo desarmado no Tester — 16/11/2026 (PR 352)
