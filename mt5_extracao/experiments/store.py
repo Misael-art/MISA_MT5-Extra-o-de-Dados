@@ -71,9 +71,14 @@ def protocol(db, protocol_id, conn=None):
     return dict(protocol_id=row["protocol_id"], definition=json.loads(row["payload_json"]), context=json.loads(row["context_json"]))
 
 
-def put_protocol(db, revision, context):
+def put_protocol(db, revision, context, *, refuse_prior_holdout=False):
     definition = revision.to_dict()
     with transaction(db) as conn:
+        if refuse_prior_holdout:
+            registered = conn.execute(text("SELECT 1 FROM _experiment_protocols WHERE protocol_id=:i"),
+                                      {"i": revision.protocol_id}).first()
+            if not registered and accesses(conn, [context["roles"]["holdout"]]):
+                raise ValueError("A janela de reserva já teve acesso registrado. Escolha uma janela inédita.")
         conn.execute(text("INSERT INTO _experiment_protocols VALUES(:i,:n,:r,:p,:c,:t) ON CONFLICT DO NOTHING"),
                      dict(i=revision.protocol_id, n=definition["name"], r=definition["revision"], p=encoded(definition), c=encoded(context), t=now()))
         row = conn.execute(text("SELECT payload_json,context_json FROM _experiment_protocols WHERE protocol_id=:i"), {"i": revision.protocol_id}).first()
@@ -117,6 +122,28 @@ def access(conn, protocol_id, role, scope, key, purpose, request_id=""):
         raise ValueError("Finalidade de acesso desconhecida.")
     event(conn, "access:"+digest([protocol_id, key]), protocol_id, request_id, "data_access",
           dict(role=role, scope=scope, purpose=purpose, request_id=request_id))
+
+
+def check_f19_holdout(db, conn, protocol):
+    """Acesso dentro da transação já serializada de exposição do protocolo."""
+    from .f19 import ARMS, SCENARIOS
+
+    protocol_id = protocol["protocol_id"]
+    planned = set()
+    for arm in ARMS:
+        for scenario in SCENARIOS:
+            request_id = digest([protocol_id, f"holdout.{arm}.{scenario}"])
+            try:
+                item = request(db, request_id, conn)
+            except ValueError as exc:
+                raise ValueError("A reserva exige os dois braços em ambos os cenários antes do primeiro acesso.") from exc
+            if (item["state"] in ("discarded", "rejected") or item["payload"].get("comparison") !=
+                    {"arm": arm, "scenario": scenario}):
+                raise ValueError("A reserva exige os dois braços em ambos os cenários antes do primeiro acesso.")
+            planned.add(request_id)
+    scope = protocol["context"]["roles"]["holdout"]
+    if any(item["request_id"] not in planned or item["purpose"] != "evaluation" for item in accesses(conn, [scope])):
+        raise ValueError("A reserva contém acesso fora dos braços congelados. Escolha uma janela inédita.")
 
 
 def put_request(db, protocol_id, key, payload, alternative_id, error="", discard=False):

@@ -14,7 +14,7 @@ from ..composition.registry import BASE_MODES
 from ..robots import backtest, budget as budgets, catalog, store as runs
 from ..strategies import get_strategy, research
 from .schema import PatternCampaignRevision, ProtocolRevision, ROLES, digest, token, encoded
-from . import store
+from . import f19, store
 
 
 def create(db, definition):
@@ -44,7 +44,10 @@ def create(db, definition):
         context["roles"][name] = dict(origin_key=digest({k: v for k, v in identity.items() if k != "time"}),
                                       first=selected.iloc[0].isoformat(), last=selected.iloc[-1].isoformat())
         previous = selected.iloc[-1]
-    return store.put_protocol(db, revision, context)
+    paired = revision.to_dict()["objective"]["id"] == f19.OBJECTIVE
+    if paired:
+        f19.validate(revision.to_dict(), context)
+    return store.put_protocol(db, revision, context, refuse_prior_holdout=paired)
 
 
 def _mapping(composition, executor="base_v1"):
@@ -75,8 +78,10 @@ def request(db, protocol_id, key, composition, *, role="train", origin="manual",
         raise ValueError("Executor desconhecido; use base_v1 ou composition_v1 explicitamente.")
     if role not in p["definition"]["roles"] or origin not in ("manual", "automatic") or purpose not in ("evaluation", "tuning") or type(use_cache) is not bool:
         raise ValueError("Declare papel existente, origem manual/automatic, finalidade evaluation/tuning e cache booleano.")
+    paired = p["definition"]["objective"]["id"] == f19.OBJECTIVE
     value = composition.to_dict() if isinstance(composition, Composition) else json.loads(encoded(composition))
-    payload = dict(composition=value, role=role, origin=origin, purpose=purpose, use_cache=use_cache,
+    payload = dict(composition=value, role=role, origin=origin, purpose=purpose,
+                   use_cache=use_cache and not (paired and role == "holdout"),
                    discard_reason=str(discard_reason), settings=None)
     if executor != "base_v1":
         payload["executor"] = executor
@@ -94,9 +99,13 @@ def request(db, protocol_id, key, composition, *, role="train", origin="manual",
         _mapping(composition, executor)
         if value["context"] != {"symbol": p["context"]["identity"]["symbol"], "timeframe": p["context"]["identity"]["timeframe"]}:
             raise ValueError("Composição não corresponde ao ativo/timeframe dos papéis.")
+        if paired:
+            payload["comparison"] = f19.classify_request(p["definition"], key, payload)
     except ValueError as exc:
         error = str(exc)
     alternative = digest(dict(composition=value, data=p["definition"]["roles"][role], settings=payload["settings"]))
+    if paired and (error or discard_reason):
+        key = "ignored-" + digest([key, payload, error])
     return store.put_request(db, protocol_id, key, payload, alternative, error, bool(discard_reason))
 
 
@@ -148,6 +157,8 @@ def _evaluate(db, request_id, *, config=None, budget=None):
     p, payload = store.protocol(db, item["protocol_id"]), item["payload"]
     # A transação de acesso termina ANTES do cálculo, busca em cache ou entrega.
     with store.transaction(db) as conn:
+        if p["definition"]["objective"]["id"] == f19.OBJECTIVE and payload["role"] == "holdout":
+            store.check_f19_holdout(db, conn, p)
         store.access(conn, item["protocol_id"], payload["role"], p["context"]["roles"][payload["role"]],
                      "request-"+request_id, payload["purpose"], request_id)
     if item["state"] in ("run_recorded", "reused"):

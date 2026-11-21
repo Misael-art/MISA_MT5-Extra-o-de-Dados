@@ -89,6 +89,33 @@ interrompe essa soma. A duração intrabarra continua indisponível.
 
 **Aceite e evidência.** Persistir protocolo e hash antes de calcular. Demonstrar rejeição de característica conhecida após a decisão e impedimento de qualificar reserva já explorada. Publicar diferenças pareadas por blocos de pregões, inclusive dias sem operação. Declarar multiplicidade, sensibilidade a custos e incerteza. Aplicar os critérios da seção de promoção.
 
+O pré-registro Python usa `mt5x --json experiments create --file <plano.json>`.
+Em `objective`, use `id: f19_paired_session_net`, `version: 1`, um `focus`
+entre `signal`, `filter` e `exit`, `initial_equity`, `horizon_seconds`,
+`embargo_seconds`, `block_sessions` e `bootstrap_replicates`. Declare os cenários
+`base` e `stress` em `costs` com `commission_per_lot` e `slippage_points`.
+O cenário adverso aumenta ao menos um custo. Em `criteria`, declare `id`,
+`version`, `minimum_net_cash_difference` e `confidence`. A `grid` guarda as duas
+composições em entradas `{arm, composition}`, com braços `reference` e `candidate`.
+Cada braço muda somente a parte da estratégia isolada no `focus`.
+
+Os papéis `train`, `validation` e `holdout` mantêm os snapshots e a convenção
+temporal já usados por Experimentos. O embargo entre as janelas precisa cobrir
+o horizonte. Registre os quatro pedidos da reserva por `experiments request`
+com a chave `holdout.<braço>.<cenário>`, a composição correspondente e o arquivo de
+configuração com capital e custos congelados. O journal recusa uma reserva que já
+teve acesso registrado fora do plano. A avaliação em reserva usa execução própria.
+Para comparar por pregão WIN M1, inclua `calendar` em `objective` com o mesmo
+formato da F19-PESQ-01. Conclua os quatro pedidos do papel desejado e consulte
+`mt5x --json experiments paired-summary <protocolo> --role train`. A consulta
+confere revisão do executor e snapshot nos quatro livros. Exclui pregões que
+cruzam o corte ou têm M1 incompleto. Ciclos carregados entre sessões impedem
+a comparação intradiária. Os pregões elegíveis sem operações têm saldo zero.
+O relatório mostra candidato menos referência em cada cenário e intervalo
+em blocos de pregões, ajustado para os dois cenários. A evidência é exploratória.
+O pareamento por lado, volatilidade e distância e a validação prospectiva
+continuam com aceites próprios.
+
 <a id="f19-pesq-04"></a>
 
 ### F19-PESQ-04 — ORB de referência e paridade de abertura

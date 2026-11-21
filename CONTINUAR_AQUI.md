@@ -1,5 +1,29 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-03, pré-registro Python dos braços
+
+`experiments create` e `experiments request` aceitam o plano F19 de sinal, filtro
+ou saída. A hipótese, os dois braços, o capital e os dois cenários de custo ficam
+congelados com as três janelas e o embargo. A reserva exige os quatro pedidos
+antes do acesso e recusa exposição registrada fora do plano.
+
+Passaram 20 regressões focadas, incluindo o contrato público do SDK. O launcher
+Linux reabriu o protocolo sintético `a399eb11a198ffb0f252a5c39d6ed4de079e4ce7e795de5702919b27afed56d5`
+com os três papéis e nenhum acesso à reserva. Os recibos ficam em `f19-pesq-03-review`.
+Doctor offline com 16 OK, dois avisos e zero falhas. A etapa seguinte no App é o
+pareamento por contexto. A comparação por pregão WIN M1 já consulta quatro livros
+do mesmo snapshot, separa o cenário adverso e mantém o pregão sem operações.
+Na bancada sintética, os quatro backtests Python registrados deram diferença
+média de 150 por pregão no cenário base e zero no adverso, com ambos os
+intervalos inconclusivos. O fixture substituiu somente a leitura do hash do
+código. Passaram 25 testes na verificação conjunta. Recibo do launcher em
+`f19-pesq-03-paired-r2`. [Contrato](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03)
+
+O CI anterior das PRs #374–376 encontrou duas regressões na lista pública do SDK.
+A referência e as assinaturas de `opening_coverage` e `orb_reference` foram
+incluídas nos respectivos PRs. As três pontas atualizadas foram confirmadas no
+remoto. A suíte dirigida do SDK passou com 12 testes.
+
 ## 21/11/2026 — F19-PESQ-04, referência do ORB no App
 
 `analytics orb-reference` compara os sinais Python legados com os da caixa
@@ -17,7 +41,7 @@ fica em `f19-pesq-04-b3`. Doctor offline com 16 OK, dois avisos e zero falhas.
 O fonte fixado do HADOUKEN preserva os padrões de 30 minutos e 1,5×. A
 comparação no Tester requer uma fonte WIN com a grade e os eventos de execução
 qualificados. O histórico público desta bancada cobre apenas as barras do
-App. F19-PESQ-03 continua dependente do livro completo da F19-PESQ-02.
+App. A comparação Python da F19-PESQ-03 já pode usar o livro do modelo.
 [Ficha de referência](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04)
 
 ## 21/11/2026 — F19-PESQ-02, livro do modelo Python

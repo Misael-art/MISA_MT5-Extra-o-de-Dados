@@ -40,6 +40,9 @@ def add_parser(sub):
     p.add_argument("request_id")
     p = commands.add_parser("status", help="consulta journal e exposição; não entrega métricas financeiras")
     p.add_argument("protocol_id")
+    p = commands.add_parser("paired-summary", help="compara os braços F19 já executados por pregão WIN")
+    p.add_argument("protocol_id")
+    p.add_argument("--role", required=True, choices=("train", "validation", "holdout"))
     p = commands.add_parser("holdout_access", help="registra acesso antes de consumir o resultado reservado")
     p.add_argument("protocol_id")
     p.add_argument("--key", required=True)
@@ -81,6 +84,9 @@ def run(args, ctx):
         result = service.evaluate(ctx.db, args.request_id, config=ctx.config)
     elif action == "status":
         result = store.status(ctx.db, args.protocol_id)
+    elif action == "paired-summary":
+        from . import f19_summary
+        result = f19_summary.query(ctx.db, args.protocol_id, args.role)
     elif action == "pattern-create":
         result = sdk.create_pattern_campaign(ctx.db, _read(args.file))
     elif action == "pattern-request":
