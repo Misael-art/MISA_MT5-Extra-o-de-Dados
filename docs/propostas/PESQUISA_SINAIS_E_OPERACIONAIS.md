@@ -175,6 +175,21 @@ a normalização por ATR e a variante das 10h continuam pendentes.
 
 **Aceite e evidência.** Fixture de faixa de 500 pontos com dois WIN e saída de um a +500 e outro a +700 deve produzir R$ 240 brutos após ambas as saídas. Com ambos a +700, R$ 280. Cobrir volume indivisível, conflito intrabarra e veto de margem. Reconciliar volumes, caixa e retentativa no Expert que declare capacidade.
 
+O adaptador Python do ORB aceita `partial_exit_plan.fixed_r` no mesmo fluxo de
+composição que define stop e alvo. Para WIN com `spec.point=5`, 500 pontos de
+índice equivalem a 100 unidades `point` no Stop e 700 equivalem a 140 no Alvo.
+O gatilho de 1R usa o risco inicial de 500 pontos de índice. A fração de 0,5
+respeita lote mínimo e passo. O BE só é habilitado depois de executar a redução.
+Em conflito na mesma barra, o motor OHLC conserva a prioridade do stop.
+
+`protection.stepped_points_v1` aplica trailing no fechamento usando o preço do
+lado de saída. Gatilho, distância e passo são ancorados no preço de preenchimento
+e precisam corresponder a ticks inteiros. Em WIN com `point=5`, a combinação
+600/500/100 pontos de índice usa `trigger_points=120`, `distance_points=100` e
+`step_points=20`. `stop_points=0` mantém o stop do sinal. O stop revisado protege
+as barras seguintes e a trajetória registra cada alteração. A comparação em
+ticks e a evidência econômica em histórico qualificado continuam pendentes.
+
 <a id="f19-pesq-07"></a>
 
 ### F19-PESQ-07 — Open Strike e validade da pendente
