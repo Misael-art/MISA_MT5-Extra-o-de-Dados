@@ -101,6 +101,21 @@ interrompe essa soma. A duração intrabarra continua indisponível.
 
 **Aceite e evidência.** Fixture idêntica no Python e no MQL5 com dia completo, atrasado e sem rompimento. Comparar horário, máximas/mínimas, direção, ordem, veto de margem e caixa. Registrar a primeira divergência. Aceite nativo em Tester DEMO identificado. Diagnóstico por fixture e aceite do Tester têm registros próprios.
 
+`mt5x --json analytics orb-reference --manifest <id> --calendar <arquivo> --as-of <instante>`
+consulta o ORB Python existente e a variante de pesquisa que fixa a caixa na
+abertura qualificada, com parâmetros padrão de 30 minutos e alvo de 1,5× a
+faixa. O recibo identifica a primeira sessão em que os sinais divergem.
+O preço de alvo é teórico e ainda precisa ser conciliado com o passo do contrato
+na execução. Os presets históricos continuam usando a semântica legada.
+
+No recorte público WINZ26 de 27–28/10/2026, os dois percursos Python produziram
+os mesmos sinais após o fechamento da barra das 09h39, respectivamente compra e venda.
+Na fixture atrasada, o ORB legado sinalizou às 09h38 após começar a caixa às
+09h07. A variante qualificada excluiu o pregão. A leitura do Expert fixado em
+`d3dd3a5e9a68` confirmou a regra legada da primeira barra disponível, os valores
+padrão e o cálculo do alvo. O aceite de execução ainda exige esse percurso no
+Tester DEMO, com dados WIN equivalentes e comparação de ordens, margem, fills e caixa.
+
 <a id="f19-pesq-05"></a>
 
 ### F19-PESQ-05 — ORB com caixa e distância filtradas

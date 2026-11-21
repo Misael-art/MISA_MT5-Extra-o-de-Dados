@@ -102,16 +102,10 @@ def run(args: argparse.Namespace, ctx) -> int:
     if args.trades_command == "calendar":
         return _calendar(args, ctx)
     if args.trades_command == "opportunities":
-        import json
-        from pathlib import Path
+        from mt5_extracao.analytics.opening_coverage import read_calendar
         from mt5_extracao.trade_analytics.trajectories import opportunities
 
-        calendar = None
-        if args.calendar:
-            try:
-                calendar = json.loads(Path(args.calendar).read_text(encoding="utf-8-sig"))
-            except (OSError, ValueError) as exc:
-                raise ValueError(f"Não foi possível ler o calendário declarado: {exc}") from exc
+        calendar = read_calendar(args.calendar) if args.calendar else None
         result = opportunities.query(db, args.run, calendar=calendar)
         if result["status"] == "unavailable":
             out(f"{args.run}: execução sem registro de oportunidades. Refaça o backtest Python para gerar o livro.")

@@ -4,6 +4,7 @@ import json
 import re
 from datetime import date, time
 from math import isfinite
+from pathlib import Path
 
 import pandas as pd
 
@@ -16,6 +17,13 @@ MINUTE = pd.Timedelta(minutes=1)
 OPENING_MINUTES = 15
 ATR_PERIOD = 14
 WIN_CONTRACT = re.compile(r"WIN[FGHJKMNQUVXZ][0-9]{2}")
+
+
+def read_calendar(path):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"Não foi possível ler o calendário declarado: {exc}") from exc
 
 
 def _schedule(calendar):
@@ -87,8 +95,10 @@ def _ticks(snapshot, start, end, cutoff):
     return result
 
 
-def report(snapshots, calendar, *, as_of):
-    """Lê snapshots congelados. A janela de 15 min usa o relógio declarado da bolsa."""
+def report(snapshots, calendar, *, as_of, opening_minutes=OPENING_MINUTES):
+    """Lê snapshots congelados. A janela nominal usa o relógio declarado da bolsa."""
+    if type(opening_minutes) is not int or not 1 <= opening_minutes < 1440:
+        raise ValueError("A janela da abertura exige minutos inteiros entre 1 e 1439.")
     schedule = _schedule(calendar)
     cutoff = pd.Timestamp(instruments.utc(as_of))
     by_contract = {}
@@ -136,7 +146,7 @@ def report(snapshots, calendar, *, as_of):
         knowledge_cutoff = min(opening, cutoff)
         if known > knowledge_cutoff:
             reasons.append("calendar_not_known_at_open")
-        window_end = opening + OPENING_MINUTES * MINUTE
+        window_end = opening + opening_minutes * MINUTE
         if window_end > closing:
             reasons.append("window_outside_session")
         if cutoff < window_end:
@@ -187,7 +197,7 @@ def report(snapshots, calendar, *, as_of):
                                              "specification_revision": spec["revision_id"] if spec else None})
 
     manifest = {"version": 1, "source": source, "calendar_source": calendar["source"], "timezone": VENUE_TZ,
-                "opening_minutes": OPENING_MINUTES, "prior_atr_period": ATR_PERIOD, "as_of": cutoff.isoformat(),
+                "opening_minutes": opening_minutes, "prior_atr_period": ATR_PERIOD, "as_of": cutoff.isoformat(),
                 "eligible": sum(row["status"] == "eligible" for row in rows), "sessions": rows}
     manifest["manifest_id"] = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":"),
                                                         allow_nan=False).encode("utf-8")).hexdigest()

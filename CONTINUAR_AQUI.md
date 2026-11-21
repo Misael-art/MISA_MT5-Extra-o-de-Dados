@@ -1,5 +1,25 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-04, referência do ORB no App
+
+`analytics orb-reference` compara os sinais Python legados com os da caixa
+nominal congelada. A fixture atrasada inicia às
+09h07. O legado sinaliza no fechamento das 09h37 e a caixa nominal exclui esse
+dia por sete barras ausentes. Os casos completo e sem rompimento coincidem.
+
+Passaram 25 testes focados. O launcher comparou 90 barras públicas M1 do WINZ26
+em 27–28/10/2026 com SQLite de QA próprio e o mesmo parâmetro de 30 minutos.
+Os dois percursos tiveram 30/30 barras por abertura e os mesmos sinais às
+09h40, com compra no dia 27 e venda no dia 28. O primeiro alvo teórico foi
+181.887,5 pontos, entre os passos de 5 pontos do contrato. O recibo de consulta
+fica em `f19-pesq-04-b3`. Doctor offline com 16 OK, dois avisos e zero falhas.
+
+O fonte fixado do HADOUKEN preserva os padrões de 30 minutos e 1,5×. A
+comparação no Tester requer uma fonte WIN com a grade e os eventos de execução
+qualificados. O histórico público desta bancada cobre apenas as barras do
+App. F19-PESQ-03 continua dependente do livro completo da F19-PESQ-02.
+[Ficha de referência](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04)
+
 ## 21/11/2026 — F19-PESQ-02, livro do modelo Python
 
 O backtest Python acrescenta as oportunidades à trajetória usada pelo ledger.
@@ -11,7 +31,9 @@ O launcher Linux confirmou, em SQLite sintético isolado, três oportunidades,
 um veto, uma expiração e um ciclo encerrado, com três fills e caixa líquido de
 40 no modelo. Confirmou também dois pregões elegíveis sem sinais em outra execução.
 Passaram 35 testes focados no Linux. Recibos no estado local de QA
-`f19-pesq-02-pytest`. A ficha tem aceite parcial:
+`f19-pesq-02-pytest`. SHA remoto confirmado `59ec8de8fe72864f491896aa9669e83878924f58`.
+[PR #375](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/375).
+A ficha tem aceite parcial:
 faltam rejeição e parcial de entrada em produtor nativo, margem, exposição por
 perna, tempo em drawdown e concentração. [Consulta e limites](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-02)
 
