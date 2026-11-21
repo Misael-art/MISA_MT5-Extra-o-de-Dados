@@ -510,6 +510,15 @@ inclui preços teóricos, horário de disponibilidade e o primeiro pregão com
 divergência de sinal. A execução no Tester tem aceite próprio.
 [Ficha e evidência](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04)
 
+## Referência do Open Strike Python (F19-PESQ-07)
+
+`open_strike_reference(db, manifest_id, calendar, *, as_of)` lê um snapshot WIN M1
+e o calendário da abertura. Compara EMA10 e SMA10 sobre fechamentos de M15
+com desvio populacional, calcula o sinal do primeiro M15 completo e devolve as
+referências de entrada a mercado e pendente por um M15. O resultado identifica
+lacunas, falta de passo vigente, expiração e preço modelado em gap.
+[Ficha e critérios](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-07)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |

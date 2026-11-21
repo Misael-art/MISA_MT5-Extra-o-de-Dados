@@ -202,6 +202,20 @@ ticks e a evidência econômica em histórico qualificado continuam pendentes.
 
 **Aceite e evidência.** Testar simetria, candle neutro, igualdade na banda, virada, gap, não preenchimento e corrida entre fill e cancelamento. Conferir bandas e primeira divergência de execução antes do PF. A referência binária integral 600/1.000 tem equilíbrio bruto de 62,5%. Reconciliar diferenças de saídas por horário, slippage e operações faltantes.
 
+`mt5x --json analytics open-strike-reference --manifest <id> --calendar <arquivo> --as-of <instante>`
+consulta a referência Python. O App usa os fechamentos de M15 completos. A EMA10
+inicia no primeiro fechamento disponível e só publica após dez observações.
+As bandas EMA e SMA usam o mesmo desvio populacional dos dez fechamentos.
+Lacunas na grade reiniciam o aquecimento. A vela precisa ser direcional e fechar
+estritamente fora da banda EMA.
+
+O recibo compara o preço de abertura do próximo M1 com a pendente de um tick
+além do extremo. O gatilho permanece válido por até um M15, limitado pelo pregão,
+pelas 17h e pelo vencimento. Gap usa a abertura do M1 e toque intrabarra usa o
+gatilho. Minuto ausente antes da execução deixa a condição indeterminada.
+São referências por OHLC. Preenchimento efetivo, slippage, saída às 17h30 e
+comparação econômica continuam em aberto.
+
 <a id="f19-pesq-08"></a>
 
 ### F19-PESQ-08 — Primeiro reteste e polaridade

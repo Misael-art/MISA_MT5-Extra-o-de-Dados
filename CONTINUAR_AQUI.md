@@ -1,5 +1,18 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-07, referência do Open Strike Python
+
+`analytics open-strike-reference` compara EMA10 e SMA10 no primeiro M15 fechado
+do WIN e devolve preços modelados de mercado e pendente. A pendente fica a um
+tick do extremo e expira até o próximo M15 ou o limite de sessão. Minuto ausente,
+igualdade com a banda e vela neutra têm tratamento explícito. As referências por
+barras mantêm execução, custos e encerramento como aceites separados.
+
+Passaram 21 regressões focadas em Linux, incluindo SDK e cobertura de calendário.
+A bancada sintética registra sinal às 09h15, gatilho de 101.010 e preço modelado
+de 101.020 na abertura acima do gatilho. Recibos em `f19-pesq-07-reference-r2`.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-07)
+
 ## 21/11/2026 — F19-PESQ-06, composição de saídas no ORB Python
 
 A composição do ORB Python aceita parcial em R, stop/alvo fixos e break-even
@@ -18,7 +31,7 @@ passo de 600/500/100 pontos de índice. As 89 regressões focadas cobriram compr
 e venda. Pelo launcher, o stop avançou para 100.355 e 100.455 e a saída após gap
 aconteceu em 100.405. Caixa líquido modelado de 60. Recibos em
 `f19-pesq-06-stepped-launcher`. A comparação econômica em histórico qualificado
-continua pendente.
+continua pendente. SHA remoto do trailing `9e4bee11e0ca8d0024aa5e775c22b53e5240fbb2`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-06)
 
 ## 21/11/2026 — F19-PESQ-05, filtros estáticos do ORB
