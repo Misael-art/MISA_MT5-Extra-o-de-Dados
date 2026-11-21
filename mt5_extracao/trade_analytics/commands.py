@@ -284,6 +284,11 @@ def _compare(args, ctx) -> int:
         result[key] = {"name": item["name"], "metrics": m, "study_only": item.get("study_only", False),
                        "triggers": (item.get("sequence") or {}).get("triggers"),
                        "safety_notes": item.get("safety_notes")}
+        valuation = item["valuation"]
+        if "grid_fill_basis" in valuation:
+            result[key]["grid"] = {"fill_basis": valuation["grid_fill_basis"],
+                                   "levels_excluded_by_stop": valuation["grid_levels_excluded_by_stop"],
+                                   "partial_policy": valuation["grid_partial_policy"]}
     data(run=args.run, modes=result)
     return cli.EXIT_OK
 

@@ -44,6 +44,7 @@ def test_compare_insights_simulate_and_export(setup, capsys, tmp_path, monkeypat
     code, out = _call(cfg, capsys, "compare", "--run", run["run_id"], "--modes", "ponto_fixo,trailing_atr,gradiente_fixo")
     assert code == cli.EXIT_OK and set(out["data"]["modes"]) == {"ponto_fixo", "trailing_atr", "gradiente_fixo"}
     assert out["data"]["modes"]["ponto_fixo"]["metrics"]["net"] == pytest.approx(run["metrics"]["net_profit"])
+    assert out["data"]["modes"]["gradiente_fixo"]["grid"]["fill_basis"] == "ohlc_order_assumed"
     assert cli.main(["--config", cfg, "trades", "compare", "--run", run["run_id"], "--modes", "martingale"]) \
         == cli.EXIT_USAGE                                                  # Python: sem martingale
     capsys.readouterr()
