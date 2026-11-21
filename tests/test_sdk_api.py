@@ -97,6 +97,7 @@ SURFACE = {
     "orb_reference": ["db", "manifest_id", "calendar", "as_of", "params"],
     "pattern_evaluation": ['db', 'protocol_id', 'request_id', 'data_manifest_id', 'as_of', 'include_facts'],
     "open_strike_reference": ["db", "manifest_id", "calendar", "as_of"],
+    "retest_reference": ["db", "manifest_id", "as_of", "tolerance_price", "horizon_bars", "session_mode"],
 }
 
 

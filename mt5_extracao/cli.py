@@ -2050,6 +2050,14 @@ def build_parser():
     q.add_argument("--calendar", required=True, help="arquivo JSON com o calendário declarado por pregão")
     q.add_argument("--as-of", required=True, help="instante limite da leitura, com fuso explícito")
     q.set_defaults(func=cmd_open_strike_reference)
+    q = analytics_sub.add_parser("retest-reference", help="consulta quebras e revisitas de pivôs confirmados")
+    q.add_argument("--manifest", required=True, help="snapshot com barras e sessões observadas")
+    q.add_argument("--as-of", required=True, help="instante limite, com fuso explícito")
+    q.add_argument("--tolerance-price", type=float, required=True, help="tolerância na unidade de preço do ativo")
+    q.add_argument("--horizon-bars", type=int, required=True, help="máximo de barras após a quebra")
+    q.add_argument("--session-mode", choices=("observed", "synthetic_utc_day"), default="observed",
+                   help="synthetic_utc_day usa somente dias UTC de uma bancada controlada")
+    q.set_defaults(func=cmd_retest_reference)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
@@ -2528,6 +2536,17 @@ def cmd_open_strike_reference(args, ctx):
         entries = row["entries"]
         detail = f" · mercado {entries['market']['status']} · pendente {entries['pending']['status']}" if entries else ""
         _print(f"{row['date']} {row['status']}{detail}")
+    return 0
+
+
+def cmd_retest_reference(args, ctx):
+    from mt5_extracao import sdk
+
+    result = sdk.retest_reference(ctx.db, args.manifest, as_of=args.as_of, tolerance_price=args.tolerance_price,
+                                  horizon_bars=args.horizon_bars, session_mode=args.session_mode)
+    _data(retest_reference=result)
+    count = sum(event["kind"] == "break" for event in result["events"])
+    _print(f"{count} quebra(s) e {len(result['events']) - count} revisita(s) em {result['symbol']}.")
     return 0
 
 

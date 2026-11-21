@@ -519,6 +519,15 @@ referências de entrada a mercado e pendente por um M15. O resultado identifica
 lacunas, falta de passo vigente, expiração e preço modelado em gap.
 [Ficha e critérios](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-07)
 
+## Reteste de pivôs causais (F19-PESQ-08)
+
+`retest_reference(db, manifest_id, *, as_of, tolerance_price, horizon_bars, session_mode="observed")`
+lê barras e sessões da revisão congelada. Devolve quebras após confirmação de
+fractal, contagem prévia de visitas e cada revisita numerada. O preço da zona e
+seu lado são congelados na quebra. Os instantes publicados são de disponibilidade
+da barra. `synthetic_utc_day` serve a uma bancada controlada.
+[Regra e limites](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-08)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |

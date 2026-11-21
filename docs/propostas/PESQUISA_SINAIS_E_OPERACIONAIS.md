@@ -228,6 +228,16 @@ comparação econômica continuam em aberto.
 
 **Aceite e evidência.** Deslocar um pivô futuro no fixture não pode mudar decisões passadas. Distinguir primeiro e quarto toques. Relatar risco/tempo exposto, custo do atraso e perda de cauda. Apresentar controles e resultados por mercado. Os relatos NQ/ES originam hipóteses para WIN/WDO.
 
+`mt5x --json analytics retest-reference --manifest <id> --as-of <instante> --tolerance-price <valor> --horizon-bars <n>`
+consulta os fractais estritos de cinco barras da T19.6. A quebra exige um
+fechamento posterior à disponibilidade do fractal, fora da sua tolerância.
+Até a quebra, a contagem distingue visitas separadas de barras consecutivas
+tocando a mesma zona. Depois da quebra, o nível fica congelado e as revisitas
+recebem um número ordinal. O acompanhamento termina no horizonte, em violação
+por fechamento, na virada da sessão ou em lacuna. Cada evento tem horário de
+disponibilidade e registro do fechamento que sustentou ou deixou de sustentar a
+polaridade. O estudo econômico de entradas e os controles ainda são etapas próprias.
+
 <a id="f19-pesq-09"></a>
 
 ### F19-PESQ-09 — CHoCH em H4
