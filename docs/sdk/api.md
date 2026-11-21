@@ -498,6 +498,15 @@ executor, takeover de processo ativo ou encerramento de terminal.
 | `run_parity(db, config, robot, strategy_robot, symbol, timeframe, ...)` | Roda os dois backtests no mesmo período e compara. Devolve `report`, `python_run` e `mql5_run` |
 | `ParityReport` | `matched`, `matched_share`, `pairs_close_share`, `difference_of_gross`, `median_ratio`, `only_python`, `only_mql5`, `same_sign`, `result_difference` (informativo), `ok` |
 
+## Referência do ORB Python (F19-PESQ-04)
+
+`orb_reference(db, manifest_id, calendar, *, as_of, **params)` compara o primeiro
+breakout do ORB legado com a abertura nominal congelada de um WIN M1. Parâmetros
+aceitos: `range_minutes=30`, `target_mult=1.5`, `min_range_atr=0.0`. O recibo
+inclui preços teóricos, horário de disponibilidade e o primeiro pregão com
+divergência de sinal. A execução no Tester tem aceite próprio.
+[Ficha e evidência](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |
