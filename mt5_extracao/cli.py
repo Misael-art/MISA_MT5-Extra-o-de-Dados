@@ -2045,6 +2045,11 @@ def build_parser():
     q.add_argument("--distance", type=float, nargs=2, metavar=("MIN", "MAX"), help="limites inclusivos além da borda, em pontos")
     q.add_argument("--direction", choices=("both", "long", "short"), default="both")
     q.set_defaults(func=cmd_orb_reference)
+    q = analytics_sub.add_parser("open-strike-reference", help="compara o primeiro M15 e as entradas modeladas do Open Strike")
+    q.add_argument("--manifest", required=True, help="snapshot M1 de um contrato WIN")
+    q.add_argument("--calendar", required=True, help="arquivo JSON com o calendário declarado por pregão")
+    q.add_argument("--as-of", required=True, help="instante limite da leitura, com fuso explícito")
+    q.set_defaults(func=cmd_open_strike_reference)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
@@ -2510,6 +2515,19 @@ def cmd_orb_reference(args, ctx):
         counts = Counter(row["filter_decision"]["status"] for row in result["sessions"])
         _print(f"Filtros ORB: {counts['accepted']} aceitos, {counts['blocked']} bloqueados, "
                f"{counts['no_breakout']} sem rompimento e {counts['excluded']} pregões inelegíveis.")
+    return 0
+
+
+def cmd_open_strike_reference(args, ctx):
+    from mt5_extracao import sdk
+    from mt5_extracao.analytics.opening_coverage import read_calendar
+
+    result = sdk.open_strike_reference(ctx.db, args.manifest, read_calendar(args.calendar), as_of=args.as_of)
+    _data(open_strike_reference=result)
+    for row in result["sessions"]:
+        entries = row["entries"]
+        detail = f" · mercado {entries['market']['status']} · pendente {entries['pending']['status']}" if entries else ""
+        _print(f"{row['date']} {row['status']}{detail}")
     return 0
 
 
