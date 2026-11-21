@@ -24,8 +24,12 @@ class OpeningRangeBreakout(Strategy):
         in_range = times < session_open + pd.Timedelta(minutes=float(p["range_minutes"]))
         rng_high = df["high"].where(in_range).groupby(day).transform("max")
         rng_low = df["low"].where(in_range).groupby(day).transform("min")
+        self._breakouts(df, out, day, ~in_range, rng_high, rng_low, out["atr"].fillna(0))
+
+    def _breakouts(self, df, out, day, ready, rng_high, rng_low, atr):
+        p = self.params
         size = rng_high - rng_low
-        after = ~in_range & (size > p["min_range_atr"] * out["atr"].fillna(0))
+        after = ready & (size > p["min_range_atr"] * atr)
         above = after & (df["close"] > rng_high)
         below = after & (df["close"] < rng_low)
         # Apenas o primeiro rompimento de cada dia

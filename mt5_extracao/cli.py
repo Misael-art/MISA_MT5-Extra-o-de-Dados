@@ -2034,6 +2034,14 @@ def build_parser():
     q.add_argument("--calendar", required=True, help="arquivo JSON com o calendário declarado por pregão")
     q.add_argument("--as-of", required=True, help="instante limite da leitura, com fuso explícito")
     q.set_defaults(func=cmd_opening_coverage)
+    q = analytics_sub.add_parser("orb-reference", help="compara os sinais Python do ORB legado e com sessão qualificada")
+    q.add_argument("--manifest", required=True, help="snapshot M1 de um contrato WIN")
+    q.add_argument("--calendar", required=True, help="arquivo JSON com o calendário declarado por pregão")
+    q.add_argument("--as-of", required=True, help="instante limite da leitura, com fuso explícito")
+    q.add_argument("--range-minutes", type=int, default=30)
+    q.add_argument("--target-mult", type=float, default=1.5)
+    q.add_argument("--min-range-atr", type=float, default=0.0)
+    q.set_defaults(func=cmd_orb_reference)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
@@ -2470,19 +2478,29 @@ def build_parser():
 
 
 def cmd_opening_coverage(args, ctx):
-    import json
-    from pathlib import Path
     from mt5_extracao import sdk
+    from mt5_extracao.analytics.opening_coverage import read_calendar
 
-    try:
-        calendar = json.loads(Path(args.calendar).read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError) as exc:
-        raise ValueError(f"Não foi possível ler o calendário declarado: {exc}") from exc
+    calendar = read_calendar(args.calendar)
     result = sdk.opening_coverage(ctx.db, args.manifest, calendar, as_of=args.as_of)
     _data(opening_coverage=result)
     _print(f"Cobertura da abertura WIN: {result['eligible']}/{len(result['sessions'])} pregões elegíveis.")
     for row in result["sessions"]:
         _print(f"{row['date']} {row['contract']} · {row['status']} {' / '.join(row['reasons'])}")
+    return 0
+
+
+def cmd_orb_reference(args, ctx):
+    from mt5_extracao import sdk
+    from mt5_extracao.analytics.opening_coverage import read_calendar
+
+    result = sdk.orb_reference(ctx.db, args.manifest, read_calendar(args.calendar), as_of=args.as_of,
+                               range_minutes=args.range_minutes, target_mult=args.target_mult,
+                               min_range_atr=args.min_range_atr)
+    _data(orb_reference=result)
+    different = result["first_divergent_session"]
+    _print(f"Primeira divergência de sinal no ORB Python em {different}." if different else
+           "Os sinais coincidem nos pregões comparados.")
     return 0
 
 
