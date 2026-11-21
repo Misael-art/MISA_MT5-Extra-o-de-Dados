@@ -12,6 +12,7 @@ OBJECTIVE = "f19_paired_session_net"
 COST_FIELDS = ("commission_per_lot", "slippage_points")
 ARMS = ("reference", "candidate")
 SCENARIOS = ("base", "stress")
+MAX_BLOCK_SESSIONS = 250
 FOCUS = {"signal": {"strategy"}, "filter": {"filters"},
          "exit": {"protection", "profit_exit", "partial_exit_plan", "conditional_policy"}}
 
@@ -35,7 +36,7 @@ def validate(definition, context):
     if not _finite(objective["initial_equity"]) or objective["initial_equity"] <= 0:
         raise ValueError("Informe capital inicial positivo e finito, comum aos dois braços.")
     limits = {"horizon_seconds": (1, 31_536_000), "embargo_seconds": (1, 31_536_000),
-              "block_sessions": (1, 250), "bootstrap_replicates": (1, 10_000)}
+              "block_sessions": (1, MAX_BLOCK_SESSIONS), "bootstrap_replicates": (1, 10_000)}
     for name, (minimum, maximum) in limits.items():
         if type(objective[name]) is not int or not minimum <= objective[name] <= maximum:
             raise ValueError(f"{name} precisa ser inteiro entre {minimum} e {maximum}.")

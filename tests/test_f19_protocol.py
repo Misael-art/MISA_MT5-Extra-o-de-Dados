@@ -150,4 +150,11 @@ def test_paired_summary_uses_reexecuted_costs_and_zero_trade_session(tmp_path, m
     assert first["scenarios"]["stress"]["difference"] < first["scenarios"]["base"]["difference"]
     assert zero["scenarios"]["base"] == {"reference": 0.0, "candidate": 0.0, "difference": 0.0}
     assert result["estimates"]["base"]["sessions"] == 2 and result["estimates"]["base"]["replicates"] == 10
+    diagnostic = result["sensitivity"]["base"]
+    assert diagnostic["exploratory"]
+    assert diagnostic["without_best_session"] == {"excluded_date": first["date"],
+                                                  "excluded_difference": first["scenarios"]["base"]["difference"],
+                                                  "sessions": 1, "mean_difference": 0}
+    alternate, = diagnostic["block_sizes"]
+    assert alternate["block_sessions"] == 2 and alternate["status"] == "insufficient_sessions"
     assert result["tests_counted"] == 2 and result["economic_approval"] is False
