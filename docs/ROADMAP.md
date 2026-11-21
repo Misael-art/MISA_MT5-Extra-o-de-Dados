@@ -350,6 +350,20 @@ dimensionamento e parcial simples existentes; validar parciais múltiplas/gradie
 de declarar suporte. Implementação inclui UI/preset/Expert e reconciliação de custos/PnL,
 sem inflar contagem de operações a partir das parcelas. Detalhe na especificação §6.3.
 
+<a id="roteiro-f19-pesquisa"></a>
+
+### Pesquisa de sinais de abertura, padrões e gestão de ciclos — 20/11/2026
+
+Os três pilares convergem em uma campanha por candidato: dados com sessão e disponibilidade conhecidas, sinal comparado a um controle e gestão com risco total equivalente. As ações abaixo detalham F13/F16/F19/F20. Os aceites corretivos prioritários da composição continuam no início deste roadmap. Acompanhar o estado de cada ficha no [painel de trabalho](PLANO_DE_TRABALHO.md#fila-f19-pesquisa) e executar pelo [plano detalhado](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md).
+
+| Etapa | Ações previstas | Resultado que permite avançar |
+|---|---|---|
+| Dados e método | [F19-PESQ-01](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-01) qualificar sessão e ticks do WIN, [F19-PESQ-02](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-02) rastrear oportunidades e ciclos, [F19-PESQ-03](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03) congelar teste e reserva. | Cobertura por pregão, denominador auditável, custos e comparação pré-registrada. |
+| Abertura | [F19-PESQ-04](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04) reconciliar ORB Python/MQL5, [F19-PESQ-05](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-05) isolar largura e distância, [F19-PESQ-06](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-06) comparar as saídas, [F19-PESQ-07](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-07) comparar entrada direta e pendente no Open Strike. | Veredito por variante com ganhos descartados, perdas evitadas e diferença líquida por sessão. |
+| Price Action e zonas | [F19-PESQ-08](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-08) medir o primeiro reteste, [F19-PESQ-09](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-09) testar as definições de CHoCH H4, [F19-PESQ-10](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-10) validar zona, meio e expiração do FVG. | Eventos com relógio causal e diferença medida contra controles pareados. |
+| Gestão de ciclos | [F19-PESQ-11](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11) qualificar risco, estado e parciais das grades, [F19-PESQ-12](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-12) isolar reposição na piramidação, [F19-PESQ-13](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-13) congelar a âncora de Bollinger, [F19-PESQ-14](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-14) comparar lotes assimétricos. | Posição e caixa conciliados, pior perda e margem do conjunto sob exposição comparável. |
+| Carteira e presets | [F19-PESQ-15](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-15) avaliar as duas pernas do hedge, [F19-PESQ-16](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16) comparar o harmônico à vista por patrimônio, [F19-PESQ-17](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-17) qualificar Default, Manual, Defensivo, Fator de lucro e Ultra por candidato. | Pacote compatível com a revisão do Expert e decisão registrada, inclusive pesquisa inconclusiva ou reprovada. |
+
 ### Pesquisa futura — FRP, Fluxo Relativo do Preço
 
 Registrar grupos de 3/4 indicadores correlacionados entre si e com movimento do preço,
