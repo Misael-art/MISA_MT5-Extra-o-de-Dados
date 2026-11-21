@@ -60,12 +60,17 @@ def query(db, protocol_id, role):
 
     criteria = definition["criteria"]
     selected = [row for row in rows if row["eligible"]]
-    estimates = {scenario: _estimate([row["scenarios"][scenario]["difference"] for row in selected], plan,
-                                     criteria, definition["seed"]) for scenario in f19.SCENARIOS}
+    dates = [row["date"] for row in selected]
+    differences = {scenario: [row["scenarios"][scenario]["difference"] for row in selected]
+                   for scenario in f19.SCENARIOS}
+    estimates = {scenario: _estimate(sample, plan, criteria, definition["seed"])
+                 for scenario, sample in differences.items()}
+    sensitivity = {scenario: _sensitivity(dates, sample, plan, criteria, definition["seed"])
+                   for scenario, sample in differences.items()}
     return {"version": 1, "protocol_id": protocol_id, "role": role, "snapshot_id": snapshot.manifest_id,
             "coverage_manifest_id": coverage_id, "executor_sha256": next(iter(identities)),
             "runs": {scenario: {arm: runs[arm, scenario] for arm in f19.ARMS} for scenario in f19.SCENARIOS},
-            "sessions": rows, "estimates": estimates, "tests_counted": len(f19.SCENARIOS),
+            "sessions": rows, "estimates": estimates, "sensitivity": sensitivity, "tests_counted": len(f19.SCENARIOS),
             "minimum_net_cash_difference": criteria["minimum_net_cash_difference"],
             "unit": "account_money_per_session", "prior_external_exposure": "unknown",
             "qualified_final_holdout": False, "economic_approval": False}
@@ -138,3 +143,17 @@ def _estimate(differences, plan, criteria, seed):
     status = "above_threshold" if low > minimum else "below_threshold" if high < minimum else "inconclusive"
     return {**result, "low": float(low), "high": float(high), "replicates": len(means),
             "family_confidence": confidence, "status": status}
+
+
+def _sensitivity(dates, differences, plan, criteria, seed):
+    without_best = {"excluded_date": None, "excluded_difference": None, "sessions": 0, "mean_difference": None}
+    if differences:
+        best = max(range(len(differences)), key=differences.__getitem__)
+        remaining = differences[:best] + differences[best + 1:]
+        without_best.update(excluded_date=dates[best], excluded_difference=differences[best], sessions=len(remaining),
+                            mean_difference=fsum(remaining) / len(remaining) if remaining else None)
+    block = plan["block_sessions"]
+    alternatives = sorted({max(1, block // 2), min(f19.MAX_BLOCK_SESSIONS, block * 2)} - {block})
+    return {"exploratory": True, "without_best_session": without_best,
+            "block_sizes": [_estimate(differences, dict(plan, block_sessions=size), criteria, seed)
+                            for size in alternatives]}

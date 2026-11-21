@@ -1,5 +1,16 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-03, sensibilidade pareada
+
+`experiments paired-summary` agora mede quanto a média muda ao retirar o maior
+diferencial de um único pregão e repete o intervalo em tamanhos alternativos
+de bloco. A análise usa os mesmos livros, custos e pregões elegíveis do
+pré-registro, incluindo saldo zero em sessões sem operação.
+Passaram quatro regressões focadas. Pelo launcher, o diferencial médio
+de 150 caiu a zero ao retirar o único pregão favorável. O bloco alternativo
+teve amostra insuficiente. Recibos em f19-pesq-03-sensitivity.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03)
+
 ## 21/11/2026 — F19-PESQ-11, limite do stop na re-simulação de grade
 
 O Laboratório exclui degraus no stop ativo ou além da proteção antes de
@@ -7,6 +18,8 @@ simular as adições. A comparação mostra a contagem de níveis excluídos
 e declara a ordenação OHLC assumida e a supressão de parcial na grade.
 Passaram 31 regressões focadas em dois lotes. Pelo launcher, uma barra
 atravessou o stop e excluiu dois níveis. Recibos em f19-pesq-11-stop-grade-r2.
+[PR #386](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/386),
+SHA remoto `f719d77929743b72ed9208c67dbcf22ab4c86c4b`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11)
 
 ## 21/11/2026 — F19-PESQ-16, projeção harmônica à vista

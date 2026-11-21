@@ -113,6 +113,10 @@ cruzam o corte ou têm M1 incompleto. Ciclos carregados entre sessões impedem
 a comparação intradiária. Os pregões elegíveis sem operações têm saldo zero.
 O relatório mostra candidato menos referência em cada cenário e intervalo
 em blocos de pregões, ajustado para os dois cenários. A evidência é exploratória.
+Em cada cenário, `sensitivity` mostra a média após retirar o pregão com o
+maior diferencial pareado. Empates mantêm a ordem dos pregões. O resumo também
+testa a metade inteira e o dobro do bloco declarado nos limites do protocolo.
+Cada alternativa carrega o tamanho de bloco e a disponibilidade da amostra.
 O pareamento por lado, volatilidade e distância e a validação prospectiva
 continuam com aceites próprios.
 
