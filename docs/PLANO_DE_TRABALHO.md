@@ -4171,7 +4171,7 @@ A primeira ação executável é qualificar a janela de abertura do WIN. O estad
 
 | Ficha e entrega | Responsável | Pré-requisitos nesta fila | Situação |
 |---|---|---|---|
-| [F19-PESQ-01 — Dados e sessão do WIN](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-01) | Dados/Analytics | — | Planejada |
+| [F19-PESQ-01 — Dados e sessão do WIN](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-01) | Dados/Analytics | — | Implementada em `analytics/opening_coverage.py` e verificada por SDK/CLI. Fixtures cobrem atraso, minuto ausente, sessão especial, vencimento e disponibilidade. [Aceite por barras do WINZ26 pelo launcher](dados/B3_PUBLICO.md#cobertura-da-abertura-do-win-por-pregão). Microestrutura e uso no Tester dependem de captura própria. |
 | [F19-PESQ-02 — Livro de oportunidades e ciclos](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-02) | App/Analytics e Laboratório | 01 | Planejada |
 | [F19-PESQ-03 — Protocolo de comparação](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03) | App/Experimentos | 01, 02 | Planejada |
 | [F19-PESQ-04 — ORB de referência e paridade de abertura](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04) | App/Estratégias e HADOUKEN | 01 | Planejada |

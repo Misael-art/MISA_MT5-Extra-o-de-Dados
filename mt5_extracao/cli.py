@@ -2029,6 +2029,11 @@ def build_parser():
 
     p = sub.add_parser("analytics", help="características analíticas versionadas e consultas point-in-time")
     analytics_sub = p.add_subparsers(dest="analytics_domain", required=True)
+    q = analytics_sub.add_parser("opening-coverage", help="qualifica a abertura do WIN por pregão e contrato")
+    q.add_argument("--manifest", required=True, action="append", help="snapshot M1 (repita para outros contratos)")
+    q.add_argument("--calendar", required=True, help="arquivo JSON com o calendário declarado por pregão")
+    q.add_argument("--as-of", required=True, help="instante limite da leitura, com fuso explícito")
+    q.set_defaults(func=cmd_opening_coverage)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
@@ -2462,6 +2467,23 @@ def build_parser():
     p.add_argument("--open", action="store_true", help="abre o relatório no navegador")
     p.set_defaults(func=cmd_report)
     return parser
+
+
+def cmd_opening_coverage(args, ctx):
+    import json
+    from pathlib import Path
+    from mt5_extracao import sdk
+
+    try:
+        calendar = json.loads(Path(args.calendar).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"Não foi possível ler o calendário declarado: {exc}") from exc
+    result = sdk.opening_coverage(ctx.db, args.manifest, calendar, as_of=args.as_of)
+    _data(opening_coverage=result)
+    _print(f"Cobertura da abertura WIN: {result['eligible']}/{len(result['sessions'])} pregões elegíveis.")
+    for row in result["sessions"]:
+        _print(f"{row['date']} {row['contract']} · {row['status']} {' / '.join(row['reasons'])}")
+    return 0
 
 
 def cmd_analytics(args, ctx):

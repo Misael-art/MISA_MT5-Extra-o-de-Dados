@@ -156,10 +156,7 @@ def history(db, symbol=None, *, connection=None):
                        connection, params={"symbol": symbol})
 
 
-def select(frame, kind, at, *, known_at=None):
-    """Última revisão conhecida de cada evento; intervalo [início,fim), sem lookahead."""
-    instant = pd.Timestamp(utc(at))
-    cutoff = pd.Timestamp(utc(known_at if known_at is not None else at))
+def _known_revisions(frame, kind, cutoff):
     if frame.empty:
         return frame.copy()
     rows = frame[(frame.kind == kind) & frame.valid_from.notna() &
@@ -172,10 +169,29 @@ def select(frame, kind, at, *, known_at=None):
     rows = rows[rows.known_at == latest]
     if rows.duplicated(keys, keep=False).any():
         raise ValueError("Revisões do instrumento conflitantes no mesmo instante de conhecimento; concilie a fonte.")
-    rows = rows[rows.valid_from.notna()]
+    return rows
+
+
+def select(frame, kind, at, *, known_at=None):
+    """Última revisão conhecida de cada evento; intervalo [início,fim), sem lookahead."""
+    instant = pd.Timestamp(utc(at))
+    cutoff = pd.Timestamp(utc(known_at if known_at is not None else at))
+    rows = _known_revisions(frame, kind, cutoff)
+    if rows.empty:
+        return rows
     begin = pd.to_datetime(rows.valid_from, utc=True, format="ISO8601")
     end = pd.to_datetime(rows.valid_to, utc=True, format="ISO8601")
     return rows[(begin <= instant) & (end.isna() | (instant < end))].reset_index(drop=True)
+
+
+def expiration(frame, contract, *, known_at):
+    """Vencimento já anunciado, ainda que sua vigência esteja no futuro."""
+    rows = _known_revisions(frame, "expiration", pd.Timestamp(utc(known_at)))
+    matches = [row for row in rows.to_dict("records")
+               if json.loads(row["payload_json"])["contract"] == contract]
+    if len(matches) > 1:
+        raise ValueError("Vencimentos conflitantes para o mesmo contrato; concilie a fonte.")
+    return matches[0] if matches else None
 
 
 def specification(frame, at, *, known_at=None):

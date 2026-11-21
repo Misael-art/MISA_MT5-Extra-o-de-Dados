@@ -44,3 +44,59 @@ mt5x --db database/b3_publico.db backtest --symbol WINZ26 --tf M1 --strategy <ch
 
 Para operar ou usar o Testador nativo do MT5 com ativos da B3, ainda é preciso o servidor de uma
 corretora brasileira. Basta uma conta de demonstração, sem conta real.
+
+## Cobertura da abertura do WIN por pregão
+
+`analytics opening-coverage` lê snapshots M1 congelados e um calendário declarado.
+Use um snapshot por contrato da mesma base e inclua no calendário cada data da
+população. Dias sem pregão ou sem confirmação da grade usam `closed` ou `unknown`
+e dispensam os horários. A escolha de contrato por data é explícita.
+
+```json
+{
+  "source": "B3, Ofício 050/2026-VNC, Anexo 1",
+  "sessions": [
+    {
+      "date": "2026-10-27",
+      "contract": "WINZ26",
+      "kind": "regular",
+      "known_at": "2026-10-13T23:59:59-03:00",
+      "open": "09:00",
+      "close": "18:25",
+      "auction_open": "08:55"
+    }
+  ]
+}
+```
+
+Congele os dados com `analytics.datasets.capture(db, "WINZ26", "M1", start, end)`.
+Declare os fatos históricos de vencimento e especificação no registro existente
+`analytics.instruments.record` antes da captura. Inclua `families=("ticks",)` se a
+fonte tiver ticks armazenados. A consulta também está disponível em `sdk.opening_coverage`.
+
+```bash
+./run.sh --cli --db database/b3_publico.db --json analytics opening-coverage \
+  --manifest <ID-do-snapshot> --calendar <calendario.json> --as-of 2026-10-27T09:15:00-03:00
+```
+
+O resultado identifica fonte, sessão, vencimento conhecido na abertura, revisão dos
+dados, `status`, motivos e horários esperados e observados. O intervalo nominal
+é fechado à esquerda e aberto à direita. Para 09h00–09h15, as 15 barras de
+09h00 a 09h14 precisam estar fechadas até `--as-of`. Sessão especial, calendário
+desconhecido, contrato não qualificado e lacuna excluem a faixa. A abertura
+observada às 09h07 é preservada no recibo com sete minutos faltantes, se os demais
+minutos estiverem presentes.
+
+A largura é dada em pontos de índice e em ticks quando houver passo histórico.
+O gap em pontos e o ATR de 14 M1 de Wilder usam a sessão anterior declarada,
+com preço e janela completos no mesmo contrato. O ATR reinicia dentro daquele
+pregão. A troca de contrato mantém essas medidas indisponíveis. A pré-abertura
+publicada no calendário informa o horário programado. Ticks, spread, flags de
+agressor e fila têm evidência própria. As barras B3 agregadas pelo importador
+deixam spread e contagem de ticks brutos indisponíveis.
+
+A prova pelo launcher usou 32 barras públicas do WINZ26 em SQLite de QA, com dados
+limitados à abertura de 27 e 28/10/2026. Os dois pregões tiveram 15/15 barras na
+janela. As larguras observadas foram 1.795 e 1.635 pontos. Ticks brutos, passo
+histórico congelado e o pregão anterior completo ficaram fora desse recorte.
+[Horários e pré-abertura](https://www.b3.com.br/data/files/99/B7/82/67/8A631A103BBB511AAC094EA8/OC%20050-2026-VNC%20NOVOS%20HORARIOS%20DE%20NEGOCIACAO_PT.pdf) · [Vencimento](https://www.b3.com.br/pt_br/solucoes/plataformas/puma-trading-system/para-participantes-e-traders/calendario-de-negociacao/vencimentos/calendario-de-vencimentos-de-contratos-financeiros/)

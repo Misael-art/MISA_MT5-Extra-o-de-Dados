@@ -1,5 +1,24 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-01, cobertura da abertura do WIN
+
+`analytics opening-coverage` e `sdk.opening_coverage` qualificam cada data da
+grade declarada com os snapshots M1 e os fatos de vigência existentes. Janela
+incompleta ou ainda aberta fica fora da população, com motivo no manifesto.
+A consulta preserva os dois relógios, o vencimento conhecido no instante e as
+limitações de ticks, microestrutura e histórico anterior.
+
+O launcher Linux conferiu 2/2 aberturas em 27–28/10/2026 com 32 barras públicas
+WINZ26 e SQLite isolado. Passaram 59 testes focados na `.venv` oficial. O doctor
+offline registrou 16 OK, dois avisos e zero
+falhas. O recibo de cobertura `48c4522533455fe321c60e2e24fcb71988874b3cbbcc38f7b2d6c87f12aaba3a`
+fica no estado local de QA `f19-pesq-01-b3`. A revisão da tarefa parte do App
+`09ebf29408ec`, PR #373, com os pins preservados. [Consulta e limites](docs/dados/B3_PUBLICO.md#cobertura-da-abertura-do-win-por-pregão)
+
+O próximo incremento da frente é F19-PESQ-02. O livro de oportunidades deve
+usar os pregões elegíveis como população, conservar exclusões e vincular as
+decisões aos ciclos e fills efetivamente registrados.
+
 ## 20/11/2026 — Roteiro de pesquisa de sinais, operacionais e presets
 
 **Para começar pela F19-PESQ-01, use o [prompt de implementação das 17 fichas](docs/propostas/PROMPT_F19_PESQ_EXECUCAO.md).**
