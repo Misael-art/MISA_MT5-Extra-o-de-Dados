@@ -55,10 +55,7 @@ def _events(frame, tolerance, horizon):
     return events
 
 
-def report(snapshot, *, as_of, tolerance_price, horizon_bars, session_mode="observed"):
-    if (type(tolerance_price) not in (int, float) or not isfinite(tolerance_price) or tolerance_price < 0 or
-            type(horizon_bars) is not int or horizon_bars < 1):
-        raise ValueError("Informe tolerância finita em preço e horizonte de ao menos uma barra.")
+def _price_prefix(snapshot, as_of, session_mode, *, reset_by_session=True):
     cutoff = pd.Timestamp(as_of)
     if pd.isna(cutoff) or cutoff.tzinfo is None:
         raise ValueError("O corte da referência precisa de fuso explícito.")
@@ -68,11 +65,21 @@ def report(snapshot, *, as_of, tolerance_price, horizon_bars, session_mode="obse
     frame = frame.loc[pd.to_datetime(frame.available_at_utc, utc=True, format="ISO8601").le(cutoff)].reset_index(drop=True)
     starts = pd.to_datetime(frame.bar_start_utc, utc=True, format="ISO8601")
     ends = pd.to_datetime(frame.bar_end_utc, utc=True, format="ISO8601")
-    frame["_pivot_reset_before"] = frame.session_id.ne(frame.session_id.shift()) | starts.ne(ends.shift())
+    frame["_pivot_reset_before"] = starts.ne(ends.shift())
+    if reset_by_session:
+        frame["_pivot_reset_before"] |= frame.session_id.ne(frame.session_id.shift())
     prices = frame[["open", "high", "low", "close"]].apply(pd.to_numeric, errors="coerce")
     valid = (prices.apply(lambda col: col.map(isfinite)).all(axis=1) & prices.low.gt(0) &
              prices.open.between(prices.low, prices.high) & prices.close.between(prices.low, prices.high))
     frame[["open", "high", "low", "close"]] = prices.where(valid)
+    return prepared, frame, cutoff
+
+
+def report(snapshot, *, as_of, tolerance_price, horizon_bars, session_mode="observed"):
+    if (type(tolerance_price) not in (int, float) or not isfinite(tolerance_price) or tolerance_price < 0 or
+            type(horizon_bars) is not int or horizon_bars < 1):
+        raise ValueError("Informe tolerância finita em preço e horizonte de ao menos uma barra.")
+    prepared, frame, cutoff = _price_prefix(snapshot, as_of, session_mode)
     return {"version": 1, "snapshot_id": prepared["manifest_id"], "symbol": prepared["symbol"],
             "timeframe": prepared["timeframe"], "as_of": cutoff.isoformat(), "tolerance_price": tolerance_price,
             "horizon_bars": horizon_bars, "pivot": "strict_fractal_5", "session_basis": session_mode,

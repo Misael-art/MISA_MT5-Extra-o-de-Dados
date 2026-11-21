@@ -250,6 +250,13 @@ polaridade. O estudo econômico de entradas e os controles ainda são etapas pr�
 
 **Aceite e evidência.** Fixture em que a cor do candle muda sem cruzar swing e outra em que há rompimento. As variantes precisam divergir no evento previsto. Confrontar controles pareados e medir estabilidade entre períodos e ativos sem usar o resultado de um para calibrar a reserva do outro.
 
+**Evidência parcial Linux.** O SDK e a CLI consultam as duas regras em snapshot
+H4. A estrutura exige máximas e mínimas confirmadas na mesma direção, considera
+os swings conhecidos antes da decisão e reinicia após lacuna temporal. A
+entrada usa a abertura da barra contígua seguinte quando observada. Registra
+ausência de tick ou de abertura e gaps que atravessam o stop. Filtros, sweep e
+comparação em blocos pareados seguem como aceites próprios.
+
 <a id="f19-pesq-10"></a>
 
 ### F19-PESQ-10 — Fair Value Gap como evento e entrada

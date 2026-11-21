@@ -257,6 +257,13 @@ def retest_reference(db, manifest_id, *, as_of, tolerance_price, horizon_bars, s
                             horizon_bars=horizon_bars, session_mode=session_mode)
 
 
+def choch_reference(db, manifest_id, *, as_of, session_mode="observed"):
+    """Compara virada do fechamento e quebra de swing H4 confirmado."""
+    from mt5_extracao.analytics import change_of_character, datasets
+
+    return change_of_character.report(datasets.load(db, manifest_id), as_of=as_of, session_mode=session_mode)
+
+
 def inspect_feature_snapshot(db, manifest_id):
     """Lista os contratos congelados e sua compatibilidade numérica, sem cálculos ou escrita."""
     from mt5_extracao.analytics import query_service
@@ -496,7 +503,7 @@ __all__ = [
     "open_workflow",
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
-    "opening_coverage", "orb_reference", "open_strike_reference", "retest_reference",
+    "opening_coverage", "orb_reference", "open_strike_reference", "retest_reference", "choch_reference",
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot", "stored_series_sources", "query_stored_observations",
     "export_feature_relation", "import_feature_relation",
