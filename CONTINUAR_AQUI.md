@@ -1,5 +1,18 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-10, referência causal Fair Value Gap
+
+`analytics fvg-reference` registra a zona só após fechar a terceira barra.
+As visitas à borda, ao centro da zona e ao centro elegível do impulso são
+observadas nas cinco barras seguintes. Lacuna ou troca de sessão interrompe a
+janela. Cada zona sobreposta mantém seu próprio horizonte. Toques com violação
+na mesma barra têm essa condição explícita. Controles pareados e estudo com
+preços executáveis permanecem pendentes.
+Passaram 20 regressões focadas no Linux. Pelo launcher a fixture tornou
+a zona disponível às 09h03 UTC, tocou a borda em 106 na barra seguinte e
+expirou às 09h08 UTC. Recibos em f19-pesq-10-reference e f19-pesq-10-reference-r2.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-10)
+
 ## 21/11/2026 — F19-PESQ-09, referência CHoCH H4
 
 A referência distingue mudança de direção do fechamento e ruptura de swing.
@@ -10,6 +23,8 @@ comparação econômica com controles continuam pendentes.
 Passaram 14 regressões focadas no Linux. Pelo launcher a fixture em H4
 publicou a quebra de 104 às 20h UTC e abertura modelada de 100, stop de
 120 e alvo de 80. Recibos em f19-pesq-09-reference-r2.
+[PR #382](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/382),
+SHA remoto `369404b1546ec46abbbbf95cb1babd250bbbb5fb`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-09)
 
 ## 21/11/2026 — F19-PESQ-08, referência de reteste causal
