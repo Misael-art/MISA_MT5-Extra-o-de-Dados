@@ -528,6 +528,15 @@ seu lado são congelados na quebra. Os instantes publicados são de disponibilid
 da barra. `synthetic_utc_day` serve a uma bancada controlada.
 [Regra e limites](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-08)
 
+## Referência CHoCH H4 (F19-PESQ-09)
+
+`choch_reference(db, manifest_id, *, as_of, session_mode="observed")` consulta um
+snapshot H4 congelado. Devolve separadamente a primeira mudança do sentido dos
+fechamentos e as quebras contra uma estrutura de fractais confirmados. Cada quebra
+inclui uma referência de abertura H4 posterior e stop/alvo 1R quando há
+continuidade e passo de preço conhecido.
+[Regra e limites](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-09)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |

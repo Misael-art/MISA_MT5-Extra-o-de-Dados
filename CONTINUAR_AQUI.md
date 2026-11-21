@@ -1,5 +1,17 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-09, referência CHoCH H4
+
+A referência distingue mudança de direção do fechamento e ruptura de swing.
+A decisão estrutural exige pivôs já confirmados. A abertura H4 seguinte
+entra como referência quando observada, com stop um tick além do swing
+oposto e alvo de 1R. Lacunas encerram a continuidade. Sweep, filtros e
+comparação econômica com controles continuam pendentes.
+Passaram 14 regressões focadas no Linux. Pelo launcher a fixture em H4
+publicou a quebra de 104 às 20h UTC e abertura modelada de 100, stop de
+120 e alvo de 80. Recibos em f19-pesq-09-reference-r2.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-09)
+
 ## 21/11/2026 — F19-PESQ-08, referência de reteste causal
 
 `analytics retest-reference` aplica os fractais estritos da T19.6 e só admite
@@ -13,6 +25,8 @@ eventos no corte anterior. Recibos em `f19-pesq-08-reference-r2`.
 Pelo launcher, a mesma bancada em calendário observado publicou a quebra de
 110 às 09h08 UTC e as revisitas de ordem 1 a 4 às 09h09, 09h11, 09h13 e 09h15 UTC.
 O pareamento e a comparação econômica das entradas seguem abertos.
+[PR #381](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/381),
+SHA remoto `396d62deee6b9af2f39be4193474a23625fe3ec1`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-08)
 
 ## 21/11/2026 — F19-PESQ-07, referência do Open Strike Python

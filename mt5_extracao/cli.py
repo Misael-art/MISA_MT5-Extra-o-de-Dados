@@ -2058,6 +2058,12 @@ def build_parser():
     q.add_argument("--session-mode", choices=("observed", "synthetic_utc_day"), default="observed",
                    help="synthetic_utc_day usa somente dias UTC de uma bancada controlada")
     q.set_defaults(func=cmd_retest_reference)
+    q = analytics_sub.add_parser("choch-reference", help="compara virada de fechamento e quebra de swing H4")
+    q.add_argument("--manifest", required=True, help="snapshot H4 com sessões observadas")
+    q.add_argument("--as-of", required=True, help="instante limite, com fuso explícito")
+    q.add_argument("--session-mode", choices=("observed", "synthetic_utc_day"), default="observed",
+                   help="synthetic_utc_day usa somente dias UTC de uma bancada controlada")
+    q.set_defaults(func=cmd_choch_reference)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
@@ -2547,6 +2553,15 @@ def cmd_retest_reference(args, ctx):
     _data(retest_reference=result)
     count = sum(event["kind"] == "break" for event in result["events"])
     _print(f"{count} quebra(s) e {len(result['events']) - count} revisita(s) em {result['symbol']}.")
+    return 0
+
+
+def cmd_choch_reference(args, ctx):
+    from mt5_extracao import sdk
+
+    result = sdk.choch_reference(ctx.db, args.manifest, as_of=args.as_of, session_mode=args.session_mode)
+    _data(choch_reference=result)
+    _print(f"{len(result['close_turns'])} virada(s) de fechamento e {len(result['swing_breaks'])} quebra(s) de swing.")
     return 0
 
 
