@@ -1,5 +1,24 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-03, pré-registro Python dos braços
+
+`experiments create` e `experiments request` aceitam o plano F19 de sinal, filtro
+ou saída. A hipótese, os dois braços, o capital e os dois cenários de custo ficam
+congelados com as três janelas e o embargo. A reserva exige os quatro pedidos
+antes do acesso e recusa exposição registrada fora do plano.
+
+Passaram 20 regressões focadas, incluindo o contrato público do SDK. O launcher
+Linux reabriu o protocolo sintético `a399eb11a198ffb0f252a5c39d6ed4de079e4ce7e795de5702919b27afed56d5`
+com os três papéis e nenhum acesso à reserva. Os recibos ficam em `f19-pesq-03-review`.
+Doctor offline com 16 OK, dois avisos e zero falhas. A etapa seguinte no App é o
+estimador por pregões, com purga econômica por evento e diferenças nos dois
+cenários de custo. [Contrato](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03)
+
+O CI anterior das PRs #374–376 encontrou duas regressões na lista pública do SDK.
+A referência e as assinaturas de `opening_coverage` e `orb_reference` foram
+incluídas nos respectivos PRs. As três pontas atualizadas foram confirmadas no
+remoto. A suíte dirigida do SDK passou com 12 testes.
+
 ## 21/11/2026 — F19-PESQ-04, referência do ORB no App
 
 `analytics orb-reference` compara os sinais Python legados com os da caixa
