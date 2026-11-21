@@ -390,6 +390,35 @@ seus respectivos motores e gates.
 
 **Aceite e evidência.** Conferir N+1 fronteiras, razão percentual constante, arredondamento sem caixa negativo e patrimônio = caixa + estoque marcado. Incluir caso abaixo do piso, iliquidez e ação corporativa. Comparar patrimônio final, drawdown, giro, caixa ocioso e unidades. Manter derivativos alavancados fora desta hipótese à vista.
 
+**Evidência parcial Linux.** `analytics harmonic-cash --manifest <id> --as-of <UTC>
+--file <plano.json>` calcula até 512 intervalos para a projeção à vista da B3.
+Os N limites inferiores recebem parcelas iguais, com a sobra inteira mantida
+em caixa. A fronteira de cada compra é arredondada para baixo em centavos.
+Faixas com fronteiras coincidentes no passo são recusadas. Cada compra usa
+o passo de volume vigente e desconta a taxa explícita. Viabilidade de
+execução e liquidez só podem ser julgadas com dados adicionais.
+
+```json
+{
+  "version": 1,
+  "lower_cents": 1000,
+  "upper_cents": 8000,
+  "intervals": 3,
+  "cash_cents": 1500001,
+  "fee_per_buy_cents": 500,
+  "mark_cents": 900,
+  "installment_prices_cents": [8000, 5000, 4500]
+}
+```
+
+O braço de compra única usa o limite superior e um orçamento inicial integral.
+O braço parcelado usa os preços declarados e a mesma divisão de caixa da grade.
+O patrimônio dos três braços usa um preço de marcação comum. O cenário
+abaixo do piso informa a perda registrada na marcação e mantém o estoque.
+A projeção pressupõe compras aos preços de referência e ausência de vendas.
+Calendário, execução parcial, liquidez, ações corporativas, fluxos externos e
+drawdown precisam de uma trajetória com eventos observados.
+
 <a id="f19-pesq-17"></a>
 
 ### F19-PESQ-17 — Gerador, paridade e promoção por candidato

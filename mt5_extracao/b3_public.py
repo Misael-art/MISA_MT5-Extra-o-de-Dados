@@ -150,6 +150,12 @@ _FUTURE_CODE = re.compile(r"^(WIN|IND|WDO|DOL)[FGHJKMNQUVXZ]\d{2}$")
 _STOCK_CODE = re.compile(r"^[A-Z]{4}\d{1,2}$")
 
 
+def is_cash_symbol(code):
+    """Códigos do mercado à vista reconhecidos pela especificação pública do App."""
+    code = code.upper()
+    return _FUTURE_CODE.fullmatch(code) is None and _STOCK_CODE.fullmatch(code) is not None
+
+
 def spec_for(code):
     """Especificação do instrumento (``DatabaseManager.SPEC_FIELDS``) ou ``None`` se o código não é conhecido.
 
@@ -165,7 +171,7 @@ def spec_for(code):
         return {**base, "point": tick, "digits": 0 if tick >= 1 else 1, "tick_size": tick,
                 "tick_value": tick * per_point, "contract_size": per_point, "volume_min": 1.0,
                 "volume_step": 1.0, "volume_max": 10000.0}
-    if _STOCK_CODE.match(code):
+    if is_cash_symbol(code):
         return {**base, "point": 0.01, "digits": 2, "tick_size": 0.01, "tick_value": 0.01, "contract_size": 1.0,
                 "volume_min": 100.0, "volume_step": 100.0, "volume_max": 10_000_000.0}
     return None

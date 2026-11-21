@@ -1,5 +1,18 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-16, projeção harmônica à vista
+
+O modelo orça os limites inferiores dos intervalos geométricos com lotes
+negociáveis e sobra em caixa. Compra única, aportes e grade usam o mesmo caixa
+inicial, taxa por compra e preço de marcação. Cada braço informa estoque,
+caixa, giro nominal e patrimônio. A hipótese de todas as compras a preços
+declarados ainda pede replay com fills, liquidez, ações corporativas e fluxos
+datados.
+Passaram 36 regressões focadas no Linux. Pelo launcher, a fixture manteve
+700 unidades, R$ 2.985,01 em caixa e R$ 9.285,01 de patrimônio com marcação
+abaixo do piso. Recibos em f19-pesq-16-harmonic-r2.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16)
+
 ## 21/11/2026 — F19-PESQ-11, projeção de risco de grade
 
 A projeção anterior à simulação compara entrada direta, grade fixa, grade ATR
@@ -9,6 +22,8 @@ Passaram 33 regressões focadas no Linux. Pelo launcher, seis WIN espaçados em
 50 pontos acumularam perda bruta de 150 no sexto nível e 210 após outros
 50 pontos contra. Recibos em f19-pesq-11-grid-risk.
 Margem, sequência de preenchimentos e conciliação nativa seguem pendentes.
+[PR #384](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/384),
+SHA remoto `c73c1c4fb0bc087fadaec4a65f3322eab68a43e9`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11)
 
 ## 21/11/2026 — F19-PESQ-10, referência causal Fair Value Gap
