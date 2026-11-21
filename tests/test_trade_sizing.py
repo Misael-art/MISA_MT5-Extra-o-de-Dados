@@ -112,6 +112,33 @@ def test_grid_against_averages_down_and_takes_the_worst_case_with_the_stop():
     assert t.exit_reason == "stop" and t.pnl == pytest.approx(((95 - 100) + (95 - 99) + (95 - 98)) * PPU)
 
 
+@pytest.mark.parametrize("direction", (1, -1))
+def test_grid_rejects_levels_at_or_beyond_stop_even_when_range_reaches_them(direction):
+    bars = _bars([100, 100 - .5 * direction, 100 - 3 * direction])
+    stop = 100 - 2 * direction
+    rows = _entry(bars, stop).assign(direction=direction, volume=2)
+    policy = engine.ExitPolicy(grid_levels=3, grid_spacing_points=1 / _point(), partial_r=1)
+    sim = engine.simulate(rows, bars, SPEC, ZERO, policy, observation_timeframe="M15")
+    trade, = sim.trades
+    assert sim.adds == 1 and sim.capped == 0 and trade.volume == 4
+    assert trade.exit_price == stop and trade.pnl == pytest.approx(-6 * PPU)
+    assert sim.valuation["grid_levels_excluded_by_stop"] == 2
+    assert sim.valuation["grid_fill_basis"] == "ohlc_order_assumed"
+    assert sim.valuation["grid_partial_policy"] == "suppressed_when_grid_active"
+    assert sim.trajectory["valuation"] == sim.valuation
+
+
+def test_grid_gap_through_stop_keeps_only_levels_that_precede_protection():
+    bars = _bars([100, 99.5, 97])
+    bars.loc[2, ["open", "high", "low"]] = 97
+    policy = engine.ExitPolicy(grid_levels=3, grid_spacing_points=1 / _point())
+    sim = engine.simulate(_entry(bars, 98), bars, SPEC, ZERO, policy)
+    trade, = sim.trades
+    assert sim.adds == 1 and trade.volume == 2
+    assert trade.exit_price == 97 and trade.pnl == pytest.approx(-3 * PPU)
+    assert sim.valuation["grid_levels_excluded_by_stop"] == 2
+
+
 def test_grid_exposure_cap():
     pts = 1 / _point()
     bars = _bars([100, 99, 98, 97, 96, 101])

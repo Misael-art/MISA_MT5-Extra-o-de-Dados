@@ -330,6 +330,12 @@ ordens pendentes por escopo. Acionamento de ordens, autorização Safety,
 parciais em grade, margem e reconciliação após gaps ou reinício permanecem em
 seus respectivos motores e gates.
 
+Na re-simulação, os níveis no stop ativo ou além dele ficam excluídos, inclusive
+em barra que atravessa vários níveis e o stop. `mt5x --json trades compare` publica
+a contagem em `grid.levels_excluded_by_stop`. O recibo identifica a sequência
+intrabarra assumida em OHLC e o estado da parcial durante a grade. A ordem real
+dos fills exige ticks ou eventos do executor.
+
 <a id="f19-pesq-12"></a>
 
 ### F19-PESQ-12 — Médio para frente e reposição

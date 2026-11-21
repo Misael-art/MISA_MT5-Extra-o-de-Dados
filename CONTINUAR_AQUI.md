@@ -1,5 +1,14 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-11, limite do stop na re-simulação de grade
+
+O Laboratório exclui degraus no stop ativo ou além da proteção antes de
+simular as adições. A comparação mostra a contagem de níveis excluídos
+e declara a ordenação OHLC assumida e a supressão de parcial na grade.
+Passaram 31 regressões focadas em dois lotes. Pelo launcher, uma barra
+atravessou o stop e excluiu dois níveis. Recibos em f19-pesq-11-stop-grade-r2.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11)
+
 ## 21/11/2026 — F19-PESQ-16, projeção harmônica à vista
 
 O modelo orça os limites inferiores dos intervalos geométricos com lotes
@@ -11,6 +20,11 @@ datados.
 Passaram 36 regressões focadas no Linux. Pelo launcher, a fixture manteve
 700 unidades, R$ 2.985,01 em caixa e R$ 9.285,01 de patrimônio com marcação
 abaixo do piso. Recibos em f19-pesq-16-harmonic-r2.
+[PR #385](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/385),
+SHA remoto do incremento `51f1eb9ec20b865ebc9efa252e8ed344ce90b5de`.
+A verificação da biblioteca do painel detectou o modo de trailing ausente.
+A correção do catálogo e hash de operações passou 15 regressões e entrou
+nos PRs #379–385. SHA do corretivo neste branch `1d31a7d1c5c926b90c1d83a73c8ea49ebf4534ae`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16)
 
 ## 21/11/2026 — F19-PESQ-11, projeção de risco de grade

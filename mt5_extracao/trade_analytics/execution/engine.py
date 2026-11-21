@@ -152,7 +152,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     out: List[Trade] = []
     cases: List[dict] = []
     source_seqs = []
-    skipped = approximate = adds = capped = 0
+    skipped = approximate = adds = capped = grid_excluded_by_stop = 0
     stats_volume = [0.0]
     n = len(data)
     balances = np.zeros(n, dtype=float)
@@ -240,10 +240,17 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
 
         def add_levels(i, lo, hi, op):
             """Abre os níveis do gradiente tocados nesta barra (ordem limite/stop, preenchida no nível ou na abertura)."""
-            nonlocal adds, capped
+            nonlocal adds, capped, grid_excluded_by_stop
             while pos["next_level"] <= policy.grid_levels:
                 k = pos["next_level"]
                 level = entry + d * sign * k * spacing
+                if (level - pos["stop"]) * d <= 0:
+                    # Níveis contra são monotônicos. Se o primeiro estiver no stop ou além,
+                    # os seguintes também ficam fora do alcance da posição protegida.
+                    excluded = policy.grid_levels - k + 1 if sign < 0 else 1
+                    grid_excluded_by_stop += excluded
+                    pos["next_level"] += excluded
+                    continue
                 touched = ((lo <= level) if d > 0 else (hi >= level)) if sign < 0 else \
                     ((hi >= level) if d > 0 else (lo <= level))
                 if not touched:
@@ -475,7 +482,12 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     balances += closed_balance
     floating += closed_balance
     performance = unitized_equity(floating, flows, cfg.initial_equity)
-    trajectory=journal.payload(valuation_metadata(spec,cfg)) if journal is not None else {}
+    valuation = valuation_metadata(spec, cfg)
+    if policy.grid_levels > 0:
+        valuation.update(grid_levels_excluded_by_stop=grid_excluded_by_stop,
+                         grid_fill_basis="ohlc_order_assumed",
+                         grid_partial_policy="suppressed_when_grid_active" if policy.partial_r else "off")
+    trajectory=journal.payload(valuation) if journal is not None else {}
     if temporal is not None and temporal.enabled:
         trajectory.update(temporal_decisions=temporal_trace,temporal_policy=temporal.to_dict(),temporal_time_basis="source_clock_elapsed; not qualified session time")
     return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs,
@@ -485,5 +497,5 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                      account_cashflows=pd.Series(flows, index=pd.DatetimeIndex(times), dtype=float),
                      metrics={**floating_metrics(performance, cfg.initial_equity),
                               "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
-                     valuation=valuation_metadata(spec, cfg),
+                     valuation=valuation,
                      trajectory=trajectory, cases=cases)
