@@ -78,6 +78,15 @@ Compostos e relações permanecem em BD18b.
 
 Não há servidor HTTP: a futura API publicará este mesmo serviço.
 
+## Cobertura da abertura do WIN (F19-PESQ-01)
+
+`opening_coverage(db, manifest_ids, calendar, *, as_of)` consulta snapshots M1
+congelados da mesma base. O calendário declara contrato, grade e horário de
+conhecimento por pregão. `as_of` é um timestamp com fuso explícito. O manifesto
+inclui sessões elegíveis e excluídas, motivos, vigência, cobertura M1 e dos ticks
+capturados, largura e instante de disponibilidade da faixa. A janela padrão é
+de 15 minutos. [Formato do calendário e CLI](../dados/B3_PUBLICO.md#cobertura-da-abertura-do-win-por-pregão)
+
 ## Assinaturas por indicador (BD13-SIGNATURES)
 
 O materializador existente passa a identificar separadamente os três retornos

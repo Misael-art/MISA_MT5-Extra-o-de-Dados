@@ -71,8 +71,11 @@ Na bancada pelo launcher Linux, uma execução sintética preservou 3 oportunida
 modelo. Outra execução devolveu dois pregões com abertura elegível e zero sinais.
 Rejeição nativa, entrada parcialmente preenchida, margem e exposição por perna
 exigem eventos de produtor com essas capacidades. O modelo atual executa a entrada
-integral e registra reduções posteriores. Métricas de concentração e tempo em
-drawdown continuam pendentes.
+integral e registra reduções posteriores. A consulta também informa concentração
+dos cinco maiores ganhos, maior perda observada em um ciclo e pior pregão elegível
+por data do sinal. A duração medida em drawdown soma intervalos entre fechamentos
+submersos adjacentes da curva de patrimônio unitizada. Uma lacuna de amostragem
+interrompe essa soma. A duração intrabarra continua indisponível.
 
 <a id="f19-pesq-03"></a>
 
