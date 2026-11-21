@@ -4163,6 +4163,32 @@ Registry/store/contratos B e Composer mantêm os donos anteriores, conferidos an
 T17.28 já permite selecionar timeframe em “Ativo / TF”; T19.33 verifica propagação e descoberta.
 
 
+<a id="fila-f19-pesquisa"></a>
+
+### Fila de pesquisa de sinais e operacionais — 20/11/2026
+
+A primeira ação executável é qualificar a janela de abertura do WIN. O estado nesta tabela acompanha cada entrega. Os passos, testes e critérios ficam na [especificação das fichas](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md). Os números na coluna de pré-requisitos usam o prefixo F19-PESQ. Para a seleção de preset, basta a ficha do candidato em avaliação e as dependências da linha 17.
+
+| Ficha e entrega | Responsável | Pré-requisitos nesta fila | Situação |
+|---|---|---|---|
+| [F19-PESQ-01 — Dados e sessão do WIN](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-01) | Dados/Analytics | — | Planejada |
+| [F19-PESQ-02 — Livro de oportunidades e ciclos](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-02) | App/Analytics e Laboratório | 01 | Planejada |
+| [F19-PESQ-03 — Protocolo de comparação](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03) | App/Experimentos | 01, 02 | Planejada |
+| [F19-PESQ-04 — ORB de referência e paridade de abertura](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04) | App/Estratégias e HADOUKEN | 01 | Planejada |
+| [F19-PESQ-05 — ORB com caixa e distância filtradas](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-05) | App/Estratégias | 02, 03, 04 | Planejada |
+| [F19-PESQ-06 — Saídas do ORB](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-06) | Laboratório/Composição e HADOUKEN | 05 | Planejada |
+| [F19-PESQ-07 — Open Strike e validade da pendente](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-07) | App/Estratégias e HADOUKEN | 01, 02, 03 | Planejada |
+| [F19-PESQ-08 — Primeiro reteste e polaridade](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-08) | App/Analytics e Estratégias | 01, 02, 03 | Planejada |
+| [F19-PESQ-09 — CHoCH em H4](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-09) | App/Analytics e Estratégias | 01, 02, 03 | Planejada |
+| [F19-PESQ-10 — Fair Value Gap como evento e entrada](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-10) | App/Analytics e Laboratório | 01, 02, 03 | Planejada |
+| [F19-PESQ-11 — Contrato comum de grade e risco do ciclo](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11) | Laboratório/Composição, HADOUKEN e Safety | 01, 02, 03 | Planejada |
+| [F19-PESQ-12 — Médio para frente e reposição](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-12) | HADOUKEN e Laboratório | 11 | Planejada |
+| [F19-PESQ-13 — Banda dinâmica com âncora congelada](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-13) | App/Estratégias, Laboratório e HADOUKEN | 11 | Planejada |
+| [F19-PESQ-14 — Gradiente assimétrico](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-14) | App/Composição, Laboratório e HADOUKEN | 11 | Planejada |
+| [F19-PESQ-15 — Hedge bidirecional](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-15) | HADOUKEN/Safety e Laboratório | 11 | Planejada |
+| [F19-PESQ-16 — Gradiente harmônico à vista](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16) | App/Analytics de carteira e Laboratório | 01, 02, 03 | Planejada |
+| [F19-PESQ-17 — Gerador, paridade e promoção por candidato](propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-17) | App/Presets e HADOUKEN | 02, 03 e ficha candidata | Planejada |
+
 ## Fase 20 — Robustez da pesquisa, execução e ciclo de estratégias
 
 **T20.0 documental entregue em 2026-10-17. T20.1–T20.30 planejadas.** Incorpora
