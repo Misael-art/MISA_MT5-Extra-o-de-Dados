@@ -366,15 +366,18 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         return price - d * slip if market else price
 
     def close_part(volume, price, i, kind="partial", phase="intrabar"):
+        swap = 0.0
         if cfg.swap:
-            pos["pnl"] += spec.swap_money(pos["dir"], volume, times.iloc[pos["i"]], times.iloc[i])
-        pos["pnl"] += (price - pos["entry"]) * pos["dir"] * ppu * volume - cfg.commission_per_lot * volume
+            swap = spec.swap_money(pos["dir"], volume, times.iloc[pos["i"]], times.iloc[i])
+            pos["pnl"] += swap
+        commission = cfg.commission_per_lot * volume
+        pos["pnl"] += (price - pos["entry"]) * pos["dir"] * ppu * volume - commission
         pos["remaining"] = round(pos["remaining"] - volume, 8)
         if journal is not None:
             journal.record(len(trades), i, kind, phase, pos["remaining"], pos["pnl"],
                            direction=pos["dir"],
                            net_pnl=pos["pnl"] if kind == "exit" else None,
-                           fill_price=price, fill_volume=volume)
+                           fill_price=price, fill_volume=volume, commission=commission, swap=swap)
 
     def close_all(i, price, reason, phase=None):
         nonlocal equity, pos, last_close_msc
@@ -417,11 +420,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             session_decision = entry_policy.decide(at, session_counts.get(session, 0))
             session_trace.append(dict(event="check", at=at, direction=pending_entry, **session_decision))
             if not session_decision["allowed"]:
+                if journal is not None:
+                    journal.record_opportunity(i - 1, pending_entry, "vetoed", "session_policy", evaluated_on=i)
                 pending_entry = 0
         if pos is None and pending_entry and cooldown is not None:
             decision = cooldown.decide(source_times[i]*1000,last_close_msc)
             cooldown_trace.append(dict(direction=pending_entry,**decision))
-            if not decision["allowed"]:pending_entry=0
+            if not decision["allowed"]:
+                if journal is not None:
+                    journal.record_opportunity(i - 1, pending_entry, "vetoed", "cooldown", evaluated_on=i)
+                pending_entry = 0
         if pos is None and pending_entry:
             d, s = pending_entry, i - 1
             entry = o[i] + spr_open[i] + slip if d > 0 else o[i] - slip
@@ -450,11 +458,15 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             risk_px = (entry - stop) * d
             if not np.isfinite(risk_px) or risk_px <= 0 or invalid_signal_stop or invalid_signal_target or invalid_reference:
                 skipped_gap += 1     # abriu além do stop
+                if journal is not None:
+                    journal.record_opportunity(s, d, "vetoed", "invalid_risk_at_open", evaluated_on=i)
             else:
                 base = equity + cash_total if cfg.compound else cfg.initial_equity
                 volume = spec.lots_for_risk(base * cfg.risk_per_trade, risk_px)
                 if volume <= 0:
                     skipped_min_lot += 1
+                    if journal is not None:
+                        journal.record_opportunity(s, d, "vetoed", "below_minimum_lot", evaluated_on=i)
                 else:
                     target = (signal_target if signal_target is not None else
                               (entry + d * fixed_target) if fixed_target is not None else
@@ -473,9 +485,12 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                         session_trace.append(dict(event="fill", at=source_times[i], direction=d,
                                                   session_start=session, cycles=session_counts[session]))
                     if journal is not None:
+                        journal.record_opportunity(s, d, "executed", None, evaluated_on=i, cycle_seq=len(trades),
+                                                   requested_price=o[i] + spr_open[i] if d > 0 else o[i])
                         journal.record(len(trades), i, "entry", "open", volume, pos["pnl"],
                                        direction=d,
-                                       fill_price=entry, fill_volume=volume)
+                                       fill_price=entry, fill_volume=volume, commission=cfg.commission_per_lot * volume,
+                                       swap=0)
         pending_entry = 0
 
         # 3) stop, parcial e alvo dentro da barra
@@ -542,11 +557,19 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                     temporal_trace.append(dict(event="decision",cycle_seq=len(trades),available_at=available.isoformat(),opened_at=times.iloc[pos["i"]].isoformat(),age_ms=age,net_observed=float(net),reason=decision,**er_context))
 
         # 5) novos sinais de entrada (executados na próxima abertura)
-        if i + 1 >= start_index and i < n - 1 and (pos is None or pending_exit):
-            if not (rules.eod_exit and last_of_day[i]):
-                want = 1 if entry_long[i] else (-1 if entry_short[i] else 0)
-                if want and (pos is None or want != pos["dir"]):
+        if i + 1 >= start_index:
+            want = 1 if entry_long[i] else (-1 if entry_short[i] else 0)
+            if want:
+                if i == n - 1:
+                    if journal is not None:
+                        journal.record_opportunity(i, want, "expired", "no_following_bar")
+                elif rules.eod_exit and last_of_day[i]:
+                    if journal is not None:
+                        journal.record_opportunity(i, want, "vetoed", "session_end")
+                elif pos is None or (pending_exit and want != pos["dir"]):
                     pending_entry = want
+                elif journal is not None:
+                    journal.record_opportunity(i, want, "vetoed", "position_open")
 
         # Marcação no fechamento: saldo inclui parciais/custos realizados; patrimônio inclui a posição aberta.
         balances[i] = equity
@@ -575,7 +598,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     eq_times = [times.iloc[0]] + [t.exit_time for t in trades] if n else []
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []
     performance = unitized_equity(floating, flows, cfg.initial_equity)
-    trajectory=journal.payload(valuation_metadata(spec,cfg)) if journal is not None else {}
+    trajectory=journal.payload(valuation_metadata(spec,cfg), includes_opportunities=True) if journal is not None else {}
     if entry_policy is not None:
         trajectory.update(session_events=session_trace, session_entry_policy=entry_policy.to_dict(),
                           session_time_basis="broker_source_clock; fixed anchored day; no inferred UTC/DST")
