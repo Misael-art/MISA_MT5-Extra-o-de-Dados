@@ -747,6 +747,7 @@
       "modes": {
         "strategy_default": "Delega a proteção à estratégia.",
         "fixed_points": "Define distância fixa do stop inicial.",
+        "stepped_points_v1": "Trailing da referência Python do ORB. Após atingir o gatilho no fechamento, ajusta o stop pela distância e pelo passo declarados em pontos. Níveis são ancorados no preço de entrada. O novo stop vale a partir da barra seguinte. Stop inicial zero preserva a regra da estratégia.",
         "managed_v1": "Combina SL inicial, trailing ou breakeven e saídas de gestão com os gatilhos suportados pelo perfil. Conferir a cadência por barra ou evento."
       }
     },
@@ -2351,7 +2352,7 @@
   },
   "reviewed_contracts": {
     "indicators": "c5c4d11fb796cac1a12be1155d15cd4145983d6478d8659ea4dad4f6b20d30e3",
-    "operations": "622c57924a7d694b8495b5ee58500a88bbf7146c1ebe6014bf0713f085dd5757",
+    "operations": "5c3de8239a807dfb2de3e6cdb8dbacc8506442c0a399b76d38b66462f1b2526e",
     "strategies": "fcbe4f38bf153403736437e0ca9fd55246cb6b6e63ec647f24034ada7668fce4"
   }
 }
