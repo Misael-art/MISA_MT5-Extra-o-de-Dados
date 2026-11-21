@@ -43,6 +43,9 @@ def add_parser(sub):
     p = commands.add_parser("paired-summary", help="compara os braços F19 já executados por pregão WIN")
     p.add_argument("protocol_id")
     p.add_argument("--role", required=True, choices=("train", "validation", "holdout"))
+    p = commands.add_parser("paired-preset", help="exporta o preset de pesquisa de uma comparação F19 concluída")
+    p.add_argument("protocol_id")
+    p.add_argument("--role", required=True, choices=("train", "validation", "holdout"))
     p = commands.add_parser("holdout_access", help="registra acesso antes de consumir o resultado reservado")
     p.add_argument("protocol_id")
     p.add_argument("--key", required=True)
@@ -87,6 +90,8 @@ def run(args, ctx):
     elif action == "paired-summary":
         from . import f19_summary
         result = f19_summary.query(ctx.db, args.protocol_id, args.role)
+    elif action == "paired-preset":
+        result = sdk.f19_research_preset(ctx.db, args.protocol_id, role=args.role)
     elif action == "pattern-create":
         result = sdk.create_pattern_campaign(ctx.db, _read(args.file))
     elif action == "pattern-request":

@@ -441,6 +441,16 @@ drawdown precisam de uma trajetória com eventos observados.
 
 **Aceite e evidência.** Reabrir pacote no gerador, comparar hash/inputs com o .set e reconciliar sinal, veto, ordem, fills, posição e caixa no Tester DEMO. Manter preset de pesquisa quando faltar capacidade ou evidência. Testar rejeição de versão incompatível, leitura de pacote anterior e invalidação após mudança material. Acompanhar sem ordens em dados prospectivos. Concluir separadamente por candidato, inclusive reprovado.
 
+**Evidência parcial Linux.** Consulte `mt5x --json experiments paired-preset
+<protocolo> --role train` para obter o preset `f19_paired_research_only` de
+uma comparação existente. A mesma consulta aceita os papéis registrados de
+validação e reserva. Exige os quatro livros conciliados no mesmo snapshot e
+executor. O artefato vincula protocolos, composições, cobertura, custos,
+parâmetros, critérios, seed e IDs de execução. O hash canônico permite
+reabrir e conferir o arquivo pelo leitor de presets de pesquisa.
+Aprovação econômica, equivalência a .set e ativação permanecem em falso.
+Geração e paridade por candidato e observação prospectiva seguem em seus gates.
+
 ## Regras de avaliação econômica e promoção
 
 - **Amostra e unidade.** Guardar oportunidades, ciclos e dias em camadas distintas. Calcular PF no conjunto de ciclos líquidos reconciliados, somando ganhos e dividindo pelo módulo da soma das perdas. Sem perdas, o PF fica indefinido. Separar PnL realizado e patrimônio marcado. Parciais de um ciclo pertencem ao mesmo risco. Comparar também expectativa por oportunidade/pregão, drawdown de patrimônio, pior perda do ciclo/dia, margem, exposição e concentração. Medir a correlação entre estratégias de abertura quando disputam o mesmo orçamento.

@@ -563,6 +563,15 @@ estoque e patrimônio. Usa valores em centavos de real e uma marcação declarad
 comum aos três braços. A especificação vem do snapshot.
 [Esquema do plano e exemplo](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16)
 
+## Preset pareado de pesquisa (F19-PESQ-17)
+
+`f19_research_preset(db, protocol_id, *, role)` devolve o artefato de
+reprodução de uma comparação F19 com quatro execuções conciliadas. Inclui
+composições dos dois braços, parâmetros do protocolo, revisão do executor,
+IDs dos resultados e hashes para conferência. O artefato mantém aprovação
+econômica e ativação desabilitadas.
+[Ficha e condições](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-17)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |
