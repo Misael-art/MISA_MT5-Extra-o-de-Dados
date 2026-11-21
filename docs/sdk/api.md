@@ -545,6 +545,15 @@ níveis da zona, elegibilidade da variante pela vela de impulso, primeiro toque
 por nível e estado final no corte. Toques em OHLC saem como `unverified_ohlc`.
 [Regra e limites](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-10)
 
+## Projeção de risco de grade (F19-PESQ-11)
+
+`grid_risk(db, manifest_id, definition, *, as_of)` usa a especificação do
+instrumento vigente e conhecida no corte. Recebe o plano v1 em objeto ou JSON
+e devolve níveis, marcação da cesta por degrau, perda no stop, perda no cenário
+adverso e comparação com o teto orçamentário do ciclo.
+Margem e execução permanecem como `unassessed`.
+[Esquema do plano e exemplo](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |

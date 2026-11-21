@@ -100,6 +100,7 @@ SURFACE = {
     "retest_reference": ["db", "manifest_id", "as_of", "tolerance_price", "horizon_bars", "session_mode"],
     "choch_reference": ["db", "manifest_id", "as_of", "session_mode"],
     "fvg_reference": ["db", "manifest_id", "as_of", "session_mode"],
+    "grid_risk": ["db", "manifest_id", "definition", "as_of"],
 }
 
 
