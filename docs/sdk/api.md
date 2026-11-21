@@ -554,6 +554,15 @@ adverso e comparação com o teto orçamentário do ciclo.
 Margem e execução permanecem como `unassessed`.
 [Esquema do plano e exemplo](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-11)
 
+## Projeção harmônica à vista (F19-PESQ-16)
+
+`harmonic_cash(db, manifest_id, definition, *, as_of)` orça compras nominais
+em níveis geométricos e em dois controles com o mesmo caixa inicial. Devolve
+fronteiras de preço, alocações em lotes negociáveis, custos, caixa restante,
+estoque e patrimônio. Usa valores em centavos de real e uma marcação declarada
+comum aos três braços. A especificação vem do snapshot.
+[Esquema do plano e exemplo](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-16)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |

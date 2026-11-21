@@ -101,6 +101,7 @@ SURFACE = {
     "choch_reference": ["db", "manifest_id", "as_of", "session_mode"],
     "fvg_reference": ["db", "manifest_id", "as_of", "session_mode"],
     "grid_risk": ["db", "manifest_id", "definition", "as_of"],
+    "harmonic_cash": ["db", "manifest_id", "definition", "as_of"],
 }
 
 

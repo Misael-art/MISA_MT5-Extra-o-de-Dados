@@ -279,6 +279,13 @@ def grid_risk(db, manifest_id, definition, *, as_of):
     return reference.report(datasets.load(db, manifest_id), definition, as_of=as_of)
 
 
+def harmonic_cash(db, manifest_id, definition, *, as_of):
+    """Orça a grade harmônica à vista e os controles de caixa no mesmo preço de marcação."""
+    from mt5_extracao.analytics import datasets, harmonic_cash as reference
+
+    return reference.report(datasets.load(db, manifest_id), definition, as_of=as_of)
+
+
 def inspect_feature_snapshot(db, manifest_id):
     """Lista os contratos congelados e sua compatibilidade numérica, sem cálculos ou escrita."""
     from mt5_extracao.analytics import query_service
@@ -519,7 +526,7 @@ __all__ = [
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     "opening_coverage", "orb_reference", "open_strike_reference", "retest_reference", "choch_reference", "fvg_reference",
-    "grid_risk",
+    "grid_risk", "harmonic_cash",
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot", "stored_series_sources", "query_stored_observations",
     "export_feature_relation", "import_feature_relation",
