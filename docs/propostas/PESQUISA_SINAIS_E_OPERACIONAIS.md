@@ -269,6 +269,13 @@ comparação em blocos pareados seguem como aceites próprios.
 
 **Aceite e evidência.** Fixtures de alta/baixa, amplitude zero, centro da vela fora da zona, toque sem fill e expiração. Nenhum sinal antes do fechamento de C. Comparar borda, meio da zona e meio da vela contra controle pareado. Grade dentro da zona depende de F19-PESQ-11 e requer ensaio próprio com risco total igual.
 
+**Evidência parcial Linux.** SDK e CLI congelam cada zona depois do fechamento
+de C. O OHLC registra o primeiro toque por nível, profundidade no intervalo e
+violação, inclusive quando ocorrem na mesma barra. O quinto fechamento expira
+a janela e o sexto fica fora dela. Cada sobreposição tem janela independente.
+Lacunas e viradas de sessão interrompem a zona. Confirmação de fill e comparação
+com controle pareado exigem evidência adicional.
+
 <a id="f19-pesq-11"></a>
 
 ### F19-PESQ-11 — Contrato comum de grade e risco do ciclo

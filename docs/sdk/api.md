@@ -537,6 +537,14 @@ inclui uma referência de abertura H4 posterior e stop/alvo 1R quando há
 continuidade e passo de preço conhecido.
 [Regra e limites](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-09)
 
+## Referência Fair Value Gap (F19-PESQ-10)
+
+`fvg_reference(db, manifest_id, *, as_of, session_mode="observed")` consulta
+zonas formadas por três barras fechadas e contíguas da mesma sessão. Devolve
+níveis da zona, elegibilidade da variante pela vela de impulso, primeiro toque
+por nível e estado final no corte. Toques em OHLC saem como `unverified_ohlc`.
+[Regra e limites](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-10)
+
 ## Estratégia declarada e geração do robô MQL5
 
 | Nome | O que faz |

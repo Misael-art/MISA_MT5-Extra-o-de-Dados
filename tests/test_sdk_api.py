@@ -99,6 +99,7 @@ SURFACE = {
     "open_strike_reference": ["db", "manifest_id", "calendar", "as_of"],
     "retest_reference": ["db", "manifest_id", "as_of", "tolerance_price", "horizon_bars", "session_mode"],
     "choch_reference": ["db", "manifest_id", "as_of", "session_mode"],
+    "fvg_reference": ["db", "manifest_id", "as_of", "session_mode"],
 }
 
 
