@@ -36,6 +36,18 @@ class StrategyInfo:
 
 
 @dataclass(frozen=True)
+class SteppedTrailing:
+    trigger_points: float
+    distance_points: float
+    step_points: float
+
+    def __post_init__(self):
+        for value in (self.trigger_points, self.distance_points, self.step_points):
+            if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value) or value <= 0:
+                raise ValueError("Trailing por passo exige gatilho, distância e passo positivos em pontos.")
+
+
+@dataclass(frozen=True)
 class ExitRules:
     target_r: Optional[float] = None      # alvo em múltiplos do risco inicial (R)
     partial_r: Optional[float] = None     # realiza parte da posição em partial_r × R
@@ -56,8 +68,12 @@ class ExitRules:
     absolute_signal_target: bool = False  # alvo absoluto das colunas: normalizar/validar antes do lote
     # Colunas target contêm a referência em preço, não TP; limite de entrada permanece sob overrides.
     signal_reference_distance_points: Optional[float] = None
+    stepped_trailing: Optional[SteppedTrailing] = None
 
     def __post_init__(self):
+        if self.stepped_trailing is not None and (not isinstance(self.stepped_trailing, SteppedTrailing)
+                                                   or self.trailing_atr or self.move_guard_from_signal_stop):
+            raise ValueError("Trailing por passo exige um único método tipado de stop móvel.")
         if self.temporal is not None and not isinstance(self.temporal,TemporalPolicy):
             raise ValueError("Política temporal exige contrato tipado, sem conversão implícita.")
         for label, points in (("Alvo", self.target_points), ("Stop", self.stop_points)):

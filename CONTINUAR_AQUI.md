@@ -8,7 +8,17 @@ renderam R$ 240 brutos com saídas em +500/+700 e R$ 280 com as duas em +700.
 Um contrato indivisível seguiu até o alvo. A fixture confirmou -R$ 200 quando
 stop e alvos coincidem na barra e R$ 100 após parcial e retorno ao break-even.
 Passaram 100 regressões focadas de composição, ciclos e backtest no Linux.
-O trailing e os resultados econômicos comparativos seguem pendentes.
+O launcher executou as duas composições em 103 barras sintéticas e registrou
+volumes 2/2 no caso integral e 2/1/1 no parcial. Os recibos ficam em
+`f19-pesq-06-launcher`. Doctor offline com 16 OK, dois avisos e zero falhas.
+SHA remoto confirmado `357edbe2e23b0c4cb216f426e4600bdb10e3de53`.
+[PR #379](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/379).
+O complemento Python implementa trailing por fechamento com gatilho/distância/
+passo de 600/500/100 pontos de índice. As 89 regressões focadas cobriram compra
+e venda. Pelo launcher, o stop avançou para 100.355 e 100.455 e a saída após gap
+aconteceu em 100.405. Caixa líquido modelado de 60. Recibos em
+`f19-pesq-06-stepped-launcher`. A comparação econômica em histórico qualificado
+continua pendente.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-06)
 
 ## 21/11/2026 — F19-PESQ-05, filtros estáticos do ORB

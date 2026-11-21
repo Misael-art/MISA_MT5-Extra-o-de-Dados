@@ -292,6 +292,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     rules = exit_rules_override if exit_rules_override is not None else strategy.exit_rules()
     fixed_target = _fixed_point_distance(getattr(rules, "target_points", None), spec, label="Alvo")
     fixed_stop = _fixed_point_distance(getattr(rules, "stop_points", None), spec, label="Stop")
+    stepped = None
+    trailing_changes = []
+    if rules.stepped_trailing is not None:
+        trailing = rules.stepped_trailing
+        stepped = tuple(round(_fixed_point_distance(value, spec, label=label) / spec.tick)
+                        for label, value in (("Gatilho do trailing", trailing.trigger_points),
+                                             ("Distância do trailing", trailing.distance_points),
+                                             ("Passo do trailing", trailing.step_points)))
+        if min(stepped) < 1:
+            raise ValueError("Gatilho, distância e passo do trailing devem atingir ao menos um tick.")
     signal_stop_levels = rules.move_guard_from_signal_stop or rules.signal_stop_offset_points > 0
     stop_offset = _signal_point_distance(rules.signal_stop_offset_points, spec) if signal_stop_levels else 0.0
     # Overrides explícitos T19.18 continuam ancorados no fill e substituem o padrão S10.
@@ -514,9 +524,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                                        phase="open" if (op >= level if d > 0 else op <= level) else "intrabar")
                             # Só o preenchimento válido confirma a parcial e autoriza proteger o saldo.
                             pos["partial_done"] = True
-                            if rules.breakeven_after_partial:
-                                pos["stop"] = max(pos["stop"], pos["entry"]) if d > 0 else min(pos["stop"], pos["entry"])
-                                pos["stop_kind"] = "breakeven"
+                            if rules.breakeven_after_partial and (pos["entry"] - pos["stop"]) * d > 0:
+                                pos["stop"], pos["stop_kind"] = pos["entry"], "breakeven"
                 tgt = pos["target"]
                 if tgt is not None and ((hi >= tgt) if d > 0 else (lo <= tgt)):
                     close_all(i, max(op, tgt) if d > 0 else min(op, tgt), "target",
@@ -529,6 +538,19 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 new = c[i] - d * rules.trailing_atr * atr[i]
                 if (new > pos["stop"]) if d > 0 else (new < pos["stop"]):
                     pos["stop"], pos["stop_kind"] = new, "trailing"
+            if stepped is not None:
+                mark = c[i] + (spr_close[i] if d < 0 else 0)
+                favorable = (mark - pos["entry"]) * d / spec.tick
+                trigger, distance, step = stepped
+                if math.isfinite(favorable) and favorable + 1e-9 >= trigger:
+                    advance = (math.floor(favorable + 1e-9) - trigger) // step * step
+                    new = _signal_price(pos["entry"] + d * (trigger + advance - distance) * spec.tick, spec.tick)
+                    old = pos["stop"]
+                    if (new - old) * d > 0 and (mark - new) * d > 0:
+                        pos["stop"], pos["stop_kind"] = new, "trailing"
+                        if journal is not None:
+                            trailing_changes.append({"cycle_seq": len(trades), "available_at": journal.ends[i].isoformat(),
+                                                     "previous_stop": float(old), "stop": new})
             if rules.move_guard_from_signal_stop:
                 raw = stop_long[i] if d > 0 else stop_short[i]
                 guard = _signal_stop_price(raw, d, stop_offset, spec.tick)
@@ -599,6 +621,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []
     performance = unitized_equity(floating, flows, cfg.initial_equity)
     trajectory=journal.payload(valuation_metadata(spec,cfg), includes_opportunities=True) if journal is not None else {}
+    if journal is not None and stepped is not None:
+        trajectory.update(stepped_trailing=asdict(rules.stepped_trailing), trailing_changes=trailing_changes)
     if entry_policy is not None:
         trajectory.update(session_events=session_trace, session_entry_policy=entry_policy.to_dict(),
                           session_time_basis="broker_source_clock; fixed anchored day; no inferred UTC/DST")

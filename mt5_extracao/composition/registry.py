@@ -121,6 +121,10 @@ MODULE_PARAMETERS = {
                                        "minimum_r": Parameter("number", "R", exclusive_minimum=True),
                                        "maximum_r": Parameter("number", "R", exclusive_minimum=True)}},
     "protection": {"strategy_default": {}, "fixed_points": {"stop_points": Parameter("number", "point", exclusive_minimum=True)},
+                   "stepped_points_v1": {"stop_points": Parameter("number", "point", 0),
+                                         "trigger_points": Parameter("number", "point", exclusive_minimum=True),
+                                         "distance_points": Parameter("number", "point", exclusive_minimum=True),
+                                         "step_points": Parameter("number", "point", exclusive_minimum=True)},
                    "managed_v1": {
                        "stop_mode": Parameter("int", "initial_stop_0_points_1_ATR", 0, 1),
                        "stop_points": Parameter("number", "point"), "stop_atr": Parameter("number", "ATR"),

@@ -65,6 +65,7 @@ conservador usa stop antes do alvo e uma posição. Isso não afirma sequência 
 | Alvo fixo em pontos ou R (T19.18 inicial) | [Serviço Python](politicas_ganho.md), ancorado no fill e com fonte única; nativo depende de perfil T19.23 |
 | Stop inicial fixo em pontos (T19.19 inicial) | [Proteção no fill](protecao_inicial.md) antes do lote; trailing legado preservado |
 | Parcial `fixed_r` no ORB Python | Gatilho em R, fração do lote e break-even após a confirmação da parcial pelo motor. Lote mínimo e passo continuam aplicados. |
+| Proteção `stepped_points_v1` no ORB Python | `trigger_points`, `distance_points` e `step_points` em unidades `point` da especificação e múltiplos de tick. `stop_points=0` usa o stop do sinal. A revisão do stop ocorre ao fechamento e atua a partir da próxima barra. |
 | Inversão, limit/stop, filtro ADX adicional | Rascunho tipado com round-trip; adaptador recusa com motivo |
 | Condicional, gradientes, multiordem, Renko | Não implementados; modo desconhecido é recusado |
 | Montagem/execução modular MQL5 | Indisponível até T19.23/B-08/B-10; sidecar não habilita suporte |

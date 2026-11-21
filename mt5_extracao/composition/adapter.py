@@ -44,6 +44,7 @@ def compatibility(composition, *, backend="python"):
     supported["conditional_policy"].update(("temporal_v1", "temporal_er_v1", "temporal_donchian_v1", "temporal_atr_v1"))
     if data["strategy"]["key"] == "orb":
         supported["partial_exit_plan"].add("fixed_r")
+        supported["protection"].add("stepped_points_v1")
     problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
                 for slot, mode in BASE_MODES.items() if data[slot]["mode"] not in supported[slot]]
     if data["strategy"]["key"] == "pullback":
@@ -125,6 +126,13 @@ class BaseAdapter:
             selection[key] = profit["params"][key]
         if protection["mode"] == "fixed_points":
             selection["stop_points"] = protection["params"]["stop_points"]
+        elif protection["mode"] == "stepped_points_v1":
+            from ..strategies.base import SteppedTrailing
+
+            params = protection["params"]
+            selection["stop_points"] = params["stop_points"] or None
+            selection["stepped_trailing"] = SteppedTrailing(params["trigger_points"], params["distance_points"],
+                                                           params["step_points"])
         if partial["mode"] == "fixed_r":
             params = partial["params"]
             selection.update(partial_r=params["trigger_r"], partial_fraction=params["fraction"],
