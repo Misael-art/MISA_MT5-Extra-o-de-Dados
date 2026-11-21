@@ -502,7 +502,10 @@ executor, takeover de processo ativo ou encerramento de terminal.
 
 `orb_reference(db, manifest_id, calendar, *, as_of, **params)` compara o primeiro
 breakout do ORB legado com a abertura nominal congelada de um WIN M1. Parâmetros
-aceitos: `range_minutes=30`, `target_mult=1.5`, `min_range_atr=0.0`. O recibo
+aceitos: `range_minutes=30`, `target_mult=1.5`, `min_range_atr=0.0`,
+`width_limits=None`, `distance_limits=None` e `direction="both"`. Os dois limites
+opcionais recebem mínimo e máximo inclusivos, em pontos do índice. A direção
+aceita `both`, `long` ou `short`. O recibo
 inclui preços teóricos, horário de disponibilidade e o primeiro pregão com
 divergência de sinal. A execução no Tester tem aceite próprio.
 [Ficha e evidência](../propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-04)

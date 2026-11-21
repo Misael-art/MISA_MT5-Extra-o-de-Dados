@@ -155,6 +155,14 @@ Tester DEMO, com dados WIN equivalentes e comparação de ordens, margem, fills 
 
 **Aceite e evidência.** Testar extremos exatos, rompimento seguido de retorno e abertura incompleta. Relatar aceitos, bloqueados, perdas evitadas, ganhos descartados e diferença de PnL por pregão elegível. O saldo de poucas semanas em OHLC não promove o filtro.
 
+Na referência Python, informe `--range-minutes 15 --width 200 750 --distance 10 400`
+em `analytics orb-reference`. As bordas são inclusivas em pontos do índice.
+`--direction long` ou `--direction short` isola o lado. O primeiro rompimento
+consome o pregão também quando recebe veto. O recibo conserva o sinal sem filtro,
+a largura, a distância e o motivo da decisão. Os limites ficam explícitos na
+consulta. O percurso mede sinais e vetos. A comparação econômica das entradas,
+a normalização por ATR e a variante das 10h continuam pendentes.
+
 <a id="f19-pesq-06"></a>
 
 ### F19-PESQ-06 — Saídas do ORB
