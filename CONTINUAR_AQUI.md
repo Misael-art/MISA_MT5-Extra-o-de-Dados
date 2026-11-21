@@ -1,5 +1,20 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-08, referência de reteste causal
+
+`analytics retest-reference` aplica os fractais estritos da T19.6 e só admite
+uma quebra após a confirmação conhecida do pivô. O nível fica congelado na
+quebra, com tolerância, visitas prévias e horizonte explícitos. Revisitas
+numeradas registram o horário de disponibilidade, sem inferir o instante de toque.
+
+Passaram 13 regressões focadas em Linux. A fixture distingue uma visita anterior
+à quebra e quatro revisitas posteriores. Deslocar um pivô futuro preservou os
+eventos no corte anterior. Recibos em `f19-pesq-08-reference-r2`.
+Pelo launcher, a mesma bancada em calendário observado publicou a quebra de
+110 às 09h08 UTC e as revisitas de ordem 1 a 4 às 09h09, 09h11, 09h13 e 09h15 UTC.
+O pareamento e a comparação econômica das entradas seguem abertos.
+[Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-08)
+
 ## 21/11/2026 — F19-PESQ-07, referência do Open Strike Python
 
 `analytics open-strike-reference` compara EMA10 e SMA10 no primeiro M15 fechado
@@ -11,6 +26,8 @@ barras mantêm execução, custos e encerramento como aceites separados.
 Passaram 21 regressões focadas em Linux, incluindo SDK e cobertura de calendário.
 A bancada sintética registra sinal às 09h15, gatilho de 101.010 e preço modelado
 de 101.020 na abertura acima do gatilho. Recibos em `f19-pesq-07-reference-r2`.
+[PR #380](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/380),
+SHA remoto `3755255dab5bca93c9532f48a73944da5dfc1188`.
 [Ficha](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-07)
 
 ## 21/11/2026 — F19-PESQ-06, composição de saídas no ORB Python
