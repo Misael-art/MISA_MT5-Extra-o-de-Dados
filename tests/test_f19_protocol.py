@@ -1,11 +1,20 @@
 from configparser import ConfigParser
 from copy import deepcopy
+from dataclasses import asdict
+import json
 
+import pandas as pd
 import pytest
 
+from mt5_extracao import b3_public, cli
+from mt5_extracao.analytics import datasets, instruments
+from mt5_extracao.composition import base_composition
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.experiments import f19, service, store
+from mt5_extracao.robots import backtest
+from mt5_extracao.robots.budget import Limits
 from tests.experiment_helpers import setup
+from tests.test_opening_coverage import DECEMBER, scheduled
 
 
 @pytest.fixture
@@ -16,26 +25,28 @@ def source(tmp_path):
     generic = deepcopy(definition)
     arms = {"reference": base.to_dict(), "candidate": base.to_dict()}
     arms["candidate"]["strategy"]["params"]["fast"] = 10
-    definition.update(objective={"id": f19.OBJECTIVE, "version": 1, "focus": "signal", "horizon_seconds": 3600,
-                                 "embargo_seconds": 3600, "initial_equity": 100000, "block_sessions": 2,
-                                 "bootstrap_replicates": 10,
-                                 "costs": {"base": {"commission_per_lot": 0, "slippage_points": 0},
-                                           "stress": {"commission_per_lot": 1, "slippage_points": 1}}},
-                      criteria={"id": "daily_delta", "version": 1, "minimum_net_cash_difference": 0,
-                                "confidence": .95},
-                      grid=[{"arm": arm, "composition": value} for arm, value in arms.items()])
+    definition.update(_paired_fields(arms))
     definition["roles"]["validation"]["evaluation_start"] = bars.time.iloc[361].isoformat()
     definition["roles"]["holdout"]["evaluation_start"] = bars.time.iloc[481].isoformat()
     yield db, path, definition, generic, arms
     db.close()
 
 
-def _request(db, protocol_id, arms, arm="reference", scenario="base", **kwargs):
+def _paired_fields(arms):
+    return {"objective": {"id": f19.OBJECTIVE, "version": 1, "focus": "signal", "horizon_seconds": 3600,
+                          "embargo_seconds": 3600, "initial_equity": 100000, "block_sessions": 1,
+                          "bootstrap_replicates": 10,
+                          "costs": {"base": {"commission_per_lot": 0, "slippage_points": 0},
+                                    "stress": {"commission_per_lot": 1, "slippage_points": 1}}},
+            "criteria": {"id": "daily_delta", "version": 1, "minimum_net_cash_difference": 0, "confidence": .95},
+            "grid": [{"arm": arm, "composition": value} for arm, value in arms.items()]}
+
+
+def _request(db, protocol_id, arms, arm="reference", scenario="base", role="holdout", **kwargs):
     config = ConfigParser()
     if scenario == "stress":
         config["STRATEGY"] = {"commission_per_lot": "1", "slippage_points": "1"}
-    return service.request(db, protocol_id, f"holdout.{arm}.{scenario}", arms[arm],
-                           role="holdout", config=config, **kwargs)
+    return service.request(db, protocol_id, f"{role}.{arm}.{scenario}", arms[arm], role=role, config=config, **kwargs)
 
 
 def test_freeze_caps_risk_cost_and_embargo_before_access(source):
@@ -87,3 +98,56 @@ def test_holdout_requires_four_planned_requests_before_any_access(source):
     blocked = service.evaluate(db, first["request_id"])
     assert "fora dos braços" in blocked["evaluation_error"]
     assert not blocked["qualified_final_holdout"]
+
+
+def test_paired_summary_uses_reexecuted_costs_and_zero_trade_session(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(backtest, "_execution_code_digest", lambda: "fixture-code")
+    path = tmp_path / "paired.sqlite"
+    db = DatabaseManager(db_path=str(path), **b3_public.CLOCK)
+    days = [f"2026-10-{day:02d}" for day in range(5, 11)]
+    frames = []
+    for i, day in enumerate(days):
+        times = pd.date_range(f"{day} 09:00", periods=60, freq="min")
+        frame = pd.DataFrame({"time": times, "open": 100000, "high": 100005, "low": 99995,
+                              "close": 100000, "tick_volume": 1, "real_volume": 1, "spread": 0})
+        if i == 0:
+            frame.loc[20:21, ["high", "close"]] = 100010
+            frame.loc[22:24, ["high", "close"]] = 100030
+            frame.loc[21:24, "open"] = 100010
+            frame.loc[21:24, "low"] = 100005
+        frames.append(frame)
+    assert b3_public.save(db, DECEMBER, "1 minuto", pd.concat(frames, ignore_index=True))
+    instruments.record(db, DECEMBER, "expiration", {"contract": DECEMBER}, source="fixture",
+                       known_at="2026-10-01T00:00:00Z", valid_from="2026-12-16T21:00:00Z")
+    instruments.record(db, DECEMBER, "specification", b3_public.spec_for(DECEMBER), source="fixture",
+                       known_at="2026-10-01T00:00:00Z", valid_from="2026-10-01T00:00:00Z")
+    roles = {}
+    for index, role in enumerate(("train", "validation", "holdout")):
+        start, end = f"{days[index * 2]} 09:00", f"{days[index * 2 + 1]} 09:59"
+        snap = datasets.capture(db, DECEMBER, "M1", start, end)
+        roles[role] = {"data_manifest_id": snap.manifest_id, "evaluation_start": start}
+    reference = base_composition("orb", symbol=DECEMBER, timeframe="M1", risk_fraction=.003).to_dict()
+    candidate = deepcopy(reference)
+    candidate["strategy"]["params"]["range_minutes"] = 15
+    arms = {"reference": reference, "candidate": candidate}
+    protocol = dict(schema_version=1, name="paired", revision=1, seed=42, roles=roles,
+                    budget=dict(scope="evaluation_request", limits=asdict(Limits(min_free_mb=0))),
+                    **_paired_fields(arms))
+    protocol["objective"]["calendar"] = {"source": "fixture", "sessions": [
+        {**scheduled(day, DECEMBER), "close": "10:00"} for day in days]}
+    pid = service.create(db, protocol)["protocol_id"]
+    requests = [_request(db, pid, arms, arm, scenario, role="train")["request_id"]
+                for arm in arms for scenario in ("base", "stress")]
+    for ident in requests:
+        result = service.evaluate(db, ident)
+        assert result["request"]["state"] == "run_recorded", result
+    db.close()
+    (tmp_path / "protocol_id.txt").write_text(pid, encoding="utf-8")
+    assert cli.main(["--db", str(path), "--json", "experiments", "paired-summary", pid, "--role", "train"]) == 0
+    result = json.loads(capsys.readouterr().out)["data"]
+    first, zero = result["sessions"]
+    assert first["scenarios"]["base"]["difference"] > 0
+    assert first["scenarios"]["stress"]["difference"] < first["scenarios"]["base"]["difference"]
+    assert zero["scenarios"]["base"] == {"reference": 0.0, "candidate": 0.0, "difference": 0.0}
+    assert result["estimates"]["base"]["sessions"] == 2 and result["estimates"]["base"]["replicates"] == 10
+    assert result["tests_counted"] == 2 and result["economic_approval"] is False

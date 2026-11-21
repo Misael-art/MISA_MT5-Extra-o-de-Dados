@@ -24,9 +24,12 @@ def _finite(value):
 
 
 def validate(definition, context):
+    from ..analytics.opening_coverage import _schedule
+
     objective = definition["objective"]
-    closed(objective, ("id", "version", "focus", "horizon_seconds", "embargo_seconds", "costs",
-                       "initial_equity", "block_sessions", "bootstrap_replicates"), "Plano pareado F19")
+    fields = {"id", "version", "focus", "horizon_seconds", "embargo_seconds", "costs",
+              "initial_equity", "block_sessions", "bootstrap_replicates"}
+    closed(objective, fields | ({"calendar"} & objective.keys()), "Plano pareado F19")
     if objective["version"] != 1 or not isinstance(objective["focus"], str) or objective["focus"] not in FOCUS:
         raise ValueError("Plano F19 exige versão 1 e foco signal, filter ou exit.")
     if not _finite(objective["initial_equity"]) or objective["initial_equity"] <= 0:
@@ -61,6 +64,10 @@ def validate(definition, context):
     if set(grid) != set(ARMS):
         raise ValueError("O protocolo exige referência e candidato congelados.")
     identity = context["identity"]
+    if "calendar" in objective:
+        schedule = _schedule(objective["calendar"])
+        if identity["timeframe"] != "M1" or any(row[0] != identity["symbol"] for _, row in schedule):
+            raise ValueError("A comparação por pregões usa calendário do mesmo contrato WIN em M1.")
     if any(arm["context"] != {"symbol": identity["symbol"], "timeframe": identity["timeframe"]} for arm in grid.values()):
         raise ValueError("Os braços precisam usar o ativo e timeframe dos snapshots.")
     reference, candidate = (grid[key] for key in ARMS)

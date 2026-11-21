@@ -105,8 +105,16 @@ o horizonte. Registre os quatro pedidos da reserva por `experiments request`
 com a chave `holdout.<braço>.<cenário>`, a composição correspondente e o arquivo de
 configuração com capital e custos congelados. O journal recusa uma reserva que já
 teve acesso registrado fora do plano. A avaliação em reserva usa execução própria.
-O pré-registro conserva exposição externa como desconhecida. O estimador pareado,
-a purga econômica por evento e a qualificação prospectiva continuam pendentes.
+Para comparar por pregão WIN M1, inclua `calendar` em `objective` com o mesmo
+formato da F19-PESQ-01. Conclua os quatro pedidos do papel desejado e consulte
+`mt5x --json experiments paired-summary <protocolo> --role train`. A consulta
+confere revisão do executor e snapshot nos quatro livros. Exclui pregões que
+cruzam o corte ou têm M1 incompleto. Ciclos carregados entre sessões impedem
+a comparação intradiária. Os pregões elegíveis sem operações têm saldo zero.
+O relatório mostra candidato menos referência em cada cenário e intervalo
+em blocos de pregões, ajustado para os dois cenários. A evidência é exploratória.
+O pareamento por lado, volatilidade e distância e a validação prospectiva
+continuam com aceites próprios.
 
 <a id="f19-pesq-04"></a>
 
