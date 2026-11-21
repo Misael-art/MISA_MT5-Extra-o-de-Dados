@@ -57,6 +57,26 @@ As dependências numéricas abaixo usam o prefixo F19-PESQ. Os identificadores T
 
 **Aceite e evidência.** Percorrer sinal vetado, expirado, rejeitado e executado em partes com redução e zeragem. Conciliar contagens por oportunidade, ordens e ciclos e o caixa após custos. Sessões sem trade ficam no denominador. Lacunas recebem motivo. Reprocessar os mesmos eventos produz os mesmos totais.
 
+O percurso Python grava sinal, disponibilidade, decisão, motivo e vínculo ao ciclo
+no journal de trajetórias existente. `mt5x --json trades opportunities --run <id>`
+consulta o livro. Com o calendário da F19-PESQ-01, a opção `--calendar <arquivo>`
+inclui os pregões sem sinal nas barras avaliadas e as sessões inelegíveis. O JSON
+inclui preço de referência antes do slippage, fills modelados, comissão, swap,
+exposição restante, extremos monetários observados e saldo líquido do ciclo.
+Uma consulta de execução legada retorna indisponibilidade explícita se o
+produtor não tiver gravado oportunidades.
+
+Na bancada pelo launcher Linux, uma execução sintética preservou 3 oportunidades,
+1 veto, 1 expiração e 1 ciclo encerrado com 3 fills e saldo de 40 na moeda do
+modelo. Outra execução devolveu dois pregões com abertura elegível e zero sinais.
+Rejeição nativa, entrada parcialmente preenchida, margem e exposição por perna
+exigem eventos de produtor com essas capacidades. O modelo atual executa a entrada
+integral e registra reduções posteriores. A consulta também informa concentração
+dos cinco maiores ganhos, maior perda observada em um ciclo e pior pregão elegível
+por data do sinal. A duração medida em drawdown soma intervalos entre fechamentos
+submersos adjacentes da curva de patrimônio unitizada. Uma lacuna de amostragem
+interrompe essa soma. A duração intrabarra continua indisponível.
+
 <a id="f19-pesq-03"></a>
 
 ### F19-PESQ-03 — Protocolo de comparação

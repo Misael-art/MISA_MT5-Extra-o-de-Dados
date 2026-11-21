@@ -1,5 +1,20 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-02, livro do modelo Python
+
+O backtest Python acrescenta as oportunidades à trajetória usada pelo ledger.
+A consulta `trades opportunities` confere o vínculo de cada sinal executado com
+entrada, reduções e zeragem. Fills mantêm comissões e swap observados no modelo.
+O calendário de abertura inclui os pregões elegíveis sem sinais e os excluídos.
+
+O launcher Linux confirmou, em SQLite sintético isolado, três oportunidades,
+um veto, uma expiração e um ciclo encerrado, com três fills e caixa líquido de
+40 no modelo. Confirmou também dois pregões elegíveis sem sinais em outra execução.
+Passaram 35 testes focados no Linux. Recibos no estado local de QA
+`f19-pesq-02-pytest`. A ficha tem aceite parcial:
+faltam rejeição e parcial de entrada em produtor nativo, margem, exposição por
+perna, tempo em drawdown e concentração. [Consulta e limites](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-02)
+
 ## 21/11/2026 — F19-PESQ-01, cobertura da abertura do WIN
 
 `analytics opening-coverage` e `sdk.opening_coverage` qualificam cada data da
@@ -12,8 +27,9 @@ O launcher Linux conferiu 2/2 aberturas em 27–28/10/2026 com 32 barras públic
 WINZ26 e SQLite isolado. Passaram 59 testes focados na `.venv` oficial. O doctor
 offline registrou 16 OK, dois avisos e zero
 falhas. O recibo de cobertura `48c4522533455fe321c60e2e24fcb71988874b3cbbcc38f7b2d6c87f12aaba3a`
-fica no estado local de QA `f19-pesq-01-b3`. A revisão da tarefa parte do App
-`09ebf29408ec`, PR #373, com os pins preservados. [Consulta e limites](docs/dados/B3_PUBLICO.md#cobertura-da-abertura-do-win-por-pregão)
+fica no estado local de QA `f19-pesq-01-b3`. SHA remoto confirmado
+`dce08e7850faf44281a5ac3df858c2ee00035e20`, sobre a PR #373, com os pins
+preservados. [PR #374](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/374) · [Consulta e limites](docs/dados/B3_PUBLICO.md#cobertura-da-abertura-do-win-por-pregão)
 
 O próximo incremento da frente é F19-PESQ-02. O livro de oportunidades deve
 usar os pregões elegíveis como população, conservar exclusões e vincular as

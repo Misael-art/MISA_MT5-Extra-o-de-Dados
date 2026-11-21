@@ -23,9 +23,19 @@ class Journal:
         self.ends = [bar_end_in_source(t, tf) for t in self.times]
         self.timeframe, self.source = tf.name, source
         self.records, self._sequences = [], {}
+        self.opportunities = []
+
+    def record_opportunity(self, i, direction, status, reason, *, evaluated_on=None, cycle_seq=None, requested_price=None):
+        """Registra a decisão do modelo e sua eventual posição no mesmo journal."""
+        evaluated = self.times[evaluated_on] if evaluated_on is not None else self.ends[i]
+        self.opportunities.append({"seq": len(self.opportunities), "direction": int(direction),
+                                   "signal_time": self.times[i].isoformat(), "available_at": self.ends[i].isoformat(),
+                                   "evaluated_at": evaluated.isoformat(),
+                                   "status": status, "reason": reason, "cycle_seq": cycle_seq,
+                                   "requested_price": float(requested_price) if requested_price is not None else None})
 
     def record(self, cycle_seq, i, kind, phase, volume_open, realized_net, *, net_pnl=None,
-               source_seq=None, fill_price=None, fill_volume=None, direction=None):
+               source_seq=None, fill_price=None, fill_volume=None, direction=None, commission=None, swap=None):
         if phase not in ("open", "intrabar", "close"):
             raise ValueError("Fase temporal desconhecida na observação do motor.")
         start = self.ends[i] if phase == "close" else self.times[i]
@@ -39,17 +49,23 @@ class Journal:
             return result
         sequence = self._sequences.get(cycle_seq, 0)
         self._sequences[cycle_seq] = sequence + 1
-        self.records.append({"cycle_seq": int(cycle_seq), "event_seq": sequence,
-                             "direction": int(direction) if direction in (1, -1) else None,
-                             "source_seq": int(source_seq) if source_seq is not None and pd.notna(source_seq) else None,
-                             "bar_index": i, "bar_time": self.times[i].isoformat(), "kind": kind, "phase": phase,
-                             "start_time": start.isoformat(), "end_time": end.isoformat(),
-                             "available_at": end.isoformat(), "volume_open": number(volume_open),
-                             "realized_net": number(realized_net), "net_pnl": number(net_pnl),
-                             "fill_price": number(fill_price), "fill_volume": number(fill_volume)})
+        record = {"cycle_seq": int(cycle_seq), "event_seq": sequence,
+                  "direction": int(direction) if direction in (1, -1) else None,
+                  "source_seq": int(source_seq) if source_seq is not None and pd.notna(source_seq) else None,
+                  "bar_index": i, "bar_time": self.times[i].isoformat(), "kind": kind, "phase": phase,
+                  "start_time": start.isoformat(), "end_time": end.isoformat(),
+                  "available_at": end.isoformat(), "volume_open": number(volume_open),
+                  "realized_net": number(realized_net), "net_pnl": number(net_pnl),
+                  "fill_price": number(fill_price), "fill_volume": number(fill_volume)}
+        if commission is not None:
+            record.update(commission=number(commission), swap=number(swap))
+        self.records.append(record)
 
-    def payload(self, valuation):
-        return {"schema_version": 1, "source": self.source, "timeframe": self.timeframe,
-                "timestamp_basis": "source_clock", "sequence_basis": "modeled_execution_order",
-                "observation_unit": "cycle_from_first_fill_to_flat", "currency": None,
-                "valuation": copy.deepcopy(valuation), "records": copy.deepcopy(self.records)}
+    def payload(self, valuation, *, includes_opportunities=False):
+        result = {"schema_version": 1, "source": self.source, "timeframe": self.timeframe,
+                  "timestamp_basis": "source_clock", "sequence_basis": "modeled_execution_order",
+                  "observation_unit": "cycle_from_first_fill_to_flat", "currency": None,
+                  "valuation": copy.deepcopy(valuation), "records": copy.deepcopy(self.records)}
+        if includes_opportunities:
+            result["opportunities"] = copy.deepcopy(self.opportunities)
+        return result

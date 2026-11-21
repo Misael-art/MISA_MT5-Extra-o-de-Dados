@@ -17,6 +17,9 @@ def add_parser(sub) -> None:
     q.add_argument("--unit", choices=("money", "price", "points", "R"), default="money")
     q.add_argument("--threshold", type=float, action="append", default=[], help="limiar assinado na unidade escolhida; repetível")
     q.add_argument("--age", type=float, action="append", default=[], help="idade em minutos para a distribuição do run completo; repetível")
+    q = ts.add_parser("opportunities", help="decisões de entrada e ciclos conciliados do backtest Python")
+    q.add_argument("--run", required=True, help="run_id do livro")
+    q.add_argument("--calendar", help="calendário declarado dos pregões WIN, inclusive dias sem sinal")
     c = ts.add_parser("calendar", help="calendário econômico de várias fontes (CSV e MT5)")
     cs = c.add_subparsers(dest="calendar_command", required=True)
     q = cs.add_parser("import", help="importa uma fonte para o calendário unido")
@@ -98,6 +101,24 @@ def run(args: argparse.Namespace, ctx) -> int:
         return cli.EXIT_OK
     if args.trades_command == "calendar":
         return _calendar(args, ctx)
+    if args.trades_command == "opportunities":
+        import json
+        from pathlib import Path
+        from mt5_extracao.trade_analytics.trajectories import opportunities
+
+        calendar = None
+        if args.calendar:
+            try:
+                calendar = json.loads(Path(args.calendar).read_text(encoding="utf-8-sig"))
+            except (OSError, ValueError) as exc:
+                raise ValueError(f"Não foi possível ler o calendário declarado: {exc}") from exc
+        result = opportunities.query(db, args.run, calendar=calendar)
+        if result["status"] == "unavailable":
+            out(f"{args.run}: execução sem registro de oportunidades. Refaça o backtest Python para gerar o livro.")
+        else:
+            out(f"{args.run}: {result['counts']['opportunities']} oportunidade(s).")
+        data(opportunities=result)
+        return cli.EXIT_OK
     if args.trades_command == "trajectory":
         from mt5_extracao.trade_analytics import aggregate
         from mt5_extracao.trade_analytics.trajectories import service
