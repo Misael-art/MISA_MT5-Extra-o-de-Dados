@@ -1,5 +1,18 @@
 # Retomar MT5X em um host limpo
 
+## 21/11/2026 — F19-PESQ-05, filtros estáticos do ORB
+
+`analytics orb-reference --range-minutes 15 --width 200 750 --distance 10 400`
+informa sinal original, largura, distância e veto em pontos do índice. A fixture
+verificou as bordas inclusivas e que o primeiro rompimento bloqueado consome o
+pregão, mesmo quando um rompimento posterior passaria.
+
+No launcher Linux, o WINZ26 de 27 e 28/10/2026 teve dois vetos. No dia 27 a
+largura foi de 1.795 pontos e a distância de 5. No dia 28 a largura foi de
+1.635 e a distância de 55, então o veto foi apenas por largura. Recibo em
+`f19-pesq-05-b3`. O recorte comprova as decisões por barra, com aceite econômico
+e variantes de horário e normalização ainda abertos.
+
 ## 21/11/2026 — F19-PESQ-03, pré-registro Python dos braços
 
 `experiments create` e `experiments request` aceitam o plano F19 de sinal, filtro
@@ -15,9 +28,10 @@ pareamento por contexto. A comparação por pregão WIN M1 já consulta quatro l
 do mesmo snapshot, separa o cenário adverso e mantém o pregão sem operações.
 Na bancada sintética, os quatro backtests Python registrados deram diferença
 média de 150 por pregão no cenário base e zero no adverso, com ambos os
-intervalos inconclusivos. O fixture substituiu somente a leitura do hash do
+intervalos inconclusivos. A fixture substituiu somente a leitura do hash do
 código. Passaram 25 testes na verificação conjunta. Recibo do launcher em
-`f19-pesq-03-paired-r2`. [Contrato](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03)
+`f19-pesq-03-paired-r2`. SHA remoto `10585beaf58f71366af4d72e04fe98b27de7fd98`.
+[PR #377](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/377) · [Contrato](docs/propostas/PESQUISA_SINAIS_E_OPERACIONAIS.md#f19-pesq-03)
 
 O CI anterior das PRs #374–376 encontrou duas regressões na lista pública do SDK.
 A referência e as assinaturas de `opening_coverage` e `orb_reference` foram

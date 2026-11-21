@@ -21,11 +21,15 @@ def _events(data, signals, time_utc, dates):
     return events
 
 
-def compare(snapshot, calendar, *, as_of, range_minutes=30, target_mult=1.5, min_range_atr=0.0):
+def compare(snapshot, calendar, *, as_of, range_minutes=30, target_mult=1.5, min_range_atr=0.0,
+            width_limits=None, distance_limits=None, direction="both"):
     """Compara sinais Python pontuais. SL, TP e decisão saem do mesmo ORB."""
     if (type(target_mult) not in (int, float) or not isfinite(target_mult) or target_mult <= 0 or
             type(min_range_atr) not in (int, float) or not isfinite(min_range_atr) or min_range_atr < 0):
         raise ValueError("O alvo precisa de múltiplo positivo e o filtro ATR de múltiplo não negativo.")
+    if direction not in ("both", "long", "short"):
+        raise ValueError("Escolha direção both, long ou short.")
+    limits = {name: _validate_limits(value) for name, value in (("width", width_limits), ("distance", distance_limits))}
     coverage = opening_coverage.report([snapshot], calendar, as_of=as_of, opening_minutes=range_minutes)
     params = {"range_minutes": range_minutes, "target_mult": target_mult, "min_range_atr": min_range_atr}
     strategy = OpeningRangeBreakout(**params)
@@ -51,7 +55,43 @@ def compare(snapshot, calendar, *, as_of, range_minutes=30, target_mult=1.5, min
     sessions = [{**row, "legacy_signals": legacy_events[row["date"]],
                  "qualified_signals": nominal_events[row["date"]]} for row in coverage["sessions"]]
     first = next((row for row in sessions if row["legacy_signals"] != row["qualified_signals"]), None)
-    return {"version": 1, "contract": snapshot.manifest["symbol"], "params": params,
-            "coverage_manifest_id": coverage["manifest_id"], "snapshot_id": snapshot.manifest_id,
-            "first_divergent_session": first["date"] if first else None,
-            "execution_evidence": "signals_python_only", "sessions": sessions}
+    result = {"version": 1, "contract": snapshot.manifest["symbol"], "params": params,
+              "coverage_manifest_id": coverage["manifest_id"], "snapshot_id": snapshot.manifest_id,
+              "first_divergent_session": first["date"] if first else None,
+              "execution_evidence": "signals_python_only", "sessions": sessions}
+    if width_limits is not None or distance_limits is not None or direction != "both":
+        result["filters"] = {"unit": "index_points", "width_limits": limits["width"], "distance_limits": limits["distance"],
+                             "direction": direction, "first_breakout_consumes_session": True}
+        for row in sessions:
+            row["filter_decision"] = _filter_decision(row, limits, direction)
+    return result
+
+
+def _validate_limits(bounds):
+    if bounds is None:
+        return None
+    if (not isinstance(bounds, (tuple, list)) or len(bounds) != 2 or
+            any(type(value) not in (int, float) or not isfinite(value) for value in bounds) or
+            not 0 <= bounds[0] <= bounds[1]):
+        raise ValueError("Limites devem ser dois valores finitos ordenados e não negativos em pontos do índice.")
+    return list(bounds)
+
+
+def _filter_decision(session, limits, direction):
+    if session["status"] != "eligible":
+        return {"status": "excluded", "reasons": session["reasons"], "event": None}
+    if not session["qualified_signals"]:
+        return {"status": "no_breakout", "reasons": [], "event": None}
+    event = session["qualified_signals"][0]
+    band = session["range"]
+    width = band["width_points"]
+    distance = event["close"] - band["high"] if event["side"] == "long" else band["low"] - event["close"]
+    reasons = []
+    for name, measured in (("width", width), ("distance", distance)):
+        bounds = limits[name]
+        if bounds and not bounds[0] <= measured <= bounds[1]:
+            reasons.append(f"{name}_outside_limits")
+    if direction != "both" and direction != event["side"]:
+        reasons.append("direction_filtered")
+    return {"status": "blocked" if reasons else "accepted", "reasons": reasons, "event": event,
+            "width_points": width, "distance_points": distance}

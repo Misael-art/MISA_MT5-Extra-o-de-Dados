@@ -2041,6 +2041,9 @@ def build_parser():
     q.add_argument("--range-minutes", type=int, default=30)
     q.add_argument("--target-mult", type=float, default=1.5)
     q.add_argument("--min-range-atr", type=float, default=0.0)
+    q.add_argument("--width", type=float, nargs=2, metavar=("MIN", "MAX"), help="limites inclusivos da largura em pontos")
+    q.add_argument("--distance", type=float, nargs=2, metavar=("MIN", "MAX"), help="limites inclusivos além da borda, em pontos")
+    q.add_argument("--direction", choices=("both", "long", "short"), default="both")
     q.set_defaults(func=cmd_orb_reference)
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
@@ -2496,11 +2499,17 @@ def cmd_orb_reference(args, ctx):
 
     result = sdk.orb_reference(ctx.db, args.manifest, read_calendar(args.calendar), as_of=args.as_of,
                                range_minutes=args.range_minutes, target_mult=args.target_mult,
-                               min_range_atr=args.min_range_atr)
+                               min_range_atr=args.min_range_atr, width_limits=args.width,
+                               distance_limits=args.distance, direction=args.direction)
     _data(orb_reference=result)
     different = result["first_divergent_session"]
     _print(f"Primeira divergência de sinal no ORB Python em {different}." if different else
            "Os sinais coincidem nos pregões comparados.")
+    if "filters" in result:
+        from collections import Counter
+        counts = Counter(row["filter_decision"]["status"] for row in result["sessions"])
+        _print(f"Filtros ORB: {counts['accepted']} aceitos, {counts['blocked']} bloqueados, "
+               f"{counts['no_breakout']} sem rompimento e {counts['excluded']} pregões inelegíveis.")
     return 0
 
 
