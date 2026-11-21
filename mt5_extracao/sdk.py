@@ -228,6 +228,13 @@ def query_saved_relations(db, *, symbol=None, timeframe=None, analysis_id=None, 
     return query_service.relations(db, symbol=symbol, timeframe=timeframe, analysis_id=analysis_id, page_size=page_size, cursor=cursor)
 
 
+def opening_coverage(db, manifest_ids, calendar, *, as_of):
+    """Qualifica a abertura do WIN no calendário declarado e nos snapshots M1 escolhidos."""
+    from mt5_extracao.analytics import datasets, opening_coverage as coverage
+
+    return coverage.report((datasets.load(db, ident) for ident in manifest_ids), calendar, as_of=as_of)
+
+
 def inspect_feature_snapshot(db, manifest_id):
     """Lista os contratos congelados e sua compatibilidade numérica, sem cálculos ou escrita."""
     from mt5_extracao.analytics import query_service
@@ -467,6 +474,7 @@ __all__ = [
     "open_workflow",
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
+    "opening_coverage",
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot", "stored_series_sources", "query_stored_observations",
     "export_feature_relation", "import_feature_relation",
