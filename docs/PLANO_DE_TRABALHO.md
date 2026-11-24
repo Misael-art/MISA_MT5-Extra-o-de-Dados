@@ -5468,7 +5468,7 @@ O Laboratório exporta um Expert para o Strategy Tester, um importador de ticks 
 
 ### T19.53 · percurso nativo pelo launcher
 
-A referência do SDK e a suíte de contrato cobrem descoberta, exportação do Expert, execução e conferência pela API Python.
+A referência do SDK e a suíte de contrato cobrem descoberta, exportação do Expert, execução e conferência pela API Python. A regressão de rotação do journal verifica a preservação byte a byte com fim de linha LF e CRLF.
 
 `robots ultra-test` qualifica o pacote, compila os fontes no MetaEditor, verifica a importação e confere o journal com o Python. No modo Strategy Tester, o terminal precisa observar uma conta DEMO conectada antes do ensaio. Cada tentativa cria um recibo e guarda hashes dos binários e o trecho novo dos journals. O terminal de outro trabalho e seus arquivos preexistentes são preservados.
 
