@@ -1555,3 +1555,22 @@ exporta o gráfico offline e aceita o argumento opcional `reference` para sobrep
 normalizado na grade exata do pacote. Sem livro e journal, devolve a pendência do
 Tester. Um livro normalizado coincidente ainda exige auditoria de origem do binário,
 modelo de ticks, journal e versão do terminal.
+
+`sdk.ultra_tester_capabilities()` informa as estratégias, as origens e o limite de ticks do
+Expert. `sdk.ultra_export_tester(db, package, destination)` verifica o pacote e grava os
+fontes MQL5 e as cotações em uma pasta nova. O retorno identifica o símbolo e o SHA-256
+de cada arquivo.
+
+`sdk.ultra_run_tester(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300)`
+executa o ensaio no terminal portátil configurado. O recibo identifica a tentativa e o
+caminho dos arquivos. A origem `strategy_tester` exige conexão DEMO. Use
+`terminal_history` para conferir o mesmo livro pelo histórico do símbolo personalizado.
+`sdk.ultra_compare_native_book(db, package, journal, *, origin)` recebe os bytes do journal
+bruto e informa a quantidade de ticks e eventos comparados, o patrimônio final ou a
+primeira divergência. Os fills dessa versão seguem a política de liquidez do pacote.
+
+Para recuperar um fill parcial, execute `sdk.ultra_run_tester` com
+`origin="terminal_restart"`. O argumento opcional `resume` recebe o caminho do recibo de
+uma tentativa anterior. O SDK confere o checkpoint e o journal antes de reutilizá-los.
+Na exportação avulsa, `restart_id` aceita 32 dígitos hexadecimais e vincula o binário
+de retomada à tentativa.
