@@ -176,3 +176,35 @@ def read_package(manifest_path,robot):
     if set_path.is_symlink():
         raise ValueError("Arquivo .set é link simbólico; preserve o original e importe uma cópia regular.")
     return load_package(manifest,set_path.read_bytes(),robot)
+
+
+def compile_ultra_research(db, receipt):
+    """Pacote de reprodução ligado ao livro congelado; o executor MT5 tem gate próprio."""
+    from ..analytics import datasets
+    from ..experiments.schema import digest
+    from ..laboratory import ultra
+
+    run = ultra.inspect_receipt(db, receipt, timeline=True)
+    if run["status"] != "complete":
+        raise ValueError("Pacote Ultra exige livro de replay concluído.")
+    snapshot = datasets.load(db, run["manifest_id"])
+    manifest = snapshot.manifest
+    payload = {"version": 1, "kind": "ultra_research", "receipt": receipt,
+               "sample_kind": run["sample_kind"], "policy": run["policy"],
+               "symbol": manifest["symbol"], "feed": manifest["source"],
+               "time": manifest["time"], "specification": snapshot.spec_row,
+               "instrument_context": snapshot.spec.provenance,
+               "capabilities": ultra.capabilities(), "source_manifest": run["manifest_id"],
+               "ledger_hash": digest(run["timeline"]), "account_hash": digest(run["account"]),
+               "native_status": "capability_absent", "economic_approval": False}
+    return dict(payload, package_hash=digest(payload))
+
+
+def verify_ultra_research(db, package):
+    if not isinstance(package, dict) or package.get("kind") != "ultra_research":
+        raise ValueError("Pacote de pesquisa Ultra inválido.")
+    actual = compile_ultra_research(db, package.get("receipt"))
+    if canonical_json(actual) != canonical_json(package):
+        raise ValueError("Pacote diverge do recibo, da fonte ou do livro congelado.")
+    return {"status": "verified_research", "package_hash": actual["package_hash"],
+            "receipt": actual["receipt"], "native_status": actual["native_status"]}

@@ -5432,3 +5432,11 @@ livro, custos, veto por margem, limite local, transição de proteção e a reto
 recibo em processos separados. A política perdeu US$ 29,40 frente à referência neste
 ensaio. Qualificação econômica, executor nativo multi-estratégia e conta netting estão
 pendentes. A demonstração usa margem e liquidez declaradas pelo cenário.
+
+### T19.54 · avaliação de pesquisa do Ultra — 24/11/2026
+
+O protocolo congela objetivo, candidatos, teto de tentativas, três janelas, limites de
+seleção e custo da revisão. A avaliação mantém históricos por alternativa e testa as
+políticas fixa, semanal e de 14 dias. Cada decisão de revisão lê sessões já encerradas.
+Há controles em caixa, estratégia individual escolhida no treino e carteira estática.
+O pacote de reprodução referencia a fonte, a revisão do motor, o livro e a conta.
