@@ -164,3 +164,21 @@ def test_cost_uses_utc_hour_from_declared_broker_clock(tmp_path, day, zone, offs
     assert profile["time_basis"] == "UTC"
     assert execution_spreads(bars, spec, BacktestConfig())[1][0] == pytest.approx(8 * spec.point)
     db.close()
+
+
+def test_uniform_profile_needs_no_clock_but_different_open_price_does(tmp_path):
+    from mt5_extracao.strategies.backtester import execution_spreads
+    db = DatabaseManager(db_path=str(tmp_path / "legacy.sqlite"))
+    try:
+        db.save_symbol_spec("QA", SPEC_ROW)
+        bars = pd.DataFrame(dict(time=[pd.Timestamp("2026-10-01 09:00")], spread=[0.]))
+        for opening in [6., 8.]:
+            db.save_spread_profile("QA", {"hours": [6.] * 24, "open": [opening] * 24})
+            spec = specs.load_spec(db, "QA")
+            if opening == 6:
+                assert execution_spreads(bars, spec, BacktestConfig())[1][0] == pytest.approx(6 * spec.point)
+            else:
+                with pytest.raises(ValueError, match="fuso"):
+                    execution_spreads(bars, spec, BacktestConfig())
+    finally:
+        db.close()
