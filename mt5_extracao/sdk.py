@@ -517,7 +517,22 @@ def pattern_evaluation(db, protocol_id, request_id, data_manifest_id, *, as_of=N
                                       as_of=as_of, include_facts=include_facts)
 
 
+from .laboratory.ultra import capabilities as ultra_capabilities
+from .laboratory.ultra import freeze as ultra_freeze
+from .laboratory.ultra import replay as ultra_replay
+from .laboratory.ultra import inspect_receipt as ultra_inspect
+from .laboratory.ultra_evaluation import compare as ultra_compare
+from .laboratory.ultra_study import register as ultra_register_study
+from .laboratory.ultra_study import evaluate as ultra_evaluate_study
+from .laboratory.ultra_report import list_receipts as ultra_list
+from .laboratory.ultra_report import export as ultra_export_report
+from .presets.compiler import compile_ultra_research, verify_ultra_research
+
+
 __all__ = [
+    "ultra_capabilities", "ultra_freeze", "ultra_replay", "ultra_inspect", "ultra_compare",
+    "ultra_register_study", "ultra_evaluate_study", "ultra_list", "ultra_export_report",
+    "compile_ultra_research", "verify_ultra_research",
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
     "pattern_campaign_status", "f19_research_preset",

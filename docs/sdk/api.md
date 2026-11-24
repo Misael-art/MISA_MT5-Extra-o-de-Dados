@@ -1536,3 +1536,17 @@ nem aprova candidato. Plano: [DESCOBERTA_PADROES.md](../analytics/DESCOBERTA_PAD
 | `pattern_campaign_status(db, protocol_id)` | Estado da campanha: orçamento, tentativas registradas e reserva; somente leitura. |
 | `pattern_evaluations(db, protocol_id, symbol, timeframe, as_of)` | Consulta avaliações T13.4 já persistidas; não abre produtor nem executor. |
 | `pattern_evaluation(db, protocol_id, request_id, data_manifest_id, as_of, include_facts)` | Inspeção de um recibo e, quando pedido, seus fatos causais persistidos. |
+
+### Carteira Ultra no Laboratório
+
+`sdk.ultra_capabilities()` descreve os sinais, a unidade de volume e o modelo de liquidez.
+`sdk.ultra_freeze(db, definition)` verifica a qualidade do snapshot e congela a política e
+a revisão do motor. `sdk.ultra_replay(db, receipt, until=199)` confirma o prefixo até o ordinal
+absoluto e `sdk.ultra_inspect(db, receipt, timeline=True)` recupera eventos, reservas e marcas.
+`sdk.ultra_list(db)` pagina os recibos. `sdk.ultra_compare(db, receipt)` reexecuta a
+carteira com a invalidação desligada e retira cada dono por vez.
+`sdk.ultra_register_study(db, receipt, plan)` congela alternativas e fronteiras antes de
+`sdk.ultra_evaluate_study(db, ident)` comparar as seis políticas em sessões consecutivas.
+`sdk.compile_ultra_research(db, receipt)` e `sdk.verify_ultra_research(db, package)`
+vinculam o pacote ao livro congelado. `sdk.ultra_export_report(db, receipt, destination)`
+exporta o gráfico offline e aceita o argumento opcional `reference` para sobrepor os dois livros.
