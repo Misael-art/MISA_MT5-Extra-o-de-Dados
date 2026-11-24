@@ -6,7 +6,8 @@ import pytest
 from mt5_extracao.robots import ultra_runner as runner
 
 
-def test_journal_captures_only_appended_or_rotated_bytes(tmp_path):
+@pytest.mark.parametrize("rotated", [b"new\n", b"new\r\n"], ids=["lf", "crlf"])
+def test_journal_captures_only_appended_or_rotated_bytes(tmp_path, rotated):
     logs = tmp_path / "MQL5/logs"
     logs.mkdir(parents=True)
     live = logs / "20261124.log"
@@ -17,9 +18,9 @@ def test_journal_captures_only_appended_or_rotated_bytes(tmp_path):
     paths = runner._collect(tmp_path, "MQL5", before, tmp_path / "first")
     assert paths[0].read_text(encoding="utf-16") == "MT5X_ULTRA_DEMO|1|1\n"
     assert runner._marked(paths, "MT5X_ULTRA_DEMO|")[1] == ["1|1"]
-    live.write_text("new\n", encoding="utf-8")
+    live.write_bytes(rotated)
     paths = runner._collect(tmp_path, "MQL5", before, tmp_path / "second")
-    assert paths[0].read_bytes() == b"new\n"
+    assert paths[0].read_bytes() == rotated
 
 
 def test_bindings_refuse_conflicting_journals_and_existing_sources(tmp_path):
