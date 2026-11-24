@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from copy import deepcopy
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -114,6 +115,12 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         paths = result["policies"]
         assert paths["cash"]["net"] == 0 and paths["fixed"]["net"] == 0
         assert len(paths["weekly"]["reviews"]) == 4 and len(paths["fortnightly"]["reviews"]) == 2
+        epoch = date(1970, 1, 1)
+        for name, interval, second in (("fortnightly", 14, date(2026, 10, 26)),
+                                       ("every_15_days", 15, date(2026, 10, 27))):
+            assert paths[name]["review_interval_calendar_days"] == interval
+            assert [r["day"] for r in paths[name]["reviews"]] == [
+                (date(2026, 10, 12) - epoch).days, (second - epoch).days]
         assert len(paths["fixed"]["reviews"]) == 1
         for path in paths.values():
             assert all(r["last_training_day"] < r["day"] for r in path["reviews"])

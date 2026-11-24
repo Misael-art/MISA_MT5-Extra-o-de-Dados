@@ -1,5 +1,9 @@
 # Plano de trabalho detalhado
 
+## T19.54 · revisão do Ultra a cada 15 dias corridos
+
+O estudo conserva a série histórica de 14 dias e calcula outra para a revisão a cada 15 dias. Cada política identifica o intervalo no resultado. A comparação usa os mesmos períodos, custos e critérios congelados. A regressão distingue a segunda revisão em 26 e 27 de outubro para o mesmo início em 12 de outubro.
+
 ## T19.52 · dados do Ultra — 24/11/2026
 
 Incremento sobre a PR 388 (`b408f7e`). A calibração exclui cotações cruzadas e conserva
