@@ -15,6 +15,12 @@ def add_parser(sub):
     freeze = actions.add_parser("ultra-freeze", help="congela política e referência ao snapshot")
     freeze.add_argument("--definition", required=True)
     freeze.set_defaults(func=run)
+    report = actions.add_parser("ultra-report", help="exporta linha do tempo e vetos da carteira")
+    report.add_argument("--receipt", required=True)
+    report.add_argument("--reference", help="recibo completo nas mesmas sessões, riscos e custos")
+    report.add_argument("--out", required=True)
+    report.set_defaults(func=run)
+    actions.add_parser("ultra-list", help="lista recibos da carteira Ultra").set_defaults(func=run)
     pack = actions.add_parser("ultra-compile", help="empacota o replay da pesquisa para verificação")
     pack.add_argument("--receipt", required=True)
     pack.add_argument("--out", required=True)
@@ -169,6 +175,12 @@ def run(args, ctx):
             result = ultra.freeze(ctx.db, json.loads(Path(args.definition).read_text(encoding="utf-8-sig")))
         elif args.laboratory_action == "ultra-replay":
             result = ultra.replay(ctx.db, args.receipt, until=args.until)
+        elif args.laboratory_action == "ultra-list":
+            from .ultra_report import list_receipts
+            result = {"receipts": list_receipts(ctx.db)}
+        elif args.laboratory_action == "ultra-report":
+            from .ultra_report import export
+            result = export(ctx.db, args.receipt, args.out, reference=args.reference)
         elif args.laboratory_action == "ultra-compile":
             from ..presets.compiler import compile_ultra_research
             result = compile_ultra_research(ctx.db, args.receipt)

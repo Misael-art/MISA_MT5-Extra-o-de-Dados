@@ -9,6 +9,17 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "ultra_capabilities": [],
+    "ultra_freeze": ['db', 'definition'],
+    "ultra_replay": ['db', 'receipt', 'until'],
+    "ultra_inspect": ['db', 'receipt', 'timeline'],
+    "ultra_compare": ['db', 'receipt'],
+    "ultra_register_study": ['db', 'receipt', 'plan'],
+    "ultra_evaluate_study": ['db', 'ident'],
+    "ultra_list": ['db', 'offset', 'limit'],
+    "ultra_export_report": ['db', 'receipt', 'destination', 'reference'],
+    "compile_ultra_research": ["db", "receipt"],
+    "verify_ultra_research": ["db", "package"],
     "preview_backtest_scope": ["db", "config", "robot", "symbol", "kwargs"],
     "inspect_backtest_scope": ["db", "batch_id"],
     "compare_backtest_scope": ["db", "batch_id", "kwargs"],

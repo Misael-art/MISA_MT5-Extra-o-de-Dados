@@ -143,8 +143,13 @@ class LaboratoryPanel:
         financial=self._analysis_view('Comparativo','runs','Execuções gravadas')
         ttk.Label(financial,text='Compare estratégias no mesmo ativo ou a mesma revisão entre ativos. Escolha execuções existentes; esta consulta não dispara backtest.',wraplength=600,style='Muted.TLabel').pack(anchor='w',pady=8)
         ttk.Button(financial,text='Comparar execuções gravadas…',command=self.open_financial_comparison).pack(anchor='w')
+        ttk.Button(financial, text="Carteiras Ultra…", command=self.open_ultra).pack(anchor="w", pady=4)
         self._build_insights_tab()
         self.theme.on_change(self._theme_changed)
+
+    def open_ultra(self):
+        from .ultra_portfolio import open_receipts
+        open_receipts(self)
 
     def open_financial_comparison(self):
         if getattr(self,'financial_comparison',None) is not None and self.financial_comparison.alive():
