@@ -5444,3 +5444,10 @@ O pacote de reprodução referencia a fonte, a revisão do motor, o livro e a co
 ### T19.52 · hipóteses exploratórias no livro conjunto
 
 O módulo `pattern_definition` aceita a definição M1 direcional do Laboratório, sua população de símbolos, requisitos de dados e regra de invalidação. O evento conserva a identidade da hipótese, referência, predicados e disponibilidade da observação. A mesma oportunidade pode ser reexecutada com a regra desligada. Em QA, uma hipótese nova vetou as entradas do candidato e o controle encerrou ciclos no mesmo snapshot. A comprovação em mercado exige cobertura observada.
+
+### T19.53 · conferência do livro e da margem
+
+A carteira reserva também o custo das intenções pendentes e reavalia a margem antes de preencher.
+A CLI e o SDK localizam o primeiro campo divergente do livro normalizado do Strategy Tester
+e verificam o hash do journal fornecido. O teste com alteração de um fill no tick 198
+exercita o comparador. O Expert concorrente vinculado e a execução no Tester seguem pendentes.

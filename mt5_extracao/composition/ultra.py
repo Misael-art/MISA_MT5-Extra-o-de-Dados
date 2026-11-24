@@ -8,7 +8,7 @@ def initial_state(cash):
 
 
 def account(state, policy, bid, ask):
-    floating = risk = margin = exposure = 0
+    floating = risk = margin = exposure = pending_cost = 0
     value = policy["tick_cash"]
     for cycle in state["cycles"].values():
         side = cycle["side"]
@@ -20,10 +20,11 @@ def account(state, policy, bid, ask):
         # os dois lados da comissão; fills existentes já pagaram a primeira.
         risk += (max(0, side * (mark - cycle["stop"])) * value + policy["fee"]) * filled
         risk += (max(0, side * (cycle["limit"] - cycle["stop"])) * value + 2 * policy["fee"]) * remaining
+        pending_cost += remaining * ((ask - bid) * value + policy["fee"])
         exposure += filled
         margin += (filled + remaining) * policy["margin"]
     return {"cash": state["cash"], "equity": state["cash"] + floating,
-            "risk": risk, "margin": margin, "exposure_steps": exposure, "cost": state["cost"],
+            "risk": risk, "margin": margin, "pending_entry_cost": pending_cost, "exposure_steps": exposure, "cost": state["cost"],
             "spread_cost_twice": state["spread_cost_twice"]}
 
 
@@ -139,7 +140,7 @@ def advance(state, policy, tick, signals):
         entry_cost = c["remaining"] * ((ask - bid) * policy["tick_cash"] + policy["fee"])
         if before["risk"] + risk > policy["risk_limit"]:
             record(owner, "veto", "shared_risk", c, requested_risk=risk)
-        elif before["margin"] + margin + entry_cost > before["equity"]:
+        elif before["margin"] + before["pending_entry_cost"] + margin + entry_cost > before["equity"]:
             record(owner, "veto", "shared_margin", c, requested_margin=margin)
         else:
             cycles[owner] = c
@@ -161,6 +162,10 @@ def advance(state, policy, tick, signals):
             cancel(owner, c, "stop_before_fill")
             continue
         if capacity <= 0 or side * (price - c["limit"]) > 0:
+            continue
+        available = account(state, policy, bid, ask)
+        if available["margin"] + available["pending_entry_cost"] > available["equity"]:
+            cancel(owner, c, "shared_margin_at_fill")
             continue
         qty = min(capacity, c["remaining"])
         fee = qty * policy["fee"]
