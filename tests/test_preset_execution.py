@@ -2,6 +2,7 @@
 import calendar
 import configparser
 from datetime import datetime
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import uuid
@@ -312,5 +313,8 @@ def test_app_source_identity_ignores_line_endings_and_foreign_modules_but_not_co
     published = {"mt5_extracao/__init__.py": execution.content_sha256(b""),
                  "mt5_extracao/presets/execution.py": execution.content_sha256(b"x = 1\ny = 2\n")}
     assert execution.source_digest(published) == linux["digest"]
+    unchanged_time = code.stat()
     code.write_bytes(b"x = 1\r\ny = 3\r\n")
+    os.utime(code, ns=(unchanged_time.st_atime_ns, unchanged_time.st_mtime_ns))
+    assert code.stat().st_mtime_ns == unchanged_time.st_mtime_ns
     assert execution.app_source_identity(modules, root=tmp_path / "windows")["digest"] != linux["digest"]

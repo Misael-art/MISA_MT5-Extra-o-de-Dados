@@ -4356,6 +4356,8 @@ pendentes. Nenhuma operação ao vivo; Pullback bloqueado; Windows físico pende
 
 ### T19.29 inicial — conferência nativa do pacote real
 
+O recibo do Expert e o congelamento do Ultra calculam a identidade lendo o conteúdo de cada módulo selecionado. A regressão conserva o tamanho e o horário ao editar uma linha e verifica o novo hash. A normalização LF/CRLF continua produzindo a mesma identidade para o mesmo código.
+
 Em revisão, dependente de #144. Arquivo .set/INI efetivamente enviados, recibo de
 inputs e modo Visual lidos do MQL5, Session/observador/livro/saldo existentes,
 evidência aditiva e primeira divergência.46 testes focados mais3 pertinentes
