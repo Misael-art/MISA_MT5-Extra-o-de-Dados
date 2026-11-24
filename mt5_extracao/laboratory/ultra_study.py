@@ -52,6 +52,9 @@ def _variants(policy, trials):
     variants = []
     for trial in trials:
         modules = [dict(m, invalidate=m["invalidate"] if trial["invalidation"] else 0) for m in policy["modules"]]
+        for m in modules:
+            if m["strategy"] == "pattern_definition":
+                m["params"] = dict(m["params"], apply_invalidation=m["params"]["apply_invalidation"] and trial["invalidation"])
         variants.append((dict(policy, revision=digest([policy["revision"], trial]), modules=modules), set(trial["owners"])))
     return variants
 
