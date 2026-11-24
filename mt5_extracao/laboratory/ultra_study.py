@@ -9,6 +9,7 @@ import json
 
 from sqlalchemy import text
 
+from .. import profit_factor
 from ..analytics import datasets
 from ..analytics.associations import _moving_block_indices
 from ..composition import ultra as engine
@@ -69,21 +70,62 @@ def _variants(policy, trials):
     return variants
 
 
-def _day(state, variant, batch):
+def _day(state, variant, batch, switch_cost=0):
     policy, owners = variant
     start = state.get("last_equity", state["cash"])
     peak = state.get("peak", start)
     worst = state.get("drawdown", 0)
     completed = len(state["completed"])
+    initial_cost, initial_spread = state["cost"], state["spread_cost_twice"]
+    high, low, intra_drawdown = start, start - switch_cost, switch_cost
+    max_margin = max_exposure = 0
     for tick, all_signals in batch:
         signals = {k: v for k, v in all_signals.items() if k in owners}
-        _, mark = engine.advance(state, policy, tick, signals)
+        events, mark = engine.advance(state, policy, tick, signals)
+        high = max(high, mark["equity"])
+        low = min(low, mark["equity"])
+        intra_drawdown = max(intra_drawdown, high - mark["equity"])
+        for snapshot in (*events, mark):
+            max_margin = max(max_margin, snapshot["margin"])
+            max_exposure = max(max_exposure, snapshot["exposure_steps"])
         peak = max(peak, mark["equity"])
         worst = max(worst, peak - mark["equity"])
     state.update(last_equity=mark["equity"], peak=peak, drawdown=worst)
     outcomes = [c["net"] for c in state["completed"][completed:]]
     return {"delta": mark["equity"] - start, "equity": mark["equity"], "drawdown": worst,
-            "wins_closed": sum(v > 0 for v in outcomes), "cycles_closed": len(outcomes)}
+            "wins_closed": sum(v > 0 for v in outcomes), "cycles_closed": len(outcomes),
+            "closed_cycle_net": outcomes, "opening_equity": start, "high": high, "low": low,
+            "intraday_drawdown": intra_drawdown, "max_margin": max_margin, "max_exposure_steps": max_exposure,
+            "commission": state["cost"] - initial_cost, "spread_cost_twice": state["spread_cost_twice"] - initial_spread,
+            "switch_cost": switch_cost}
+
+
+def _reserve(daily):
+    peak = opening = daily[0]["opening_equity"]
+    worst = 0
+    for row in daily:
+        worst = max(worst, peak-row["low"], row["intraday_drawdown"])
+        peak = max(peak, row["high"])
+    deltas = [d["delta"] for d in daily]
+    block, replicates, seed = 5, 500, 1
+    interval = {"status": "insufficient_sessions", "block_sessions": block, "seed": seed,
+                "sessions": len(deltas), "replicates": 0, "mean": sum(deltas)/len(deltas),
+                "confidence_per_path": .95, "low": None, "high": None}
+    if len(deltas) > block:
+        sample = np.asarray(deltas)
+        rng = np.random.default_rng(seed)
+        means = [sample[_moving_block_indices(len(sample), block, rng)].mean() for _ in range(replicates)]
+        low, high = np.quantile(means, [.025, .975])
+        interval.update(status="estimated", replicates=replicates, low=float(low), high=float(high))
+    losses = profit_factor.fields(v for row in daily for v in row["closed_cycle_net"])
+    return {**losses, "sessions": len(daily), "first_day": daily[0]["day"], "last_day": daily[-1]["day"],
+            "opening_equity": opening, "closing_equity": daily[-1]["equity"], "net": daily[-1]["equity"] - opening,
+            "profit_factor_population": "cycles_closed_in_reserve_including_origin_costs",
+            "max_drawdown": worst, "max_exposure_steps": max(r["max_exposure_steps"] for r in daily),
+            "max_margin": max(r["max_margin"] for r in daily), "worst_session": min(deltas),
+            "commission": sum(r["commission"] for r in daily), "switch_cost": sum(r["switch_cost"] for r in daily),
+            "spread_cost_vs_mid": sum(r["spread_cost_twice"] for r in daily)/2,
+            "mean_session_net_interval": interval}
 
 
 def simulate(policy, plan, ticks, signals):
@@ -117,6 +159,7 @@ def simulate(policy, plan, ticks, signals):
                         and gains[i] >= plan["minimum_gain"]]
             best = max(eligible or [cash], key=lambda i: (gains[i], -i))
             for name, path in paths.items():
+                fee = 0
                 old = path["active"]
                 if old in eligible:
                     path.pop("degraded_since", None)
@@ -149,8 +192,8 @@ def simulate(policy, plan, ticks, signals):
                          "open_origin_versions": [c["version"] for c in path["state"]["cycles"].values()]})
                     if selected != old:
                         path.pop("degraded_since", None)
-                result = _day(path["state"], variants[path["active"]], batch)
-                path["daily"].append(dict(result, p_win=path["p_win"], day=day, role="reserve" if day >= reserve else "validation"))
+                result = _day(path["state"], variants[path["active"]], batch, fee)
+                path["daily"].append(dict(result, active_trial=path["active"], p_win=path["p_win"], day=day, role="reserve" if day >= reserve else "validation"))
         for state, variant, rows in zip(states, variants, history, strict=True):
             rows.append(dict(_day(state, variant, batch), day=day))
     out = {}
@@ -161,7 +204,11 @@ def simulate(policy, plan, ticks, signals):
         count = sum(r["cycles_closed"] for r in scored)
         brier = sum(r["wins_closed"] * (1 - r["p_win"]) ** 2
                     + (r["cycles_closed"] - r["wins_closed"]) * r["p_win"] ** 2 for r in scored)
-        out[name] = {"review_interval_calendar_days": review_intervals[name],
+        reserved = [r for r in daily if r["role"] == "reserve"]
+        out[name] = {"review_interval_calendar_days": review_intervals[name], "reserve_only": _reserve(reserved),
+                     "final_trial": path["active"],
+                     "selection_status": "cash" if name == "cash" else "static_comparator" if name.startswith("static_")
+                     else "no_candidate" if path["active"] == cash else "research_candidate",
                      "probability_event": "net_positive_given_cycle_closed_in_scored_session",
                      "prediction_cut": "most_recent_review_before_session",
                      "oos_brier": brier / count if count else None, "scored_cycles": count, "net": net, "max_drawdown": path["state"]["drawdown"],
@@ -178,8 +225,16 @@ def simulate(policy, plan, ticks, signals):
         item["net_vs_fixed"] = item["net"] - out["fixed"]["net"]
     deltas = [a["delta"] - b["delta"] for a, b in zip(out["weekly"]["daily"], out["fixed"]["daily"], strict=True)]
     from ..experiments.f19_summary import _estimate
-    interval = _estimate(deltas, {"block_sessions": 5, "bootstrap_replicates": 500},
-                         {"confidence": .95, "minimum_net_cash_difference": 0}, seed=1)
+    block, replicates, seed = 5, 500, 1
+    interval = {"status": "insufficient_sessions", "block_sessions": block, "seed": seed,
+                "sessions": len(deltas), "replicates": 0, "mean": sum(deltas)/len(deltas),
+                "confidence_per_path": .95, "low": None, "high": None}
+    if len(deltas) > block:
+        sample = np.asarray(deltas)
+        rng = np.random.default_rng(seed)
+        means = [sample[_moving_block_indices(len(sample), block, rng)].mean() for _ in range(replicates)]
+        low, high = np.quantile(means, [.025, .975])
+        interval.update(status="estimated", replicates=replicates, low=float(low), high=float(high))
     train_sample = np.array([[row["delta"] for row in rows if row["day"] < validation] for rows in history]).T
     selection = {"training_sessions": len(train_sample), "trials": len(trials), "block_sessions": 5,
                  "status": "insufficient_sessions", "mean_null_maximum_per_session": None}
@@ -193,7 +248,8 @@ def simulate(policy, plan, ticks, signals):
                          mean_null_maximum_per_session=float(np.mean(null_max)),
                          null_maximum_p95=float(np.quantile(null_max, .95)))
     return {"status": "evaluated", "selection_effect": selection, "weekly_minus_fixed_session_interval": interval,
-            "selection_status": "no_candidate" if paths["fixed"]["active"] == cash else "research_candidate", "policies": out, "attempts": [{"trial": t, "days": days}
+            "selection_status": "no_candidate" if paths["fixed"]["active"] == cash else "research_candidate", "policies": out, "attempts": [{"trial": t, "days": days,
+            "reserve_only": _reserve([r for r in days if r["day"] >= reserve])}
             for t, days in zip(trials, history, strict=True)], "economic_approval": False,
             "boundary_policy": "positions_marked_at_cut_open_cycles_keep_original_version",
             "observed_sessions": len(days)}
