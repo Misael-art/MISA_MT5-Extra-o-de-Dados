@@ -213,9 +213,13 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
     spr_open = spr_close = spr
     if cfg.real_spread and spec.spread_by_hour and n:
         clock = spec.spread_clock
+        # Uma curva uniforme inclusive na abertura é independente de hora e de fuso.
+        # Também preserva o uso em históricos antigos sem declaração de relógio.
+        rates = (*spec.spread_by_hour, *(spec.spread_at_open or ()))
+        time_dependent = len(set(rates)) > 1
         if times.dt.tz is not None:
             times = times.dt.tz_convert("UTC")
-        elif clock is not None:
+        elif clock is not None and time_dependent:
             if clock["offset_state"] == "zone":
                 times = times.dt.tz_localize(clock["broker_timezone"], ambiguous="infer").dt.tz_convert("UTC")
             elif clock["offset_state"] == "declared":
