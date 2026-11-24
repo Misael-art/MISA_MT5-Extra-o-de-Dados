@@ -22,7 +22,8 @@ def _implementation_hashes():
 def _baseline_samples(definition, observations, emitted, *, as_of):
     """Eventos e controles usam o mesmo resolvedor de desfechos P02."""
     horizon = definition.body["outcome_definition"]["horizon_bars"]
-    by_start = {item["bar_start_utc"]: item for item in emitted}
+    by_start = {item["bar_start_utc"]: item for item in emitted
+                if item.get("entry_decision", {}).get("status", "confirmed") == "confirmed"}
     pseudo = []
     for row in observations:
         signal = by_start.get(row["bar_start_utc"])
@@ -325,7 +326,8 @@ def evaluate_registered_attempt(db, request_id, data_manifest_id, *, session_mod
                   "algorithm_version": "1", "observation_time": signal["bar_start_utc"],
                   "source_revision": signal["event_id"]}
         decision = signal["decision_at_utc"]
-        records.append(dict(shared, feature_id=signal_id, value="emitted",
+        records.append(dict(shared, feature_id=signal_id,
+                            value=signal.get("entry_decision", {}).get("status", "emitted"),
                             observed_at=decision, available_at=decision,
                             metadata={"event": signal, "data_manifest_id": data_manifest_id,
                                       "source_namespace": prepared["source_namespace"]}))

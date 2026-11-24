@@ -128,8 +128,15 @@ def compile_definition(raw):
     for key in ("parent_attempt_ids", "data_requirements", "features_and_versions", "invalidation_rules"):
         if not isinstance(body[key], list):
             raise ValueError(f"{key} precisa ser lista explícita.")
-    if body["features_and_versions"] or body["invalidation_rules"]:
-        raise ValueError("P02 ainda não consome features ou invalidações declaradas; não as ignore silenciosamente.")
+    if body["features_and_versions"]:
+        raise ValueError("P02 ainda não consome features declaradas; não as ignore silenciosamente.")
+    ids = set()
+    for rule in body["invalidation_rules"]:
+        if (not isinstance(rule, dict) or set(rule) != {"id", "when", "action"}
+                or not isinstance(rule["id"], str) or not rule["id"].strip() or rule["id"] in ids
+                or rule["action"] != "cancel_before_entry" or expression_unit(rule["when"]) != "boolean"):
+            raise ValueError("Invalidação exige ID único, predicado booleano e ação cancel_before_entry.")
+        ids.add(rule["id"])
     if not body["data_requirements"] or not all(isinstance(value, str) and value for value in body["data_requirements"]):
         raise ValueError("Requisitos de dados explícitos são obrigatórios.")
     for key in ("universe_definition", "timezone_calendar_versions", "complexity"):
