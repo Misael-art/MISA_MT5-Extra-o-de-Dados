@@ -555,7 +555,7 @@ def tester_model(config) -> str:
 
 def tester_ini(expert: str, symbol: str, period: str, date_from, date_to, deposit: float, report: str,
                model: str = "1", parameters: str = "", visual: Optional[bool] = None,
-               port: Optional[int] = None) -> str:
+               port: Optional[int] = None, currency: Optional[str] = None) -> str:
     """Texto do .ini de um teste único (sem otimização) que fecha o terminal ao terminar."""
     lines = ["[Tester]", f"Expert={expert}"]
     if parameters:
@@ -563,6 +563,10 @@ def tester_ini(expert: str, symbol: str, period: str, date_from, date_to, deposi
     lines += [f"Symbol={symbol}", f"Period={period}", "Optimization=0", f"Model={model}",
               f"FromDate={date_from:%Y.%m.%d}", f"ToDate={date_to:%Y.%m.%d}", "ForwardMode=0",
               f"Deposit={deposit:.2f}", f"Report={report}", "ReplaceReport=1", "ShutdownTerminal=1"]
+    if currency is not None:
+        if not isinstance(currency, str) or not re.fullmatch(r"[A-Z]{3}", currency):
+            raise ValueError("A moeda de depósito do Tester exige um código de três letras.")
+        lines.append(f"Currency={currency}")
     if visual is not None:
         lines += [f"Visual={int(visual)}", "UseLocal=1", "UseRemote=0", "UseCloud=0"]
     if port is not None:

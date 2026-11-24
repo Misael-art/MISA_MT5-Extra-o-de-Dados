@@ -32,6 +32,7 @@ def add_parser(sub):
     expert = actions.add_parser("ultra-tester-export", help="gera livro concorrente MQL5 e ticks do pacote para o Tester")
     expert.add_argument("--package", required=True)
     expert.add_argument("--out", required=True, help="nova pasta para fontes e cotações")
+    expert.add_argument("--prepare-tester", action="store_true", help="gera o contrato e a série prévia do Tester")
     expert.add_argument("--restart-id", help="ID de 32 dígitos hexadecimais para gerar a sonda de retomada")
     expert.set_defaults(func=run)
     capture = actions.add_parser("ultra-tester-compare", help="compara eventos e saldo do journal MQL5")
@@ -209,7 +210,7 @@ def run(args, ctx):
             from . import ultra_tester
             package = json.loads(Path(args.package).read_text(encoding="utf-8-sig"))
             if args.laboratory_action == "ultra-tester-export":
-                result = ultra_tester.export(ctx.db, package, args.out, restart_id=args.restart_id)
+                result = ultra_tester.export(ctx.db, package, args.out, restart_id=args.restart_id, prepare_tester=args.prepare_tester)
             else:
                 result = ultra_tester.compare(ctx.db, package, Path(args.journal).read_bytes(), origin=args.origin)
         elif args.laboratory_action == "ultra-parity":

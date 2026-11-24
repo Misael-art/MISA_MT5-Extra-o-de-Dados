@@ -5475,3 +5475,7 @@ A referência do SDK e a suíte de contrato cobrem descoberta, exportação do E
 ### T20.20 · retomada nativa após fill parcial
 
 Dois processos MT5 no Linux gravaram e restauraram o livro modelado no primeiro fill parcial de A. O comparador confronta cursor, dono, quantidade executada e pendente com a campanha congelada. Os 80 eventos e o patrimônio de USD 934,40 coincidiram com a referência nas 372 cotações. O caminho pelo launcher e os critérios para repetir a partir de um recibo estão no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md#reinício-do-terminal-após-um-fill-parcial).
+
+### T19.53 · preparação verificável do contrato do Tester
+
+O segundo símbolo personalizado conserva os ticks do pacote e acrescenta histórico M1 sintético antes do início do teste. O terminal confere as unidades econômicas e as barras de preparação antes de abrir o agente. Os recibos dos dois perfis de QA e os comandos do launcher estão no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md#preparação-do-símbolo-para-o-strategy-tester).

@@ -1574,3 +1574,9 @@ Para recuperar um fill parcial, execute `sdk.ultra_run_tester` com
 uma tentativa anterior. O SDK confere o checkpoint e o journal antes de reutilizá-los.
 Na exportação avulsa, `restart_id` aceita 32 dígitos hexadecimais e vincula o binário
 de retomada à tentativa.
+
+Com `prepare_tester=True`, a exportação inclui o preparador de contrato e o Expert do
+símbolo do Tester. Na execução, `prepare_only=True` compila, importa e verifica no
+terminal os valores de tick e margem e as barras M1 anteriores à amostra. O recibo
+`tester_contract_verified` inclui essas observações e o arquivo de configuração para
+repetir o ensaio no Tester.

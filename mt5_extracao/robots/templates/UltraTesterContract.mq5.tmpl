@@ -1,0 +1,120 @@
+#property strict
+// Dedicated synthetic symbol for the Strategy Tester. The original sample is read only.
+const string source="$source", target="$target", money="$currency";
+const int primer=$primer, sample=$count;
+const long first=$first, last=$last, prior=$prior;
+const double tick_size=$tick_size, tick_value=$tick_value, step=$step, min_lot=$min_lot,
+             max_lot=$max_lot, contract_size=$contract_size, margin=$margin, point=$point;
+
+bool CloseValue(const double actual,const double wanted)
+{
+   return MathAbs(actual-wanted)<=MathAbs(wanted)*1e-10;
+}
+
+bool Contract()
+{
+   return SymbolInfoInteger(target,SYMBOL_TRADE_CALC_MODE)==SYMBOL_CALC_MODE_FUTURES
+      && SymbolInfoInteger(target,SYMBOL_DIGITS)==$digits && SymbolInfoInteger(target,SYMBOL_CHART_MODE)==SYMBOL_CHART_MODE_BID
+      && SymbolInfoString(target,SYMBOL_CURRENCY_PROFIT)==money && SymbolInfoString(target,SYMBOL_CURRENCY_MARGIN)==money
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_POINT),point)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_TRADE_TICK_SIZE),tick_size)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_TRADE_TICK_VALUE),tick_value)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_TRADE_CONTRACT_SIZE),contract_size)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_VOLUME_MIN),min_lot)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_VOLUME_MAX),max_lot)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_VOLUME_STEP),step)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_MARGIN_INITIAL),margin)
+      && CloseValue(SymbolInfoDouble(target,SYMBOL_MARGIN_MAINTENANCE),margin);
+}
+
+bool SetInteger(const ENUM_SYMBOL_INFO_INTEGER key,const long value)
+{
+   if(CustomSymbolSetInteger(target,key,value)) return true;
+   PrintFormat("MT5X_ULTRA_PREP_ERROR|%s|%d",EnumToString(key),GetLastError());
+   return false;
+}
+
+bool SetDouble(const ENUM_SYMBOL_INFO_DOUBLE key,const double value)
+{
+   if(CustomSymbolSetDouble(target,key,value)) return true;
+   PrintFormat("MT5X_ULTRA_PREP_ERROR|%s|%d",EnumToString(key),GetLastError());
+   return false;
+}
+
+bool SetString(const ENUM_SYMBOL_INFO_STRING key,const string value)
+{
+   if(CustomSymbolSetString(target,key,value)) return true;
+   PrintFormat("MT5X_ULTRA_PREP_ERROR|%s|%d",EnumToString(key),GetLastError());
+   return false;
+}
+
+bool Configure()
+{
+   bool ok=SetInteger(SYMBOL_TRADE_CALC_MODE,SYMBOL_CALC_MODE_FUTURES)
+      && SetString(SYMBOL_CURRENCY_MARGIN,money) && SetString(SYMBOL_CURRENCY_PROFIT,money)
+      && SetInteger(SYMBOL_DIGITS,$digits) && SetInteger(SYMBOL_CHART_MODE,SYMBOL_CHART_MODE_BID)
+      && SetDouble(SYMBOL_POINT,point) && SetDouble(SYMBOL_TRADE_TICK_SIZE,tick_size)
+      && SetDouble(SYMBOL_TRADE_TICK_VALUE,tick_value)
+      && SetDouble(SYMBOL_TRADE_CONTRACT_SIZE,contract_size)
+      && SetDouble(SYMBOL_VOLUME_MAX,max_lot) && SetDouble(SYMBOL_VOLUME_MIN,min_lot)
+      && SetDouble(SYMBOL_VOLUME_STEP,step) && SetDouble(SYMBOL_MARGIN_INITIAL,margin)
+      && SetDouble(SYMBOL_MARGIN_MAINTENANCE,margin);
+   for(int i=0;ok && i<7;i++)
+      ok=CustomSymbolSetSessionQuote(target,(ENUM_DAY_OF_WEEK)i,0,0,86400)
+         && CustomSymbolSetSessionTrade(target,(ENUM_DAY_OF_WEEK)i,0,0,86400);
+   if(!ok) PrintFormat("Ultra: configure failed, error %d",GetLastError());
+   return ok && SymbolSelect(target,true);
+}
+
+bool History(const MqlTick &expected[],int &bars)
+{
+   MqlTick got[];
+   int count=ArraySize(expected);
+   if(CopyTicksRange(target,got,COPY_TICKS_ALL,prior,last)!=count) return false;
+   for(int i=0;i<count;i++)
+      if(expected[i].time_msc!=got[i].time_msc || !CloseValue(expected[i].bid,got[i].bid)
+         || !CloseValue(expected[i].ask,got[i].ask)) return false;
+   MqlRates pre[];
+   for(int i=0;i<20 && !IsStopped();i++)
+   {
+      bars=CopyRates(target,PERIOD_M1,(datetime)(prior/1000),(datetime)(prior/1000+60*(primer-1)),pre);
+      if(bars==primer) break;
+      Sleep(250);
+   }
+   if(bars!=primer) return false;
+   for(int i=0;i<primer;i++)
+      if(pre[i].time!=prior/1000+60*i || !CloseValue(pre[i].close,expected[i].bid)) return false;
+   return true;
+}
+
+void OnStart()
+{
+   MqlTick frozen[], all[];
+   if(CopyTicksRange(source,frozen,COPY_TICKS_ALL,first,last)!=sample || ArrayResize(all,primer+sample)!=primer+sample)
+   { Print("Ultra: frozen ticks unavailable"); return; }
+   for(int i=0;i<primer;i++)
+   {
+      ZeroMemory(all[i]); all[i].time_msc=prior+60000*i; all[i].time=(datetime)(all[i].time_msc/1000);
+      all[i].bid=NormalizeDouble(100*tick_size,$digits); all[i].ask=NormalizeDouble(101*tick_size,$digits);
+      all[i].flags=TICK_FLAG_BID|TICK_FLAG_ASK;
+   }
+   for(int i=0;i<sample;i++) all[primer+i]=frozen[i];
+   bool custom=false, created=false, ok=true;
+   if(SymbolExist(target,custom)) ok=custom;
+   else
+   {
+      created=CustomSymbolCreate(target,"MT5X");
+      ok=created && Configure();
+      if(ok) ok=CustomTicksReplace(target,prior,last,all)==primer+sample;
+   }
+   int bars=-1;
+   if(ok && Contract() && History(all,bars))
+   {
+      PrintFormat("MT5X_ULTRA_PREP|$package|%s|%d|%d|%I64d|%I64d",target,bars,sample,
+                  (long)MathRound(SymbolInfoDouble(target,SYMBOL_TRADE_TICK_VALUE)*step*100),
+                  (long)MathRound(SymbolInfoDouble(target,SYMBOL_MARGIN_INITIAL)*step*100));
+      return;
+   }
+   PrintFormat("Ultra: contract %d ready %d, primer bars %d, error %d",Contract(),ok,bars,GetLastError());
+   if(created) { SymbolSelect(target,false); CustomSymbolDelete(target); }
+}

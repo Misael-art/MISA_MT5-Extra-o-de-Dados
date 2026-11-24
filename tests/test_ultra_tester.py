@@ -110,3 +110,19 @@ def test_checkpoint_requires_same_cursor_and_first_partial(campaign, tmp_path):
         compare(controls[:1])
     with pytest.raises(ValueError, match="primeiro fill parcial"):
         compare([control[:-1]+"2" for control in controls])
+
+
+def test_tester_primer_precedes_window_and_preserves_frozen_quotes(campaign, tmp_path):
+    db, package = campaign
+    normal = ultra_tester.export(db, package, tmp_path / "ordinary")
+    boosted = ultra_tester.export(db, package, tmp_path / "prepared", prepare_tester=True)
+    contract = boosted["tester_contract"]
+    csv = normal["symbol"] + ".csv"
+    assert boosted["sha256"][csv] == normal["sha256"][csv] and boosted["ticks"] == 372
+    assert contract["symbol"] != normal["symbol"]
+    assert contract["primer_first_msc"] + 128*60000 < contract["sample_first_msc"]
+    assert contract["primer_first_msc"] < contract["sample_first_msc"] // 86400000 * 86400000
+    assert (contract["tick_cash_cents_per_step"], contract["margin_cents_per_step"]) == (100, 24700)
+    expert = (tmp_path / "prepared/UltraPreparedTester.mq5").read_text()
+    assert contract["symbol"] in expert and "quote.time_msc<FIRST_MSC" in expert and "MQL_TESTER" in expert
+    assert boosted["sha256"]["UltraConcurrent.mq5"] == normal["sha256"]["UltraConcurrent.mq5"]
