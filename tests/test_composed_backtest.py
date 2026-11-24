@@ -41,7 +41,7 @@ def source(tmp_path, monkeypatch):
     data["real_volume"] = 0
     db.save_ohlcv_data("QA", "1 minuto", data)
     db.save_symbol_spec("QA", spec_from_symbol_info(SimpleNamespace(
-        point=1, trade_tick_size=1, trade_tick_value=1, volume_min=.01, volume_step=.01)))
+        point=1, trade_tick_size=1, trade_tick_value=1, volume_min=.01, volume_step=.01, volume_max=1000000)))
     cfg = configparser.ConfigParser()
     cfg["STRATEGY"] = {"initial_equity": "10000", "risk_per_trade": ".01"}
     composition = base_composition("ema_atr", symbol="QA", timeframe="M1", risk_fraction=.0025)

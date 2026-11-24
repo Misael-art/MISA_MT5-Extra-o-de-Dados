@@ -62,6 +62,9 @@ class SymbolSpec:
     known: bool = True            # False = especificação genérica (rode `mt5x specs`)
     provenance: dict = field(default_factory=dict)  # Vigência/conhecimento separados da disponibilidade atual.
 
+    invalid_fields: tuple = ()
+    spread_clock: Optional[dict] = None  # Origem do relógio das barras para o perfil UTC persistido.
+
     def swap_nights(self, entry_time, exit_time) -> int:
         """Viradas de dia entre a entrada e a saída, contando três na noite do swap triplo; fim de semana não conta."""
         day, last = pd.Timestamp(entry_time).normalize(), pd.Timestamp(exit_time).normalize()
@@ -86,7 +89,12 @@ class SymbolSpec:
     @property
     def money_per_price_unit(self) -> float:
         """Valor (moeda da conta) de 1,0 de variação de preço para 1 lote."""
+        self.require_economic_fields()
         return self.tick_value / self.tick
+
+    def require_economic_fields(self):
+        if self.invalid_fields:
+            raise ValueError("Especificação econômica incompleta: " + ", ".join(self.invalid_fields))
 
     def lots_for_risk(self, risk_money: float, stop_distance: float) -> float:
         """Maior lote (múltiplo de volume_step) cuja perda no stop não passa de risk_money; 0 se < mínimo."""
@@ -94,6 +102,7 @@ class SymbolSpec:
             raise ValueError("Risco e distância do stop devem ser finitos; confira os dados da operação.")
         if stop_distance <= 0 or risk_money <= 0:
             return 0.0
+        self.require_economic_fields()
         values = (self.tick, self.tick_value, self.volume_min, self.volume_step, self.volume_max)
         if not all(math.isfinite(v) and v > 0 for v in values) or self.volume_max < self.volume_min:
             raise ValueError("Especificação de tick/lote inválida; atualize o contrato do símbolo com mt5x specs.")
@@ -203,6 +212,16 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
     # Spread de cada execução: na abertura (spr_open), no fechamento (spr_close) e dentro da barra (spr).
     spr_open = spr_close = spr
     if cfg.real_spread and spec.spread_by_hour and n:
+        clock = spec.spread_clock
+        if times.dt.tz is not None:
+            times = times.dt.tz_convert("UTC")
+        elif clock is not None:
+            if clock["offset_state"] == "zone":
+                times = times.dt.tz_localize(clock["broker_timezone"], ambiguous="infer").dt.tz_convert("UTC")
+            elif clock["offset_state"] == "declared":
+                times = times - pd.Timedelta(hours=clock["broker_utc_offset"])
+            else:
+                raise ValueError("Perfil de spread UTC exige fuso da corretora declarado.")
         profile = np.array([np.nan if v is None else float(v) for v in spec.spread_by_hour]) * spec.point
         step = times.diff().median() if n > 1 else pd.Timedelta(hours=1)
         hours = max(1, int(round(step / pd.Timedelta(hours=1)))) if step >= pd.Timedelta(hours=1) else 1
@@ -211,6 +230,8 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
         at_open = profile
         if spec.spread_at_open:
             at_open = np.array([np.nan if v is None else float(v) for v in spec.spread_at_open]) * spec.point
+        if (profile < 0).any() or (at_open < 0).any():
+            raise ValueError("Perfil com spread negativo. Recalibre pelos ticks executáveis.")
         on_the_hour = (times.dt.minute == 0).to_numpy()            # a barra abre na hora cheia?
         spr_open = np.fmax(spr, np.where(on_the_hour, at_open[open_hour], profile[open_hour]))
         spr_close = np.fmax(spr, profile[close_hour])

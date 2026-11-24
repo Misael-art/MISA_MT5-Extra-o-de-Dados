@@ -28,7 +28,7 @@ def prepare(db,monkeypatch,*,missing=None):
     for symbol in ('QA_X','QA_Y'):
         frame = data.drop(index=missing[symbol]) if missing else data
         assert db.save_ohlcv_data(symbol,'1 minuto',frame)
-        db.save_symbol_spec(symbol,spec_from_symbol_info(SimpleNamespace(point=1,trade_tick_size=1,trade_tick_value=1,volume_min=.01,volume_step=.01)),source='qa.owned.spec')
+        db.save_symbol_spec(symbol,spec_from_symbol_info(SimpleNamespace(point=1,trade_tick_size=1,trade_tick_value=1,volume_min=.01,volume_step=.01, volume_max=1000000)),source='qa.owned.spec')
     cfg=configparser.ConfigParser();cfg['STRATEGY']=dict(initial_equity='10000',account_currency='USD',commission_per_lot='.1')
     robot=catalog.load_catalog(None,db);robot=next(r for r in robot if r.key=='python:ema_atr')
     comps=[base_composition('ema_atr',symbol=s,timeframe='M1',risk_fraction=.0025) for s in ('QA_X','QA_Y')]
@@ -50,7 +50,7 @@ def financial_timeframes(db):
         frame['real_volume'] = 0
         assert db.save_ohlcv_data(symbol, tf, frame)
     db.save_symbol_spec(symbol, spec_from_symbol_info(SimpleNamespace(
-        point=1, trade_tick_size=1, trade_tick_value=1, volume_min=.01, volume_step=.01)), source='qa.owned.spec')
+        point=1, trade_tick_size=1, trade_tick_value=1, volume_min=.01, volume_step=.01, volume_max=1000000)), source='qa.owned.spec')
     config = configparser.ConfigParser()
     config['STRATEGY'] = dict(initial_equity='10000', account_currency='USD', commission_per_lot='.1')
     robot = next(robot for robot in catalog.python_robots() if robot.key == 'python:ema_atr')

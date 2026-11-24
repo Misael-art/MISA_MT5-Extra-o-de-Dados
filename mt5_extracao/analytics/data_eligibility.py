@@ -9,12 +9,13 @@ import pandas as pd
 from mt5_extracao.data_quality import check_quality
 
 VERSION = 1
+ASSESSMENT_VERSION = 2
 TICK_FIELDS = ("time_msc", "seq", "bid", "ask", "last", "volume", "volume_real", "flags")
 BOOK_FIELDS = ("time_msc", "type", "price", "volume")
 BARS_FIELDS = ("time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume")
 BAR_FAMILIES = {"time": "bar_time", "open": "price_open", "high": "price_high", "low": "price_low", "close": "price_close",
                 "spread": "spread", "tick_volume": "tick_volume", "real_volume": "real_volume"}
-FAMILIES = set(BAR_FAMILIES.values()) | {"ohlcv", "ohlc_prices", "hlc", "hl", "complete_bars", "observed_session_bars", "ticks", "observed_ticks",
+FAMILIES = set(BAR_FAMILIES.values()) | {"ohlcv", "ohlc_prices", "hlc", "hl", "complete_bars", "observed_session_bars", "ticks", "observed_ticks", "executable_quotes",
                                        "observed_real_volume", "complete_real_ticks", "aggressor", "book_snapshots",
                                        "observed_book_snapshots", "queue"}
 
@@ -158,7 +159,8 @@ def bar_origin(frame, evidence, symbol=None, timeframe=None):
     return dict(origin=origin, **{f"{key}_rows": value for key, value in counts.items()})
 
 
-def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=None, symbol=None, timeframe=None):
+def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=None, symbol=None, timeframe=None,
+           version=ASSESSMENT_VERSION):
     """Mede o conteúdo capturado; None = não capturado, vazio = capturado sem linhas."""
     evidence = tuple(evidence)
     caps = {}
@@ -270,6 +272,21 @@ def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=N
         cap(family, "available" if good else "missing" if frame.empty else "invalid",
             "Fonte capturada, sem chaves duplicadas." if good else "Fonte vazia/inválida ou com chaves duplicadas.",
             origin=origin, rows=len(frame), duplicate_keys=duplicates, **measured)
+    if version not in (1, ASSESSMENT_VERSION):
+        raise ValueError("Versão desconhecida da avaliação de dados.")
+    if version >= 2:
+        from .tick_fidelity import quote_masks
+        state = caps["ticks"]["state"]
+        usable = crossed_count = unquoted = 0
+        if state == "available":
+            _, _, quoted, crossed = quote_masks(ticks)
+            usable = int((quoted & ~crossed).sum())
+            crossed_count = int(crossed.sum())
+            unquoted = int((~quoted).sum())
+            state = "invalid" if crossed_count else "available" if usable else "missing"
+        cap("executable_quotes", state,
+            "Execução exige bid/ask positivos, finitos e ordenados; negócios sem cotação não formam preços de fill.",
+            usable_quotes=usable, crossed_quotes=crossed_count, unquoted_rows=unquoted)
     tick_origin = caps["ticks"]["origin"]
     cap("observed_book_snapshots", "available" if caps["book_snapshots"]["state"] == "available" and caps["book_snapshots"]["origin"] == "observed" else "unknown",
         "DOM observado exige evidência de origem consistente, sem inferir fila ou relógio da bolsa.")
@@ -288,7 +305,7 @@ def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=N
     cap("queue", "missing", "Snapshots DOM não informam IDs/prioridade das ordens; não provam posição na fila.")
     bar_evidence = [item for item in evidence if item.get("family") == "bars" and item.get("symbol") == symbol and item.get("timeframe") == timeframe]
     duplicates = sorted({value for item in bar_evidence for value in item.get("duplicate_bar_times", ())})
-    return {"version": VERSION, "capabilities": caps, "ohlcv_diagnostic": diagnostic,
+    return {"version": version, "capabilities": caps, "ohlcv_diagnostic": diagnostic,
             "source_duplicate_bars_reported": len(duplicates) if bar_evidence else None,
             "coverage_basis": "captured_values_not_complete_venue_history", "source_certification": "not_independent"}
 

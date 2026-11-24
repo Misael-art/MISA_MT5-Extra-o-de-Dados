@@ -1,5 +1,14 @@
 # Plano de trabalho detalhado
 
+## T19.52 · dados do Ultra — 24/11/2026
+
+Incremento sobre a PR 388 (`b408f7e`). A calibração exclui cotações cruzadas e conserva
+negócios no bruto. O consumidor do perfil UTC usa o relógio declarado da base/snapshot.
+A leitura de uma especificação incompleta indica os campos econômicos ausentes e recusa
+o dimensionamento. O ORB por pregão WIN usa o recorte nominal da PR 376. O ORB simples
+conserva a referência legada. Foram aprovados 167 testes dirigidos no Linux em 73,11 s.
+A validação de cotação pelo Tester e a conversão monetária com histórico de mercado seguem pendentes.
+
 ## T19.23/25 — contratos de preset no HADOUKEN fixado
 
 Cinco perfis agora mapeiam os mesmos inputs da revisão anterior para as

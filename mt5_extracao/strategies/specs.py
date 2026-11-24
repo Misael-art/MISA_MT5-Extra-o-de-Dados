@@ -14,6 +14,8 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
+from mt5_extracao.analytics.tick_fidelity import quote_masks
+
 from .backtester import SymbolSpec
 
 log = logging.getLogger(__name__)
@@ -21,16 +23,15 @@ log = logging.getLogger(__name__)
 
 def spec_from_symbol_info(info) -> dict:
     """Converte o objeto symbol_info do MT5 (ou equivalente) em dict de DatabaseManager.SPEC_FIELDS."""
-    point = float(getattr(info, "point", 0) or 0.01)
     return {
-        "point": point,
+        "point": getattr(info, "point", None),
         "digits": int(getattr(info, "digits", 0) or 0),
-        "tick_size": float(getattr(info, "trade_tick_size", 0) or point),
-        "tick_value": float(getattr(info, "trade_tick_value", 0) or 0) or 1.0,
-        "volume_min": float(getattr(info, "volume_min", 0) or 0) or 1.0,
-        "volume_step": float(getattr(info, "volume_step", 0) or 0) or 1.0,
-        "volume_max": float(getattr(info, "volume_max", 0) or 0) or 1e6,
-        "contract_size": float(getattr(info, "trade_contract_size", 0) or 0) or 1.0,
+        "tick_size": getattr(info, "trade_tick_size", None),
+        "tick_value": getattr(info, "trade_tick_value", None),
+        "volume_min": getattr(info, "volume_min", None),
+        "volume_step": getattr(info, "volume_step", None),
+        "volume_max": getattr(info, "volume_max", None),
+        "contract_size": getattr(info, "trade_contract_size", None),
         "currency_profit": str(getattr(info, "currency_profit", "") or ""),
         "spread": float(getattr(info, "spread", 0) or 0),
         "swap_long": float(getattr(info, "swap_long", 0) or 0),
@@ -40,17 +41,23 @@ def spec_from_symbol_info(info) -> dict:
     }
 
 
-def to_symbol_spec(symbol: str, row: dict) -> SymbolSpec:
-    return SymbolSpec(symbol=symbol, point=row["point"], digits=int(row["digits"] or 0),
-                      tick_size=row["tick_size"] or 0.0, tick_value=row["tick_value"],
-                      volume_min=row["volume_min"], volume_step=row["volume_step"],
-                      volume_max=row["volume_max"], contract_size=row["contract_size"] or 1.0,
+def to_symbol_spec(symbol: str, row: dict, *, clock=None) -> SymbolSpec:
+    fields = ("point", "tick_size", "tick_value", "volume_min", "volume_step", "volume_max")
+    invalid = [key for key in fields if not isinstance(row.get(key), (int, float))
+               or not np.isfinite(row[key]) or row[key] <= 0]
+    if not invalid and row["volume_max"] < row["volume_min"]:
+        invalid.append("volume_max")
+    return SymbolSpec(symbol=symbol, point=row["point"] or 0.0, digits=int(row["digits"] or 0),
+                      tick_size=row["tick_size"] or 0.0, tick_value=row["tick_value"] or 0.0,
+                      volume_min=row["volume_min"] or 0.0, volume_step=row["volume_step"] or 0.0,
+                      volume_max=row["volume_max"] or 0.0, contract_size=row["contract_size"] or 0.0,
                       currency_profit=row["currency_profit"] or "", spread_points=row["spread"] or 0.0,
                       swap_long=row.get("swap_long") or 0.0, swap_short=row.get("swap_short") or 0.0,
                       swap_mode=int(row.get("swap_mode") or 0),
                       swap_triple_day=int(row["swap_rollover3days"]) if row.get("swap_rollover3days") is not None else 3,
                       spread_by_hour=_hours(row.get("spread_profile"), "hours"),
-                      spread_at_open=_hours(row.get("spread_profile"), "open"), known=True,
+                      spread_at_open=_hours(row.get("spread_profile"), "open"), known=not invalid,
+                      invalid_fields=tuple(invalid), spread_clock=clock or {"offset_state": "unknown"},
                       provenance=dict(row.get("provenance") or {
                           "specification_status": "unknown", "source": "current_cache",
                           "observed_at": row.get("updated_at"), "historical_validity": "not_established"}))
@@ -69,18 +76,30 @@ def _hours(raw, key: str):
 
 def spread_profile(ticks, point: float) -> dict:
     """
-    Spread real por hora do dia (horário do servidor), em pontos, a partir de ticks com bid e ask.
+    Spread real por hora do dia (UTC do epoch time_msc), em pontos, a partir de ticks com bid e ask.
 
     "hours": média de cada hora, ponderada pelo tempo em que cada cotação valeu (até 60 s), para um intervalo sem
     ticks não pesar. "open": média do spread no PRIMEIRO tick de cada hora, que é o que paga uma ordem executada
     na abertura da barra; na virada do dia ele é várias vezes maior que a média da hora.
     Devolve {"hours", "open" (24 valores ou None), "mean", "ticks", "days", "from", "to"}.
     """
-    if ticks is None or len(ticks) == 0 or point <= 0:
-        return {"hours": [None] * 24, "open": [None] * 24, "mean": None, "ticks": 0, "days": 0, "from": "", "to": ""}
-    spread = ((ticks["ask"] - ticks["bid"]) / point).to_numpy(dtype=float)
+    empty = {"hours": [None] * 24, "open": [None] * 24, "mean": None, "ticks": 0,
+             "days": 0, "from": "", "to": "", "time_basis": "UTC", "excluded_rows": 0}
+    if ticks is None or ticks.empty:
+        return empty
+    if not point or not np.isfinite(point) or point <= 0:
+        raise ValueError("Ponto indisponível para calibrar o spread.")
+    ticks = ticks.sort_values([key for key in ("time_msc", "seq") if key in ticks], kind="stable")
+    bid, ask, quoted, crossed = quote_masks(ticks)
+    valid = quoted & ~crossed
+    excluded = int((~valid).sum())
+    if not valid.any():
+        return dict(empty, excluded_rows=excluded)
+    # Uma linha inválida interrompe a duração da cotação anterior.
     msc = ticks["time_msc"].to_numpy(dtype="int64")
-    weight = np.append(np.clip(np.diff(msc), 1, 60_000), 1).astype(float)
+    weight = np.append(np.clip(np.diff(msc), 1, 60_000), 1).astype(float)[valid]
+    spread = (ask[valid] - bid[valid]) / point
+    msc = msc[valid]
     hour = (msc // 3_600_000) % 24
     hours = []
     for h in range(24):
@@ -93,7 +112,7 @@ def spread_profile(ticks, point: float) -> dict:
     stamp = lambda value: pd.Timestamp(int(value), unit="ms").strftime("%Y-%m-%d %H:%M")
     return {"hours": hours, "open": opens, "mean": round(float(np.average(spread, weights=weight)), 3),
             "ticks": int(len(spread)), "days": int(len(np.unique(msc // 86_400_000))),
-            "from": stamp(msc[0]), "to": stamp(msc[-1])}
+            "time_basis": "UTC", "excluded_rows": excluded, "from": stamp(msc[0]), "to": stamp(msc[-1])}
 
 
 def calibrate_spread(db, symbol: str) -> dict:
@@ -110,7 +129,9 @@ def calibrate_spread(db, symbol: str) -> dict:
     if ticks.empty:
         raise ValueError(f"{symbol}: não há ticks na base. Extraia pelo menos uma semana: "
                          f"mt5x ticks --symbols {symbol} --from AAAA-MM-DD --to AAAA-MM-DD")
-    profile = spread_profile(ticks, float(row["point"]))
+    profile = spread_profile(ticks, row["point"])
+    if not profile["ticks"]:
+        raise ValueError(f"{symbol}: nenhuma cotação executável para calibrar o spread.")
     db.save_spread_profile(symbol, profile)
     return profile
 
@@ -119,7 +140,7 @@ def load_spec(db, symbol: str) -> SymbolSpec:
     row = db.get_symbol_spec(symbol)
     if row is None:
         return SymbolSpec(symbol=symbol, known=False)
-    return to_symbol_spec(symbol, row)
+    return to_symbol_spec(symbol, row, clock=db.time_context() if hasattr(db, "time_context") else None)
 
 
 def fetch_and_save_specs(connector, db, symbols: List[str]) -> Dict[str, str]:
