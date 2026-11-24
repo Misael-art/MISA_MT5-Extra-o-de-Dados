@@ -44,7 +44,7 @@ cli laboratory ultra-verify --package "$KIT/pacote.json"
 cli laboratory ultra-parity --package "$QA/pacote.json"
 ```
 
-O recibo esperado é `8ab608c878adc60ad7f5acd7013bbe29414f0027e26d3c29df177fa9a721c16a`. A identidade do pacote é `eab97e9444b2148c3ca42e57b5cecc74b506aebf95137e0e62dc40c70e2d7ba2`. A verificação recompila a representação a partir da campanha, do instrumento e do livro. O comando de paridade sem fita registra zero frames comparados.
+O recibo esperado é `8dfaa0edd362f8bba10ee27c43fd2c2814be0cd4b00a052e3086c1eeb7a9bb1a`. A identidade do pacote é `2d3d6b4ab0d25ab60eb752fa049b45211c0810a84952c2c52a1ce51f9809d24d`. A verificação recompila a representação a partir da campanha, do instrumento e do livro. O comando de paridade sem fita registra zero frames comparados.
 
 Para repetir o estudo, use outra base. Importe `estudo/snapshot.json`, congele `estudo/campaign.json` com `ultra-freeze` e passe o recibo a `laboratory ultra-study-freeze --receipt ID --plan "$KIT/estudo/plan.json"`. Use o `study_id` devolvido em `laboratory ultra-study-run --study ID`. Os comandos aceitam a mesma opção global `--db`. Tanto o plano quanto o resultado ficam na base. Uma nova simulação com insumo gerado localmente pode começar com `.venv/bin/python scripts/demo_ultra.py --sessions 26 --directory PASTA_NOVA`.
 
@@ -70,9 +70,9 @@ Para repetir o estudo, use outra base. Importe `estudo/snapshot.json`, congele `
 
 ## Medições
 
-No Jupiter x86-64 com Python 3.12.14, a mediana de 12 calibrações no mesmo quadro residente de 372 cotações passou de 0,560 para 1,232 ms. A versão nova verificou os dois lados da cotação. O resultado médio dos dois calibradores foi um ponto. O replay calculou todos os ticks em série. Nos 41 ticks com decisões, p50 foi 22,55 µs e p95 foi 60,80 µs. Esses tempos medem o núcleo Python. A exportação, os processos novos, o SQLite e a abertura do navegador têm medições separadas.
+No Jupiter x86-64 com Python 3.12.14, a mediana de 12 calibrações no mesmo quadro residente de 372 cotações passou de 0,387 para 0,879 ms. A versão nova verificou os dois lados da cotação. O resultado médio dos dois calibradores foi um ponto. O replay calculou todos os ticks em série. Nos 41 ticks com decisões, p50 foi 15,82 µs e p95 foi 41,92 µs. Esses tempos medem o núcleo Python. A exportação, os processos novos, o SQLite e a abertura do navegador têm medições separadas.
 
-O primeiro resumo com as decisões apareceu em 121 ms a 1060 px e em 104 ms a 390 px. A mediana do filtro foi 16,7 ms nas duas larguras. O pico de RSS dos filhos da CLI foi 142.000 KiB. Os custos de importação, congelamento, replay parcial, retomada e comparação estão em `desempenho-cli.json`. O cache do SO foi compartilhado. A linha do tempo conjunta surgiu nesta série e não tem medição equivalente na revisão anterior.
+O primeiro resumo com as decisões apareceu em 113 ms a 1060 px e em 86 ms a 390 px. A mediana do filtro foi 16,6 ms a 1060 px e 16,6 ms a 390 px. O pico de RSS dos filhos da CLI foi 196.672 KiB. Os custos de importação, congelamento, replay parcial, retomada e comparação estão em `desempenho-cli.json`. O cache do SO foi compartilhado. A linha do tempo conjunta surgiu nesta série e não tem medição equivalente na revisão anterior.
 
 ## Evidência necessária para o aceite final
 
@@ -84,3 +84,5 @@ O primeiro resumo com as decisões apareceu em 121 ms a 1060 px e em 104 ms a 39
 ### Segundo instrumento de QA
 
 `scripts/demo_ultra.py --instrument fractional` gera outro símbolo com preço em incrementos de 0,0001, spread de dois ticks, volume mínimo/passo de 0,1 lote e valor de USD 5 por tick e lote. Um passo vale USD 0,50 por tick. O teste `test_fractional_instrument_uses_own_price_volume_and_tick_economics` carrega esse contrato, executa o mesmo serviço e verifica fills, spread e valor monetário. A fita também é sintética.
+
+O perfil S09 dos pins usa limite de uma posição e risco máximo de 0,5% por entrada. A primeira reserva de um módulo no exemplo é de USD 6,20 com USD 1.000 de caixa. A carteira conjunta requer novas capacidades no vínculo e no executor para representar essa política.
