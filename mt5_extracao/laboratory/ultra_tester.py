@@ -2,6 +2,7 @@
 from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
+import re
 from string import Template
 from tempfile import TemporaryDirectory
 
@@ -12,7 +13,9 @@ from .ultra import inspect_receipt
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "robots" / "templates"
 FIELDS = ("time_msc", "seq", "bid", "ask", "donchian", "s09_reference", "available_msc", "reference")
-MARKERS = {"strategy_tester": "MT5X_ULTRA_B1|", "terminal_history": "MT5X_ULTRA_HISTORY_B1|"}
+MARKERS = {"strategy_tester": "MT5X_ULTRA_B1|", "terminal_history": "MT5X_ULTRA_HISTORY_B1|",
+           "terminal_restart": "MT5X_ULTRA_RESTART_B1|"}
+RESTART_CONTROL = "MT5X_ULTRA_RESTART_CTL|"
 BALANCE = ("cash", "equity", "risk", "margin", "pending_entry_cost", "exposure_steps", "cost", "spread_cost_twice")
 EVENT = ("time_msc", "seq", "owner_slot", "cycle_available_msc", "event", "reason", "steps", "price", "stop",
          "target", "remaining", "fee", "net", "requested")
@@ -49,7 +52,13 @@ def _context(db, package):
     return modules, frames
 
 
-def export(db, package, destination):
+def _restart_template():
+    return (TEMPLATES / "UltraRestartProbe.mq5.tmpl").read_text(encoding="utf-8")
+
+
+def export(db, package, destination, *, restart_id=None):
+    if restart_id is not None and (not isinstance(restart_id, str) or not re.fullmatch(r"[a-f0-9]{32}", restart_id)):
+        raise ValueError("O identificador da retomada deve conter 32 dígitos hexadecimais.")
     modules, frames = _context(db, package)
     target = Path(destination)
     if target.exists():
@@ -80,11 +89,13 @@ def export(db, package, destination):
                                for i, m in enumerate(slots) for name, field in MODULE.items())
     templates = _templates()
     revision = digest(templates)
-    def program(name, kind):
+    def program(name, kind, restart=None, binding=None):
         runtime = Template(templates["UltraRuntime.mqh"]).substitute(
             defines=defines, core=templates["UltraSignals.mqh"], book=templates["UltraBook.mqh"],
-            modules=assignments, package=key, manifest=package["source_manifest"], revision=revision,
+            modules=assignments, package=key, manifest=package["source_manifest"], revision=digest([revision, restart]) if restart else revision,
             marker=MARKERS[kind])
+        if restart:
+            return Template(restart).substitute(runtime=runtime, symbol=symbol, binding=binding)
         return Template(templates[name]).substitute(runtime=runtime, symbol=symbol)
     importer = Template(templates["UltraImport.mq5"]).substitute(
         symbol=symbol, csv=csv, count=len(frames), digits=spec["digits"], tick_size=unit, package=key)
@@ -94,13 +105,19 @@ def export(db, package, destination):
     contents = {"UltraConcurrent.mq5": program("UltraConcurrent.mq5", "strategy_tester"),
                 "UltraTerminalProbe.mq5": program("UltraTerminalProbe.mq5", "terminal_history"),
                 "UltraImport.mq5": importer, csv: "".join(map(quote, frames))}
+    metadata = {}
+    if restart_id is not None:
+        restart = _restart_template()
+        binding = digest([key, package["source_manifest"], revision, restart, restart_id])
+        contents["UltraRestartProbe.mq5"] = program("UltraRestartProbe.mq5", "terminal_restart", restart, binding)
+        metadata.update(restart_id=restart_id, checkpoint_binding=binding)
     with TemporaryDirectory(dir=target.parent) as temporary:
         stage = Path(temporary) / "bundle"
         stage.mkdir()
         for name, content in contents.items():
             (stage / name).write_bytes(content.encode("utf-8"))
         stage.rename(target)
-    return {"capability": "two_owner_modeled_book", "package_hash": key, "symbol": symbol, "ticks": len(frames),
+    return {**metadata, "capability": "two_owner_modeled_book", "package_hash": key, "symbol": symbol, "ticks": len(frames),
             "sha256": {name: sha256(content.encode("utf-8")).hexdigest() for name, content in contents.items()}}
 
 
@@ -131,13 +148,57 @@ def _expected_rows(frames, modules, policy):
         yield ordinal, key, "MARK", BALANCE, tuple(frame["mark"][k] for k in BALANCE)
 
 
+def _restart_proof(lines, marker, frames, policy):
+    controls = []
+    count = 0
+    last = None
+    for line in lines:
+        if marker in line:
+            row = line.partition(marker)[2].split("|")
+            if row[0] == "FRAME":
+                count += 1
+                last = row[1:3]
+        elif RESTART_CONTROL in line:
+            row = line.partition(RESTART_CONTROL)[2].split("|")
+            if (len(row) != 9 or not re.fullmatch(r"[a-f0-9]{64}", row[1]) or
+                    row[2] != str(count) or row[3:5] != last or not 0 < count <= len(frames)):
+                raise ValueError("Cursor de retomada incompatível com a sequência do journal.")
+            controls.append(row)
+    if (len(controls) != 2 or [r[0] for r in controls] != ["SAVED", "LOADED"]
+            or controls[0][1:] != controls[1][1:]):
+        raise ValueError("A gravação e a restauração do checkpoint precisam coincidir.")
+    _, binding, count, msc, seq, owner, opened, filled, pending = controls[0]
+    owners = {module["owner"]: slot for slot, module in enumerate(policy["modules"])}
+    openings = {}
+    expected = None
+    for ordinal, frame in enumerate(frames, start=1):
+        for event in frame["events"]:
+            if event["event"] == "armed":
+                openings[event["cycle_id"]] = event["available_msc"]
+            if event["event"] == "fill" and event["reason"] == "partial":
+                expected = [ordinal, *event["key"], owners[event["owner"]], openings[event["cycle_id"]],
+                            event["steps"], event["remaining"]]
+                break
+        if expected:
+            break
+    if expected is None or controls[0][2:] != list(map(str, expected)):
+        raise ValueError("O checkpoint diverge do primeiro fill parcial do livro congelado.")
+    return {"checkpoint": {"binding": binding, "frames_before_restart": int(count),
+                           "key": [int(msc), int(seq)], "owner_slot": int(owner),
+                           "opened_msc": int(opened), "filled": int(filled), "pending": int(pending)}}
+
+
 def compare(db, package, journal, *, origin):
     """O chamador escolhe a origem que pretende auditar. Cada executável tem seu próprio marcador."""
     modules, frames = _context(db, package)
     marker = MARKERS[origin]
     encoding = "utf-16" if journal.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
-    rows = [line.partition(marker)[2].split("|") for line in journal.decode(encoding).splitlines() if marker in line]
-    begin = ["BEGIN", package["package_hash"], package["source_manifest"], digest(_templates())]
+    lines = journal.decode(encoding).splitlines()
+    rows = [line.partition(marker)[2].split("|") for line in lines if marker in line]
+    revision = digest(_templates())
+    if origin == "terminal_restart":
+        revision = digest([revision, _restart_template()])
+    begin = ["BEGIN", package["package_hash"], package["source_manifest"], revision]
     count = sum(row[0] == "FRAME" for row in rows)
     if (len(rows) < 2 or rows[0][:-1] != begin or not rows[0][-1].isdigit() or int(rows[0][-1]) <= 0
             or rows[-1] != ["END", str(count), "0"] or any(r[0] in ("BEGIN", "END") for r in rows[1:-1])):
@@ -166,4 +227,6 @@ def compare(db, package, journal, *, origin):
     extra = next(actual, None)
     if extra:
         return difference(len(frames), None, "record", "END", extra[0])
+    if origin == "terminal_restart":
+        result.update(_restart_proof(lines, marker, frames, package["policy"]))
     return dict(result, status="modeled_book_matches", end_equity=frames[-1]["mark"]["equity"])

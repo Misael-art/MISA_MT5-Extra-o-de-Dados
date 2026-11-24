@@ -1,5 +1,9 @@
 # Retomar MT5X em um host limpo
 
+## 24/11/2026 — Retomada do livro concorrente
+
+A origem `terminal_restart` do comando `robots ultra-test` conserva o checkpoint do fill parcial e reconcilia a cotação já processada antes de continuar. No terminal Linux, a campanha inteira coincidiu com o livro Python após o reinício. Os recibos, o limite de validação e os comandos constam no [repasse Ultra](docs/repasse/ULTRA_PRESET_20261124.md#reinício-do-terminal-após-um-fill-parcial).
+
 ## 24/11/2026 — Execução Ultra no Linux
 
 O launcher aceita `robots ultra-test PACOTE --report PASTA`. Ele compila o Expert, importa os ticks no perfil portátil e grava um recibo por execução, inclusive quando a conta DEMO requer autenticação. A descoberta offline e os comandos para conferir as duas origens do journal estão no [repasse Ultra](docs/repasse/ULTRA_PRESET_20261124.md#execução-pelo-launcher-no-linux).

@@ -118,3 +118,52 @@ def test_cli_reads_frozen_package_and_preserves_pending_status(tmp_path, monkeyp
                      str(package), "--report", str(tmp_path / "proof")])
     assert calls == [("fixture", "strategy_tester", "EURUSD")]
     assert code == cli.EXIT_FAIL and json.loads(capsys.readouterr().out)["data"]["status"] == "demo_login_required"
+
+
+def test_restores_persisted_binary_and_prefix_in_a_new_attempt(tmp_path):
+    from mt5_extracao.robots import ultra_restart
+    import json
+
+    data = tmp_path / "portable"
+    files = data / "MQL5/Files"
+    files.mkdir(parents=True)
+    binding = "a"*64
+    identity = "1"*32
+    package = "b"*64
+    exported = {"checkpoint_binding": binding, "restart_id": identity}
+    native_file = files / ("MT5XUltra_" + binding + ".bin")
+    record = binding + "|199|1234|0|0|1234|1|1"
+    initial = tmp_path / "first"
+    initial.mkdir()
+    receipt = {"package_hash": package, "origin": "terminal_restart"}
+    def save(status, **fields):
+        receipt.update(status=status, **fields)
+        return dict(receipt)
+    def write_prefix(phase):
+        assert phase == "save"
+        native_file.write_bytes(binding.encode() + b"snapshot")
+        path = initial / "raw.log"
+        path.write_text("MT5X_ULTRA_RESTART_CTL|SAVED|" + record)
+        return [path]
+    _, pending = ultra_restart.complete(folder=initial, data=data, exported=exported, parent=None, invoke=write_prefix,
+                                       marked=runner._marked, install=runner._install, save=save, running=lambda: True)
+    assert pending["status"] == "terminal_busy_after_checkpoint"
+    persisted = initial / "receipt.json"
+    persisted.write_text(json.dumps(pending), encoding="utf-8")
+    # A nova sessão pode restaurar num perfil portátil sem o arquivo da sessão anterior.
+    native_file.unlink()
+    parent = ultra_restart.read_parent(persisted, package)
+    next_attempt = tmp_path / "second"
+    next_attempt.mkdir()
+    def restore(phase):
+        assert phase == "restore" and native_file.read_bytes() == (initial / "partial.bin").read_bytes()
+        path = next_attempt / "raw.log"
+        path.write_text("MT5X_ULTRA_RESTART_CTL|LOADED|" + record)
+        return [path]
+    journal, pending = ultra_restart.complete(folder=next_attempt, data=data, exported=exported, parent=parent,
+                                              invoke=restore, marked=runner._marked, install=runner._install,
+                                              save=save, running=lambda: False)
+    assert not pending and ["SAVED", "LOADED"] == [line.split("|")[1] for line in journal.read_text().splitlines()]
+    (initial / "partial.bin").write_bytes(b"altered")
+    with pytest.raises(ValueError, match="diverge"):
+        ultra_restart.read_parent(persisted, package)

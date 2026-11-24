@@ -1568,3 +1568,9 @@ caminho dos arquivos. A origem `strategy_tester` exige conexão DEMO. Use
 `sdk.ultra_compare_native_book(db, package, journal, *, origin)` recebe os bytes do journal
 bruto e informa a quantidade de ticks e eventos comparados, o patrimônio final ou a
 primeira divergência. Os fills dessa versão seguem a política de liquidez do pacote.
+
+Para recuperar um fill parcial, execute `sdk.ultra_run_tester` com
+`origin="terminal_restart"`. O argumento opcional `resume` recebe o caminho do recibo de
+uma tentativa anterior. O SDK confere o checkpoint e o journal antes de reutilizá-los.
+Na exportação avulsa, `restart_id` aceita 32 dígitos hexadecimais e vincula o binário
+de retomada à tentativa.

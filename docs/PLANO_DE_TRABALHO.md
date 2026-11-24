@@ -5471,3 +5471,7 @@ O Laboratório exporta um Expert para o Strategy Tester, um importador de ticks 
 A referência do SDK e a suíte de contrato cobrem descoberta, exportação do Expert, execução e conferência pela API Python. A regressão de rotação do journal verifica a preservação byte a byte com fim de linha LF e CRLF.
 
 `robots ultra-test` qualifica o pacote, compila os fontes no MetaEditor, verifica a importação e confere o journal com o Python. No modo Strategy Tester, o terminal precisa observar uma conta DEMO conectada antes do ensaio. Cada tentativa cria um recibo e guarda hashes dos binários e o trecho novo dos journals. O terminal de outro trabalho e seus arquivos preexistentes são preservados.
+
+### T20.20 · retomada nativa após fill parcial
+
+Dois processos MT5 no Linux gravaram e restauraram o livro modelado no primeiro fill parcial de A. O comparador confronta cursor, dono, quantidade executada e pendente com a campanha congelada. Os 80 eventos e o patrimônio de USD 934,40 coincidiram com a referência nas 372 cotações. O caminho pelo launcher e os critérios para repetir a partir de um recibo estão no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md#reinício-do-terminal-após-um-fill-parcial).

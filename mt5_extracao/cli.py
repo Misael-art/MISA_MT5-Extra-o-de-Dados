@@ -1701,8 +1701,9 @@ def cmd_robots(args, ctx):
         if not args.path or not args.report:
             raise ValueError("Informe o pacote e a pasta de evidências em --report.")
         package = json.loads(Path(args.path).read_text(encoding="utf-8-sig"))
+        options = {"resume": args.resume_attempt} if args.resume_attempt else {}
         result = run(ctx.db, ctx.config, package, args.report, origin=args.ultra_origin,
-                     chart=args.symbol or "EURUSD")
+                     chart=args.symbol or "EURUSD", **options)
         _data(**result)
         _print("Execução Ultra: " + result["status"])
         return EXIT_OK if result["status"] == "modeled_book_matches" else EXIT_FAIL
@@ -2414,8 +2415,9 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
-    p.add_argument("--ultra-origin", choices=("strategy_tester", "terminal_history"), default="strategy_tester",
+    p.add_argument("--ultra-origin", choices=("strategy_tester", "terminal_history", "terminal_restart"), default="strategy_tester",
                    help="ultra-test: origem do journal MQL5")
+    p.add_argument("--resume-attempt", help="ultra-test: receipt.json que contém o checkpoint de um fill parcial")
     p.add_argument("--all-symbols", action="store_true", help="backtest-plan: revisar todos os ativos com barras na base")
     p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")
     p.add_argument("--preset-package", help="backtest-plan: pacote Default/Manual exportado no contexto original")

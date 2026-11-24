@@ -11,9 +11,9 @@ REPO = Path(__file__).resolve().parents[1]
 SURFACE = {
     "ultra_capabilities": [],
     "ultra_tester_capabilities": [],
-    "ultra_export_tester": ["db", "package", "destination"],
+    "ultra_export_tester": ["db", "package", "destination", "restart_id"],
     "ultra_compare_native_book": ["db", "package", "journal", "origin"],
-    "ultra_run_tester": ["db", "config", "package", "output", "origin", "chart", "timeout"],
+    "ultra_run_tester": ["db", "config", "package", "output", "origin", "chart", "timeout", "resume"],
     "ultra_freeze": ['db', 'definition'],
     "ultra_replay": ['db', 'receipt', 'until'],
     "ultra_inspect": ['db', 'receipt', 'timeline'],

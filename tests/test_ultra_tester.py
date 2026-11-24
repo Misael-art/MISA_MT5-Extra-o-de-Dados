@@ -83,3 +83,30 @@ def test_first_divergence_in_partial_fill_and_cash_and_source_boundaries(campaig
     for broken in [rows[:-1], rows + rows, [("BEGIN", "other", *rows[0][2:])] + rows[1:]]:
         with pytest.raises(ValueError, match="Journal"):
             compare(broken)
+
+
+def test_checkpoint_requires_same_cursor_and_first_partial(campaign, tmp_path):
+    db, package = campaign
+    exported = ultra_tester.export(db, package, tmp_path / "restart", restart_id="a"*32)
+    binding = exported["checkpoint_binding"]
+    assert binding in (tmp_path / "restart/UltraRestartProbe.mq5").read_text()
+    rows = fixture_rows(db, package)
+    rev = digest([digest(ultra_tester._templates()), ultra_tester._restart_template()])
+    rows[0] = (*rows[0][:3], rev, 6324)
+    key = next(row for row in rows if row[0] == "EVENT" and row[5:7] == ("fill", "partial"))
+    at = next(i for i, row in enumerate(rows) if row[:3] == ("FRAME", *key[1:3])) + 2
+    cursor = "|".join(map(str, [binding, 199, *key[1:5], key[7], key[11]]))
+    cut = ultra_tester.RESTART_CONTROL
+    prefix = journal(rows[:at], "terminal_restart").decode("utf-16")
+    suffix = journal(rows[at:], "terminal_restart").decode("utf-16")
+    def compare(controls):
+        log = "\n".join([prefix, *controls, suffix]).encode("utf-8")
+        return ultra_tester.compare(db, package, log, origin="terminal_restart")
+    controls = [cut + action + "|" + cursor for action in ("SAVED", "LOADED")]
+    result = compare(controls)
+    assert result["status"] == "modeled_book_matches"
+    assert result["checkpoint"]["frames_before_restart"] == 199 and result["checkpoint"]["pending"] == 1
+    with pytest.raises(ValueError, match="coincidir"):
+        compare(controls[:1])
+    with pytest.raises(ValueError, match="primeiro fill parcial"):
+        compare([control[:-1]+"2" for control in controls])

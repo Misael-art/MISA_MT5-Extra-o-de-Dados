@@ -1,0 +1,84 @@
+#property strict
+$runtime
+
+const string binding="$binding";
+const string checkpoint="MT5XUltra_$binding.bin";
+struct UltraCursor { long msc; int sequence, count, build; };
+
+int PartialOwner()
+{
+   for(int i=0;i<2;i++)
+      if(book.cycle[i].opened!=0 && book.cycle[i].filled>0 && book.cycle[i].pending>0) return i;
+   return -1;
+}
+
+bool SaveState()
+{
+   string temp=checkpoint+".tmp";
+   if(FileIsExist(temp) || FileIsExist(checkpoint)) return false;
+   int f=FileOpen(temp,FILE_WRITE|FILE_BIN|FILE_ANSI);
+   if(f==INVALID_HANDLE) return false;
+   UltraCursor cursor={};
+   cursor.msc=last_msc; cursor.sequence=seq; cursor.count=frames;
+   cursor.build=(int)TerminalInfoInteger(TERMINAL_BUILD);
+   bool ok=FileWriteString(f,binding)==64 && FileWriteStruct(f,cursor)==sizeof(cursor)
+      && FileWriteStruct(f,signals)==sizeof(signals) && FileWriteStruct(f,book)==sizeof(book);
+   FileFlush(f);
+   FileClose(f);
+   if(!ok) return false;
+   return FileMove(temp,0,checkpoint,0);
+}
+
+bool RestoreState(const MqlTick &ticks[])
+{
+   int f=FileOpen(checkpoint,FILE_READ|FILE_BIN|FILE_ANSI);
+   if(f==INVALID_HANDLE) return false;
+   UltraCursor c={};
+   bool ok=FileReadString(f,64)==binding && FileReadStruct(f,c)==sizeof(c)
+      && FileReadStruct(f,signals)==sizeof(signals) && FileReadStruct(f,book)==sizeof(book)
+      && FileTell(f)==FileSize(f);
+   FileClose(f);
+   if(!ok || c.build!=TerminalInfoInteger(TERMINAL_BUILD) || c.count<=0 || c.count>ArraySize(ticks)
+      || PartialOwner()<0) return false;
+   // Redelivery of the last observed quote must agree with both its ordinal and its economic fields.
+   int previous=c.count-1, first=previous;
+   while(first>0 && ticks[first-1].time_msc==c.msc) first--;
+   if(c.msc!=ticks[previous].time_msc || c.sequence!=previous-first || book.seq!=c.sequence
+      || book.msc!=c.msc || book.bid!=(long)MathRound(ticks[previous].bid/TICK_SIZE)
+      || book.ask!=(long)MathRound(ticks[previous].ask/TICK_SIZE)) return false;
+   frames=c.count; seq=c.sequence; last_msc=c.msc; started=true;
+   return true;
+}
+
+void CheckpointRecord(const string action,const int owner)
+{
+   UltraCycle c=book.cycle[owner];
+   PrintFormat("MT5X_ULTRA_RESTART_CTL|%s|%s|%d|%I64d|%d|%d|%I64d|%I64d|%I64d",
+               action,binding,frames,last_msc,seq,owner,c.opened,c.filled,c.pending);
+}
+
+void OnStart()
+{
+   if(MQLInfoInteger(MQL_TESTER) || !SymbolInfoInteger("$symbol",SYMBOL_CUSTOM)
+      || SymbolInfoDouble("$symbol",SYMBOL_TRADE_TICK_SIZE)!=TICK_SIZE) return;
+   MqlTick ticks[];
+   int count=CopyTicksRange("$symbol",ticks,COPY_TICKS_ALL,FIRST_MSC,LAST_MSC);
+   if(count<=0) return;
+   bool resume=FileIsExist(checkpoint);
+   if(resume)
+   {
+      if(!RestoreState(ticks)) { Print("Ultra: checkpoint incompatível"); return; }
+      CheckpointRecord("LOADED",PartialOwner());
+   }
+   else BeginCapture();
+   for(int i=frames;i<count && !failed;i++)
+   {
+      ObserveQuote(ticks[i]);
+      if(!resume && !failed && PartialOwner()>=0)
+      {
+         if(SaveState()) CheckpointRecord("SAVED",PartialOwner());
+         return;
+      }
+   }
+   EndCapture();
+}
