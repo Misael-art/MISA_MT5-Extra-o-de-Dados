@@ -60,6 +60,10 @@ def test_reopen_partial_then_compare_portfolio_with_counterfactual(tmp_path, cam
     assert c["verdict"] == "reject_on_sample" and c["net_difference"] == -2940
     assert [e["reference_net"] for e in c["paired_vetoes"]] == [2180, 2180, -620]
     assert c["conditional"]["max_drawdown"] == 9530 and c["conditional"]["max_reserved_margin"] == 98800
+    transition = c["management"]["eligible_transitions"]
+    assert any(e["owner"] == "A" and e["key"] == frames[274]["mark"]["key"] for e in transition)
+    assert all(e["difference"] == e["managed_net"] - e["hold_net"] for e in transition if e["difference"] is not None)
+    assert c["management"]["net_difference"] == c["conditional"]["end_equity"] - c["management"]["hold_metrics"]["end_equity"]
     assert c["conditional"]["completed_cycles"] == 8 and not c["economic_approval"]
 
 

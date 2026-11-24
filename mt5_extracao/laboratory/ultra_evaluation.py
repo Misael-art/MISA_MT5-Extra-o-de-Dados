@@ -46,6 +46,41 @@ def _run_arm(db, definition):
     return ultra.inspect_receipt(db, r["receipt"], timeline=True)
 
 
+def _opportunities(run):
+    return {e["cycle_id"]: e for frame in run["timeline"] for e in frame["events"] if e["event"] == "armed"}
+
+
+def _cycle_results(run):
+    return {item["cycle_id"]: item["net"] for item in run["account"]["completed"]}
+
+
+def _management_comparison(db, definition, candidate, origin):
+    hold = deepcopy(definition)
+    for module in hold["modules"]:
+        module["breakeven"] = 0
+    reference = _run_arm(db, hold)
+    events = _opportunities(reference)
+    by_start = {(e["owner"], e["available_msc"]): key for key, e in events.items()}
+    base_net, candidate_net = _cycle_results(reference), _cycle_results(candidate)
+    pairs = []
+    for frame in candidate["timeline"]:
+        for event in frame["events"]:
+            if event["event"] != "management":
+                continue
+            cycle_id = event["cycle_id"]
+            start = origin[cycle_id]["available_msc"]
+            other = by_start.get((event["owner"], start))
+            before = base_net.get(other)
+            after = candidate_net.get(cycle_id)
+            pairs.append({"owner": event["owner"], "rule": event["reason"], "key": event["key"],
+                          "delay_from_signal_ms": event["key"][0] - start, "cycle": cycle_id, "hold_cycle": other,
+                          "managed_net": after, "hold_net": before,
+                          "difference": None if before is None or after is None else after - before})
+    held = metrics(reference)
+    return {"hold_receipt": reference["receipt"], "hold_metrics": held, "eligible_transitions": pairs,
+            "net_difference": metrics(candidate)["end_equity"] - held["end_equity"]}
+
+
 def compare(db, receipt):
     candidate = ultra.inspect_receipt(db, receipt, timeline=True)
     if candidate["status"] != "complete":
@@ -57,10 +92,12 @@ def compare(db, receipt):
         if module["strategy"] == "pattern_definition":
             module["params"]["apply_invalidation"] = False
     base = _run_arm(db, static)
-    outcomes = {item["cycle_id"]: item["net"] for item in base["account"]["completed"]}
-    reference_orders = {e["cycle_id"]: e for f in base["timeline"] for e in f["events"] if e["event"] == "armed"}
+    outcomes = _cycle_results(base)
+    candidate_outcomes = _cycle_results(candidate)
+    still_open = {c["id"] for c in candidate["account"]["cycles"].values()}
+    reference_orders = _opportunities(base)
     reference_by_key = {(e["owner"], e["available_msc"]): cid for cid, e in reference_orders.items()}
-    origin = {e["cycle_id"]: e for f in candidate["timeline"] for e in f["events"] if e["event"] == "armed"}
+    origin = _opportunities(candidate)
     vetoes = []
     for blocked, reference in zip(candidate["timeline"], base["timeline"], strict=True):
         if blocked["mark"]["key"] != reference["mark"]["key"]:
@@ -72,8 +109,8 @@ def compare(db, receipt):
             armed = origin[event["cycle_id"]]
             other_id = reference_by_key.get((event["owner"], armed["available_msc"]))
             net = outcomes.get(other_id)
-            candidate_net = next((r["net"] for r in candidate["account"]["completed"] if r["cycle_id"] == event["cycle_id"]), None)
-            if candidate_net is None and event["cycle_id"] not in [c["id"] for c in candidate["account"]["cycles"].values()]:
+            candidate_net = candidate_outcomes.get(event["cycle_id"])
+            if candidate_net is None and event["cycle_id"] not in still_open:
                 candidate_net = 0
             difference = None if net is None or candidate_net is None else candidate_net - net
             vetoes.append({"key": event["key"], "delay_ms": event["key"][0] - armed["available_msc"], "owner": event["owner"], "reference_cycle": other_id,
@@ -92,6 +129,7 @@ def compare(db, receipt):
     result = {"version": 1, "sample_kind": definition["sample_kind"], "manifest_id": definition["manifest_id"],
               "candidate_receipt": receipt, "reference_receipt": base["receipt"],
               "cash": definition["cash"], "conditional": candidate_metrics, "static": base_metrics,
+              "management": _management_comparison(db, definition, candidate, origin),
               "without_module": ablations, "paired_vetoes": vetoes, "net_difference": delta,
               "verdict": "reject_on_sample" if delta <= 0 else "positive_on_sample",
               "economic_approval": False}
