@@ -108,7 +108,13 @@ def advance(state, policy, tick, signals):
         c["stop"] = c["limit"] - side * module["stop"]
         c["target"] = c["limit"] + side * module["target"]
         record(owner, "armed", "closed_bar", c, available_msc=signal["available_msc"],
-               reference=reference, side=side)
+               reference=reference, side=side, **{k: signal[k] for k in ("pattern_event", "definition_hash") if k in signal})
+        entry = signal.get("entry_decision")
+        if (entry and module["params"]["apply_invalidation"] and entry["status"] != "confirmed"):
+            record(owner, "invalidated" if entry["status"] == "invalidated" else "veto",
+                   "pattern_invalidation" if entry["status"] == "invalidated" else "unknown_pattern_condition",
+                   c, entry_decision=entry, pattern_event=signal["pattern_event"])
+            continue
         mark = bid if side == 1 else ask
         if owner in cycles:
             record(owner, "veto", "owner_cycle_open", c)

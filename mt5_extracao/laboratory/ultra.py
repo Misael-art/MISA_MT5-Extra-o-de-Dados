@@ -6,7 +6,7 @@ from importlib import import_module
 import pandas as pd
 from sqlalchemy import inspect, text
 
-from ..analytics import data_eligibility, datasets
+from ..analytics import data_eligibility, datasets, hypotheses, pattern_engine, pattern_flow
 from ..analytics.tick_fidelity import quote_masks
 from ..composition import ultra as portfolio
 from ..composition.registry import STRATEGY_PARAMETERS
@@ -15,7 +15,7 @@ from ..experiments.schema import closed, digest, encoded, token
 from ..strategies import get_strategy
 
 VERSION = 1
-SIGNALS = ("donchian", "s09_reference")
+SIGNALS = ("donchian", "s09_reference", "pattern_definition")
 ACCOUNT_FIELDS = ("cash", "risk_limit", "margin", "fee", "fill_steps_per_tick")
 MODULE_FIELDS = ("owner", "strategy", "params", "steps", "stop", "target", "breakeven",
                  "invalidate", "ttl_ms", "max_losses", "daily_goal")
@@ -46,7 +46,8 @@ def source_identity():
     names = ("laboratory.ultra", "composition.ultra", "composition.registry", "analytics.datasets",
              "analytics.tick_fidelity", "analytics.data_eligibility", "strategies.base",
              "strategies.indicators", "strategies.donchian", "strategies.s09", "strategies.specs",
-             "strategies.backtester", "analytics.instruments")
+             "strategies.backtester", "analytics.instruments", "analytics.hypotheses",
+             "analytics.pattern_flow", "analytics.pattern_engine", "timeframes")
     modules = {f"mt5_extracao.{name}": import_module(f"mt5_extracao.{name}") for name in names}
     return app_source_identity(modules)["digest"]
 
@@ -76,10 +77,18 @@ def _policy(definition):
         if key not in SIGNALS:
             raise ValueError(f"Execução Ultra ainda sem capacidade para {key}.")
         params = module["params"]
-        closed(params, STRATEGY_PARAMETERS[key], "Parâmetros congelados")
-        if not all(spec.accepts(params[name]) for name, spec in STRATEGY_PARAMETERS[key].items()):
-            raise ValueError("Parâmetro da estratégia fora do catálogo.")
-        get_strategy(key, **params)
+        if key == "pattern_definition":
+            closed(params, ("definition", "apply_invalidation"), "Hipótese da carteira")
+            body = hypotheses.compile_definition(params["definition"]).body
+            if body["side"] == "none" or body["timeframe"] != "M1":
+                raise ValueError("Carteira exige hipótese direcional em M1.")
+            if type(params["apply_invalidation"]) is not bool:
+                raise ValueError("Declare se as invalidações da hipótese se aplicam.")
+        else:
+            closed(params, STRATEGY_PARAMETERS[key], "Parâmetros congelados")
+            if not all(spec.accepts(params[name]) for name, spec in STRATEGY_PARAMETERS[key].items()):
+                raise ValueError("Parâmetro da estratégia fora do catálogo.")
+            get_strategy(key, **params)
         for name in MODULE_FIELDS[3:]:
             _integer(module[name], 0 if name in ("breakeven", "invalidate") else 1, name)
         if module["breakeven"] >= module["target"]:
@@ -98,13 +107,24 @@ def _qualify(snapshot, policy):
     if spec.currency_profit != policy["currency"]:
         issues.append("currency_conversion_unverified")
     required = ["ohlcv", "executable_quotes"]
+    for module in policy["modules"]:
+        if module["strategy"] == "pattern_definition":
+            body = module["params"]["definition"]
+            required.extend(body["data_requirements"])
+            if manifest["symbol"] not in body["universe_definition"]["symbols"]:
+                issues.append("symbol_outside_pattern_universe")
     if policy["sample_kind"] == "market_history":
+        if manifest["source"].get("provider") == "synthetic":
+            issues.append("synthetic_feed_is_not_market_history")
         derived = snapshot.derived_bars
         # Este executor ainda não reproduz correções tardias de um indicador recursivo.
         # Aceitar somente o caso cujo prefixo já estava disponível no fechamento.
-        if derived.empty or not (
-            pd.to_datetime(derived.computed_at_utc, utc=True) <= pd.to_datetime(derived.bar_end_utc, utc=True)
-        ).all():
+        offset = pd.Timedelta(hours=manifest["time"].get("broker_utc_offset_hours") or 0)
+        starts = pd.DatetimeIndex(pd.to_datetime(snapshot.bars.time, utc=True)) - offset
+        if (derived.empty or len(derived) != len(starts)
+                or not pd.DatetimeIndex(pd.to_datetime(derived.bar_start_utc, utc=True)).sort_values().equals(starts.sort_values())
+                or not (pd.to_datetime(derived.computed_at_utc, utc=True)
+                        == pd.to_datetime(derived.bar_end_utc, utc=True)).all()):
             issues.append("bar_availability_at_decision_unproven")
         required.extend(("observed_ticks", "observed_session_bars"))
     gate = data_eligibility.evaluate(snapshot.quality, required)
@@ -136,18 +156,32 @@ def _inputs(snapshot, policy):
     starts = ticks.time_msc.to_numpy()
     scheduled = {}
     for module in policy["modules"]:
-        strategy = get_strategy(module["strategy"], **module["params"])
-        sig = strategy.gerar_sinais(bars)
-        eligible = sig.entry_long | sig.entry_short
-        for i in eligible.to_numpy().nonzero()[0]:
-            available = int(ends.iloc[i].value // 1_000_000)
-            index = int(starts.searchsorted(available))
-            signals = scheduled.setdefault(index, {})
-            if module["owner"] in signals:
+        if module["strategy"] == "pattern_definition":
+            definition = hypotheses.compile_definition(module["params"]["definition"])
+            prepared = pattern_flow.snapshot_observations(snapshot, session_mode=(
+                "synthetic_utc_day" if policy["sample_kind"] == "synthetic" else "observed"))
+            _, events = pattern_engine.evaluate_batch(definition, prepared["source_namespace"],
+                                                      prepared["symbol"], prepared["observations"])
+            signals = [{"available_msc": int(pd.Timestamp(e["decision_at_utc"]).value // 1_000_000),
+                        "side": 1 if e["side"] == "long" else -1,
+                        "reference": _units(e["signal_values"]["reference"], spec.tick_size),
+                        "pattern_event": e["event_id"], "definition_hash": e["definition_hash"],
+                        "entry_decision": e.get("entry_decision", {"status": "confirmed", "rules": []})}
+                       for e in events]
+        else:
+            strategy = get_strategy(module["strategy"], **module["params"])
+            sig = strategy.gerar_sinais(bars)
+            eligible = sig.entry_long | sig.entry_short
+            signals = [{"available_msc": int(ends.iloc[i].value // 1_000_000),
+                        "side": 1 if sig.entry_long.iloc[i] else -1,
+                        "reference": _units(bars.close.iloc[i], spec.tick_size)}
+                       for i in eligible.to_numpy().nonzero()[0]]
+        for signal in signals:
+            index = int(starts.searchsorted(signal["available_msc"]))
+            by_owner = scheduled.setdefault(index, {})
+            if module["owner"] in by_owner:
                 raise ValueError("Sinais no intervalo sem cotação exigem calendário/cobertura de ticks.")
-            signals[module["owner"]] = {"side": 1 if sig.entry_long.iloc[i] else -1,
-                                        "reference": _units(bars.close.iloc[i], spec.tick_size),
-                                        "available_msc": available}
+            by_owner[module["owner"]] = signal
     return ticks.to_dict("records"), scheduled
 
 

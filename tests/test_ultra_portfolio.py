@@ -128,3 +128,26 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         assert alternative["policies"]["weekly"]["reviews"] == paths["weekly"]["reviews"]
     finally:
         db.close()
+
+
+def test_new_pattern_replays_causal_rules_and_counterfactual(campaign):
+    from test_pattern_engine import definition as define, field, literal
+    from mt5_extracao.laboratory import ultra_evaluation
+    db, campaign_def = campaign
+    condition = {"op": "compare", "comparison": "gte", "left": field("close"), "right": literal("105", "price")}
+    rule = {"id": "high_close", "when": condition, "action": "cancel_before_entry"}
+    body = define(universe_definition={"mode": "explicit", "symbols": ["QA_ULTRA"]}, origin="exploratory",
+                  side="short", price_reference="close", condition_expression=condition, invalidation_rules=[rule]).body
+    module = dict(campaign_def["modules"][0], strategy="pattern_definition", params={
+        "definition": body, "apply_invalidation": True}, invalidate=0)
+    run = ultra.freeze(db, dict(campaign_def, modules=[module]))
+    ultra.replay(db, run["receipt"])
+    timeline = ultra.inspect_receipt(db, run["receipt"], timeline=True)["timeline"]
+    rejected = [e for f in timeline for e in f["events"] if e["reason"] == "pattern_invalidation"]
+    assert rejected and all(e["entry_decision"]["rules"] == [{"id": "high_close", "value": True}] for e in rejected)
+    c = ultra_evaluation.compare(db, run["receipt"])
+    assert c["conditional"]["completed_cycles"] == 0 < c["static"]["completed_cycles"]
+    assert any(e["reference_net"] is not None for e in c["paired_vetoes"])
+    outside = dict(body, universe_definition={"mode": "explicit", "symbols": ["OTHER"]})
+    module["params"] = dict(definition=outside, apply_invalidation=True)
+    assert "symbol_outside_pattern_universe" in ultra.freeze(db, dict(campaign_def, modules=[module]))["reasons"]

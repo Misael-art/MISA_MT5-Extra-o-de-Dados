@@ -5440,3 +5440,7 @@ seleção e custo da revisão. A avaliação mantém históricos por alternativa
 políticas fixa, semanal e de 14 dias. Cada decisão de revisão lê sessões já encerradas.
 Há controles em caixa, estratégia individual escolhida no treino e carteira estática.
 O pacote de reprodução referencia a fonte, a revisão do motor, o livro e a conta.
+
+### T19.52 · hipóteses exploratórias no livro conjunto
+
+O módulo `pattern_definition` aceita a definição M1 direcional do Laboratório, sua população de símbolos, requisitos de dados e regra de invalidação. O evento conserva a identidade da hipótese, referência, predicados e disponibilidade da observação. A mesma oportunidade pode ser reexecutada com a regra desligada. Em QA, uma hipótese nova vetou as entradas do candidato e o controle encerrou ciclos no mesmo snapshot. A comprovação em mercado exige cobertura observada.

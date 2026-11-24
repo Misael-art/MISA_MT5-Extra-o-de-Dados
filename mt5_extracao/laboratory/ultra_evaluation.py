@@ -54,6 +54,8 @@ def compare(db, receipt):
     static = deepcopy(definition)
     for module in static["modules"]:
         module["invalidate"] = 0
+        if module["strategy"] == "pattern_definition":
+            module["params"]["apply_invalidation"] = False
     base = _run_arm(db, static)
     outcomes = {item["cycle_id"]: item["net"] for item in base["account"]["completed"]}
     reference_orders = {e["cycle_id"]: e for f in base["timeline"] for e in f["events"] if e["event"] == "armed"}
@@ -64,15 +66,19 @@ def compare(db, receipt):
         if blocked["mark"]["key"] != reference["mark"]["key"]:
             raise ValueError("Os braços não compartilham o mesmo relógio de ticks.")
         for event in blocked["events"]:
-            if event["event"] not in ("invalidated", "cancel") or event["reason"] != "reference_lost":
+            if event["event"] not in ("invalidated", "cancel") or event["reason"] not in ("reference_lost", "pattern_invalidation"):
                 continue
             # A chave de oportunidade independe da política. Ciclos continuam identificando a versão.
             armed = origin[event["cycle_id"]]
             other_id = reference_by_key.get((event["owner"], armed["available_msc"]))
             net = outcomes.get(other_id)
+            candidate_net = next((r["net"] for r in candidate["account"]["completed"] if r["cycle_id"] == event["cycle_id"]), None)
+            if candidate_net is None and event["cycle_id"] not in [c["id"] for c in candidate["account"]["cycles"].values()]:
+                candidate_net = 0
+            difference = None if net is None or candidate_net is None else candidate_net - net
             vetoes.append({"key": event["key"], "delay_ms": event["key"][0] - armed["available_msc"], "owner": event["owner"], "reference_cycle": other_id,
-                           "reference_net": net, "effect": "unknown" if net is None else
-                           "loss_avoided" if net < 0 else "gain_discarded" if net > 0 else "neutral"})
+                           "reference_net": net, "candidate_net": candidate_net, "change": difference, "effect": "unknown" if difference is None else
+                           "loss_avoided" if difference > 0 else "gain_discarded" if difference < 0 else "neutral"})
     candidate_metrics, base_metrics = metrics(candidate), metrics(base)
     delta = candidate_metrics["end_equity"] - base_metrics["end_equity"]
     ablations = {}
