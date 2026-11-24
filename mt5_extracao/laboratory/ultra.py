@@ -1,6 +1,7 @@
 """Campanha Ultra em ticks no Laboratório. Recibo e posição avançam na mesma transação."""
 from decimal import Decimal
 import json
+from importlib import import_module
 
 import pandas as pd
 from sqlalchemy import inspect, text
@@ -40,6 +41,16 @@ def _units(value, unit):
     return int(quotient)
 
 
+def source_identity():
+    from ..presets.execution import app_source_identity
+    names = ("laboratory.ultra", "composition.ultra", "composition.registry", "analytics.datasets",
+             "analytics.tick_fidelity", "analytics.data_eligibility", "strategies.base",
+             "strategies.indicators", "strategies.donchian", "strategies.s09", "strategies.specs",
+             "strategies.backtester", "analytics.instruments")
+    modules = {f"mt5_extracao.{name}": import_module(f"mt5_extracao.{name}") for name in names}
+    return app_source_identity(modules)["digest"]
+
+
 def _policy(definition):
     closed(definition, ("version", "manifest_id", "sample_kind", "currency", "session",
                         "account_mode", "modules", *ACCOUNT_FIELDS), "Campanha Ultra")
@@ -73,7 +84,8 @@ def _policy(definition):
             _integer(module[name], 0 if name in ("breakeven", "invalidate") else 1, name)
         if module["breakeven"] >= module["target"]:
             raise ValueError("A transição deve ocorrer antes do alvo.")
-    return dict(definition, revision=digest(definition))
+    signature = source_identity()
+    return dict(definition, revision=digest([definition, signature]), engine_hash=signature)
 
 
 def _qualify(snapshot, policy):
@@ -193,6 +205,8 @@ def replay(db, receipt, *, until=None):
     if current["status"] not in ("frozen", "running"):
         return current
     policy = current["policy"]
+    if policy.get("engine_hash") != source_identity():
+        raise ValueError("Motor de replay divergente. Retome com a revisão de origem do recibo.")
     try:
         ticks, signals = _inputs(datasets.load(db, policy["manifest_id"]), policy)
     except ValueError as error:

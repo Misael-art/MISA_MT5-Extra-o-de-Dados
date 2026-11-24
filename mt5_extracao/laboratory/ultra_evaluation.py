@@ -50,12 +50,15 @@ def compare(db, receipt):
     candidate = ultra.inspect_receipt(db, receipt, timeline=True)
     if candidate["status"] != "complete":
         raise ValueError("A comparação exige carteira concluída.")
-    definition = {k: deepcopy(v) for k, v in candidate["policy"].items() if k not in ("revision", "tick_cash")}
+    definition = {k: deepcopy(v) for k, v in candidate["policy"].items() if k not in ("revision", "tick_cash", "engine_hash")}
     static = deepcopy(definition)
     for module in static["modules"]:
         module["invalidate"] = 0
     base = _run_arm(db, static)
     outcomes = {item["cycle_id"]: item["net"] for item in base["account"]["completed"]}
+    reference_orders = {e["cycle_id"]: e for f in base["timeline"] for e in f["events"] if e["event"] == "armed"}
+    reference_by_key = {(e["owner"], e["available_msc"]): cid for cid, e in reference_orders.items()}
+    origin = {e["cycle_id"]: e for f in candidate["timeline"] for e in f["events"] if e["event"] == "armed"}
     vetoes = []
     for blocked, reference in zip(candidate["timeline"], base["timeline"], strict=True):
         if blocked["mark"]["key"] != reference["mark"]["key"]:
@@ -64,11 +67,10 @@ def compare(db, receipt):
             if event["event"] not in ("invalidated", "cancel") or event["reason"] != "reference_lost":
                 continue
             # A chave de oportunidade independe da política. Ciclos continuam identificando a versão.
-            armed = next((e for e in reference["events"] if e["owner"] == event["owner"]
-                          and e["event"] == "order"), None)
-            other_id = armed["cycle_id"] if armed else None
+            armed = origin[event["cycle_id"]]
+            other_id = reference_by_key.get((event["owner"], armed["available_msc"]))
             net = outcomes.get(other_id)
-            vetoes.append({"key": event["key"], "owner": event["owner"], "reference_cycle": other_id,
+            vetoes.append({"key": event["key"], "delay_ms": event["key"][0] - armed["available_msc"], "owner": event["owner"], "reference_cycle": other_id,
                            "reference_net": net, "effect": "unknown" if net is None else
                            "loss_avoided" if net < 0 else "gain_discarded" if net > 0 else "neutral"})
     candidate_metrics, base_metrics = metrics(candidate), metrics(base)

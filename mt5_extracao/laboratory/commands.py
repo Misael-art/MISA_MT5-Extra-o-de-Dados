@@ -15,6 +15,20 @@ def add_parser(sub):
     freeze = actions.add_parser("ultra-freeze", help="congela política e referência ao snapshot")
     freeze.add_argument("--definition", required=True)
     freeze.set_defaults(func=run)
+    pack = actions.add_parser("ultra-compile", help="empacota o replay da pesquisa para verificação")
+    pack.add_argument("--receipt", required=True)
+    pack.add_argument("--out", required=True)
+    pack.set_defaults(func=run)
+    verify = actions.add_parser("ultra-verify", help="confere o pacote com a fonte e o livro")
+    verify.add_argument("--package", required=True)
+    verify.set_defaults(func=run)
+    study = actions.add_parser("ultra-study-freeze", help="registra cortes, critérios e orçamento antes da busca")
+    study.add_argument("--receipt", required=True)
+    study.add_argument("--plan", required=True)
+    study.set_defaults(func=run)
+    study = actions.add_parser("ultra-study-run", help="avalia políticas fixa, semanal e quinzenal")
+    study.add_argument("--study", required=True)
+    study.set_defaults(func=run)
     for name in ("ultra-replay", "ultra-inspect", "ultra-compare"):
         action = actions.add_parser(name, help="retoma ou consulta a carteira pelo recibo")
         action.add_argument("--receipt", required=True)
@@ -155,6 +169,20 @@ def run(args, ctx):
             result = ultra.freeze(ctx.db, json.loads(Path(args.definition).read_text(encoding="utf-8-sig")))
         elif args.laboratory_action == "ultra-replay":
             result = ultra.replay(ctx.db, args.receipt, until=args.until)
+        elif args.laboratory_action == "ultra-compile":
+            from ..presets.compiler import compile_ultra_research
+            result = compile_ultra_research(ctx.db, args.receipt)
+            with Path(args.out).open("x", encoding="utf-8") as handle:
+                json.dump(result, handle, ensure_ascii=False, allow_nan=False, indent=2)
+        elif args.laboratory_action == "ultra-verify":
+            from ..presets.compiler import verify_ultra_research
+            result = verify_ultra_research(ctx.db, json.loads(Path(args.package).read_text(encoding="utf-8-sig")))
+        elif args.laboratory_action == "ultra-study-freeze":
+            from .ultra_study import register
+            result = register(ctx.db, args.receipt, json.loads(Path(args.plan).read_text(encoding="utf-8-sig")))
+        elif args.laboratory_action == "ultra-study-run":
+            from .ultra_study import evaluate
+            result = evaluate(ctx.db, args.study)
         elif args.laboratory_action == "ultra-compare":
             from .ultra_evaluation import compare
             result = compare(ctx.db, args.receipt)

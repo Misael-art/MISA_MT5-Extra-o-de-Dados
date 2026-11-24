@@ -42,7 +42,8 @@ def advance(state, policy, tick, signals):
 
     def record(owner, kind, reason, cycle=None, **detail):
         events.append({"key": key, "owner": owner, "event": kind, "reason": reason,
-                       "cycle_id": cycle["id"] if cycle else None, "bid": bid, "ask": ask,
+                       "cycle_id": cycle["id"] if cycle else None, "cycle_version": cycle["version"] if cycle else None,
+                       "bid": bid, "ask": ask,
                        **account(state, policy, bid, ask), **detail})
 
     if state["session"] != session:
@@ -85,8 +86,8 @@ def advance(state, policy, tick, signals):
             state["completed"].append({"owner": owner, "cycle_id": c["id"], "net": net, "key": key})
             record(owner, "exit", "stop" if stopped else "target", c, steps=qty,
                    price=mark, net=net, fee=fee)
-        elif (module["breakeven"] and not c["managed"] and
-              side * (mark - c["limit"]) >= module["breakeven"]):
+        elif (c["breakeven"] and not c["managed"] and
+              side * (mark - c["limit"]) >= c["breakeven"]):
             if c["remaining"]:
                 cancel(owner, c, "management_transition")
             c["managed"], c["stop"] = True, c["limit"]
@@ -102,6 +103,7 @@ def advance(state, policy, tick, signals):
         c = {"id": digest([policy["revision"], owner, signal["available_msc"]]), "side": side,
              "limit": ask if side == 1 else bid, "session": session,
              "expires": signal["available_msc"] + module["ttl_ms"], "reference": reference,
+             "version": policy["revision"], "breakeven": module["breakeven"], "invalidate": module["invalidate"],
              "remaining": module["steps"], "filled": 0, "basis": 0, "entry_fees": 0, "managed": False}
         c["stop"] = c["limit"] - side * module["stop"]
         c["target"] = c["limit"] + side * module["target"]
@@ -146,7 +148,7 @@ def advance(state, policy, tick, signals):
             continue
         side = c["side"]
         mark, price = (bid, ask) if side == 1 else (ask, bid)
-        if module["invalidate"] and side * (mark - c["reference"]) <= -module["invalidate"]:
+        if c["invalidate"] and side * (mark - c["reference"]) <= -c["invalidate"]:
             cancel(owner, c, "reference_lost")
             continue
         if side * (mark - c["stop"]) <= 0:

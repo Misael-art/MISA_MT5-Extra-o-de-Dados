@@ -14,7 +14,7 @@ from mt5_extracao.strategies import get_strategy
 from mt5_extracao.strategies.specs import spec_from_symbol_info
 
 
-def prepare(db):
+def prepare(db, *, sessions=1):
     symbol = "QA_ULTRA"
     origin = pd.Timestamp("2026-10-05T09:00Z")
     prices = [100] * 32 + [104, 108, 103, 97, 93, 97, 103, 108, 111,
@@ -33,6 +33,14 @@ def prepare(db):
         bars.append(dict(time=start.tz_localize(None), open=opening, high=max(quotes), low=min(quotes),
                          close=close, spread=1, tick_volume=len(quotes), real_volume=0))
         previous = close
+    if sessions > 1:
+        dates = pd.bdate_range(origin.normalize(), periods=sessions)
+        daily_bars, daily_ticks = bars, ticks
+        bars, ticks = [], []
+        for day in dates:
+            shift = day - origin.normalize()
+            bars.extend(dict(row, time=row["time"] + shift) for row in daily_bars)
+            ticks.extend(dict(row, time_msc=row["time_msc"] + int(shift.value // 1_000_000)) for row in daily_ticks)
     contract = spec_from_symbol_info(SimpleNamespace(point=1, digits=0, trade_tick_size=1, trade_tick_value=1,
                                   volume_min=1, volume_max=10, volume_step=1, trade_contract_size=1,
                                   currency_profit="USD"))
@@ -57,11 +65,12 @@ def prepare(db):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", required=True, type=Path, help="diretório novo e exclusivo da demonstração")
+    parser.add_argument("--sessions", type=int, choices=range(1, 61), default=1, metavar="1..60")
     args = parser.parse_args()
     args.directory.mkdir(parents=True, exist_ok=False)
     db = DatabaseManager(db_path=str(args.directory / "demo.sqlite"), broker_utc_offset=0)
     try:
-        definition = prepare(db)
+        definition = prepare(db, sessions=args.sessions)
         (args.directory / "campaign.json").write_text(json.dumps(definition, indent=2) + "\n", encoding="utf-8")
         datasets.export_snapshot(db, definition["manifest_id"], args.directory / "snapshot.json")
     finally:

@@ -75,3 +75,56 @@ def test_control_insufficient_unknown_mode_and_duplicate_owner(campaign):
     modules[1]["owner"] = modules[0]["owner"]
     with pytest.raises(ValueError, match="Dono duplicado"):
         ultra.freeze(db, dict(definition, modules=modules))
+
+
+def study_plan():
+    return {"objective": "net_marked_equity", "train_start": "2026-10-05", "validation_start": "2026-10-12",
+            "reserve_start": "2026-10-26", "end_exclusive": "2026-11-14",
+            "trials": [{"owners": owners, "invalidation": flag} for owners, flag in (
+                ([], False), (["A"], False), (["B"], False), (["A", "B"], False), (["A", "B"], True))],
+            "attempt_budget": 5, "min_sessions": 3, "switch_cost": 10, "minimum_gain": 0, "max_drawdown": 8000}
+
+
+def test_study_requires_temporal_support_and_package_detects_changes(campaign):
+    from mt5_extracao.laboratory import ultra_study
+    from mt5_extracao.presets.compiler import compile_ultra_research, verify_ultra_research
+    db, definition = campaign
+    receipt = ultra.freeze(db, definition)["receipt"]
+    plan = study_plan()
+    with pytest.raises(ValueError, match="orçamento"):
+        ultra_study.register(db, receipt, dict(plan, attempt_budget=2))
+    registration = ultra_study.register(db, receipt, plan)
+    assert ultra_study.evaluate(db, registration["study_id"])["status"] == "insufficient_data"
+    ultra.replay(db, receipt)
+    package = compile_ultra_research(db, receipt)
+    assert verify_ultra_research(db, package)["status"] == "verified_research"
+    with pytest.raises(ValueError, match="diverge"):
+        verify_ultra_research(db, dict(package, economic_approval=True))
+
+
+def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
+    from mt5_extracao.laboratory import ultra_study
+    from mt5_extracao.analytics import datasets
+    db = DatabaseManager(db_path=str(tmp_path / "study.sqlite"), broker_utc_offset=0)
+    try:
+        definition = prepare(db, sessions=21)
+        receipt = ultra.freeze(db, definition)["receipt"]
+        plan = study_plan()
+        study = ultra_study.register(db, receipt, plan)
+        result = ultra_study.evaluate(db, study["study_id"])
+        assert result == ultra_study.evaluate(db, study["study_id"])
+        assert len(result["attempts"]) == len(plan["trials"]) and not result["economic_approval"]
+        paths = result["policies"]
+        assert paths["cash"]["net"] == 0 and paths["fixed"]["net"] == 0
+        assert len(paths["weekly"]["reviews"]) == 4 and len(paths["fortnightly"]["reviews"]) == 2
+        assert len(paths["fixed"]["reviews"]) == 1
+        for path in paths.values():
+            assert all(r["last_training_day"] < r["day"] for r in path["reviews"])
+        policy = ultra.inspect_receipt(db, receipt)["policy"]
+        ticks, signals = ultra._inputs(datasets.load(db, policy["manifest_id"]), policy)
+        # Mudar a última cotação da reserva jamais muda decisões de revisão anteriores.
+        ticks[-1] = dict(ticks[-1], bid=ticks[-1]["bid"] + 10, ask=ticks[-1]["ask"] + 10)
+        alternative = ultra_study.simulate(policy, plan, ticks, signals)
+        assert alternative["policies"]["weekly"]["reviews"] == paths["weekly"]["reviews"]
+    finally:
+        db.close()
