@@ -379,6 +379,8 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+T19.52–54 e T20.19–22 têm [marco de pesquisa com carteira concorrente, matriz e reprodução](repasse/ULTRA_PRESET_20261124.md). O histórico de planejamento abaixo conserva as dependências do aceite nativo, econômico e prospectivo.
+
 IND-CCI-01 em validação: fórmula/consumidores/BD06/materialização2.0 e precisão
 por soma compensada/centralização implementados;63 testes únicos,19 finais e
 doctor16/2/0 offline aprovados. Launcher/GUI da precisão aguardam recursos.

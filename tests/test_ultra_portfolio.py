@@ -8,7 +8,7 @@ import pytest
 
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.laboratory import ultra
-from scripts.demo_ultra import prepare
+from scripts.demo_ultra import prepare, study_plan
 
 APP = Path(__file__).resolve().parents[1]
 
@@ -77,14 +77,6 @@ def test_control_insufficient_unknown_mode_and_duplicate_owner(campaign):
         ultra.freeze(db, dict(definition, modules=modules))
 
 
-def study_plan():
-    return {"objective": "net_marked_equity", "train_start": "2026-10-05", "validation_start": "2026-10-12",
-            "reserve_start": "2026-10-26", "end_exclusive": "2026-11-14",
-            "trials": [{"owners": owners, "invalidation": flag} for owners, flag in (
-                ([], False), (["A"], False), (["B"], False), (["A", "B"], False), (["A", "B"], True))],
-            "attempt_budget": 5, "min_sessions": 3, "switch_cost": 10, "minimum_gain": 0, "max_drawdown": 8000}
-
-
 def test_study_requires_temporal_support_and_package_detects_changes(campaign):
     from mt5_extracao.laboratory import ultra_study
     from mt5_extracao.presets.compiler import compile_ultra_research, verify_ultra_research
@@ -114,6 +106,7 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         result = ultra_study.evaluate(db, study["study_id"])
         assert result == ultra_study.evaluate(db, study["study_id"])
         assert len(result["attempts"]) == len(plan["trials"]) and not result["economic_approval"]
+        assert result["selection_effect"]["status"] == "insufficient_sessions"
         paths = result["policies"]
         assert paths["cash"]["net"] == 0 and paths["fixed"]["net"] == 0
         assert len(paths["weekly"]["reviews"]) == 4 and len(paths["fortnightly"]["reviews"]) == 2
@@ -122,6 +115,8 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
             assert all(r["last_training_day"] < r["day"] for r in path["reviews"])
         policy = ultra.inspect_receipt(db, receipt)["policy"]
         ticks, signals = ultra._inputs(datasets.load(db, policy["manifest_id"]), policy)
+        longer = ultra_study.simulate(policy, dict(plan, validation_start="2026-10-14"), ticks, signals)
+        assert longer["selection_effect"]["status"] == "estimated"
         # Mudar a última cotação da reserva jamais muda decisões de revisão anteriores.
         ticks[-1] = dict(ticks[-1], bid=ticks[-1]["bid"] + 10, ask=ticks[-1]["ask"] + 10)
         alternative = ultra_study.simulate(policy, plan, ticks, signals)

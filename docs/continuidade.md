@@ -1,3 +1,7 @@
+## Ultra por ativo — 24/11/2026
+
+O replay Python do Laboratório recuperou a carteira após um fill parcial. O filtro prejudicou o saldo no cenário de controle e o estudo de 26 sessões selecionou caixa. Revisões, reprodução, matriz e pendências nativas estão no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md).
+
 ## Drive — estabilização sintética de 07/11/2026
 
 ## Diagnóstico reconferido em 12/11/2026

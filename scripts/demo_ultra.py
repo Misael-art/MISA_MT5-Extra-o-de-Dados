@@ -62,6 +62,14 @@ def prepare(db, *, sessions=1):
                 margin=24700, fee=5, risk_limit=3000, fill_steps_per_tick=1)
 
 
+def study_plan():
+    return {"objective": "net_marked_equity", "train_start": "2026-10-05", "validation_start": "2026-10-12",
+            "reserve_start": "2026-10-26", "end_exclusive": "2026-11-14",
+            "trials": [{"owners": owners, "invalidation": flag} for owners, flag in (
+                ([], False), (["A"], False), (["B"], False), (["A", "B"], False), (["A", "B"], True))],
+            "attempt_budget": 5, "min_sessions": 3, "switch_cost": 10, "minimum_gain": 0, "max_drawdown": 8000}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", required=True, type=Path, help="diretório novo e exclusivo da demonstração")
@@ -72,6 +80,8 @@ def main():
     try:
         definition = prepare(db, sessions=args.sessions)
         (args.directory / "campaign.json").write_text(json.dumps(definition, indent=2) + "\n", encoding="utf-8")
+        if args.sessions >= 21:
+            (args.directory / "plan.json").write_text(json.dumps(study_plan(), indent=2) + "\n", encoding="utf-8")
         datasets.export_snapshot(db, definition["manifest_id"], args.directory / "snapshot.json")
     finally:
         db.close()
