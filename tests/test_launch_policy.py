@@ -25,7 +25,7 @@ def test_every_local_command_exists_and_mt5_commands_stay_bridged():
     commands = set(next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction)).choices)
     assert launch_policy.LOCAL_COMMANDS <= commands
     for name in ("extract", "update", "ticks", "book", "symbols", "specs", "mt5", "audit", "portfolio",
-                 "backtest", "robots", "doctor", "resample", "commands"):
+                 "backtest", "robots", "doctor", "resample", "workflow"):
         assert launch_policy.needs_bridge([name])
 
 
@@ -38,7 +38,8 @@ def test_local_command_that_asks_for_mt5_is_refused(monkeypatch, tmp_path):
 
 @pytest.mark.skipif(os.name == "nt", reason="run.sh é o launcher Linux")
 @pytest.mark.parametrize("argv, bridged", [(["tables"], False), (["--json", "laboratory", "catalog"], False),
-                                           (["status"], False), (["resources", "backups"], False),
+                                           (["status"], False), (["commands"], False),
+                                           (["--json", "workflow", "methods"], False), (["resources", "backups"], False),
                                            (["b3", "--help"], False), (["crypto", "--help"], False),
                                            (["extract", "--help"], True)])
 def test_official_launcher_starts_bridge_only_for_mt5_commands(tmp_path, argv, bridged):

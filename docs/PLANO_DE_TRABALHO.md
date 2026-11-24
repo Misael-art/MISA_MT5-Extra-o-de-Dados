@@ -5422,3 +5422,13 @@ DEMO ativos/conciliados. App CI, GUI/doctor, compilação/replay nativos e prév
 coerente permanecem pendentes; host recusou pytest por RAM. Windows físico
 aguarda host futuro. Prosseguir recortes Linux independentes de pacotes/reunião,
 Drive sintético, M1 e UI conforme contratos e bloqueios comprovados.
+
+### T19.53 · primeiro replay conjunto no Laboratório (24/11/2026)
+
+O modelo Python de hedging em M1 executa sinais do catálogo Donchian e S09 no mesmo
+snapshot de ticks. O ensaio em `scripts/demo_ultra.py` produz a definição congelada,
+o snapshot e uma base sintética separada. `tests/test_ultra_portfolio.py` verifica o
+livro, custos, veto por margem, limite local, transição de proteção e a retomada por
+recibo em processos separados. A política perdeu US$ 29,40 frente à referência neste
+ensaio. Qualificação econômica, executor nativo multi-estratégia e conta netting estão
+pendentes. A demonstração usa margem e liquidez declaradas pelo cenário.

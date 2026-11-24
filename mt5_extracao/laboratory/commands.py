@@ -11,6 +11,18 @@ from . import service
 def add_parser(sub):
     parser = sub.add_parser("laboratory", help="séries, confluências e comparação exploratória entre timeframes")
     actions = parser.add_subparsers(dest="laboratory_action", required=True)
+    actions.add_parser("ultra-capabilities", help="capacidades do replay Ultra offline").set_defaults(func=run)
+    freeze = actions.add_parser("ultra-freeze", help="congela política e referência ao snapshot")
+    freeze.add_argument("--definition", required=True)
+    freeze.set_defaults(func=run)
+    for name in ("ultra-replay", "ultra-inspect", "ultra-compare"):
+        action = actions.add_parser(name, help="retoma ou consulta a carteira pelo recibo")
+        action.add_argument("--receipt", required=True)
+        if name == "ultra-replay":
+            action.add_argument("--until", type=int, help="quantidade absoluta de cotações a confirmar")
+        elif name == "ultra-inspect":
+            action.add_argument("--timeline", action="store_true")
+        action.set_defaults(func=run)
     actions.add_parser("catalog", help="todos os indicadores e estratégias canônicos, sem abrir a base").set_defaults(func=run)
     inventory = actions.add_parser("inventory", help="inventário real: registry, definições de Dados e fatos")
     inventory.add_argument("--query", default="", help="busca por id, nome, família, unidade ou parâmetro")
@@ -135,7 +147,20 @@ def add_parser(sub):
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action in ("pattern-evaluations", "pattern-evaluation"):
+    if args.laboratory_action.startswith("ultra-"):
+        from . import ultra
+        if args.laboratory_action == "ultra-capabilities":
+            result = ultra.capabilities()
+        elif args.laboratory_action == "ultra-freeze":
+            result = ultra.freeze(ctx.db, json.loads(Path(args.definition).read_text(encoding="utf-8-sig")))
+        elif args.laboratory_action == "ultra-replay":
+            result = ultra.replay(ctx.db, args.receipt, until=args.until)
+        elif args.laboratory_action == "ultra-compare":
+            from .ultra_evaluation import compare
+            result = compare(ctx.db, args.receipt)
+        else:
+            result = ultra.inspect_receipt(ctx.db, args.receipt, timeline=args.timeline)
+    elif args.laboratory_action in ("pattern-evaluations", "pattern-evaluation"):
         from mt5_extracao import sdk
         from .pattern_report import render
         result = (sdk.pattern_evaluations(ctx.db, protocol_id=args.protocol, symbol=args.symbol,
