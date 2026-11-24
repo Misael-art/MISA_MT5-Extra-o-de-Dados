@@ -151,3 +151,40 @@ def test_new_pattern_replays_causal_rules_and_counterfactual(campaign):
     outside = dict(body, universe_definition={"mode": "explicit", "symbols": ["OTHER"]})
     module["params"] = dict(definition=outside, apply_invalidation=True)
     assert "symbol_outside_pattern_universe" in ultra.freeze(db, dict(campaign_def, modules=[module]))["reasons"]
+
+
+def test_comparator_locates_earliest_normalized_disagreement(campaign):
+    from hashlib import sha256
+    from mt5_extracao.laboratory.ultra_parity import compare_trace
+    from mt5_extracao.presets.compiler import compile_ultra_research
+    db, definition = campaign
+    receipt = ultra.freeze(db, definition)["receipt"]
+    ultra.replay(db, receipt)
+    package = compile_ultra_research(db, receipt)
+    assert compare_trace(db, package)["status"] == "missing_tester_trace"
+    run = ultra.inspect_receipt(db, receipt, timeline=True)
+    journal = b"synthetic QA of the comparator"
+    trace = dict(kind="mt5_strategy_tester_ultra_v1", package_hash=package["package_hash"],
+                 manifest_id=package["source_manifest"], tester_build=1, journal_sha256=sha256(journal).hexdigest(),
+                 timeline=run["timeline"], account=run["account"])
+    result = compare_trace(db, package, trace, journal=journal)
+    assert result["status"] == "normalized_trace_matches" and result["native_acceptance"].startswith("pending")
+    trace["account"]["cash"] += 10
+    trace["timeline"][198]["events"][-1]["steps"] += 1
+    mismatch = compare_trace(db, package, trace, journal=journal)["first_divergence"]
+    assert mismatch["ordinal"] == 198 and mismatch["field"] == "frame.events[4].steps"
+    with pytest.raises(ValueError, match="Journal"):
+        compare_trace(db, package, trace, journal=b"other")
+
+
+def test_shared_margin_reserves_execution_cost_of_both_pending_intentions():
+    from mt5_extracao.composition import ultra as engine
+    policy = {"cash": 210, "risk_limit": 1000, "margin": 100, "fee": 1,
+              "tick_cash": 1, "fill_steps_per_tick": 1, "revision": "qa", "modules": []}
+    for owner in ("A", "B"):
+        policy["modules"].append(dict(owner=owner, params={}, steps=1, stop=15, target=20, breakeven=0,
+                                      invalidate=0, ttl_ms=1000, max_losses=1, daily_goal=100))
+    events, mark = engine.advance(engine.initial_state(210), policy, dict(time_msc=1, seq=0, bid=90, ask=100),
+                                  {m["owner"]: dict(side=1, reference=90, available_msc=1) for m in policy["modules"]})
+    assert any(e["owner"] == "B" and e["reason"] == "shared_margin" for e in events)
+    assert mark["exposure_steps"] == 1 and mark["margin"] <= mark["equity"]

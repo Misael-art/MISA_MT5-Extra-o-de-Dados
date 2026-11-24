@@ -28,6 +28,11 @@ def add_parser(sub):
     verify = actions.add_parser("ultra-verify", help="confere o pacote com a fonte e o livro")
     verify.add_argument("--package", required=True)
     verify.set_defaults(func=run)
+    parity = actions.add_parser("ultra-parity", help="confere o primeiro desvio no livro normalizado do Tester")
+    parity.add_argument("--package", required=True)
+    parity.add_argument("--trace", help="livro JSON do Tester")
+    parity.add_argument("--journal", help="journal bruto vinculado ao livro")
+    parity.set_defaults(func=run)
     study = actions.add_parser("ultra-study-freeze", help="registra cortes, critérios e orçamento antes da busca")
     study.add_argument("--receipt", required=True)
     study.add_argument("--plan", required=True)
@@ -186,6 +191,13 @@ def run(args, ctx):
             result = compile_ultra_research(ctx.db, args.receipt)
             with Path(args.out).open("x", encoding="utf-8") as handle:
                 json.dump(result, handle, ensure_ascii=False, allow_nan=False, indent=2)
+        elif args.laboratory_action == "ultra-parity":
+            from .ultra_parity import compare_trace
+            if bool(args.trace) != bool(args.journal):
+                raise ValueError("Forneça o livro e seu journal juntos.")
+            package = json.loads(Path(args.package).read_text(encoding="utf-8-sig"))
+            trace = json.loads(Path(args.trace).read_text(encoding="utf-8-sig")) if args.trace else None
+            result = compare_trace(ctx.db, package, trace, journal=Path(args.journal).read_bytes() if args.journal else None)
         elif args.laboratory_action == "ultra-verify":
             from ..presets.compiler import verify_ultra_research
             result = verify_ultra_research(ctx.db, json.loads(Path(args.package).read_text(encoding="utf-8-sig")))

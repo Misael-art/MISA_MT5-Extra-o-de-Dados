@@ -1550,3 +1550,8 @@ carteira com a invalidação desligada e retira cada dono por vez.
 `sdk.compile_ultra_research(db, receipt)` e `sdk.verify_ultra_research(db, package)`
 vinculam o pacote ao livro congelado. `sdk.ultra_export_report(db, receipt, destination)`
 exporta o gráfico offline e aceita o argumento opcional `reference` para sobrepor os dois livros.
+
+`sdk.ultra_compare_trace(db, package, trace, journal=raw_bytes)` compara cada campo
+normalizado na grade exata do pacote. Sem livro e journal, devolve a pendência do
+Tester. Um livro normalizado coincidente ainda exige auditoria de origem do binário,
+modelo de ticks, journal e versão do terminal.

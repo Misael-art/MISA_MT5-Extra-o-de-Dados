@@ -524,6 +524,7 @@ from .laboratory.ultra import inspect_receipt as ultra_inspect
 from .laboratory.ultra_evaluation import compare as ultra_compare
 from .laboratory.ultra_study import register as ultra_register_study
 from .laboratory.ultra_study import evaluate as ultra_evaluate_study
+from .laboratory.ultra_parity import compare_trace as ultra_compare_trace
 from .laboratory.ultra_report import list_receipts as ultra_list
 from .laboratory.ultra_report import export as ultra_export_report
 from .presets.compiler import compile_ultra_research, verify_ultra_research
@@ -531,7 +532,7 @@ from .presets.compiler import compile_ultra_research, verify_ultra_research
 
 __all__ = [
     "ultra_capabilities", "ultra_freeze", "ultra_replay", "ultra_inspect", "ultra_compare",
-    "ultra_register_study", "ultra_evaluate_study", "ultra_list", "ultra_export_report",
+    "ultra_register_study", "ultra_evaluate_study", "ultra_list", "ultra_export_report", "ultra_compare_trace",
     "compile_ultra_research", "verify_ultra_research",
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",

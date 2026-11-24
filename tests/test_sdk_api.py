@@ -16,6 +16,7 @@ SURFACE = {
     "ultra_compare": ['db', 'receipt'],
     "ultra_register_study": ['db', 'receipt', 'plan'],
     "ultra_evaluate_study": ['db', 'ident'],
+    "ultra_compare_trace": ["db", "package", "trace", "journal"],
     "ultra_list": ['db', 'offset', 'limit'],
     "ultra_export_report": ['db', 'receipt', 'destination', 'reference'],
     "compile_ultra_research": ["db", "receipt"],
