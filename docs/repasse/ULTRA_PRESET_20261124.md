@@ -2,6 +2,10 @@
 
 O marco reproduz duas estratégias do catálogo sobre 372 cotações de um ativo sintético. Donchian (A) e S09 (B) entram no mesmo livro, com capital, risco e liquidez compartilhados. Há também uma integração de hipóteses direcionais novas do Laboratório. O replay Python tem conferência independente no histórico do terminal MQL5, inclusive após reinício. A demonstração usa dados sintéticos. O aceite do Expert no Strategy Tester e a qualificação em dois ativos de mercado estão abertos.
 
+### Cadência de revisão do estudo
+
+O recibo original de 26 sessões identifica `fortnightly`, com cortes de 14 dias corridos. Nas novas avaliações, `weekly`, `fortnightly` e `every_15_days` representam cortes de 7, 14 e 15 dias corridos. O campo `review_interval_calendar_days` informa o intervalo. Uma data sem cotação adia a decisão até a primeira sessão observada. Os cortes seguintes continuam ancorados no início da validação. O identificador do estudo incorpora a revisão do avaliador e resultados antigos persistidos conservam as datas observadas.
+
 ## Composição para revisão
 
 | Referência | Revisão | Papel |

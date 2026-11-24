@@ -49,7 +49,7 @@ def add_parser(sub):
     study.add_argument("--receipt", required=True)
     study.add_argument("--plan", required=True)
     study.set_defaults(func=run)
-    study = actions.add_parser("ultra-study-run", help="avalia políticas fixa, semanal e quinzenal")
+    study = actions.add_parser("ultra-study-run", help="avalia política fixa e revisões a cada 7, 14 e 15 dias corridos")
     study.add_argument("--study", required=True)
     study.set_defaults(func=run)
     for name in ("ultra-replay", "ultra-inspect", "ultra-compare"):

@@ -105,8 +105,10 @@ def simulate(policy, plan, ticks, signals):
     cash = next(i for i, t in enumerate(trials) if not t["owners"])
     static = [i for i, t in enumerate(trials) if len(t["owners"]) == 1 and not t["invalidation"]]
     full = next(i for i, t in enumerate(trials) if len(t["owners"]) == len(policy["modules"]) and not t["invalidation"])
+    review_intervals = {"cash": None, "static_single": None, "static_portfolio": None, "fixed": None,
+                        "weekly": 7, "fortnightly": 14, "every_15_days": 15}
     paths = {name: {"state": engine.initial_state(policy["cash"]), "active": cash, "next": validation,
-                    "reviews": [], "daily": []} for name in ("cash", "static_single", "static_portfolio", "fixed", "weekly", "fortnightly")}
+                    "reviews": [], "daily": []} for name in review_intervals}
     for day, batch in days.items():
         if day >= validation:
             # Somente sessões já concluídas entram em pontuação e previsão.
@@ -132,7 +134,7 @@ def simulate(policy, plan, ticks, signals):
                     fee = plan["switch_cost"] if changed else 0
                     path["state"]["cash"] -= fee
                     path["active"] = selected
-                    cadence = {"weekly": 7, "fortnightly": 14}.get(name)
+                    cadence = review_intervals[name]
                     path["next"] = (validation + ((day - validation) // cadence + 1) * cadence) if cadence else end
                     decision = ("keep" if old == selected else "suspend" if selected == cash else
                                 "reactivate" if old == cash and not first else "select" if first else "replace")
@@ -159,7 +161,8 @@ def simulate(policy, plan, ticks, signals):
         count = sum(r["cycles_closed"] for r in scored)
         brier = sum(r["wins_closed"] * (1 - r["p_win"]) ** 2
                     + (r["cycles_closed"] - r["wins_closed"]) * r["p_win"] ** 2 for r in scored)
-        out[name] = {"probability_event": "net_positive_given_cycle_closed_in_scored_session",
+        out[name] = {"review_interval_calendar_days": review_intervals[name],
+                     "probability_event": "net_positive_given_cycle_closed_in_scored_session",
                      "prediction_cut": "most_recent_review_before_session",
                      "oos_brier": brier / count if count else None, "scored_cycles": count, "net": net, "max_drawdown": path["state"]["drawdown"],
                      "worst_session": min(d["delta"] for d in daily), "reviews": path["reviews"], "daily": daily,
