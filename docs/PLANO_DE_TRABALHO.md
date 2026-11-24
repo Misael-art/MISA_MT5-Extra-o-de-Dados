@@ -5453,3 +5453,7 @@ A carteira reserva também o custo das intenções pendentes e reavalia a margem
 A CLI e o SDK localizam o primeiro campo divergente do livro normalizado do Strategy Tester
 e verificam o hash do journal fornecido. O teste com alteração de um fill no tick 198
 exercita o comparador. O Expert concorrente vinculado e a execução no Tester seguem pendentes.
+
+### T20.22 · trilhas sincronizadas de ciclos
+
+O relatório da carteira desenha uma linha por dono para pendência e posição. O seletor de estratégia e as setas percorrem a mesma cotação nos gráficos e no livro. Vetos de margem e de sequência mostram os valores observados. A demonstração no navegador conserva as capturas estreita e larga.

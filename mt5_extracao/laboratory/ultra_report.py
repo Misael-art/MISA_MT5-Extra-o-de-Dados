@@ -35,7 +35,8 @@ def export(db, receipt, destination, *, reference=None):
             raise ValueError("Relógios divergentes nos recibos.")
     result = metrics(data)
     model = {"frames": data["timeline"], "reference": marks, "initial": result["initial_cash"],
-             "currency": data["policy"]["currency"], "owners": [m["owner"] for m in data["policy"]["modules"]]}
+             "currency": data["policy"]["currency"], "limits": {m["owner"]: m["max_losses"] for m in data["policy"]["modules"]},
+             "owners": [m["owner"] for m in data["policy"]["modules"]]}
     def money(number):
         return escape(f'{number / 100:,.2f} {model["currency"]}')
     page = (TEMPLATE.replace("__FINAL__", money(result["end_equity"]))
@@ -57,7 +58,8 @@ header small{color:#c0d4ce}h1{margin:4px 0 0;font-size:clamp(24px,4vw,38px)}h2{f
 .cards,.charts{display:grid;gap:12px}.cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
 section,article{background:#fff;border:1px solid #ccd5d1;border-radius:6px;padding:14px;margin-bottom:14px}
 article strong{display:block;font-size:22px}label{display:inline-block;margin:4px 10px 4px 0}
-select,input,button{font:inherit}button,select{padding:5px 9px}input[type=range]{width:min(500px,100%);accent-color:#007566}
+select,input,button{font:inherit}button,select{padding:5px 9px}figure.tracks{margin:12px 0}#lanes{height:auto}.trackLegend{font-size:.85em;color:#475e61}
+input[type=range]{width:min(500px,100%);accent-color:#007566}
 canvas{display:block;width:100%;height:145px;touch-action:pan-y}canvas:focus-visible,button:focus-visible{outline:3px solid #a55008}
 .charts{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}figure{margin:0;min-width:0}
 figcaption{font-weight:650}small,.muted{color:#475e61}code{overflow-wrap:anywhere}output{font-variant-numeric:tabular-nums}
@@ -70,7 +72,10 @@ figcaption{font-weight:650}small,.muted{color:#475e61}code{overflow-wrap:anywher
 <span id="legend" class="muted"></span><div class="charts"><figure><figcaption>Preço bid em ticks</figcaption>
 <canvas id="price" tabindex="0" aria-label="Preço. Use as setas para percorrer os ticks"></canvas></figure>
 <figure><figcaption id="metricTitle"></figcaption><canvas id="curve" tabindex="0" aria-label="Curva financeira sincronizada"></canvas></figure></div>
-<label for="cursor">Tick</label><input type="range" id="cursor" min="0" step="1"><output id="time"></output></section>
+<figure class="tracks"><figcaption>Ciclos por estratégia</figcaption><canvas id="lanes" tabindex="0"
+ aria-label="Ciclos simultâneos. Use as setas ou toque para consultar o livro"></canvas>
+ <div class="trackLegend">Cinza · pendente　 Verde · posição　 ◆ veto ou invalidação　 ● mudança de gestão</div>
+ </figure><label for="cursor">Tick</label><input type="range" id="cursor" min="0" step="1"><output id="time"></output></section>
 <section><h2>Decisões neste instante</h2><label>Estratégia <select id="owner"><option value="">Todas</option></select></label>
 <button id="prev">Decisão anterior</button> <button id="next">Próxima decisão</button><p id="account"></p>
 <ul id="events" aria-live="polite"></ul></section><details><summary>Identidade do recibo</summary><code>__RECEIPT__</code></details></main>
@@ -105,22 +110,60 @@ function chart(canvas,field,compare){
  const selected=marks[Number(el('cursor').value)];c.strokeStyle='#293c68';c.setLineDash([3,3]);
  c.beginPath();c.moveTo(x(selected.key[0]),15);c.lineTo(x(selected.key[0]),h-14);c.stroke();
 }
+const tracks=new Map(data.owners.map(owner=>[owner,{spans:[],markers:[]}]));
+const active=new Map();
+function change(owner,phase,index){
+ const previous=active.get(owner),track=tracks.get(owner);
+ if(previous&&previous.phase===phase)return;
+ if(previous)track.spans.push([previous.start,index,previous.phase]);
+ if(phase)active.set(owner,{start:index,phase});else active.delete(owner);
+}
+frames.forEach((frame,i)=>{for(const e of frame.events){
+ if(!tracks.has(e.owner))continue;
+ if(e.event==='order')change(e.owner,'pending',i);
+ if(e.event==='fill')change(e.owner,'position',i);
+ if(e.event==='exit'||(e.event==='cancel'&&active.get(e.owner)?.phase==='pending'))change(e.owner,null,i);
+ if(['veto','invalidated','management'].includes(e.event))tracks.get(e.owner).markers.push([i,e.event]);
+}});
+for(const owner of data.owners)change(owner,null,marks.length-1);
+function lanes(index){
+ const canvas=el('lanes'),w=canvas.clientWidth,selected=el('owner').value;
+ const owners=selected?[selected]:data.owners,h=owners.length*24+8,ratio=window.devicePixelRatio||1;
+ canvas.style.height=h+'px';canvas.width=w*ratio;canvas.height=h*ratio;
+ const c=canvas.getContext('2d');c.scale(ratio,ratio);c.font='13px system-ui';
+ const x=i=>55+(w-62)*(marks[i].key[0]-first)/Math.max(1,last-first);
+ owners.forEach((owner,row)=>{const y=17+24*row,track=tracks.get(owner);
+  c.fillStyle='#243a3c';c.fillText(owner,2,y+3,48);
+  for(const [start,end,phase] of track.spans){c.fillStyle=phase==='position'?'#00756a':'#a5acaf';
+   c.fillRect(x(start),y-4,Math.max(2,x(end)-x(start)),7)}
+  for(const [i,kind] of track.markers){const t=x(i);c.beginPath();
+   if(kind==='management'){c.fillStyle='#203f78';c.arc(t,y-5,3,0,Math.PI*2)}
+   else{c.fillStyle='#a34a20';c.moveTo(t,y-7);c.lineTo(t+3,y-3);c.lineTo(t,y+1);c.lineTo(t-3,y-3);c.closePath()}
+   c.fill()}
+ });
+ c.strokeStyle='#293c68';c.setLineDash([3,3]);c.beginPath();c.moveTo(x(index),0);c.lineTo(x(index),h);c.stroke();
+}
 function eventsAt(i){const owner=el('owner').value;return frames[i].events.filter(e=>!owner||owner===e.owner)}
 function draw(){
  const i=Number(el('cursor').value),m=marks[i],metric=el('metric');el('time').value=utc(m.key[0])+' · seq '+m.key[1];
- el('metricTitle').textContent=metric.selectedOptions[0].text;chart(el('price'),'bid',false);chart(el('curve'),metric.value,true);
+ lanes(i);el('metricTitle').textContent=metric.selectedOptions[0].text;chart(el('price'),'bid',false);chart(el('curve'),metric.value,true);
  el('account').textContent='Patrimônio '+money(m.equity)+' · Risco reservado '+money(m.risk)+' · Margem '+money(m.margin);
  const list=el('events');list.replaceChildren();for(const e of eventsAt(i)){
   const li=document.createElement('li'),detail=document.createElement('details'),title=document.createElement('summary'),raw=document.createElement('pre');
   title.textContent=(e.owner||'Conta')+' · '+(reasons[e.reason]||e.reason)+(e.price!==undefined?' · '+e.price+' ticks':'');
-  raw.textContent=JSON.stringify(e,null,2);detail.append(title,raw);li.append(detail);list.append(li)}
+  const explanation=document.createElement('p');
+  if(e.reason==='local_loss_streak')explanation.textContent=e.local.losses+' perdas consecutivas encerradas. Limite do ciclo de novas entradas: '+data.limits[e.owner]+'.';
+  if(e.reason==='shared_margin')explanation.textContent='Solicitação de '+money(e.requested_margin)+' com '+money(e.margin)+' já reservados e patrimônio de '+money(e.equity)+'.';
+  if(e.reason==='reference_lost')explanation.textContent='Referência '+(e.reference??'do ciclo')+' · bid '+e.bid+' · ask '+e.ask+' ticks.';
+  raw.textContent=JSON.stringify(e,null,2);detail.append(title);if(explanation.textContent)detail.append(explanation);detail.append(raw);li.append(detail);list.append(li)}
  if(!list.children.length){const li=document.createElement('li');li.textContent='Sem decisão neste tick para a seleção.';list.append(li)}
 }
 function move(step,onlyEvents){let i=Number(el('cursor').value)+step;
  while(i>=0&&i<frames.length){if(!onlyEvents||eventsAt(i).length){el('cursor').value=i;draw();return}i+=step}}
-for(const id of ['price','curve']){
+for(const id of ['price','curve','lanes']){
  const canvas=el(id);canvas.onkeydown=e=>{if(['ArrowRight','ArrowLeft'].includes(e.key)){e.preventDefault();move(e.key==='ArrowRight'?1:-1,false)}};
- canvas.onpointerdown=e=>{const bounds=canvas.getBoundingClientRect();const t=first+(last-first)*(e.clientX-bounds.left)/bounds.width;
+ canvas.onpointerdown=e=>{const bounds=canvas.getBoundingClientRect();const left=id==='lanes'?55:5;
+ const t=first+(last-first)*Math.max(0,Math.min(1,(e.clientX-bounds.left-left)/Math.max(1,bounds.width-left-7)));
  let a=0,b=marks.length-1;while(a<b){let mid=(a+b)>>1;if(marks[mid].key[0]<t)a=mid+1;else b=mid}el('cursor').value=a;draw()};
 }
 el('prev').onclick=()=>move(-1,true);el('next').onclick=()=>move(1,true);
