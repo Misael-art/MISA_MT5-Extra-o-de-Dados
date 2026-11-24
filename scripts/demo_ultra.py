@@ -14,8 +14,11 @@ from mt5_extracao.strategies import get_strategy
 from mt5_extracao.strategies.specs import spec_from_symbol_info
 
 
-def prepare(db, *, sessions=1):
-    symbol = "QA_ULTRA"
+def prepare(db, *, sessions=1, instrument="integer"):
+    if instrument not in ("integer", "fractional"):
+        raise ValueError("Instrumento sintético desconhecido.")
+    fractional = instrument == "fractional"
+    symbol = "QA_ULTRA_FX" if fractional else "QA_ULTRA"
     origin = pd.Timestamp("2026-10-05T09:00Z")
     prices = [100] * 32 + [104, 108, 103, 97, 93, 97, 103, 108, 111,
                             108, 103, 98, 94, 90, 94, 101, 107, 110, 109,
@@ -41,9 +44,17 @@ def prepare(db, *, sessions=1):
             shift = day - origin.normalize()
             bars.extend(dict(row, time=row["time"] + shift) for row in daily_bars)
             ticks.extend(dict(row, time_msc=row["time_msc"] + int(shift.value // 1_000_000)) for row in daily_ticks)
-    contract = spec_from_symbol_info(SimpleNamespace(point=1, digits=0, trade_tick_size=1, trade_tick_value=1,
-                                  volume_min=1, volume_max=10, volume_step=1, trade_contract_size=1,
-                                  currency_profit="USD"))
+    if fractional:
+        # Preço-base diferente, dois ticks de spread, lotes de 0,1 e valor do tick distinto.
+        def price(index):
+            return round(1 + index / 10000, 4)
+        bars = [dict(row, **{key: price(row[key]) for key in ("open", "high", "low", "close")}, spread=2)
+                for row in bars]
+        ticks = [dict(row, bid=price(row["bid"]), ask=price(row["bid"] + 2)) for row in ticks]
+    contract = spec_from_symbol_info(SimpleNamespace(
+        point=.0001 if fractional else 1, digits=4 if fractional else 0, trade_tick_size=.0001 if fractional else 1,
+        trade_tick_value=5 if fractional else 1, volume_min=.1 if fractional else 1, volume_max=10,
+        volume_step=.1 if fractional else 1, trade_contract_size=50000 if fractional else 1, currency_profit="USD"))
     instruments.record(db, symbol, "specification", contract, source="synthetic_contract",
                        valid_from="2026-10-01T00:00Z", known_at="2026-09-30T00:00Z")
     db.save_ohlcv_data(symbol, "1 minuto", pd.DataFrame(bars))
@@ -62,16 +73,27 @@ def prepare(db, *, sessions=1):
                 margin=24700, fee=5, risk_limit=3000, fill_steps_per_tick=1)
 
 
+def study_plan():
+    return {"objective": "net_marked_equity", "train_start": "2026-10-05", "validation_start": "2026-10-12",
+            "reserve_start": "2026-10-26", "end_exclusive": "2026-11-14",
+            "trials": [{"owners": owners, "invalidation": flag} for owners, flag in (
+                ([], False), (["A"], False), (["B"], False), (["A", "B"], False), (["A", "B"], True))],
+            "attempt_budget": 5, "min_sessions": 3, "switch_cost": 10, "minimum_gain": 0, "max_drawdown": 8000}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", required=True, type=Path, help="diretório novo e exclusivo da demonstração")
     parser.add_argument("--sessions", type=int, choices=range(1, 61), default=1, metavar="1..60")
+    parser.add_argument("--instrument", choices=("integer", "fractional"), default="integer")
     args = parser.parse_args()
     args.directory.mkdir(parents=True, exist_ok=False)
     db = DatabaseManager(db_path=str(args.directory / "demo.sqlite"), broker_utc_offset=0)
     try:
-        definition = prepare(db, sessions=args.sessions)
+        definition = prepare(db, sessions=args.sessions, instrument=args.instrument)
         (args.directory / "campaign.json").write_text(json.dumps(definition, indent=2) + "\n", encoding="utf-8")
+        if args.sessions >= 21:
+            (args.directory / "plan.json").write_text(json.dumps(study_plan(), indent=2) + "\n", encoding="utf-8")
         datasets.export_snapshot(db, definition["manifest_id"], args.directory / "snapshot.json")
     finally:
         db.close()

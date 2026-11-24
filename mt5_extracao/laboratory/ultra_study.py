@@ -1,15 +1,25 @@
 """Seleção temporal de carteiras discretas. Cada revisão decide antes do primeiro tick do corte."""
 from collections import defaultdict
 from datetime import date
+from hashlib import sha256
+from pathlib import Path
+
+import numpy as np
 import json
 
 from sqlalchemy import text
 
 from ..analytics import datasets
+from ..analytics.associations import _moving_block_indices
 from ..composition import ultra as engine
 from ..experiments import store
 from ..experiments.schema import closed, digest, encoded
 from . import ultra
+
+
+def _identity(receipt, plan):
+    evaluator = sha256(Path(__file__).read_text(encoding="utf-8").encode()).hexdigest()
+    return digest([2, receipt, plan, evaluator])
 
 
 def register(db, receipt, plan):
@@ -39,7 +49,7 @@ def register(db, receipt, plan):
     mandatory = [[]] + [[owner] for owner in owners] + [owners]
     if any({"owners": arm, "invalidation": False} not in plan["trials"] for arm in mandatory):
         raise ValueError("Inclua caixa, estratégias estáticas individuais e carteira estática.")
-    ident = digest([1, receipt, plan])
+    ident = _identity(receipt, plan)
     with store.transaction(db) as conn:
         conn.execute(text("CREATE TABLE IF NOT EXISTS _ultra_studies (id TEXT PRIMARY KEY, receipt TEXT NOT NULL, "
                           "plan TEXT NOT NULL, result TEXT)"))
@@ -105,8 +115,12 @@ def simulate(policy, plan, ticks, signals):
                         and gains[i] >= plan["minimum_gain"]]
             best = max(eligible or [cash], key=lambda i: (gains[i], -i))
             for name, path in paths.items():
+                old = path["active"]
+                if old in eligible:
+                    path.pop("degraded_since", None)
+                elif path["reviews"]:
+                    path.setdefault("degraded_since", day)
                 if day >= path["next"]:
-                    old = path["active"]
                     selected = (cash if name == "cash" else full if name == "static_portfolio"
                                 else max(static, key=lambda i: (gains[i], -i)) if name == "static_single" and static
                                 else best)
@@ -127,7 +141,12 @@ def simulate(policy, plan, ticks, signals):
                     path["reviews"].append({"day": day, "last_training_day": history[0][-1]["day"],
                          "scores": list(gains), "old": old, "selected": selected, "decision": decision,
                          "switch_cost": fee, "revision": variants[selected][0]["revision"],
+                         "previous_revision": variants[old][0]["revision"],
+                         "degraded_since_day": path.get("degraded_since"),
+                         "detection_delay_days": day - path["degraded_since"] if "degraded_since" in path else None,
                          "open_origin_versions": [c["version"] for c in path["state"]["cycles"].values()]})
+                    if selected != old:
+                        path.pop("degraded_since", None)
                 result = _day(path["state"], variants[path["active"]], batch)
                 path["daily"].append(dict(result, p_win=path["p_win"], day=day, role="reserve" if day >= reserve else "validation"))
         for state, variant, rows in zip(states, variants, history, strict=True):
@@ -158,7 +177,19 @@ def simulate(policy, plan, ticks, signals):
     from ..experiments.f19_summary import _estimate
     interval = _estimate(deltas, {"block_sessions": 5, "bootstrap_replicates": 500},
                          {"confidence": .95, "minimum_net_cash_difference": 0}, seed=1)
-    return {"status": "evaluated", "weekly_minus_fixed_session_interval": interval,
+    train_sample = np.array([[row["delta"] for row in rows if row["day"] < validation] for rows in history]).T
+    selection = {"training_sessions": len(train_sample), "trials": len(trials), "block_sessions": 5,
+                 "status": "insufficient_sessions", "mean_null_maximum_per_session": None}
+    if len(train_sample) > 5:
+        # Cada bloco contém a sessão inteira de todos os braços, com a simultaneidade original.
+        centered = train_sample - train_sample.mean(axis=0)
+        rng = np.random.default_rng(21)
+        null_max = [float(centered[_moving_block_indices(len(centered), 5, rng)].mean(axis=0).max())
+                    for _ in range(500)]
+        selection.update(status="estimated", replicates=500, seed=21,
+                         mean_null_maximum_per_session=float(np.mean(null_max)),
+                         null_maximum_p95=float(np.quantile(null_max, .95)))
+    return {"status": "evaluated", "selection_effect": selection, "weekly_minus_fixed_session_interval": interval,
             "selection_status": "no_candidate" if paths["fixed"]["active"] == cash else "research_candidate", "policies": out, "attempts": [{"trial": t, "days": days}
             for t, days in zip(trials, history, strict=True)], "economic_approval": False,
             "boundary_policy": "positions_marked_at_cut_open_cycles_keep_original_version",
@@ -173,13 +204,18 @@ def evaluate(db, ident):
     receipt, plan, cached = row
     if cached:
         return json.loads(cached)
+    plan = json.loads(plan)
+    if _identity(receipt, plan) != ident:
+        raise ValueError("A avaliação exige a revisão de origem do estudo congelado.")
     campaign = ultra.inspect_receipt(db, receipt)
+    if campaign["policy"]["engine_hash"] != ultra.source_identity():
+        raise ValueError("A avaliação exige a revisão do motor de carteira congelado.")
     if campaign["status"] in ("insufficient_data", "no_candidate"):
         result = {"status": campaign["status"], "reasons": campaign["reasons"]}
     else:
         policy = campaign["policy"]
         ticks, signals = ultra._inputs(datasets.load(db, policy["manifest_id"]), policy)
-        result = simulate(policy, json.loads(plan), ticks, signals)
+        result = simulate(policy, plan, ticks, signals)
     result.update(study_id=ident, receipt=receipt, sample_kind=campaign["sample_kind"])
     with store.transaction(db) as conn:
         conn.execute(text("UPDATE _ultra_studies SET result=:result WHERE id=:i AND result IS NULL"),
