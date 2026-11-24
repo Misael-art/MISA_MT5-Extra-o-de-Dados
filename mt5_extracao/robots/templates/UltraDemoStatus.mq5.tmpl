@@ -1,0 +1,10 @@
+#property strict
+void OnStart()
+{
+   ulong start=GetTickCount64();
+   while(!IsStopped() && !TerminalInfoInteger(TERMINAL_CONNECTED) && GetTickCount64()-start<20000)
+      Sleep(250);
+   bool connected=TerminalInfoInteger(TERMINAL_CONNECTED)!=0;
+   bool demo=AccountInfoInteger(ACCOUNT_LOGIN)>0 && AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO;
+   PrintFormat("MT5X_ULTRA_DEMO|%d|%d",(int)connected,(int)demo);
+}

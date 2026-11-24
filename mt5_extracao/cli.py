@@ -1695,6 +1695,17 @@ def _robots_market(args, ctx, items):
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
+    if args.action == "ultra-test":
+        import json
+        from mt5_extracao.robots.ultra_runner import run
+        if not args.path or not args.report:
+            raise ValueError("Informe o pacote e a pasta de evidências em --report.")
+        package = json.loads(Path(args.path).read_text(encoding="utf-8-sig"))
+        result = run(ctx.db, ctx.config, package, args.report, origin=args.ultra_origin,
+                     chart=args.symbol or "EURUSD")
+        _data(**result)
+        _print("Execução Ultra: " + result["status"])
+        return EXIT_OK if result["status"] == "modeled_book_matches" else EXIT_FAIL
     if args.all_symbols and args.action != "backtest-plan":
         raise ValueError("--all-symbols exige backtest-plan e revisão antes da execução.")
     if args.action == 'backtest-plan-compare':
@@ -2390,7 +2401,7 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity", "market",
+    p.add_argument("action", nargs="?", choices=["list", "import", "ultra-test", "backtest", "install", "compile", "battery", "validate", "check", "parity", "market",
                                                     "generate", "backtest-plan", "backtest-plan-show", "backtest-plan-run", "backtest-plan-compare",
                                                     "new",
                                                     "start",
@@ -2403,6 +2414,8 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
+    p.add_argument("--ultra-origin", choices=("strategy_tester", "terminal_history"), default="strategy_tester",
+                   help="ultra-test: origem do journal MQL5")
     p.add_argument("--all-symbols", action="store_true", help="backtest-plan: revisar todos os ativos com barras na base")
     p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")
     p.add_argument("--preset-package", help="backtest-plan: pacote Default/Manual exportado no contexto original")
@@ -2420,7 +2433,7 @@ def build_parser():
                    help="market: inclui .mq5/.mqh no pacote (por padrão só vai o .ex5)")
     p.add_argument("--deep", action="store_true",
                    help="battery (robô MQL5): repete o Strategy Tester para medir fora da amostra e robustez ±20%%")
-    p.add_argument("--report", help="check: relatório JUnit XML; backtest-plan-compare: novo HTML local")
+    p.add_argument("--report", help="ultra-test: pasta de recibos; check: JUnit XML; backtest-plan-compare: HTML local")
     p.add_argument("--name", help="generate: nome do robô a criar")
     p.add_argument("--dir", help="new/generate: pasta de robôs onde criar (layout Experts/ Presets/)")
     p.add_argument('--template',choices=['skeleton','super-atr-research','super-atr-reference'],default='skeleton',help='new: modelo padrão, candidato Super ATR Tester+DEMO ou referência SA-REF-01 (G19.15)')

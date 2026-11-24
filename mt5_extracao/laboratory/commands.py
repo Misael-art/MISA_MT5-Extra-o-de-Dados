@@ -12,6 +12,7 @@ def add_parser(sub):
     parser = sub.add_parser("laboratory", help="séries, confluências e comparação exploratória entre timeframes")
     actions = parser.add_subparsers(dest="laboratory_action", required=True)
     actions.add_parser("ultra-capabilities", help="capacidades do replay Ultra offline").set_defaults(func=run)
+    actions.add_parser("ultra-tester-capabilities", help="capacidades do livro MQL5 e do executor nativo").set_defaults(func=run)
     freeze = actions.add_parser("ultra-freeze", help="congela política e referência ao snapshot")
     freeze.add_argument("--definition", required=True)
     freeze.set_defaults(func=run)
@@ -185,6 +186,9 @@ def run(args, ctx):
         from . import ultra
         if args.laboratory_action == "ultra-capabilities":
             result = ultra.capabilities()
+        elif args.laboratory_action == "ultra-tester-capabilities":
+            from .ultra_tester import capabilities
+            result = capabilities()
         elif args.laboratory_action == "ultra-freeze":
             result = ultra.freeze(ctx.db, json.loads(Path(args.definition).read_text(encoding="utf-8-sig")))
         elif args.laboratory_action == "ultra-replay":

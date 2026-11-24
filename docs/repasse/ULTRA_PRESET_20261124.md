@@ -114,3 +114,15 @@ cli laboratory ultra-tester-compare --package "$QA/pacote.json" --origin strateg
 | Ordens da plataforma | `ultra-parity`, livro completo e journal de execução | Pendente. Esta versão calcula fills, margem e custos pelo contrato modelado do pacote. O vínculo com tickets, callbacks de transação e retomada nativa continua em aberto. |
 
 O comparador usa inteiros em ticks, passos de volume e centésimos da moeda. Ele confere o estado agregado após cada evento e cada cotação, a identificação de cada ciclo pelo dono e instante do sinal, os níveis de proteção e valores executados. Admite o par Donchian/S09 em M1 sintético com relógio UTC, até 10.000 cotações por journal. Os arquivos de entrada do MQL5 contêm parâmetros e cotações. Os sinais, ordens modeladas e saldos são calculados durante a execução.
+
+### Execução pelo launcher no Linux
+
+Com a instalação portátil configurada no App e o terminal fechado, o mesmo serviço faz a compilação, a importação e a conferência. A opção `--report` recebe uma pasta de evidências. Cada chamada abre uma subpasta independente e devolve o caminho de `receipt.json`. A descoberta de capacidades funciona offline.
+
+```sh
+cli laboratory ultra-tester-capabilities
+cli robots ultra-test "$QA/pacote.json" --ultra-origin terminal_history --report "$QA/ensaios"
+cli robots ultra-test "$QA/pacote.json" --ultra-origin strategy_tester --report "$QA/ensaios"
+```
+
+O ensaio usa o símbolo personalizado do pacote e um gráfico EURUSD para executar os scripts auxiliares. Se o perfil usar outro nome nesse gráfico, informe `--symbol`. O terminal recebe os scripts em subpastas identificadas por hash. A origem Strategy Tester exige um recibo de conexão DEMO, usa ticks reais e um agente local, e conserva o relatório da plataforma. `terminal_busy` identifica o terminal em uso, `demo_login_required` identifica a falta de conexão DEMO e `diverged` aponta a primeira diferença observada em uma execução. O SDK oferece `ultra_run_tester`, `ultra_export_tester` e `ultra_compare_native_book`.
