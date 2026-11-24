@@ -126,3 +126,16 @@ cli robots ultra-test "$QA/pacote.json" --ultra-origin strategy_tester --report 
 ```
 
 O ensaio usa o símbolo personalizado do pacote e um gráfico EURUSD para executar os scripts auxiliares. Se o perfil usar outro nome nesse gráfico, informe `--symbol`. O terminal recebe os scripts em subpastas identificadas por hash. A origem Strategy Tester exige um recibo de conexão DEMO, usa ticks reais e um agente local, e conserva o relatório da plataforma. `terminal_busy` identifica o terminal em uso, `demo_login_required` identifica a falta de conexão DEMO e `diverged` aponta a primeira diferença observada em uma execução. O SDK oferece `ultra_run_tester`, `ultra_export_tester` e `ultra_compare_native_book`.
+
+### Reinício do terminal após um fill parcial
+
+O ensaio `terminal_restart` fecha o primeiro processo depois de gravar os indicadores, o livro dos dois donos, a proteção e o cursor de ticks. Outro processo confere a última cotação recebida e retoma no tick seguinte. O recibo preserva o arquivo binário, os journals de cada processo e seus hashes. Uma nova chamada também pode partir desse recibo em um perfil portátil compatível.
+
+```sh
+cli robots ultra-test "$QA/pacote.json" --ultra-origin terminal_restart --report "$QA/ensaios"
+cli robots ultra-test "$QA/pacote.json" --ultra-origin terminal_restart --report "$QA/ensaios" --resume-attempt "$RECIBO"
+```
+
+No Linux com MT5 build 6324, o primeiro processo parou após a cotação 199. O dono A tinha um passo executado e um pendente. O segundo processo reencontrou esse cursor e completou 372 cotações e 80 eventos. A carteira terminou com USD 934,40. O comparador confere os dois registros do checkpoint contra o primeiro fill parcial do livro Python. Essa evidência cobre a recuperação da carteira modelada no histórico nativo. A conciliação com tickets físicos do Strategy Tester mantém seu próprio aceite.
+
+O replay fracionário também reabriu na cotação 199 e terminou com 81 eventos e USD 957,30 de patrimônio marcado. Uma terceira chamada usou o recibo do primeiro contrato e recuperou o mesmo saldo. O lote de 18 regressões passou no Linux, e o doctor de desenvolvimento retornou 16 verificações OK, dois avisos e zero falhas.

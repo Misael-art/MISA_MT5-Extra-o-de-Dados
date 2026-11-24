@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from ..laboratory import ultra_tester
 from . import mt5_tools as mt5
+from . import ultra_restart
 
 
 def _sha(path):
@@ -103,11 +104,13 @@ def _marked(journals, marker):
     return path, records
 
 
-def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300):
+def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300, resume=None):
     if origin not in ultra_tester.MARKERS or not re.fullmatch(r"[\w.#-]{1,31}", chart):
         raise ValueError("Origem ou símbolo do gráfico auxiliar inválido.")
     if type(timeout) is not int or not 10 <= timeout <= 1800:
         raise ValueError("O prazo por etapa deve estar entre 10 e 1800 segundos.")
+    if resume is not None and origin != "terminal_restart":
+        raise ValueError("A retomada por recibo exige a origem terminal_restart.")
     output = Path(output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=True)
     attempt = uuid4().hex
@@ -124,7 +127,14 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
     save("preparing")
     try:
         bundle = folder / "bundle"
-        exported = ultra_tester.export(db, package, bundle)
+        parent = None
+        options = {}
+        if origin == "terminal_restart":
+            parent = ultra_restart.read_parent(resume, package["package_hash"])
+            options["restart_id"] = parent[1]["restart_id"] if parent else attempt
+            if parent:
+                receipt["parent_receipt"] = str(parent[0])
+        exported = ultra_tester.export(db, package, bundle, **options)
         receipt.update(package_hash=exported["package_hash"], symbol=exported["symbol"], input_hashes=exported["sha256"])
         prefix = mt5.wine_prefix(config)
         data = mt5.data_dir(config).resolve()
@@ -136,18 +146,19 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
             session = SimpleNamespace(id=attempt, directory=data, child_config=config)
             mt5.register_native_context(session)
             try:
-                return _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save)
+                return _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent)
             finally:
                 mt5.release_native_context(session)
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         return save("failed", error_type=type(error).__name__, reason=str(error))
 
 
-def _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save):
+def _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent):
     mql = data / "MQL5"
     marker = "MT5X_ULTRA_DEMO|"
-    probe = origin == "terminal_history"
-    main = "UltraTerminalProbe" if probe else "UltraConcurrent"
+    probe = origin != "strategy_tester"
+    main = {"terminal_history": "UltraTerminalProbe", "terminal_restart": "UltraRestartProbe",
+            "strategy_tester": "UltraConcurrent"}[origin]
     scripts = [("UltraImport", "Scripts"), (main, "Scripts" if probe else "Experts")]
     if not probe:
         shutil.copyfile(ultra_tester.TEMPLATES / "UltraDemoStatus.mq5.tmpl", bundle / "UltraDemoStatus.mq5")
@@ -166,8 +177,8 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         binaries[name] = _sha(Path(compiled.compiled))
         names[name] = (subdir / name).as_posix().replace("/", "\\")
     save("compiled", binary_sha256=binaries)
-    def invoke(name):
-        return _script(config, data, names[name], chart, folder.name + name, folder / name, timeout)
+    def invoke(name, phase=""):
+        return _script(config, data, names[name], chart, folder.name + name + phase, folder / (name + phase), timeout)
     if not probe:
         _, records = _marked(invoke("UltraDemoStatus"), marker)
         if records != ["1|1"]:
@@ -180,7 +191,14 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
     if imported != [f'{exported["package_hash"]}|{exported["ticks"]}|0']:
         return save("import_unconfirmed")
     save("ticks_verified", ticks=exported["ticks"])
-    if probe:
+    journal = None
+    if origin == "terminal_restart":
+        journal, pending = ultra_restart.complete(
+            folder=folder, data=data, exported=exported, parent=parent, invoke=lambda phase: invoke(main, phase),
+            marked=_marked, install=_install, save=save, running=lambda: mt5.terminal_running(config))
+        if pending:
+            return pending
+    elif probe:
         logs = invoke(main)
     else:
         times = csv.read_text(encoding="utf-8").splitlines()
@@ -196,7 +214,8 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         finally:
             logs = _collect(data, "Tester", before, folder / "tester-logs")
         shutil.copyfile(path, folder / path.name)
-    journal, _ = _marked(logs, ultra_tester.MARKERS[origin])
+    if journal is None:
+        journal, _ = _marked(logs, ultra_tester.MARKERS[origin])
     if journal is None:
         return save("journal_missing")
     result = ultra_tester.compare(db, package, journal.read_bytes(), origin=origin)
