@@ -10,7 +10,7 @@ import sys
 # Leitura/análise sobre bases, recibos e arquivos locais; nenhum chama o conector MT5.
 LOCAL_COMMANDS = frozenset({
     "dashboard", "tables", "quality", "export", "strategies", "analyze", "status", "validate", "screen",
-    "report", "laboratory", "analytics", "trades", "experiments", "resources", "b3", "crypto",
+    "commands", "report", "laboratory", "analytics", "trades", "experiments", "resources", "b3", "crypto",
 })
 # Opções globais da CLI que consomem o argumento seguinte.
 _GLOBAL_WITH_VALUE = frozenset({"--config", "--db"})
@@ -18,7 +18,7 @@ _GLOBAL_FLAGS = frozenset({"--json", "-v", "--verbose"})
 LOCAL_ENV = "MT5X_LOCAL_ONLY"
 
 
-def command_name(argv):
+def _command_args(argv):
     """Primeiro argumento que não é opção global (o comando), ou ``None``."""
     index = 0
     while index < len(argv):
@@ -28,12 +28,18 @@ def command_name(argv):
         elif token in _GLOBAL_FLAGS or token.startswith(("--config=", "--db=")):
             index += 1
         else:
-            return token
-    return None
+            return argv[index:]
+    return []
+
+
+def command_name(argv):
+    args = _command_args(argv)
+    return args[0] if args else None
 
 
 def needs_bridge(argv):
-    return command_name(argv) not in LOCAL_COMMANDS
+    args = _command_args(argv)
+    return not (args and (args[0] in LOCAL_COMMANDS or args[:2] == ["workflow", "methods"]))
 
 
 def main(argv=None):
