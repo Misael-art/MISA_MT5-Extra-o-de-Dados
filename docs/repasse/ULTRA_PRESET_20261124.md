@@ -1,6 +1,6 @@
 # Ultra Preset por ativo — repasse da pesquisa de 24/11/2026
 
-O marco reproduz duas estratégias do catálogo sobre 372 cotações de um ativo sintético. Donchian (A) e S09 (B) entram no mesmo livro, com capital, risco e liquidez compartilhados. Há também uma integração de hipóteses direcionais novas do Laboratório. A execução demonstrada é um replay Python. A evidência econômica vem de QA sintética. O aceite do Expert no Strategy Tester e a qualificação em dois ativos de mercado estão abertos.
+O marco reproduz duas estratégias do catálogo sobre 372 cotações de um ativo sintético. Donchian (A) e S09 (B) entram no mesmo livro, com capital, risco e liquidez compartilhados. Há também uma integração de hipóteses direcionais novas do Laboratório. O replay Python tem conferência independente no histórico do terminal MQL5, inclusive após reinício. A demonstração usa dados sintéticos. O aceite do Expert no Strategy Tester e a qualificação em dois ativos de mercado estão abertos.
 
 ## Composição para revisão
 
@@ -16,6 +16,10 @@ O marco reproduz duas estratégias do catálogo sobre 372 cotações de um ativo
 | App T20.22 | `251478c` | Consulta na GUI, SDK e CLI, PR 393 |
 | App T19.52 | `b1a7d14` | Padrões exploratórios dentro da carteira, PR 394 |
 | App T19.53 | `9b3abec` | Reserva de custo pendente e comparação de traços, PR 395 |
+| App T19.54 | `53a190ed` | Comparação pareada de gestão, PR 398 |
+| App T19.53 | `94e741ff` | Livro concorrente no MQL5, PR 399 |
+| App T19.53 | `04d3f418` | Executor do terminal pelo launcher, PR 400 |
+| App T20.20 | `04b2ad7c` | Reinício com o livro parcial, PR 401 |
 
 A composição está empilhada sobre as PRs de pesquisa em revisão. O arquivo `revisoes.json` do repasse identifica a ponta publicada, as bases e os comandos dos diffs. `app.patch` parte da PR 388. Os patches de HADOUKEN e Safety são vazios contra os respectivos pins.
 
@@ -139,3 +143,16 @@ cli robots ultra-test "$QA/pacote.json" --ultra-origin terminal_restart --report
 No Linux com MT5 build 6324, o primeiro processo parou após a cotação 199. O dono A tinha um passo executado e um pendente. O segundo processo reencontrou esse cursor e completou 372 cotações e 80 eventos. A carteira terminou com USD 934,40. O comparador confere os dois registros do checkpoint contra o primeiro fill parcial do livro Python. Essa evidência cobre a recuperação da carteira modelada no histórico nativo. A conciliação com tickets físicos do Strategy Tester mantém seu próprio aceite.
 
 O replay fracionário também reabriu na cotação 199 e terminou com 81 eventos e USD 957,30 de patrimônio marcado. Uma terceira chamada usou o recibo do primeiro contrato e recuperou o mesmo saldo. O lote de 18 regressões passou no Linux, e o doctor de desenvolvimento retornou 16 verificações OK, dois avisos e zero falhas.
+
+### Preparação do símbolo para o Strategy Tester
+
+O modo de ticks reais do Tester precisa de histórico M1 anterior ao intervalo. A bancada cria um segundo símbolo personalizado identificado pelo contrato do pacote e pela revisão do preparador. O símbolo recebe 128 minutos de cotações sintéticas constantes no último dia útil anterior e, depois, exatamente as cotações congeladas. O Expert ignora cotações anteriores ao primeiro instante da amostra. A preparação conserva o CSV e o símbolo usados na conferência pelo histórico. [Histórico mínimo no MetaTrader 5](https://www.metatrader5.com/en/terminal/help/algotrading/test_preparation)
+
+```sh
+cli robots ultra-test "$QA/pacote.json" --prepare-only --report "$QA/ensaios"
+cli robots ultra-test "$QA/pacote.json" --report "$QA/ensaios"
+```
+
+O recibo `tester_contract_verified` exige a releitura dos ticks e das barras prévias, das moedas, da grade de preço, do tamanho do contrato, dos volumes e da margem inicial e de manutenção. No Linux, o MT5 releu 128 barras prévias e 372 ticks de cada pacote. Para um passo de volume, os valores observados por tick foram USD 1,00 e USD 0,50, respectivamente. A margem inicial em ambos foi USD 247,00 por passo. Os dois contratos usam o modo de futuros sintéticos para representar os valores congelados. Essa preparação permite conferir o insumo antes do login DEMO. A aprovação da execução usa o journal do agente do Tester.
+
+A tentativa conserva o arquivo `tester.ini` antes da autenticação. Ele fixa depósito e moeda do pacote, M1, modo 4 e agente local. A repetição no Linux verificou os símbolos já criados. Passaram 32 regressões do Ultra e do serviço do Tester no host.

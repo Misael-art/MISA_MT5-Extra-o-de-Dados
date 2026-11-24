@@ -38,12 +38,13 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
     data.mkdir()
     journal = "MT5X_ULTRA_HISTORY_B1|BEGIN"
     mock = monkeypatch.setattr
-    def export(db, package, folder):
+    def export(db, package, folder, **options):
         folder.mkdir()
-        for name in ("UltraImport.mq5", "UltraTerminalProbe.mq5", "UltraConcurrent.mq5"):
+        for name in ("UltraImport.mq5", "UltraTerminalProbe.mq5", "UltraPreparedTester.mq5", "UltraTesterContract.mq5"):
             (folder / name).write_text("// MQL5")
         (folder / "UX_test.csv").write_text("1791190800000,100,101\n")
-        return dict(package_hash="ABC", symbol="UX_test", sha256={}, ticks=1)
+        return dict(package_hash="ABC", symbol="UX_test", sha256={}, ticks=1, tester_contract={
+            "symbol": "UT_test", "primer_bars": 128, "tick_cash_cents_per_step": 100, "margin_cents_per_step": 24700})
     mock(runner.ultra_tester, "export", export)
     mock(runner.mt5, "data_dir", lambda cfg: data)
     mock(runner.mt5, "install_dir", lambda cfg: data)
@@ -62,6 +63,8 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
         path = out / "run.log"
         if name.endswith("UltraDemoStatus"):
             path.write_text("MT5X_ULTRA_DEMO|" + demo)
+        elif name.endswith("UltraTesterContract"):
+            path.write_text("MT5X_ULTRA_PREP|ABC|UT_test|128|1|100|24700")
         elif name.endswith("UltraImport"):
             path.write_text("MT5X_ULTRA_IMPORT|ABC|1|0")
         else:
@@ -75,15 +78,19 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
             assert blob.decode() == "MT5X_ULTRA_B1|BEGIN"
         return {"status": "modeled_book_matches"}
     mock(runner.ultra_tester, "compare", compare)
-    result = runner.run(None, None, {}, tmp_path / "audit", origin="terminal_history")
+    package = {"policy": {"cash": 100000, "currency": "USD"}}
+    result = runner.run(None, None, package, tmp_path / "audit", origin="terminal_history")
     assert result["status"] == "modeled_book_matches" and result["ticks"] == 1
     assert (Path(result["directory"]) / result["journal"]).is_file()
-    assert runner.run(None, None, {}, tmp_path / "audit")["status"] == "demo_login_required"
+    assert runner.run(None, None, package, tmp_path / "audit")["status"] == "demo_login_required"
+    ready = runner.run(None, None, package, tmp_path / "audit", prepare_only=True)
+    assert ready["status"] == "tester_contract_verified"
+    assert not (Path(ready["directory"]) / "UltraDemoStatus").exists()
     demo = "1|0"
-    assert runner.run(None, None, {}, tmp_path / "audit")["status"] == "demo_account_required"
+    assert runner.run(None, None, package, tmp_path / "audit")["status"] == "demo_account_required"
 
     def test_platform(cfg, folder, ini, report, *, timeout):
-        assert "Model=4" in ini and "UseCloud=0" in ini and "Symbol=UX_test" in ini
+        assert "Currency=USD" in ini and "Model=4" in ini and "UseCloud=0" in ini and "Symbol=UT_test" in ini
         logs = folder / "Tester/Agent-127.0.0.1/logs"
         logs.mkdir(parents=True)
         (logs / "agent.log").write_text("MT5X_ULTRA_B1|BEGIN")
@@ -93,12 +100,12 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
 
     demo = "1|1"
     mock(runner.mt5, "run_tester", test_platform)
-    result = runner.run(None, None, {"policy": {"cash": 100000}}, tmp_path / "audit")
+    result = runner.run(None, None, package, tmp_path / "audit")
     assert result["status"] == "modeled_book_matches"
     assert result["origin"] == "strategy_tester" and "tester-logs" in result["journal"]
     assert list(Path(result["directory"]).glob("*.htm"))
     mock(runner.mt5, "terminal_running", lambda cfg: True)
-    assert runner.run(None, None, {}, tmp_path / "audit")["status"] == "terminal_busy"
+    assert runner.run(None, None, package, tmp_path / "audit")["status"] == "terminal_busy"
 
 
 def test_cli_reads_frozen_package_and_preserves_pending_status(tmp_path, monkeypatch, capsys):

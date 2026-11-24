@@ -104,13 +104,15 @@ def _marked(journals, marker):
     return path, records
 
 
-def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300, resume=None):
+def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300, resume=None, prepare_only=False):
     if origin not in ultra_tester.MARKERS or not re.fullmatch(r"[\w.#-]{1,31}", chart):
         raise ValueError("Origem ou símbolo do gráfico auxiliar inválido.")
     if type(timeout) is not int or not 10 <= timeout <= 1800:
         raise ValueError("O prazo por etapa deve estar entre 10 e 1800 segundos.")
     if resume is not None and origin != "terminal_restart":
         raise ValueError("A retomada por recibo exige a origem terminal_restart.")
+    if prepare_only and origin != "strategy_tester":
+        raise ValueError("A preparação do símbolo se aplica à origem strategy_tester.")
     output = Path(output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=True)
     attempt = uuid4().hex
@@ -128,7 +130,7 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
     try:
         bundle = folder / "bundle"
         parent = None
-        options = {}
+        options = {"prepare_tester": True} if origin == "strategy_tester" else {}
         if origin == "terminal_restart":
             parent = ultra_restart.read_parent(resume, package["package_hash"])
             options["restart_id"] = parent[1]["restart_id"] if parent else attempt
@@ -146,21 +148,23 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
             session = SimpleNamespace(id=attempt, directory=data, child_config=config)
             mt5.register_native_context(session)
             try:
-                return _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent)
+                return _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent, prepare_only)
             finally:
                 mt5.release_native_context(session)
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         return save("failed", error_type=type(error).__name__, reason=str(error))
 
 
-def _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent):
+def _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent, prepare_only):
     mql = data / "MQL5"
     marker = "MT5X_ULTRA_DEMO|"
     probe = origin != "strategy_tester"
     main = {"terminal_history": "UltraTerminalProbe", "terminal_restart": "UltraRestartProbe",
-            "strategy_tester": "UltraConcurrent"}[origin]
+            "strategy_tester": "UltraPreparedTester"}[origin]
     scripts = [("UltraImport", "Scripts"), (main, "Scripts" if probe else "Experts")]
     if not probe:
+        scripts.insert(1, ("UltraTesterContract", "Scripts"))
+    if not probe and not prepare_only:
         shutil.copyfile(ultra_tester.TEMPLATES / "UltraDemoStatus.mq5.tmpl", bundle / "UltraDemoStatus.mq5")
         scripts.insert(0, ("UltraDemoStatus", "Scripts"))
     editor = mt5.find_metaeditor(config)
@@ -179,18 +183,37 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
     save("compiled", binary_sha256=binaries)
     def invoke(name, phase=""):
         return _script(config, data, names[name], chart, folder.name + name + phase, folder / (name + phase), timeout)
-    if not probe:
-        _, records = _marked(invoke("UltraDemoStatus"), marker)
-        if records != ["1|1"]:
-            states = {"0|0": "demo_login_required", "0|1": "demo_login_required", "1|0": "demo_account_required"}
-            observed = records[0] if len(records) == 1 else ""
-            return save(states.get(observed, "demo_status_unavailable"), demo_check=records)
     csv = bundle / (exported["symbol"] + ".csv")
     _install(csv, mql / "Files" / csv.name, data)
     _, imported = _marked(invoke("UltraImport"), "MT5X_ULTRA_IMPORT|")
     if imported != [f'{exported["package_hash"]}|{exported["ticks"]}|0']:
         return save("import_unconfirmed")
     save("ticks_verified", ticks=exported["ticks"])
+    if not probe:
+        contract = exported["tester_contract"]
+        journals = invoke("UltraTesterContract")
+        _, ready = _marked(journals, "MT5X_ULTRA_PREP|")
+        expected = [exported["package_hash"], contract["symbol"], contract["primer_bars"], exported["ticks"],
+                    contract["tick_cash_cents_per_step"], contract["margin_cents_per_step"]]
+        if ready != ["|".join(map(str, expected))]:
+            _, errors = _marked(journals, "MT5X_ULTRA_PREP_ERROR|")
+            return save("tester_contract_unconfirmed", observed=ready, property_errors=errors, tester_contract=contract)
+        times = csv.read_text(encoding="utf-8").splitlines()
+        def day(line):
+            return datetime.fromtimestamp(int(line.partition(",")[0])/1000, timezone.utc).date()
+        report = "ultra_" + folder.name
+        ini = mt5.tester_ini(names[main], contract["symbol"], "M1", day(times[0]), day(times[-1])+timedelta(days=1),
+                             package["policy"]["cash"]/100, report, model="4", visual=False, currency=package["policy"]["currency"])
+        (folder / "tester.ini").write_bytes(ini.encode("utf-16"))
+        state = save("tester_contract_verified", tester_contract=contract, observed=ready, tester_ini="tester.ini")
+        if prepare_only:
+            return state
+    if not probe:
+        _, records = _marked(invoke("UltraDemoStatus"), marker)
+        if records != ["1|1"]:
+            states = {"0|0": "demo_login_required", "0|1": "demo_login_required", "1|0": "demo_account_required"}
+            observed = records[0] if len(records) == 1 else ""
+            return save(states.get(observed, "demo_status_unavailable"), demo_check=records)
     journal = None
     if origin == "terminal_restart":
         journal, pending = ultra_restart.complete(
@@ -201,13 +224,6 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
     elif probe:
         logs = invoke(main)
     else:
-        times = csv.read_text(encoding="utf-8").splitlines()
-        def day(line):
-            return datetime.fromtimestamp(int(line.partition(",")[0])/1000, timezone.utc).date()
-        report = "ultra_" + folder.name
-        ini = mt5.tester_ini(names[main], exported["symbol"], "M1", day(times[0]), day(times[-1])+timedelta(days=1),
-                             package["policy"]["cash"]/100, report, model="4", visual=False)
-        (folder / "tester.ini").write_bytes(ini.encode("utf-16"))
         before = _offsets(data, "Tester")
         try:
             path = mt5.run_tester(config, data, ini, report, timeout=timeout)

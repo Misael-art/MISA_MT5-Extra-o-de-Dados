@@ -1702,11 +1702,14 @@ def cmd_robots(args, ctx):
             raise ValueError("Informe o pacote e a pasta de evidências em --report.")
         package = json.loads(Path(args.path).read_text(encoding="utf-8-sig"))
         options = {"resume": args.resume_attempt} if args.resume_attempt else {}
+        if args.prepare_only:
+            options["prepare_only"] = True
         result = run(ctx.db, ctx.config, package, args.report, origin=args.ultra_origin,
                      chart=args.symbol or "EURUSD", **options)
         _data(**result)
         _print("Execução Ultra: " + result["status"])
-        return EXIT_OK if result["status"] == "modeled_book_matches" else EXIT_FAIL
+        expected = "tester_contract_verified" if args.prepare_only else "modeled_book_matches"
+        return EXIT_OK if result["status"] == expected else EXIT_FAIL
     if args.all_symbols and args.action != "backtest-plan":
         raise ValueError("--all-symbols exige backtest-plan e revisão antes da execução.")
     if args.action == 'backtest-plan-compare':
@@ -2417,6 +2420,7 @@ def build_parser():
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
     p.add_argument("--ultra-origin", choices=("strategy_tester", "terminal_history", "terminal_restart"), default="strategy_tester",
                    help="ultra-test: origem do journal MQL5")
+    p.add_argument("--prepare-only", action="store_true", help="ultra-test: verifica o contrato e as barras M1 antes do ensaio")
     p.add_argument("--resume-attempt", help="ultra-test: receipt.json que contém o checkpoint de um fill parcial")
     p.add_argument("--all-symbols", action="store_true", help="backtest-plan: revisar todos os ativos com barras na base")
     p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")

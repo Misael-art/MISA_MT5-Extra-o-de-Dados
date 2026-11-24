@@ -1,5 +1,9 @@
 # Retomar MT5X em um host limpo
 
+## 24/11/2026 — Contrato do Strategy Tester no Linux
+
+`robots ultra-test PACOTE --prepare-only --report PASTA` grava o recibo da verificação nativa do símbolo e da série M1 anterior ao intervalo. O mesmo comando sem a opção de preparação prossegue ao agente quando a conta DEMO está conectada. O [repasse Ultra](docs/repasse/ULTRA_PRESET_20261124.md#preparação-do-símbolo-para-o-strategy-tester) reúne os valores observados no MT5.
+
 ## 24/11/2026 — Retomada do livro concorrente
 
 A origem `terminal_restart` do comando `robots ultra-test` conserva o checkpoint do fill parcial e reconcilia a cotação já processada antes de continuar. No terminal Linux, a campanha inteira coincidiu com o livro Python após o reinício. Os recibos, o limite de validação e os comandos constam no [repasse Ultra](docs/repasse/ULTRA_PRESET_20261124.md#reinício-do-terminal-após-um-fill-parcial).

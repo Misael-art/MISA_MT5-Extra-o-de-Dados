@@ -10,6 +10,7 @@ from ..experiments.schema import digest
 
 from ..presets.compiler import verify_ultra_research
 from .ultra import inspect_receipt
+from . import ultra_preparation
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "robots" / "templates"
 FIELDS = ("time_msc", "seq", "bid", "ask", "donchian", "s09_reference", "available_msc", "reference")
@@ -29,7 +30,8 @@ def capabilities():
     return {"scope": "two_owner_modeled_book", "strategies": ["donchian", "s09_reference"],
             "origins": list(MARKERS), "feed": "synthetic_bid_ticks_m1_utc",
             "max_ticks": 10000, "tester_requires_connected_demo": True,
-            "broker_orders": False, "economic_approval": False}
+            "broker_orders": False, "economic_approval": False,
+            "tester_primer_m1_bars": ultra_preparation.PRIMER_MINUTES}
 
 
 def _templates():
@@ -56,7 +58,7 @@ def _restart_template():
     return (TEMPLATES / "UltraRestartProbe.mq5.tmpl").read_text(encoding="utf-8")
 
 
-def export(db, package, destination, *, restart_id=None):
+def export(db, package, destination, *, restart_id=None, prepare_tester=False):
     if restart_id is not None and (not isinstance(restart_id, str) or not re.fullmatch(r"[a-f0-9]{32}", restart_id)):
         raise ValueError("O identificador da retomada deve conter 32 dígitos hexadecimais.")
     modules, frames = _context(db, package)
@@ -89,14 +91,14 @@ def export(db, package, destination, *, restart_id=None):
                                for i, m in enumerate(slots) for name, field in MODULE.items())
     templates = _templates()
     revision = digest(templates)
-    def program(name, kind, restart=None, binding=None):
+    def program(name, kind, restart=None, binding=None, instrument=symbol):
         runtime = Template(templates["UltraRuntime.mqh"]).substitute(
             defines=defines, core=templates["UltraSignals.mqh"], book=templates["UltraBook.mqh"],
             modules=assignments, package=key, manifest=package["source_manifest"], revision=digest([revision, restart]) if restart else revision,
             marker=MARKERS[kind])
         if restart:
             return Template(restart).substitute(runtime=runtime, symbol=symbol, binding=binding)
-        return Template(templates[name]).substitute(runtime=runtime, symbol=symbol)
+        return Template(templates[name]).substitute(runtime=runtime, symbol=instrument)
     importer = Template(templates["UltraImport.mq5"]).substitute(
         symbol=symbol, csv=csv, count=len(frames), digits=spec["digits"], tick_size=unit, package=key)
     def quote(frame):
@@ -111,6 +113,12 @@ def export(db, package, destination, *, restart_id=None):
         binding = digest([key, package["source_manifest"], revision, restart, restart_id])
         contents["UltraRestartProbe.mq5"] = program("UltraRestartProbe.mq5", "terminal_restart", restart, binding)
         metadata.update(restart_id=restart_id, checkpoint_binding=binding)
+    if prepare_tester:
+        prepared, info = ultra_preparation.render((TEMPLATES / "UltraTesterContract.mq5.tmpl").read_text(encoding="utf-8"),
+                                                  package, symbol, frames)
+        contents["UltraTesterContract.mq5"] = prepared
+        contents["UltraPreparedTester.mq5"] = program("UltraConcurrent.mq5", "strategy_tester", instrument=info["symbol"])
+        metadata["tester_contract"] = info
     with TemporaryDirectory(dir=target.parent) as temporary:
         stage = Path(temporary) / "bundle"
         stage.mkdir()
