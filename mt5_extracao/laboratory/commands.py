@@ -38,6 +38,10 @@ def add_parser(sub):
     verify = actions.add_parser("ultra-verify", help="confere o pacote com a fonte e o livro")
     verify.add_argument("--package", required=True)
     verify.set_defaults(func=run)
+    entries = actions.add_parser("ultra-entry-compare", help="compara entrada direta e gradiente linear no livro compartilhado")
+    entries.add_argument("--package", required=True)
+    entries.add_argument("--spacing-ticks", type=int, required=True)
+    entries.set_defaults(func=run)
     expert = actions.add_parser("ultra-tester-export", help="gera livro concorrente MQL5 e ticks do pacote para o Tester")
     expert.add_argument("--package", required=True)
     expert.add_argument("--out", required=True, help="nova pasta para fontes e cotações")
@@ -222,6 +226,9 @@ def run(args, ctx):
         elif args.laboratory_action == "ultra-list":
             from .ultra_report import list_receipts
             result = {"receipts": list_receipts(ctx.db)}
+        elif args.laboratory_action == "ultra-entry-compare":
+            from .ultra_entries import compare
+            result = compare(ctx.db, json.loads(Path(args.package).read_text(encoding="utf-8-sig")), args.spacing_ticks)
         elif args.laboratory_action == "ultra-report":
             from .ultra_report import export
             result = export(ctx.db, args.receipt, args.out, reference=args.reference)
