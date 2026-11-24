@@ -79,7 +79,7 @@ header small{color:#c0d4ce}h1{margin:4px 0 0;font-size:clamp(24px,4vw,38px)}h2{f
 .cards,.charts{display:grid;gap:12px}.cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
 section,article{background:#fff;border:1px solid #ccd5d1;border-radius:6px;padding:14px;margin-bottom:14px}
 article strong{display:block;font-size:22px}label{display:inline-block;margin:4px 10px 4px 0}
-select,input,button{font:inherit}select{max-width:100%}button,select{padding:5px 9px}figure.tracks{margin:12px 0}#lanes{height:auto}.trackLegend{font-size:.85em;color:#475e61}
+select,input,button{font:inherit}select{max-width:100%}.cycle{display:flex;align-items:center;gap:8px;margin-right:0;min-width:0}.cycle select{min-width:0}button,select{padding:5px 9px}figure.tracks{margin:12px 0}#lanes{height:auto}.trackLegend{font-size:.85em;color:#475e61}
 input[type=range]{width:min(500px,100%);accent-color:#007566}
 canvas{display:block;width:100%;height:145px;touch-action:pan-y}canvas:focus-visible,button:focus-visible{outline:3px solid #a55008}
 .charts{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}figure{margin:0;min-width:0}
@@ -98,7 +98,7 @@ figcaption{font-weight:650}small,.muted{color:#475e61}code{overflow-wrap:anywher
  <div class="trackLegend">Cinza · pendente　 Verde · posição　 ◆ veto ou invalidação　 ● mudança de gestão</div>
  </figure><label for="cursor">Tick</label><input type="range" id="cursor" min="0" step="1"><output id="time"></output></section>
 <section><h2>Decisões neste instante</h2><label>Estratégia <select id="owner"><option value="">Todas</option></select></label>
-<label>Ciclo <select id="cycle"><option value="">Todos</option></select></label>
+<label class="cycle">Ciclo <select id="cycle"><option value="">Todos</option></select></label>
 <button id="prev">Decisão anterior</button> <button id="next">Próxima decisão</button><p id="account"></p>
 <ul id="events" aria-live="polite"></ul></section><details><summary>Identidade do recibo</summary><code>__RECEIPT__</code></details></main>
 <script id="frozen" type="application/json">__DATA__</script><script>
