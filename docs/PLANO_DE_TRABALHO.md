@@ -5457,3 +5457,7 @@ exercita o comparador. O Expert concorrente vinculado e a execução no Tester s
 ### T20.22 · trilhas sincronizadas de ciclos
 
 O relatório da carteira desenha uma linha por dono para pendência e posição. O seletor de estratégia e as setas percorrem a mesma cotação nos gráficos e no livro. Vetos de margem e de sequência mostram os valores observados. A demonstração no navegador conserva as capturas estreita e larga.
+
+### T19.54 · controle da transição de gestão
+
+A comparação reexecuta a mesma carteira e as mesmas condições de entrada preservando o stop original. Cada transição de breakeven aponta o ciclo correspondente pelo dono e instante elegível, os resultados encerrados dos dois braços e o atraso desde o sinal. Um ciclo aberto ou sem par mantém o desfecho desconhecido.
