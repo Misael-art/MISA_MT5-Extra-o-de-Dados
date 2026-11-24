@@ -28,9 +28,6 @@ from .manual import _publish
 _EVIDENCE_LOCK=threading.Lock()
 
 
-_SOURCE_HASHES={}
-
-
 def content_sha256(data):
     """sha256 do conteúdo com CRLF→LF: o mesmo no Windows, no Linux e no blob publicado."""
     return hashlib.sha256(data.replace(b"\r\n",b"\n")).hexdigest()
@@ -39,13 +36,6 @@ def content_sha256(data):
 def source_digest(hashes):
     """sha256 do mapa canônico {caminho posix: content_sha256}."""
     return hashlib.sha256(canonical_json(hashes).encode("utf-8")).hexdigest()
-
-
-def _cached_sha256(path):
-    info=path.stat();key=(str(path),info.st_mtime_ns,info.st_size)
-    if key not in _SOURCE_HASHES:
-        _SOURCE_HASHES[key]=content_sha256(path.read_bytes())
-    return _SOURCE_HASHES[key]
 
 
 def app_source_identity(modules=None,root=None):
@@ -66,7 +56,7 @@ def app_source_identity(modules=None,root=None):
             relative=path.relative_to(base.resolve()).as_posix()
         except ValueError:
             relative=path.as_posix()
-        hashes[relative]=_cached_sha256(path)
+        hashes[relative]=content_sha256(path.read_bytes())
     return dict(schema="mt5x-app-source/v1",scope="módulos mt5_extracao carregados",normalization="CRLF->LF",
                 files=hashes,digest=source_digest(hashes))
 
