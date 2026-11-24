@@ -183,3 +183,17 @@ def test_shared_margin_reserves_execution_cost_of_both_pending_intentions():
                                   {m["owner"]: dict(side=1, reference=90, available_msc=1) for m in policy["modules"]})
     assert any(e["owner"] == "B" and e["reason"] == "shared_margin" for e in events)
     assert mark["exposure_steps"] == 1 and mark["margin"] <= mark["equity"]
+
+
+def test_fractional_instrument_uses_own_price_volume_and_tick_economics(tmp_path):
+    db = DatabaseManager(db_path=str(tmp_path / "fx.sqlite"), broker_utc_offset=0)
+    try:
+        definition = prepare(db, instrument="fractional")
+        receipt = ultra.freeze(db, definition)["receipt"]
+        result = ultra.replay(db, receipt)
+        assert result["policy"]["tick_cash"] == 50 and result["status"] == "complete"
+        tape = ultra.inspect_receipt(db, receipt, timeline=True)["timeline"]
+        assert tape[0]["mark"]["ask"] - tape[0]["mark"]["bid"] == 2
+        assert any(e["event"] == "fill" for f in tape for e in f["events"])
+    finally:
+        db.close()

@@ -80,3 +80,7 @@ O primeiro resumo com as decisões apareceu em 121 ms a 1060 px e em 104 ms a 39
 2. Integrar o executor conjunto ao vínculo de sessão do HADOUKEN e à reserva do Safety. O adaptador dos pins vincula um magic e exige Tester DEMO. A política testada declara preenchimento limitado por tick e margem por passo. Representar a liquidez do ativo e a margem do Tester requer evidência adicional. Netting físico, tickets de hedging, grade e outras transições conservam seus gates.
 3. Executar o pacote no Strategy Tester com identificação de fonte, binário, inputs, build e símbolo. Conservar journal bruto e fita normalizada. Passar os dois a `ultra-parity --package PACOTE --trace FITA --journal JOURNAL`. A comparação é exata depois da conversão em ticks, passos de lote e centésimos. O primeiro campo divergente, inclusive evento ausente ou saldo final, deve ser investigado.
 4. Executar os cortes históricos e a observação prospectiva com os critérios congelados. Medir falsas intervenções e atraso em sequências com deterioração real e recuperação. A promoção econômica e a ativação operacional continuam pendentes.
+
+### Segundo instrumento de QA
+
+`scripts/demo_ultra.py --instrument fractional` gera outro símbolo com preço em incrementos de 0,0001, spread de dois ticks, volume mínimo/passo de 0,1 lote e valor de USD 5 por tick e lote. Um passo vale USD 0,50 por tick. O teste `test_fractional_instrument_uses_own_price_volume_and_tick_economics` carrega esse contrato, executa o mesmo serviço e verifica fills, spread e valor monetário. A fita também é sintética.
