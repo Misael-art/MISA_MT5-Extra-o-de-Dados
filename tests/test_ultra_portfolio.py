@@ -231,3 +231,24 @@ def test_reserve_drawdown_resets_at_cut_and_respects_tick_order():
     assert result["gross_profit"] == 60 and result["gross_loss"] == 10
     assert result["commission"] == 4 and result["spread_cost_vs_mid"] == 3
     assert result["mean_session_net_interval"]["status"] == "insufficient_sessions"
+
+def test_batch_continues_to_three_owner_explanation(tmp_path, campaign):
+    db, definition = campaign
+    three = deepcopy(definition)
+    three["modules"].append(dict(three["modules"][0], owner="C", steps=4))
+    args = []
+    for index, item in enumerate((dict(definition, sample_kind="market_history"), dict(definition, modules=[]), three)):
+        source = tmp_path / f"policy-{index}.json"
+        source.write_text(json.dumps(item))
+        args.extend(("--definition", str(source)))
+    batch = cli(db, "ultra-batch", *args)["items"]
+    assert [r["status"] for r in batch] == ["insufficient_data", "no_candidate", "complete"]
+    receipt = batch[-1]["receipt"]
+    tick = cli(db, "ultra-explain", "--receipt", receipt, "--ordinal", "348")
+    decisions = {(e["owner"], e["event"], e["reason"]) for e in tick["events"]}
+    assert {("B", "veto", "local_loss_streak"), ("A", "order", "reserved"), ("C", "veto", "shared_margin")} <= decisions
+    assert set(tick["rules"]) == {"A", "B", "C"}
+    package = tmp_path / "package.json"
+    cli(db, "ultra-compile", "--receipt", receipt, "--out", str(package))
+    cap = cli(db, "ultra-tester-capabilities", "--package", str(package))
+    assert cap["status"] == "capability_absent" and cap["owners"] == ["A", "B", "C"]

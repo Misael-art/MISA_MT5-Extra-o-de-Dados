@@ -68,6 +68,28 @@ def open_receipts(panel):
                 webbrowser.open(Path(result["file"]).resolve().as_uri())
         panel.ui.run_bg(lambda: ultra_report.export(db, selected, path, reference=other), done)
 
+    def show_capabilities():
+        package = filedialog.askopenfilename(parent=window, title="Escolher pacote congelado", filetypes=[("JSON", "*.json")])
+        if not package:
+            return
+        def inspect():
+            return ultra_tester.package_capabilities(db, json.loads(Path(package).read_text(encoding="utf-8-sig")))
+        def finished(result, error):
+            if not window.winfo_exists():
+                return
+            capabilities.configure(state="normal")
+            if error:
+                note.configure(text=str(error))
+            elif result["status"] == "capability_absent":
+                note.configure(text=result["symbol"] + " · " + result["reason"])
+            else:
+                note.configure(text=f'{result["symbol"]} · M1 UTC · ' + ", ".join(result["owners"])
+                               + " · pendente com stop e alvo · cancelamento e breakeven."
+                               + " Netting exige ciclo exclusivo. Aceite exige journal do agente."
+                               )
+        capabilities.configure(state="disabled")
+        panel.ui.run_bg(inspect, finished)
+
     def show_platform():
         package = filedialog.askopenfilename(parent=window, title="Escolher pacote congelado", filetypes=[("JSON", "*.json")])
         if not package:
@@ -100,6 +122,8 @@ def open_receipts(panel):
     following.pack(side=tk.LEFT)
     submit = ttk.Button(body, text="Salvar e abrir linha do tempo…", state="disabled", command=show)
     submit.pack(anchor="w", pady=8)
+    capabilities = ttk.Button(body, text="Capacidades do pacote…", command=show_capabilities)
+    capabilities.pack(anchor="w", pady=4)
     platform = ttk.Button(body, text="Conferir pacote e journal do Tester…", command=show_platform)
     platform.pack(anchor="w", pady=4)
     load()

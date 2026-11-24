@@ -177,3 +177,9 @@ Os limites da conferência são zero tick, zero passo de lote e zero centavo nas
 ### Ler a reserva temporal do estudo
 
 Use `laboratory ultra-study-run --study ID` e abra `policies.<política>.reserve_only`. O patrimônio de abertura inclui a marca das posições levadas da validação. O pico para drawdown começa nessa marca. O resultado líquido inclui os custos de troca, e a comissão e o custo de spread em relação ao meio da cotação têm campos próprios. O fator de lucro considera os ciclos encerrados na reserva, com os custos desses ciclos desde a entrada. O intervalo da média líquida por sessão usa blocos móveis de cinco sessões, 500 reamostragens e semente 1. Com até cinco sessões, o recibo devolve `insufficient_sessions`. Cada alternativa congelada também tem sua reserva em `attempts`. O campo `selection_status` de cada política identifica o resultado dessa seleção. A aprovação econômica exige qualificação em dados de mercado.
+
+### Consultar um tick e continuar o lote
+
+`laboratory ultra-explain --receipt ID --ordinal 348` abre a chave de tempo, a regra de cada dono, as ordens, os fills e as reservas observados no tick 348, contado a partir de zero. No relatório da carteira, selecione a estratégia e o ciclo para ir à primeira decisão. As ações de decisão anterior e próxima navegam pelo ciclo escolhido.
+
+`laboratory ultra-batch --definition primeiro.json --definition seguinte.json` emite um resultado por definição e continua depois de um ativo inconclusivo. Em **Carteiras Ultra → Capacidades do pacote**, a interface confere o pacote selecionado contra o recibo e mostra se há implementação no Tester. O agente consulta o mesmo resultado com `laboratory ultra-tester-capabilities --package pacote.json`. O Laboratório aceita mais donos no modelo Python. O exportador do Expert desta revisão exige exatamente um dono Donchian e um dono S09.
