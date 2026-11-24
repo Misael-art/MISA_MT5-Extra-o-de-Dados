@@ -86,3 +86,31 @@ O primeiro resumo com as decisões apareceu em 113 ms a 1060 px e em 86 ms a 390
 `scripts/demo_ultra.py --instrument fractional` gera outro símbolo com preço em incrementos de 0,0001, spread de dois ticks, volume mínimo/passo de 0,1 lote e valor de USD 5 por tick e lote. Um passo vale USD 0,50 por tick. O teste `test_fractional_instrument_uses_own_price_volume_and_tick_economics` carrega esse contrato, executa o mesmo serviço e verifica fills, spread e valor monetário. A fita também é sintética.
 
 O perfil S09 dos pins usa limite de uma posição e risco máximo de 0,5% por entrada. A primeira reserva de um módulo no exemplo é de USD 6,20 com USD 1.000 de caixa. A carteira conjunta requer novas capacidades no vínculo e no executor para representar essa política.
+
+## Livro concorrente em MQL5
+
+A partir da PR 398, o mesmo pacote reproduz três transições de gestão de A. Os ciclos encerraram em −USD 8,20, −USD 8,20 e +USD 15,80 tanto com breakeven quanto com o stop original. Os dois braços terminaram em USD 934,40. A comparação de invalidações tem outro controle e mediu −USD 29,40.
+
+Com a base reproduzida acima, exporte o pacote para uma pasta nova.
+
+```sh
+cli laboratory ultra-tester-export --package "$QA/pacote.json" --out "$QA/mql5"
+```
+
+O resultado indica o nome do símbolo personalizado e os hashes dos quatro arquivos. Em uma instalação privada de QA, coloque o CSV em `MQL5/Files`, o Expert `UltraConcurrent.mq5` em `MQL5/Experts` e os dois scripts em `MQL5/Scripts`. Compile os três fontes no MetaEditor. Execute `UltraImport` num gráfico disponível e confira no journal o hash do pacote e a contagem importada. O script verifica as cotações gravadas. Em um símbolo existente, confere a grade e o conteúdo antes de aceitar a repetição.
+
+Na conta DEMO autorizada, selecione o símbolo gerado, M1, ticks reais, um agente local, otimização desativada e o intervalo do snapshot. A demonstração usa 05/10/2026 até 06/10/2026 (fim exclusivo). O Expert recebe ticks em `OnTick`. Para conferir o mesmo núcleo pelo histórico do terminal, execute o script `UltraTerminalProbe` e guarde o journal dessa execução. Ele lê os ticks do símbolo importado com `CopyTicksRange`. Cada origem tem seu próprio marcador de abertura, registros e fechamento. Forneça o journal de uma execução completa, com o pacote e a versão de fonte que a produziram.
+
+```sh
+cli laboratory ultra-tester-compare --package "$QA/pacote.json" --origin terminal_history --journal "$QA/historico.journal.log"
+cli laboratory ultra-tester-compare --package "$QA/pacote.json" --origin strategy_tester --journal "$QA/tester.journal.log"
+```
+
+| Requisito | Prova | Resultado na bancada sintética |
+|---|---|---|
+| Dois donos e um orçamento em MQL5 | `historico.journal.log` e `conferencia-historico.json` | Build 6324. O terminal reproduziu 372 cotações e 80 eventos. O saldo final e o patrimônio foram USD 934,40. |
+| Primeira divergência | `test_first_divergence_in_partial_fill_and_cash_and_source_boundaries` | Alterar o primeiro fill parcial revela o campo e o ordinal 198. Alterar caixa, remover um evento, trocar a origem e truncar o journal também têm cobertura. |
+| Identidade e reprodução | `test_export_frozen_expert_in_priority_order_and_refuse_overwrite` | A verificação vincula snapshot, pacote, revisão do código MQL5 e ordem dos módulos. O journal bruto tem SHA-256. |
+| Ordens da plataforma | `ultra-parity`, livro completo e journal de execução | Pendente. Esta versão calcula fills, margem e custos pelo contrato modelado do pacote. O vínculo com tickets, callbacks de transação e retomada nativa continua em aberto. |
+
+O comparador usa inteiros em ticks, passos de volume e centésimos da moeda. Ele confere o estado agregado após cada evento e cada cotação, a identificação de cada ciclo pelo dono e instante do sinal, os níveis de proteção e valores executados. Admite o par Donchian/S09 em M1 sintético com relógio UTC, até 10.000 cotações por journal. Os arquivos de entrada do MQL5 contêm parâmetros e cotações. Os sinais, ordens modeladas e saldos são calculados durante a execução.

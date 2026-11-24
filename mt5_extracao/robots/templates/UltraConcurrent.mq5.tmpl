@@ -1,0 +1,22 @@
+#property strict
+#property version "1.00"
+$runtime
+int OnInit()
+{
+   if(!MQLInfoInteger(MQL_TESTER) || MQLInfoInteger(MQL_OPTIMIZATION)
+      || _Symbol!="$symbol" || _Period!=PERIOD_M1 || !SymbolInfoInteger(_Symbol,SYMBOL_CUSTOM)
+      || SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE)!=TICK_SIZE)
+      return INIT_FAILED;
+   BeginCapture();
+   return INIT_SUCCEEDED;
+}
+
+void OnTick()
+{
+   MqlTick quote;
+   if(!SymbolInfoTick(_Symbol,quote)) failed=true;
+   if(!failed) ObserveQuote(quote);
+   if(failed) TesterStop();
+}
+
+void OnDeinit(const int reason) { EndCapture(); }

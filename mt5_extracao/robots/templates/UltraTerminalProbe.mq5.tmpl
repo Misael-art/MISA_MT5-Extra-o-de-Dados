@@ -1,0 +1,13 @@
+#property strict
+$runtime
+void OnStart()
+{
+   if(MQLInfoInteger(MQL_TESTER) || !SymbolInfoInteger("$symbol",SYMBOL_CUSTOM)
+      || SymbolInfoDouble("$symbol",SYMBOL_TRADE_TICK_SIZE)!=TICK_SIZE) return;
+   MqlTick ticks[];
+   int count=CopyTicksRange("$symbol",ticks,COPY_TICKS_ALL,FIRST_MSC,LAST_MSC);
+   BeginCapture();
+   if(count<=0) failed=true;
+   for(int i=0;i<count && !failed;i++) ObserveQuote(ticks[i]);
+   EndCapture();
+}

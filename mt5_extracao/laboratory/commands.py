@@ -28,6 +28,15 @@ def add_parser(sub):
     verify = actions.add_parser("ultra-verify", help="confere o pacote com a fonte e o livro")
     verify.add_argument("--package", required=True)
     verify.set_defaults(func=run)
+    expert = actions.add_parser("ultra-tester-export", help="gera livro concorrente MQL5 e ticks do pacote para o Tester")
+    expert.add_argument("--package", required=True)
+    expert.add_argument("--out", required=True, help="nova pasta para fontes e cotações")
+    expert.set_defaults(func=run)
+    capture = actions.add_parser("ultra-tester-compare", help="compara eventos e saldo do journal MQL5")
+    capture.add_argument("--package", required=True)
+    capture.add_argument("--journal", required=True)
+    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history"), default="strategy_tester")
+    capture.set_defaults(func=run)
     parity = actions.add_parser("ultra-parity", help="confere o primeiro desvio no livro normalizado do Tester")
     parity.add_argument("--package", required=True)
     parity.add_argument("--trace", help="livro JSON do Tester")
@@ -191,6 +200,13 @@ def run(args, ctx):
             result = compile_ultra_research(ctx.db, args.receipt)
             with Path(args.out).open("x", encoding="utf-8") as handle:
                 json.dump(result, handle, ensure_ascii=False, allow_nan=False, indent=2)
+        elif args.laboratory_action in ("ultra-tester-export", "ultra-tester-compare"):
+            from . import ultra_tester
+            package = json.loads(Path(args.package).read_text(encoding="utf-8-sig"))
+            if args.laboratory_action == "ultra-tester-export":
+                result = ultra_tester.export(ctx.db, package, args.out)
+            else:
+                result = ultra_tester.compare(ctx.db, package, Path(args.journal).read_bytes(), origin=args.origin)
         elif args.laboratory_action == "ultra-parity":
             from .ultra_parity import compare_trace
             if bool(args.trace) != bool(args.journal):
