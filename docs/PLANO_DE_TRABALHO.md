@@ -5485,3 +5485,7 @@ Dois processos MT5 no Linux gravaram e restauraram o livro modelado no primeiro 
 ### T19.53 · preparação verificável do contrato do Tester
 
 O segundo símbolo personalizado conserva os ticks do pacote e acrescenta histórico M1 sintético antes do início do teste. O terminal confere as unidades econômicas e as barras de preparação antes de abrir o agente. Os recibos dos dois perfis de QA e os comandos do launcher estão no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md#preparação-do-símbolo-para-o-strategy-tester).
+
+### T19.53 · Execução de ordens no Strategy Tester
+
+O Expert de pesquisa solicita pendentes com proteção no símbolo personalizado, observa as respostas e grava negócios e estado da conta em cada tick. O launcher compara o livro, o journal do agente e a tabela de negócios do relatório. A interface abre a trilha por ciclo pelo mesmo comparador da CLI. O aceite físico depende da execução no agente de uma conta DEMO e dos recibos específicos de cada cenário.

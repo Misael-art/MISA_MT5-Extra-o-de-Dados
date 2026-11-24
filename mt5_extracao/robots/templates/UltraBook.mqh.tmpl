@@ -48,7 +48,7 @@ struct UltraBook
                   marker,msc,seq,owner,opened,kind,reason,qty,price,stop,target,residual,fee,net,requested);
       PrintFormat("%sMARK|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d",
                   marker,a.cash,a.equity,a.risk,a.margin,a.pending_cost,a.exposure,a.cost,a.spread);
-   }
+${platform_intent}   }
 
    void cancel(const int i,UltraCycle &c,const string reason)
    {

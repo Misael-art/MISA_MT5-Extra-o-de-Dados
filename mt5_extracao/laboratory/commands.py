@@ -38,7 +38,8 @@ def add_parser(sub):
     capture = actions.add_parser("ultra-tester-compare", help="compara eventos e saldo do journal MQL5")
     capture.add_argument("--package", required=True)
     capture.add_argument("--journal", required=True)
-    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history", "terminal_restart"), default="strategy_tester")
+    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders"), default="strategy_tester")
+    capture.add_argument("--out", help="novo relatório HTML navegável por ciclo para a origem de ordens")
     capture.set_defaults(func=run)
     parity = actions.add_parser("ultra-parity", help="confere o primeiro desvio no livro normalizado do Tester")
     parity.add_argument("--package", required=True)
@@ -213,6 +214,9 @@ def run(args, ctx):
                 result = ultra_tester.export(ctx.db, package, args.out, restart_id=args.restart_id, prepare_tester=args.prepare_tester)
             else:
                 result = ultra_tester.compare(ctx.db, package, Path(args.journal).read_bytes(), origin=args.origin)
+                if args.out:
+                    from .ultra_cycle_report import write_report
+                    result["cycle_report"] = write_report(result, args.out)
         elif args.laboratory_action == "ultra-parity":
             from .ultra_parity import compare_trace
             if bool(args.trace) != bool(args.journal):

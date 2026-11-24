@@ -111,7 +111,7 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
         raise ValueError("O prazo por etapa deve estar entre 10 e 1800 segundos.")
     if resume is not None and origin != "terminal_restart":
         raise ValueError("A retomada por recibo exige a origem terminal_restart.")
-    if prepare_only and origin != "strategy_tester":
+    if prepare_only and origin not in ("strategy_tester", ultra_tester.PLATFORM):
         raise ValueError("A preparação do símbolo se aplica à origem strategy_tester.")
     output = Path(output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -130,7 +130,7 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
     try:
         bundle = folder / "bundle"
         parent = None
-        options = {"prepare_tester": True} if origin == "strategy_tester" else {}
+        options = {"prepare_tester": True} if origin in ("strategy_tester", ultra_tester.PLATFORM) else {}
         if origin == "terminal_restart":
             parent = ultra_restart.read_parent(resume, package["package_hash"])
             options["restart_id"] = parent[1]["restart_id"] if parent else attempt
@@ -142,6 +142,8 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
         data = mt5.data_dir(config).resolve()
         if data != mt5.install_dir(config).resolve():
             return save("portable_profile_required")
+        if mt5.terminal_running(config):
+            return save("terminal_busy")
         with mt5.tester_lease():
             if mt5.terminal_running(config):
                 return save("terminal_busy")
@@ -158,9 +160,9 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
 def _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent, prepare_only):
     mql = data / "MQL5"
     marker = "MT5X_ULTRA_DEMO|"
-    probe = origin != "strategy_tester"
+    probe = origin in ("terminal_history", "terminal_restart")
     main = {"terminal_history": "UltraTerminalProbe", "terminal_restart": "UltraRestartProbe",
-            "strategy_tester": "UltraPreparedTester"}[origin]
+            "strategy_tester": "UltraPreparedTester", ultra_tester.PLATFORM: "UltraPlatformOrders"}[origin]
     scripts = [("UltraImport", "Scripts"), (main, "Scripts" if probe else "Experts")]
     if not probe:
         scripts.insert(1, ("UltraTesterContract", "Scripts"))
@@ -173,6 +175,20 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         source = bundle / (name + ".mq5")
         subdir = Path("MT5XUltra") / (name + "_" + _sha(source)[:20])
         dest = _install(source, mql / kind / subdir / source.name, data)
+        if name == "UltraPlatformOrders":
+            from . import safety_lib
+            lib = safety_lib.lib_dir(config)
+            if not lib:
+                return save("safety_library_required", component="HDK_ExecutionResult.mqh")
+            manifest = safety_lib.read_manifest(lib)
+            header = "HDK_ExecutionResult.mqh"
+            if header not in manifest["files"]:
+                return save("safety_library_incompatible", component=header, version=manifest["version"])
+            source_header = lib / "Include" / manifest["include_dir"] / header
+            if _sha(source_header) != manifest.get("sha256", {}).get(header):
+                return save("safety_library_incompatible", component=header, version=manifest["version"])
+            dependency = _install(source_header, dest.parent / header, data)
+            save("compiling", safety={"version": manifest["version"], "header": header, "sha256": _sha(dependency)})
         compiled = mt5.compile_source(dest, editor, prefix, timeout=timeout)
         if compiled.log_path and Path(compiled.log_path).is_file():
             shutil.copyfile(compiled.log_path, folder / (name + ".compile.log"))
@@ -215,6 +231,7 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
             observed = records[0] if len(records) == 1 else ""
             return save(states.get(observed, "demo_status_unavailable"), demo_check=records)
     journal = None
+    tester_error = None
     if origin == "terminal_restart":
         journal, pending = ultra_restart.complete(
             folder=folder, data=data, exported=exported, parent=parent, invoke=lambda phase: invoke(main, phase),
@@ -227,12 +244,39 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         before = _offsets(data, "Tester")
         try:
             path = mt5.run_tester(config, data, ini, report, timeout=timeout)
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            if origin != ultra_tester.PLATFORM:
+                raise
+            tester_error = str(exc)
         finally:
             logs = _collect(data, "Tester", before, folder / "tester-logs")
-        shutil.copyfile(path, folder / path.name)
+        if tester_error is None:
+            shutil.copyfile(path, folder / path.name)
+            save("tester_report_saved", platform_report=path.name, report_sha256=_sha(folder / path.name))
+        else:
+            save("tester_report_missing", tester_error=tester_error)
+        # A cópia retransmitida pelo terminal não comprova a execução no agente.
+        if origin in ("strategy_tester", ultra_tester.PLATFORM):
+            logs = [log for log in logs if any(p.casefold().startswith("agent-") for p in log.relative_to(folder / "tester-logs").parts[:-1])]
     if journal is None:
         journal, _ = _marked(logs, ultra_tester.MARKERS[origin])
     if journal is None:
-        return save("journal_missing")
+        return save("tester_report_missing" if tester_error else "journal_missing")
     result = ultra_tester.compare(db, package, journal.read_bytes(), origin=origin)
-    return save(result["status"], comparison=result, journal=journal.relative_to(folder).as_posix())
+    if origin == ultra_tester.PLATFORM:
+        from ..laboratory.ultra_cycle_report import write_report
+        if tester_error is None and "platform_account" in result:
+            from ..laboratory.ultra_platform import compare_report
+            from decimal import InvalidOperation
+            try:
+                checked = compare_report(package, result, mt5.read_log_text(folder / path.name))
+            except (ValueError, InvalidOperation) as exc:
+                checked = {"status": "unreadable", "reason": str(exc)}
+            result["platform_report_comparison"] = checked
+            if checked["status"] != "report_matches" and result["status"] == "platform_orders_match":
+                result.update(status="platform_report_diverged", native_order_parity="pending")
+        write_report(result, folder / "cycles.html")
+        save("compared", cycle_report="cycles.html")
+    return save("tester_report_missing" if tester_error else result["status"], comparison=result,
+                native_order_parity="pending" if tester_error else result.get("native_order_parity", "pending"),
+                journal=journal.relative_to(folder).as_posix())
