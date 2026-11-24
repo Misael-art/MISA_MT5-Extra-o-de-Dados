@@ -44,7 +44,11 @@ def test_spec_from_symbol_info_tolerates_missing_fields():
     class Info:
         point = 0.0001
     d = specs.spec_from_symbol_info(Info())
-    assert d["tick_size"] == 0.0001 and d["tick_value"] == 1.0 and d["volume_min"] == 1.0
+    assert d["point"] == 0.0001 and all(d[k] is None for k in ("tick_size", "tick_value", "volume_min"))
+    spec = specs.to_symbol_spec("QA", d)
+    assert not spec.known
+    with pytest.raises(ValueError, match="tick_value"):
+        spec.lots_for_risk(100, 1)
 
 
 def test_load_ohlcv_roundtrip_and_period(db):

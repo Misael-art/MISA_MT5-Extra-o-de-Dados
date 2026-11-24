@@ -132,3 +132,53 @@ def test_calibrate_needs_spec_and_ticks_and_survives_a_spec_refresh(tmp_path, ca
     assert "3 ticks de 1 dia(s)" in out and "Só 1 dia(s) de ticks" in out and "às 00h" in out
     assert cli.main(["--config", str(cfg), "specs", "--symbols", "GBPUSD", "--calibrate"]) == cli.EXIT_FAIL
     assert "mt5x specs --symbols GBPUSD" in capsys.readouterr().out
+
+
+def test_crossed_quote_does_not_reduce_cost_or_destroy_trade():
+    from mt5_extracao.analytics import data_eligibility as quality
+    frame = pd.DataFrame(dict(time_msc=[1000, 2000, 3000], seq=0, bid=[100, 100, 0],
+                              ask=[99, 104, 0], last=[0, 0, 101], flags=[6, 6, 56],
+                              volume=[0, 0, 1], volume_real=[0, 0, 1]))
+    original = frame.copy()
+    report = quality.assess(None, ticks=frame)
+    assert not quality.evaluate(report, ["executable_quotes"])["eligible"]
+    assert report["capabilities"]["executable_quotes"]["crossed_quotes"] == 1
+    assert report["capabilities"]["aggressor"]["trades"] == 1
+    profile = specs.spread_profile(frame, 1)
+    assert (profile["ticks"], profile["excluded_rows"], profile["mean"]) == (1, 2, 4)
+    pd.testing.assert_frame_equal(frame, original)
+
+
+@pytest.mark.parametrize("day,zone,offset", [
+    ("2026-07-23", None, 3), ("2026-01-23", None, 0),
+    ("2026-07-23", "Europe/Athens", 3), ("2026-01-23", "Europe/Athens", 2)])
+def test_cost_uses_utc_hour_from_declared_broker_clock(tmp_path, day, zone, offset):
+    from mt5_extracao.strategies.backtester import execution_spreads
+    db = DatabaseManager(db_path=str(tmp_path / "cost.sqlite"), time_basis="utc",
+                         broker_timezone=zone, broker_utc_offset=None if zone else offset)
+    db.save_symbol_spec("QA", SPEC_ROW)
+    profile = specs.spread_profile(ticks([(day + " 09:00:00", 1, 8), (day + " 12:00:00", 1, 1)]), SPEC_ROW["point"])
+    db.save_spread_profile("QA", profile)
+    bars = pd.DataFrame(dict(time=[pd.Timestamp(day + " 09:00") + pd.Timedelta(hours=offset)], spread=[0]))
+    spec = specs.load_spec(db, "QA")
+    assert profile["time_basis"] == "UTC"
+    assert execution_spreads(bars, spec, BacktestConfig())[1][0] == pytest.approx(8 * spec.point)
+    db.close()
+
+
+def test_uniform_profile_needs_no_clock_but_different_open_price_does(tmp_path):
+    from mt5_extracao.strategies.backtester import execution_spreads
+    db = DatabaseManager(db_path=str(tmp_path / "legacy.sqlite"))
+    try:
+        db.save_symbol_spec("QA", SPEC_ROW)
+        bars = pd.DataFrame(dict(time=[pd.Timestamp("2026-10-01 09:00")], spread=[0.]))
+        for opening in [6., 8.]:
+            db.save_spread_profile("QA", {"hours": [6.] * 24, "open": [opening] * 24})
+            spec = specs.load_spec(db, "QA")
+            if opening == 6:
+                assert execution_spreads(bars, spec, BacktestConfig())[1][0] == pytest.approx(6 * spec.point)
+            else:
+                with pytest.raises(ValueError, match="fuso"):
+                    execution_spreads(bars, spec, BacktestConfig())
+    finally:
+        db.close()

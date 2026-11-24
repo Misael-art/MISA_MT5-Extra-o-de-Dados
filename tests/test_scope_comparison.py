@@ -23,7 +23,7 @@ def prepare(db, assets=1, *, same_window=True):
         symbol=f'QA_{i}'
         series=[('1 minuto','min',502),('2 minutos','2min',251)] if same_window else [('5 minutos','5min',251),('1 hora','h',251)]
         for tf,freq,n in series:db.save_ohlcv_data(symbol,tf,trend(n,freq=freq))
-        db.save_symbol_spec(symbol,spec_from_symbol_info(SimpleNamespace(point=.0001,trade_tick_size=.0001,trade_tick_value=1,volume_min=.01,volume_step=.01)),source='qa.owned.spec')
+        db.save_symbol_spec(symbol,spec_from_symbol_info(SimpleNamespace(point=.0001,trade_tick_size=.0001,trade_tick_value=1,volume_min=.01,volume_step=.01, volume_max=1000000)),source='qa.owned.spec')
     plan=scope.preview(db,config,robot,symbols=[f'QA_{i}' for i in range(assets)],start='2020-01-01',end='2020-02-01')
     return config,robot,plan
 

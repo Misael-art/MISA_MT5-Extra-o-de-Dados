@@ -37,6 +37,14 @@ def _integers(values: pd.Series):
     return np.where(valid, numbers, 0).astype("int64"), valid
 
 
+def quote_masks(data):
+    """Preços e máscaras por evento, mantendo negócios sem cotação no bruto."""
+    bid = pd.to_numeric(data.get("bid", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    ask = pd.to_numeric(data.get("ask", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    quoted = np.isfinite(bid) & np.isfinite(ask) & (bid > 0) & (ask > 0)
+    return bid, ask, quoted, quoted & (ask < bid)
+
+
 def audit(ticks: Optional[pd.DataFrame], point: Optional[float] = None) -> dict:
     """Mede a sequência capturada como está gravada (ordem time_msc, seq). Não corrige nem descarta nada."""
     empty = {"version": VERSION, "rows": 0, "defects": ["no_ticks"]}
@@ -56,10 +64,7 @@ def audit(ticks: Optional[pd.DataFrame], point: Optional[float] = None) -> dict:
     if not finite.any():
         return {"version": VERSION, "rows": int(len(data)), "invalid_time": int(len(data)),
                 "defects": ["invalid_time"]}
-    bid = pd.to_numeric(data.get("bid", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float, na_value=np.nan)
-    ask = pd.to_numeric(data.get("ask", pd.Series(np.nan, index=data.index)), errors="coerce").to_numpy(dtype=float, na_value=np.nan)
-    quoted = np.isfinite(bid) & np.isfinite(ask) & (bid > 0) & (ask > 0)
-    crossed = quoted & (ask < bid)
+    bid, ask, quoted, crossed = quote_masks(data)
     same_ms = pd.Series(msc[finite]).value_counts()
     # Não inventar um intervalo entre eventos separados por timestamp inválido.
     valid_pairs = finite[:-1] & finite[1:]

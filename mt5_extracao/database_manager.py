@@ -841,8 +841,8 @@ class DatabaseManager:
         if not inspect(self.engine).has_table(table_name):
             return pd.DataFrame(columns=["time_msc", "bid", "ask"])
         with self.engine.connect() as conn:
-            return pd.read_sql(text(f'SELECT time_msc, bid, ask FROM "{table_name}" WHERE bid > 0 AND ask > 0 '
-                                    "ORDER BY time_msc"), conn)
+            return pd.read_sql(text(f'SELECT time_msc, seq, bid, ask FROM "{table_name}" '
+                                    "ORDER BY time_msc, seq"), conn)
 
     def save_symbol_spec(self, symbol, spec, *, source="local_observation", known_at=None):
         """Grava (ou atualiza) a especificação do símbolo (dict com as chaves de SPEC_FIELDS)."""

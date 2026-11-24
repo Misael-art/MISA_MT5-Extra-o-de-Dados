@@ -103,7 +103,7 @@ def test_save_upsert_and_read_back(pg):
     from types import SimpleNamespace
     from mt5_extracao.analytics import instruments
     from mt5_extracao.strategies.specs import spec_from_symbol_info
-    payload = spec_from_symbol_info(SimpleNamespace(point=2, trade_tick_size=2, trade_tick_value=1))
+    payload = spec_from_symbol_info(SimpleNamespace(point=2, trade_tick_size=2, trade_tick_value=1, volume_min=1, volume_step=1, volume_max=1000000))
     revision = instruments.record(pg, "WIN$N", "specification", payload, source="pg_fixture",
                                   valid_from="2020-01-01T00:00:00Z", known_at="2019-12-31T00:00:00Z")
     historical = datasets.capture(pg, "WIN$N", "M1")

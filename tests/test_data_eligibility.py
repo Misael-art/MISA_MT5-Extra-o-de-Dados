@@ -31,7 +31,7 @@ def db(tmp_path):
     database = DatabaseManager(db_path=str(tmp_path / "quality.sqlite"), broker_utc_offset=0)
     database.save_ohlcv_data("X", "1 hora", prices())
     from mt5_extracao.strategies.specs import spec_from_symbol_info
-    database.save_symbol_spec("X", spec_from_symbol_info(SimpleNamespace(point=1, trade_tick_size=1, trade_tick_value=1)))
+    database.save_symbol_spec("X", spec_from_symbol_info(SimpleNamespace(point=1, trade_tick_size=1, trade_tick_value=1, volume_min=1, volume_step=1, volume_max=1000000)))
     yield database
     database.close()
 

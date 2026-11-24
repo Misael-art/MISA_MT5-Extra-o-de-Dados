@@ -21,7 +21,7 @@ def db(tmp_path):
     frame["tick_volume"], frame["real_volume"] = 10, 0
     db.save_ohlcv_data("X", "1 hora", frame)
     db.save_symbol_spec("X", spec_from_symbol_info(SimpleNamespace(point=1, trade_tick_size=1,
-                                                                  trade_tick_value=1)))
+                                                                  trade_tick_value=1, volume_min=1, volume_step=1, volume_max=1000000)))
     calendar.save(db, "csv", [{"event_time": "2025-01-06 22:00", "symbol": "X", "impact": 2,
                               "name": "Evento de referência", "actual": 2, "forecast": 1}])
     yield db

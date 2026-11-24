@@ -185,7 +185,7 @@ def test_python_run_persists_complete_valuation_with_separate_closed_curve(tmp_p
         data["tick_volume"], data["real_volume"] = 1, 0
         db.save_ohlcv_data("X", "1 hora", data)
         db.save_symbol_spec("X", spec_from_symbol_info(SimpleNamespace(point=1, trade_tick_size=1,
-                                                                       trade_tick_value=1)))
+                                                                       trade_tick_value=1, volume_min=1, volume_step=1, volume_max=1000000)))
         cfg = ConfigParser()
         cfg.read_dict({"STRATEGY": {"initial_equity": "1000", "risk_per_trade": "0.1"}})
         strategy = Manual(long=[0], stop={0: 80})

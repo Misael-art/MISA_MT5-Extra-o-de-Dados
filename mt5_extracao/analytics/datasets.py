@@ -372,7 +372,7 @@ class Snapshot:
             fact = instruments.specification(self._frames["instrument_history"], instruments.broker_utc(
                 self.bars.time.iloc[0], self._manifest["time"]["broker_utc_offset_hours"]))
             row = fact["payload"]
-        result = to_symbol_spec(self._manifest["symbol"], row) if row else SymbolSpec(
+        result = to_symbol_spec(self._manifest["symbol"], row, clock=SnapshotView(self).time_context()) if row else SymbolSpec(
             symbol=self._manifest["symbol"], known=False)
         result.provenance = copy.deepcopy(provenance)
         return result
@@ -385,6 +385,11 @@ class SnapshotView:
     """Leitor do snapshot para consumidores existentes; nunca consulta a base atual."""
     def __init__(self, snapshot):
         self.snapshot = snapshot
+
+    def time_context(self):
+        clock = self.snapshot._manifest["time"]
+        return {"offset_state": clock.get("offset_state", "unknown"),
+                "broker_utc_offset": clock["broker_utc_offset_hours"]}
 
     @property
     def snapshot_events(self):
@@ -844,6 +849,7 @@ def _validated(bundle):
                     raise ValueError("família de outro ativo")
             tf = timeframes.parse(manifest["timeframe"])
             quality = data_eligibility.assess(bars, bar_minutes=tf.minutes or 1440, ticks=frames.get("ticks"),
+                         version=manifest["derivation"].get("data_quality", {}).get("version"),
                          book=frames.get("book"), evidence=_evidence_items(frames["acquisition_evidence"]), derived=frames["derived_bars"], symbol=manifest["symbol"], timeframe=tf.name)
             if quality != manifest["derivation"].get("data_quality"):
                 raise ValueError("qualidade divergente dos dados capturados")
