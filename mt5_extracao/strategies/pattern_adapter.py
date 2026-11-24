@@ -226,6 +226,14 @@ def run_pattern_simulation(bars, events, definition: Definition, *, source_names
                "source_namespace": source_namespace, "symbol": symbol_spec.symbol,
                "decision_at_utc": decision.isoformat(), "signal_bar_start_utc": None,
                "execution_bar_start_utc": None, "status": "censored_no_next_open"}
+        if body["invalidation_rules"]:
+            decision_record = event.get("entry_decision", {})
+            if (decision_record.get("status") not in ("confirmed", "invalidated", "unknown")
+                    or decision_record.get("available_at_utc") != event["available_at_utc"]):
+                raise ValueError("Oportunidade sem decisão de invalidação no relógio da hipótese.")
+            if decision_record["status"] != "confirmed":
+                journal.append(dict(row, status=decision_record["status"], entry_decision=decision_record))
+                continue
         if model_entry_timing:
             try:
                 ready_at = decision + delay

@@ -189,3 +189,19 @@ def test_decimal_observations_remain_json_replayable():
         compiled, pattern_engine.initial_state(compiled, "db-a", "SYN"), source)
     assert event is None
     assert json.loads(json.dumps(state))["known"]["2025-01-06T09:00:00+00:00"]["close"] == "100.00"
+
+
+def test_causal_invalidation_keeps_cancelled_opportunity_and_unknown_outcome():
+    rule = {"id": "below_floor", "action": "cancel_before_entry",
+            "when": {"op": "compare", "comparison": "lt", "left": field("close"),
+                     "right": literal("98", "price")}}
+    compiled = definition(invalidation_rules=[rule])
+    rows = [bar(0, 100), bar(1, 97), bar(2, 101), bar(3, 99)]
+    _, prefix = pattern_engine.evaluate_batch(compiled, "db-a", "SYN", rows[:2])
+    _, events = pattern_engine.evaluate_batch(compiled, "db-a", "SYN", rows)
+    assert events[0] == prefix[0]
+    assert [e["entry_decision"]["status"] for e in events] == ["invalidated", "confirmed"]
+    assert events[0]["entry_decision"]["available_at_utc"] == events[0]["decision_at_utc"]
+    resolved = pattern_engine.resolve_outcomes(compiled, events, rows, as_of=rows[-1]["available_at_utc"])
+    assert resolved[0]["entry_decision"] == prefix[0]["entry_decision"]
+    assert resolved[-1]["outcome"]["status"] == "censored"

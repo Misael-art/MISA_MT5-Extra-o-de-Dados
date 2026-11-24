@@ -190,6 +190,13 @@ def evaluate_prefix(definition, state, raw):
                                    "reference_available_at_utc": row.get("reference_available_at_utc"),
                                    "condition": condition, "context": context},
                  "outcome": {"status": "pending"}}
+    if event is not None and body["invalidation_rules"]:
+        checks = [{"id": rule["id"], "value": _value(rule["when"], row, prior, state)}
+                  for rule in body["invalidation_rules"]]
+        status = ("invalidated" if any(check["value"] is True for check in checks) else
+                  "unknown" if any(check["value"] is None for check in checks) else "confirmed")
+        event["entry_decision"] = {"status": status, "rules": checks,
+                                   "available_at_utc": row["available_at_utc"]}
     if existing is None and len(known) >= MAX_STATE_BARS:
         raise ValueError("Estado incremental excede limite de barras; divida o recorte.")
     if existing is None:
