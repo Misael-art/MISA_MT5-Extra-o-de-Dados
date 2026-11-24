@@ -22,6 +22,13 @@ NATIVE_TEMPLATES = ("UltraRuntime.mqh", "UltraSignals.mqh", "UltraBook.mqh", "Ul
                     "UltraTerminalProbe.mq5", "UltraImport.mq5")
 
 
+def capabilities():
+    return {"scope": "two_owner_modeled_book", "strategies": ["donchian", "s09_reference"],
+            "origins": list(MARKERS), "feed": "synthetic_bid_ticks_m1_utc",
+            "max_ticks": 10000, "tester_requires_connected_demo": True,
+            "broker_orders": False, "economic_approval": False}
+
+
 def _templates():
     return {name: (TEMPLATES / (name + ".tmpl")).read_text(encoding="utf-8") for name in NATIVE_TEMPLATES}
 

@@ -5465,3 +5465,9 @@ A comparação reexecuta a mesma carteira e as mesmas condições de entrada pre
 ### T19.53 · livro concorrente em MQL5
 
 O Laboratório exporta um Expert para o Strategy Tester, um importador de ticks para símbolo personalizado e uma sonda de histórico do terminal. Donchian e S09 calculam os sinais em barras bid M1 fechadas e passam pelo mesmo livro de ordens modeladas em MQL5. O confronto verifica a prioridade dos donos, reservas, fills parciais, proteção, custos e patrimônio a cada evento e cotação. O ensaio com ticks sintéticos está descrito no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md#livro-concorrente-em-mql5). Tickets de negociação, recuperação nativa após reinício e qualificação econômica seguem abertos.
+
+### T19.53 · percurso nativo pelo launcher
+
+A referência do SDK e a suíte de contrato cobrem descoberta, exportação do Expert, execução e conferência pela API Python. A regressão de rotação do journal verifica a preservação byte a byte com fim de linha LF e CRLF.
+
+`robots ultra-test` qualifica o pacote, compila os fontes no MetaEditor, verifica a importação e confere o journal com o Python. No modo Strategy Tester, o terminal precisa observar uma conta DEMO conectada antes do ensaio. Cada tentativa cria um recibo e guarda hashes dos binários e o trecho novo dos journals. O terminal de outro trabalho e seus arquivos preexistentes são preservados.

@@ -1,5 +1,9 @@
 # Retomar MT5X em um host limpo
 
+## 24/11/2026 — Execução Ultra no Linux
+
+O launcher aceita `robots ultra-test PACOTE --report PASTA`. Ele compila o Expert, importa os ticks no perfil portátil e grava um recibo por execução, inclusive quando a conta DEMO requer autenticação. A descoberta offline e os comandos para conferir as duas origens do journal estão no [repasse Ultra](docs/repasse/ULTRA_PRESET_20261124.md#execução-pelo-launcher-no-linux).
+
 ## 24/11/2026 — Ultra, PR 398 e livro MQL5
 
 A revisão App `53a190ed` reproduziu as três transições de gestão da campanha sintética. A diferença de patrimônio entre as políticas de stop foi zero. O incremento seguinte gera o Expert conjunto Donchian/S09 e compara o journal com o livro Python. A bancada de histórico do terminal build 6324 reproduziu 372 cotações e 80 eventos, com USD 934,40 de patrimônio final. A aceitação no Strategy Tester e a reconciliação com tickets reais do simulador dependem da execução DEMO e de evidência própria. Os comandos e a matriz estão no [repasse Ultra](docs/repasse/ULTRA_PRESET_20261124.md#livro-concorrente-em-mql5).
