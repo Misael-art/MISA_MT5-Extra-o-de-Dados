@@ -5461,3 +5461,7 @@ O relatório da carteira desenha uma linha por dono para pendência e posição.
 ### T19.54 · controle da transição de gestão
 
 A comparação reexecuta a mesma carteira e as mesmas condições de entrada preservando o stop original. Cada transição de breakeven aponta o ciclo correspondente pelo dono e instante elegível, os resultados encerrados dos dois braços e o atraso desde o sinal. Um ciclo aberto ou sem par mantém o desfecho desconhecido.
+
+### T19.53 · livro concorrente em MQL5
+
+O Laboratório exporta um Expert para o Strategy Tester, um importador de ticks para símbolo personalizado e uma sonda de histórico do terminal. Donchian e S09 calculam os sinais em barras bid M1 fechadas e passam pelo mesmo livro de ordens modeladas em MQL5. O confronto verifica a prioridade dos donos, reservas, fills parciais, proteção, custos e patrimônio a cada evento e cotação. O ensaio com ticks sintéticos está descrito no [repasse Ultra](repasse/ULTRA_PRESET_20261124.md#livro-concorrente-em-mql5). Tickets de negociação, recuperação nativa após reinício e qualificação econômica seguem abertos.

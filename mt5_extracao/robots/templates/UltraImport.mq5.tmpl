@@ -1,0 +1,60 @@
+#property strict
+// Import into a new custom symbol. Existing history is never replaced.
+bool SameHistory(const string symbol,const MqlTick &input_ticks[])
+{
+   MqlTick stored[];
+   int n=ArraySize(input_ticks);
+   if(CopyTicksRange(symbol,stored,COPY_TICKS_ALL,input_ticks[0].time_msc,input_ticks[n-1].time_msc)!=n)
+      return false;
+   for(int i=0;i<n;i++)
+      if(stored[i].time_msc!=input_ticks[i].time_msc || stored[i].bid!=input_ticks[i].bid
+         || stored[i].ask!=input_ticks[i].ask) return false;
+   return true;
+}
+
+void OnStart()
+{
+   string symbol="$symbol";
+   bool custom=false;
+   bool exists=SymbolExist(symbol,custom);
+   int file=FileOpen("$csv",FILE_READ|FILE_CSV|FILE_ANSI,',');
+   if(file==INVALID_HANDLE) { Print("Ultra: input unavailable ",GetLastError()); return; }
+   MqlTick ticks[];
+   if(ArrayResize(ticks,$count)!=$count) { FileClose(file); return; }
+   bool valid=true;
+   for(int i=0;i<$count;i++)
+   {
+      ZeroMemory(ticks[i]);
+      ticks[i].time_msc=(long)FileReadNumber(file);
+      ticks[i].time=(datetime)(ticks[i].time_msc/1000);
+      ticks[i].bid=FileReadNumber(file); ticks[i].ask=FileReadNumber(file);
+      ticks[i].flags=TICK_FLAG_BID|TICK_FLAG_ASK;
+      if(ticks[i].time_msc<=0 || ticks[i].bid<=0 || ticks[i].ask<ticks[i].bid
+         || (i>0 && ticks[i].time_msc<ticks[i-1].time_msc)) valid=false;
+   }
+   valid=valid && FileIsEnding(file);
+   FileClose(file);
+   if(!valid) { Print("Ultra: invalid quotes"); return; }
+   if(exists)
+   {
+      if(custom && SymbolInfoDouble(symbol,SYMBOL_TRADE_TICK_SIZE)==$tick_size && SameHistory(symbol,ticks))
+         Print("MT5X_ULTRA_IMPORT|$package|$count|0");
+      else Print("Ultra: existing symbol differs ",symbol);
+      return;
+   }
+   if(!CustomSymbolCreate(symbol,"MT5X")) { Print("Ultra: invalid input or symbol ",GetLastError()); return; }
+   bool ok=CustomSymbolSetInteger(symbol,SYMBOL_DIGITS,$digits)
+      && CustomSymbolSetDouble(symbol,SYMBOL_TRADE_TICK_SIZE,$tick_size)
+      && CustomSymbolSetInteger(symbol,SYMBOL_CHART_MODE,SYMBOL_CHART_MODE_BID)
+      && SymbolSelect(symbol,true);
+   int count=(ok ? CustomTicksReplace(symbol,ticks[0].time_msc,ticks[$count-1].time_msc,ticks) : -1);
+   if(count==$count && SameHistory(symbol,ticks))
+   {
+      Print("MT5X_ULTRA_IMPORT|$package|$count|0");
+      return;
+   }
+   PrintFormat("Ultra: incomplete import %d, error %d",count,GetLastError());
+   SymbolSelect(symbol,false);
+   if(!CustomSymbolDelete(symbol)) Print("Ultra: incomplete symbol retained ",symbol);
+
+}

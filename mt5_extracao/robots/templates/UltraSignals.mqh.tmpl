@@ -1,0 +1,84 @@
+// Donchian and S09 consume the same closed bid bar. Only completed bars enter the rings.
+struct UltraSignals
+{
+   int bars, donchian, s09;
+   long minute, available;
+   double high, low, close, reference, prev_high, prev_low, prev_close;
+   double fast, slow, atr, plus_dm, minus_dm, adx;
+   double highs[ENTRY_N], lows[ENTRY_N], atr_history[ATR_AVG];
+
+   double smooth(const double old_value, const double value, const double alpha)
+   {
+      if(old_value==value) return value;
+      return (1.0-alpha)*old_value + alpha*value;
+   }
+
+   void finish_bar()
+   {
+      const double prev_fast=fast, prev_slow=slow;
+      const double up=high-prev_high, down=prev_low-low;
+      const double tr=(bars==0 ? high-low : MathMax(high-low,MathMax(MathAbs(high-prev_close),MathAbs(low-prev_close))));
+      if(bars==0)
+      {
+         fast=close; slow=close; atr=tr; plus_dm=0; minus_dm=0;
+      }
+      else
+      {
+         fast=smooth(fast,close,2.0/(FAST_N+1));
+         slow=smooth(slow,close,2.0/(SLOW_N+1));
+         atr=smooth(atr,tr,1.0/14);
+         plus_dm=smooth(plus_dm,(up>down && up>0 ? up : 0),1.0/14);
+         minus_dm=smooth(minus_dm,(down>up && down>0 ? down : 0),1.0/14);
+      }
+      if(bars+1>=WARM_N)
+      {
+         if(fast>slow && prev_fast<=prev_slow) s09=1;
+         if(fast<slow && prev_fast>=prev_slow) s09=-1;
+      }
+      bool active=false;
+      if(bars>=13)
+      {
+         const double p=(atr>0 ? 100*plus_dm/atr : 0);
+         const double m=(atr>0 ? 100*minus_dm/atr : 0);
+         const double dx=(p+m>0 ? 100*MathAbs(p-m)/(p+m) : 0);
+         adx=(bars==13 ? dx : smooth(adx,dx,1.0/14));
+         active=(bars>=26 && adx>ADX_MIN);
+         atr_history[(bars-13)%ATR_AVG]=atr;
+         if(bars-12>=ATR_AVG)
+         {
+            double sum=0;
+            for(int j=0;j<ATR_AVG;j++) sum+=atr_history[j];
+            if(atr>sum/ATR_AVG) active=true;
+         }
+      }
+      if(active && bars>=ENTRY_N)
+      {
+         double upper=highs[0], lower=lows[0];
+         for(int j=1;j<ENTRY_N;j++)
+         {
+            upper=MathMax(upper,highs[j]);
+            lower=MathMin(lower,lows[j]);
+         }
+         if(close>upper) donchian=1;
+         if(close<lower) donchian=-1;
+      }
+      reference=close;
+      available=(minute+1)*60000;
+      highs[bars%ENTRY_N]=high; lows[bars%ENTRY_N]=low;
+      prev_high=high; prev_low=low; prev_close=close;
+      bars++;
+   }
+
+   void observe(const long msc, const double bid)
+   {
+      donchian=0; s09=0; available=0; reference=0;
+      const long next_minute=msc/60000;
+      if(minute!=next_minute)
+      {
+         if(minute>=0) finish_bar();
+         minute=next_minute;
+         high=bid; low=bid;
+      }
+      high=MathMax(high,bid); low=MathMin(low,bid); close=bid;
+   }
+};

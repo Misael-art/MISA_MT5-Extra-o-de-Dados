@@ -1,0 +1,48 @@
+$defines
+$core
+string marker="$marker";
+$book
+UltraBook book;
+
+UltraSignals signals;
+long last_msc=-1;
+int seq=0, frames=0;
+bool started=false, failed=false;
+
+
+void BeginCapture()
+{
+   signals.minute=-1;
+   book.cash=INITIAL_CASH; book.session=-1;
+   $modules
+   started=true;
+   Print(marker,"BEGIN|$package|$manifest|$revision|",TerminalInfoInteger(TERMINAL_BUILD));
+}
+
+void ObserveQuote(const MqlTick &quote)
+{
+   if(quote.time_msc<FIRST_MSC || quote.time_msc>LAST_MSC) return;
+   const long bid=(long)MathRound(quote.bid/TICK_SIZE), ask=(long)MathRound(quote.ask/TICK_SIZE);
+   if(quote.time_msc<last_msc || bid<=0 || ask<bid
+      || MathAbs(quote.bid-bid*TICK_SIZE)>TICK_SIZE*0.0000001
+      || MathAbs(quote.ask-ask*TICK_SIZE)>TICK_SIZE*0.0000001)
+   { failed=true; return; }
+   seq=(quote.time_msc==last_msc ? seq+1 : 0);
+   signals.observe(quote.time_msc,quote.bid);
+   const bool armed=(signals.donchian!=0 || signals.s09!=0);
+   const long reference=(armed ? (long)MathRound(signals.reference/TICK_SIZE) : 0);
+   book.observe(quote.time_msc,seq,bid,ask,signals,reference);
+   UltraMark a=book.mark();
+   PrintFormat("%sFRAME|%I64d|%d|%I64d|%I64d|%d|%d|%I64d|%I64d",marker,quote.time_msc,seq,bid,ask,
+               signals.donchian,signals.s09,(armed ? signals.available : 0),
+               reference);
+   PrintFormat("%sMARK|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d",
+               marker,a.cash,a.equity,a.risk,a.margin,a.pending_cost,a.exposure,a.cost,a.spread);
+   last_msc=quote.time_msc;
+   frames++;
+}
+
+void EndCapture()
+{
+   if(started) PrintFormat("%sEND|%d|%d",marker,frames,(failed ? 1 : 0));
+}

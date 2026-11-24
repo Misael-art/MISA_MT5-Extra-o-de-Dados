@@ -1,0 +1,149 @@
+// Research ledger. All prices, volume steps and currency cents are integers.
+// The tester supplies the market clock. No synthetic execution goes to a broker.
+struct UltraModule
+{
+   long size, stop_distance, target_distance, breakeven, invalidate, ttl, max_losses, goal;
+};
+struct UltraCycle
+{
+   long opened, session_day, side, limit, reference, stop, target, pending, filled, basis, fees;
+   bool managed;
+};
+struct UltraLocal { long attempts, losses, pnl; };
+struct UltraMark { long cash, equity, risk, margin, pending_cost, exposure, cost, spread; };
+
+struct UltraBook
+{
+   UltraModule module[2];
+   UltraCycle cycle[2];
+   UltraLocal local[2];
+   long cash, cost, spread, session, msc, bid, ask;
+   int seq;
+
+   UltraMark mark()
+   {
+      UltraMark a={};
+      a.cash=cash; a.equity=cash; a.cost=cost; a.spread=spread;
+      for(int i=0;i<2;i++)
+      {
+         UltraCycle c=cycle[i];
+         if(c.opened==0) continue;
+         const long price=(c.side==1 ? bid : ask);
+         a.equity+=c.side*(price*c.filled-c.basis)*TICK_CASH;
+         const long live_gap=c.side*(price-c.stop), pending_gap=c.side*(c.limit-c.stop);
+         a.risk+=((live_gap>0 ? live_gap : 0)*TICK_CASH+FEE)*c.filled;
+         a.risk+=((pending_gap>0 ? pending_gap : 0)*TICK_CASH+2*(long)FEE)*c.pending;
+         a.pending_cost+=c.pending*((ask-bid)*TICK_CASH+FEE);
+         a.exposure+=c.filled; a.margin+=(c.filled+c.pending)*MARGIN_STEP;
+      }
+      return a;
+   }
+
+   void event(const int owner,const long opened,const string kind,const string reason,
+              const long qty=0,const long price=0,const long stop=0,const long target=0,
+              const long residual=0,const long fee=0,const long net=0,const long requested=0)
+   {
+      UltraMark a=mark();
+      PrintFormat("%sEVENT|%I64d|%d|%d|%I64d|%s|%s|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d",
+                  marker,msc,seq,owner,opened,kind,reason,qty,price,stop,target,residual,fee,net,requested);
+      PrintFormat("%sMARK|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d",
+                  marker,a.cash,a.equity,a.risk,a.margin,a.pending_cost,a.exposure,a.cost,a.spread);
+   }
+
+   void cancel(const int i,UltraCycle &c,const string reason)
+   {
+      const long pending=c.pending, opened=c.opened;
+      c.pending=0;
+      if(c.filled==0) c.opened=0;
+      event(i,opened,"cancel",reason,pending);
+   }
+
+   void manage(const int i,UltraCycle &c)
+   {
+      if(c.opened==0) return;
+      if(c.pending>0 && (c.session_day!=session || msc>=c.opened+module[i].ttl))
+         cancel(i,c,"pending_expired");
+      if(c.filled==0) return;
+      const long price=(c.side==1 ? bid : ask);
+      bool stopped=c.side*(price-c.stop)<=0;
+      if(stopped || c.side*(price-c.target)>=0)
+      {
+         if(c.pending>0) cancel(i,c,"exit_with_pending");
+         const long fee=FEE*c.filled, realized=c.side*(price*c.filled-c.basis)*TICK_CASH-fee;
+         const long net=realized-c.fees, opened=c.opened;
+         cash+=realized; cost+=fee; spread+=(ask-bid)*c.filled*TICK_CASH;
+         local[i].pnl+=realized; local[i].losses=(net<0 ? local[i].losses+1 : 0);
+         c.opened=0;
+         event(i,opened,"exit",(stopped ? "stop" : "target"),c.filled,price,0,0,0,fee,net);
+      }
+      else if(module[i].breakeven>0 && !c.managed && c.side*(price-c.limit)>=module[i].breakeven)
+      {
+         if(c.pending>0) cancel(i,c,"management_transition");
+         c.managed=true; c.stop=c.limit;
+         event(i,c.opened,"management","breakeven",0,0,c.stop,c.target);
+      }
+   }
+
+   void arm(const int i,const int side,const long reference,const long available)
+   {
+      if(side==0) return;
+      UltraModule p=module[i];
+      const long price=(side==1 ? bid : ask), limit=(side==1 ? ask : bid);
+      event(i,available,"armed","closed_bar");
+      if(cycle[i].opened!=0) { event(i,available,"veto","owner_cycle_open"); return; }
+      if(local[i].losses>=p.max_losses || local[i].pnl>=p.goal)
+      {
+         event(i,available,"veto",(local[i].losses>=p.max_losses ? "local_loss_streak" : "local_daily_goal"));
+         return;
+      }
+      if(msc>=available+p.ttl) { event(i,available,"expired","signal_ttl"); return; }
+      if(p.invalidate>0 && side*(price-reference)<=-p.invalidate)
+      { event(i,available,"invalidated","reference_lost"); return; }
+      if(ask-bid>=p.stop_distance) { event(i,available,"veto","stop_inside_spread"); return; }
+      UltraMark a=mark();
+      const long risk=p.size*(p.stop_distance*TICK_CASH+2*(long)FEE);
+      const long margin=p.size*MARGIN_STEP, entry_cost=p.size*((ask-bid)*TICK_CASH+FEE);
+      if(a.risk+risk>RISK_LIMIT) { event(i,available,"veto","shared_risk",0,0,0,0,0,0,0,risk); return; }
+      if(a.margin+a.pending_cost+margin+entry_cost>a.equity)
+      { event(i,available,"veto","shared_margin",0,0,0,0,0,0,0,margin); return; }
+      UltraCycle c={};
+      c.opened=available; c.session_day=session; c.side=side; c.reference=reference; c.limit=limit;
+      c.stop=limit-side*p.stop_distance; c.target=limit+side*p.target_distance; c.pending=p.size;
+      cycle[i]=c; local[i].attempts++;
+      event(i,available,"order","reserved",p.size,0,c.stop,c.target);
+   }
+
+   void fill(const int i,UltraCycle &c,long &capacity)
+   {
+      if(c.opened==0 || c.pending==0) return;
+      const long price=(c.side==1 ? ask : bid), liquidation=(c.side==1 ? bid : ask);
+      if(module[i].invalidate>0 && c.side*(liquidation-c.reference)<=-module[i].invalidate)
+      { cancel(i,c,"reference_lost"); return; }
+      if(c.side*(liquidation-c.stop)<=0) { cancel(i,c,"stop_before_fill"); return; }
+      if(capacity<=0 || c.side*(price-c.limit)>0) return;
+      UltraMark a=mark();
+      if(a.margin+a.pending_cost>a.equity) { cancel(i,c,"shared_margin_at_fill"); return; }
+      const long qty=(capacity<c.pending ? capacity : c.pending), fee=qty*FEE;
+      c.pending-=qty; c.filled+=qty; c.basis+=price*qty; c.fees+=fee;
+      cash-=fee; cost+=fee; spread+=(ask-bid)*qty*TICK_CASH;
+      local[i].pnl-=fee; capacity-=qty;
+      event(i,c.opened,"fill",(c.pending>0 ? "partial" : "complete"),qty,price,c.stop,c.target,c.pending,fee);
+   }
+
+   void observe(const long time_msc,const int sequence,const long b,const long a,
+                const UltraSignals &observed,const long reference)
+   {
+      msc=time_msc; seq=sequence; bid=b; ask=a;
+      const long day=msc/86400000;
+      if(day!=session)
+      {
+         session=day;
+         for(int i=0;i<2;i++) { UltraLocal fresh={}; local[i]=fresh; }
+         event(-1,0,"session","utc_day_reset");
+      }
+      for(int i=0;i<2;i++) manage(i,cycle[i]);
+      for(int i=0;i<2;i++) arm(i,(i==DON_SLOT ? observed.donchian : observed.s09),reference,observed.available);
+      long capacity=FILL_CAPACITY;
+      for(int i=0;i<2;i++) fill(i,cycle[i],capacity);
+   }
+};
