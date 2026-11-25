@@ -17,6 +17,8 @@ bool Contract()
    return SymbolInfoInteger(target,SYMBOL_TRADE_CALC_MODE)==SYMBOL_CALC_MODE_FUTURES
       && SymbolInfoInteger(target,SYMBOL_TRADE_MODE)==SYMBOL_TRADE_MODE_FULL
       && SymbolInfoInteger(target,SYMBOL_TRADE_EXEMODE)==SYMBOL_TRADE_EXECUTION_EXCHANGE
+      && SymbolInfoInteger(target,SYMBOL_TRADE_STOPS_LEVEL)==0
+      && SymbolInfoInteger(target,SYMBOL_TRADE_FREEZE_LEVEL)==0
       && (SymbolInfoInteger(target,SYMBOL_ORDER_MODE)&order_modes)==order_modes
       && SymbolInfoInteger(target,SYMBOL_DIGITS)==$digits && SymbolInfoInteger(target,SYMBOL_CHART_MODE)==SYMBOL_CHART_MODE_BID
       && SymbolInfoString(target,SYMBOL_CURRENCY_PROFIT)==money && SymbolInfoString(target,SYMBOL_CURRENCY_MARGIN)==money
@@ -57,6 +59,7 @@ bool Configure()
    bool ok=SetInteger(SYMBOL_TRADE_CALC_MODE,SYMBOL_CALC_MODE_FUTURES)
       && SetInteger(SYMBOL_TRADE_MODE,SYMBOL_TRADE_MODE_FULL) && SetInteger(SYMBOL_ORDER_MODE,order_modes)
       && SetInteger(SYMBOL_TRADE_EXEMODE,SYMBOL_TRADE_EXECUTION_EXCHANGE)
+      && SetInteger(SYMBOL_TRADE_STOPS_LEVEL,0) && SetInteger(SYMBOL_TRADE_FREEZE_LEVEL,0)
       && SetString(SYMBOL_CURRENCY_MARGIN,money) && SetString(SYMBOL_CURRENCY_PROFIT,money)
       && SetInteger(SYMBOL_DIGITS,$digits) && SetInteger(SYMBOL_CHART_MODE,SYMBOL_CHART_MODE_BID)
       && SetDouble(SYMBOL_POINT,point) && SetDouble(SYMBOL_TRADE_TICK_SIZE,tick_size)
@@ -79,7 +82,7 @@ bool History(const MqlTick &expected[],int &bars)
    if(CopyTicksRange(target,got,COPY_TICKS_ALL,prior,last)!=count) return false;
    for(int i=0;i<count;i++)
       if(expected[i].time_msc!=got[i].time_msc || !CloseValue(expected[i].bid,got[i].bid)
-         || !CloseValue(expected[i].ask,got[i].ask)) return false;
+         || !CloseValue(expected[i].ask,got[i].ask) || !CloseValue(expected[i].last,got[i].last)) return false;
    MqlRates pre[];
    for(int i=0;i<20 && !IsStopped();i++)
    {
@@ -105,6 +108,13 @@ void OnStart()
       all[i].flags=TICK_FLAG_BID|TICK_FLAG_ASK;
    }
    for(int i=0;i<sample;i++) all[primer+i]=frozen[i];
+   // O símbolo da bancada tem uma referência Last sintética, na grade da própria cotação.
+   for(int i=0;i<ArraySize(all);i++)
+   {
+      const long bid_ticks=(long)MathRound(all[i].bid/tick_size),ask_ticks=(long)MathRound(all[i].ask/tick_size);
+      all[i].last=NormalizeDouble((bid_ticks+(ask_ticks-bid_ticks)/2)*tick_size,$digits);
+      all[i].flags|=TICK_FLAG_LAST;
+   }
    bool custom=false, created=false, ok=true;
    if(SymbolExist(target,custom)) ok=custom;
    else

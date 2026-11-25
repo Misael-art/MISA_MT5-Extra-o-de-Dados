@@ -34,6 +34,15 @@ void PlatformRequest(MqlTradeRequest &request,const int slot,const long opened)
                EnumToString(request.type),VolumeSteps(request.volume),PriceTicks(request.price),PriceTicks(request.sl),
                PriceTicks(request.tp),check.retcode,(int)sent,result.retcode,result.order,result.deal,result.request_id,
                (int)observation.state);
+   if(!checked || !sent)
+   {
+      MqlTick quote={};
+      SymbolInfoTick(_Symbol,quote);
+      PrintFormat("MT5X_ULTRA_REQUEST_DIAGNOSTIC1|%I64d|%d|%s|%u|%u|%I64d|%I64d|%I64d|%d|%s",
+                  book.msc,book.seq,EnumToString(request.action),check.retcode,result.retcode,
+                  PriceTicks(quote.bid),PriceTicks(quote.ask),PriceTicks(quote.last),
+                  (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL),check.comment);
+   }
    if(checked && (result.retcode==TRADE_RETCODE_TIMEOUT || result.retcode==TRADE_RETCODE_CONNECTION
                   || result.retcode==0)) uncertain=true;
 }

@@ -36,7 +36,7 @@ def render(template, package, symbol, frames):
         point=values["point"], digits=spec["digits"], step=volume, min_lot=values["volume_min"],
         max_lot=values["volume_max"], contract_size=values["contract_size"], margin=Decimal(policy["margin"])/100/volume)
     metadata = {"symbol": target, "primer_kind": "synthetic_constant_bid_100_ask_101_ticks",
-                "execution_mode": "exchange",
+                "execution_mode": "exchange", "synthetic_last": "midpoint_rounded_down_to_tick",
                 "primer_bars": PRIMER_MINUTES, "primer_first_msc": start, "sample_first_msc": first,
                 "sample_last_msc": last, "tick_cash_cents_per_step": policy["tick_cash"], "margin_cents_per_step": policy["margin"]}
     return text, metadata
