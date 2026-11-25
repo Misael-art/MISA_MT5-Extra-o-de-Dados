@@ -59,12 +59,16 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
         return SimpleNamespace(ok=True, warnings=0, compiled=str(binary), log_path="")
     mock(runner.mt5, "compile_source", compile)
     demo = "0|0"
-    def invoke(cfg, data, name, chart, tag, out, timeout):
+    demo_startups = []
+    def invoke(cfg, data, name, chart, tag, out, timeout, *, startup_common=""):
         out.mkdir()
         path = out / "run.log"
         if name.endswith("UltraDemoStatus"):
+            demo_startups.append(startup_common)
             path.write_text("MT5X_ULTRA_DEMO|" + demo)
-        elif name.endswith("UltraTesterContract"):
+            return [path]
+        assert startup_common == ""
+        if name.endswith("UltraTesterContract"):
             path.write_text("MT5X_ULTRA_PREP|ABC|UT_test|128|1|100|24700")
         elif name.endswith("UltraImport"):
             path.write_text("MT5X_ULTRA_IMPORT|ABC|1|0")
@@ -92,6 +96,7 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
 
     def test_platform(cfg, folder, ini, report, *, timeout):
         assert "Currency=USD" in ini and "Model=4" in ini and "UseCloud=0" in ini and "Symbol=UT_test" in ini
+        assert ini.startswith("[Common]\r\nLogin=1234567\r\nKeepPrivate=1\r\n[Tester]")
         logs = folder / "Tester/Agent-127.0.0.1/logs"
         logs.mkdir(parents=True)
         (logs / "agent.log").write_text("MT5X_ULTRA_B1|BEGIN")
@@ -99,12 +104,20 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
         report_file.write_text("fixture")
         return report_file
 
+    assert demo_startups == ["", ""]
+    monkeypatch.setenv("MT5X_ULTRA_DEMO_LOGIN", "1234567\nPassword=x")
+    bad = runner.run(None, None, package, tmp_path / "audit")
+    assert bad["status"] == "failed" and "Password=x" not in bad["reason"]
+    monkeypatch.setenv("MT5X_ULTRA_DEMO_LOGIN", "1234567")
     demo = "1|1"
     mock(runner.mt5, "run_tester", test_platform)
     result = runner.run(None, None, package, tmp_path / "audit")
     assert result["status"] == "modeled_book_matches"
     assert result["origin"] == "strategy_tester" and "tester-logs" in result["journal"]
     assert list(Path(result["directory"]).glob("*.htm"))
+    assert result["demo_check"] == ["1|1"] and result["explicit_demo_selection"]
+    assert demo_startups[-1] == "[Common]\r\nLogin=1234567\r\nKeepPrivate=1\r\n"
+    assert "1234567" not in (Path(result["directory"]) / "tester.ini").read_text(encoding="utf-16")
     from mt5_extracao.robots import safety_lib
     import json
     from hashlib import sha256

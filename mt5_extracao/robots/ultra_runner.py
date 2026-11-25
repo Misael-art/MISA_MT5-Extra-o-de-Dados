@@ -72,15 +72,15 @@ def _collect(data, component, previous, dest):
     return collected
 
 
-def _script(config, data, expert, chart, tag, output, timeout):
+def _script(config, data, expert, chart, tag, output, timeout, *, startup_common=""):
     before = _offsets(data, "MQL5")
     ini = data / ("ultra_" + tag + ".ini")
     prefix = mt5.wine_prefix(config)
     command = '"{}" /portable /config:"{}"'.format(
         mt5._windows_path(mt5.validate_terminal(config), prefix), mt5._windows_path(ini, prefix))
-    settings = ("[Experts]\r\nEnabled=1\r\nAllowLiveTrading=0\r\nAllowDllImport=0\r\n"
+    settings = startup_common + ("[Experts]\r\nEnabled=1\r\nAllowLiveTrading=0\r\nAllowDllImport=0\r\n"
                 f"[StartUp]\r\nSymbol={chart}\r\nPeriod=M1\r\nScript={expert}\r\nShutdownTerminal=1\r\n")
-    with ini.open("xb") as handle:
+    with open(ini, "xb", opener=lambda path, flags: os.open(path, flags, 0o600)) as handle:
         handle.write(settings.encode("utf-16"))
     try:
         mt5.run_windows_command(command, data, prefix, timeout=timeout)
@@ -159,10 +159,20 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
         return save("failed", error_type=type(error).__name__, reason=str(error))
 
 
+def _demo_startup():
+    login = os.environ.get("MT5X_ULTRA_DEMO_LOGIN", "").strip()
+    if not login:
+        return ""
+    if not re.fullmatch(r"[1-9][0-9]{0,18}", login) or int(login) >= 2**63:
+        raise ValueError("MT5X_ULTRA_DEMO_LOGIN exige o número de uma conta DEMO salva no perfil.")
+    return f"[Common]\r\nLogin={login}\r\nKeepPrivate=1\r\n"
+
+
 def _execute(config, db, data, prefix, folder, bundle, exported, package, origin, chart, timeout, save, parent, prepare_only):
     mql = data / "MQL5"
     marker = "MT5X_ULTRA_DEMO|"
     probe = origin in ("terminal_history", "terminal_restart")
+    startup_common = _demo_startup() if not probe and not prepare_only else ""
     main = {"terminal_history": "UltraTerminalProbe", "terminal_restart": "UltraRestartProbe",
             "strategy_tester": "UltraPreparedTester", ultra_tester.PLATFORM: "UltraPlatformOrders"}[origin]
     scripts = [("UltraImport", "Scripts"), (main, "Scripts" if probe else "Experts")]
@@ -208,7 +218,9 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         names[name] = (subdir / name).as_posix().replace("/", "\\")
     save("compiled", binary_sha256=binaries)
     def invoke(name, phase=""):
-        return _script(config, data, names[name], chart, folder.name + name + phase, folder / (name + phase), timeout)
+        options = {"startup_common": startup_common} if name == "UltraDemoStatus" and startup_common else {}
+        return _script(config, data, names[name], chart, folder.name + name + phase, folder / (name + phase), timeout,
+                       **options)
     csv = bundle / (exported["symbol"] + ".csv")
     _install(csv, mql / "Files" / csv.name, data)
     _, imported = _marked(invoke("UltraImport"), "MT5X_ULTRA_IMPORT|")
@@ -240,6 +252,7 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
             states = {"0|0": "demo_login_required", "0|1": "demo_login_required", "1|0": "demo_account_required"}
             observed = records[0] if len(records) == 1 else ""
             return save(states.get(observed, "demo_status_unavailable"), demo_check=records)
+        save("demo_verified", demo_check=records, explicit_demo_selection=bool(startup_common))
     journal = None
     tester_error = None
     if origin == "terminal_restart":
@@ -253,7 +266,7 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
     else:
         before = _offsets(data, "Tester")
         try:
-            path = mt5.run_tester(config, data, ini, report, timeout=timeout)
+            path = mt5.run_tester(config, data, startup_common + ini, report, timeout=timeout)
         except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
             if origin != ultra_tester.PLATFORM:
                 raise

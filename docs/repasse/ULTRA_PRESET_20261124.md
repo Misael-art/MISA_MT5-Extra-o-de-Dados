@@ -207,3 +207,8 @@ Um dono `pattern_definition` pode compartilhar a conta do Tester com os demais. 
 No pacote sintético com os donos H e B, o Laboratório observou 11 armações de H, 4 invalidações, 6 ordens modeladas, 12 preenchimentos modelados e 5 saídas em 372 ticks. A conferência desses eventos com ordens físicas requer o journal do agente e o relatório de negócios da mesma execução.
 
 Quando a seleção qualificada contém zero estratégias, o compilador deriva do snapshot as marcas de uma carteira integralmente em caixa. O recibo de origem conserva o resultado `no_candidate`. A plataforma pode percorrer os ticks com zero donos. O comparador distingue esse caso de `no_confirmed_signal`, no qual existia um dono e seu sinal nunca ocorreu.
+
+
+### Seleção da conta DEMO no perfil de QA
+
+Em instalações nas quais um arquivo de inicialização alternativo abre o MT5 sem a conta salva ativa, forneça o número da DEMO existente em `MT5X_ULTRA_DEMO_LOGIN` no ambiente do launcher. A sonda e o Tester usam a mesma seleção e o MT5 recupera a autenticação do perfil. O recibo conserva o resultado da sonda e se a seleção foi explícita. A configuração anexada ao recibo continua reproduzível sem dados de conta. [Inicialização da plataforma](https://www.metatrader5.com/en/terminal/help/start_advanced/start)

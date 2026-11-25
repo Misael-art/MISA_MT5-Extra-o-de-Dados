@@ -682,7 +682,8 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     report = data / f"{name}.htm"
     report.unlink(missing_ok=True)
     ini = data / f"{name}.ini"
-    ini.write_bytes(ini_text.encode("utf-16"))
+    with open(ini, "wb", opener=lambda path, flags: os.open(path, flags, 0o600)) as handle:
+        handle.write(ini_text.encode("utf-16"))
     logs_before = _tester_log_snapshot(data) if run_id else {}
     portable = prefix is not None or data.resolve() == terminal.parent.resolve()
     command_line = '"{}"{} /config:"{}"'.format(_windows_path(terminal, prefix), " /portable" if portable else "",
