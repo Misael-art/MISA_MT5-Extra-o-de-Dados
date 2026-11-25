@@ -75,13 +75,10 @@ def _restart_template():
     return (TEMPLATES / "UltraRestartProbe.mq5.tmpl").read_text(encoding="utf-8")
 
 
-def export(db, package, destination, *, restart_id=None, prepare_tester=False):
+def _build(db, package, restart_id, prepare_tester):
     if restart_id is not None and (not isinstance(restart_id, str) or not re.fullmatch(r"[a-f0-9]{32}", restart_id)):
         raise ValueError("O identificador da retomada deve conter 32 dígitos hexadecimais.")
     modules, frames = _context(db, package)
-    target = Path(destination)
-    if target.exists():
-        raise FileExistsError(f"Escolha uma pasta nova para o Expert: {target}")
     key = package["package_hash"]
     symbol = "UX_" + key[:20]
     csv = symbol + ".csv"
@@ -143,14 +140,36 @@ def export(db, package, destination, *, restart_id=None, prepare_tester=False):
         contents["UltraPreparedTester.mq5"] = program("UltraConcurrent.mq5", "strategy_tester", instrument=info["symbol"])
         contents["UltraPlatformOrders.mq5"] = program(None, PLATFORM, instrument=info["symbol"])
         metadata["tester_contract"] = info
+    metadata.update(capability="two_owner_modeled_book", package_hash=key, symbol=symbol, ticks=len(frames),
+                    sha256={name: sha256(content.encode("utf-8")).hexdigest() for name, content in contents.items()})
+    return contents, metadata
+
+
+def package_capabilities(db, package):
+    verify_ultra_research(db, package)
+    result = {"package_hash": package["package_hash"], "source_manifest": package["source_manifest"],
+              "symbol": package["symbol"], "sample_kind": package["sample_kind"], "research": package["capabilities"],
+              "owners": [m["owner"] for m in package["policy"]["modules"]], "native_order_parity": "pending"}
+    try:
+        _, metadata = _build(db, package, None, True)
+    except ValueError as exc:
+        return dict(result, status="capability_absent", reason=str(exc))
+    return dict(result, status="exportable", tester=capabilities(), tester_contract=metadata["tester_contract"],
+                sources=metadata["sha256"])
+
+
+def export(db, package, destination, *, restart_id=None, prepare_tester=False):
+    target = Path(destination)
+    if target.exists():
+        raise FileExistsError(f"Escolha uma pasta nova para o Expert: {target}")
+    contents, metadata = _build(db, package, restart_id, prepare_tester)
     with TemporaryDirectory(dir=target.parent) as temporary:
         stage = Path(temporary) / "bundle"
         stage.mkdir()
         for name, content in contents.items():
             (stage / name).write_bytes(content.encode("utf-8"))
         stage.rename(target)
-    return {**metadata, "capability": "two_owner_modeled_book", "package_hash": key, "symbol": symbol, "ticks": len(frames),
-            "sha256": {name: sha256(content.encode("utf-8")).hexdigest() for name, content in contents.items()}}
+    return metadata
 
 
 def _expected(frame, owners):

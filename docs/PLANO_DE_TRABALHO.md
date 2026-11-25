@@ -5493,3 +5493,7 @@ O Expert de pesquisa solicita pendentes com proteção no símbolo personalizado
 ### T19.54 · Métricas da reserva temporal por alternativa
 
 O estudo calcula patrimônio marcado desde o início da reserva, drawdown, fator de lucro dos ciclos encerrados, custos, exposição e margem máxima para cada cadência e tentativa. A seleção final por política e o intervalo por blocos da média líquida por sessão integram o recibo. A identidade do avaliador muda em novos registros e os recibos concluídos preservam seus resultados.
+
+### T19.54 · Consulta por ciclo na interface e por tick na CLI
+
+O relatório permite escolher o ciclo por dono, abre a regra congelada e o orçamento do instante. A CLI consulta um tick usando o índice persistido. O lote segue para o próximo ativo depois de identificar falta de dados ou ausência de candidato. A integração exercita uma terceira intenção vetada por margem no tick em que B atingiu o limite local e A recebeu a reserva.

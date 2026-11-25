@@ -20,6 +20,26 @@ def list_receipts(db, offset=0, limit=50):
         return [dict(row) for row in rows]
 
 
+def explain(db, receipt, ordinal):
+    """Consulta pelo índice do cursor, sem materializar a linha do tempo completa."""
+    if type(ordinal) is not int or ordinal < 0:
+        raise ValueError("O índice do tick deve ser inteiro a partir de zero.")
+    summary = ultra.inspect_receipt(db, receipt)
+    with db.engine.connect() as conn:
+        row = conn.execute(text("SELECT events,mark FROM _ultra_frames WHERE receipt=:r AND ordinal=:i"),
+                           {"r": receipt, "i": ordinal}).first()
+    if row is None:
+        raise ValueError("Tick ausente no recibo.")
+    events = json.loads(row[0])
+    mark = json.loads(row[1])
+    policy = summary["policy"]
+    return {"receipt": receipt, "ordinal": ordinal, "snapshot": summary["manifest_id"], "key": mark["key"],
+            "mark": mark, "events": events, "version": policy["revision"],
+            "rules": {m["owner"]: m for m in policy["modules"]},
+            "risk_limit": policy["risk_limit"], "fill_steps_per_tick": policy["fill_steps_per_tick"],
+            "source": "research_replay"}
+
+
 def export(db, receipt, destination, *, reference=None):
     data = ultra.inspect_receipt(db, receipt, timeline=True)
     if data["status"] != "complete":
@@ -36,7 +56,8 @@ def export(db, receipt, destination, *, reference=None):
     result = metrics(data)
     model = {"frames": data["timeline"], "reference": marks, "initial": result["initial_cash"],
              "currency": data["policy"]["currency"], "limits": {m["owner"]: m["max_losses"] for m in data["policy"]["modules"]},
-             "owners": [m["owner"] for m in data["policy"]["modules"]]}
+             "owners": [m["owner"] for m in data["policy"]["modules"]],
+             "rules": {m["owner"]: m for m in data["policy"]["modules"]}, "risk_limit": data["policy"]["risk_limit"]}
     def money(number):
         return escape(f'{number / 100:,.2f} {model["currency"]}')
     page = (TEMPLATE.replace("__FINAL__", money(result["end_equity"]))
@@ -58,7 +79,7 @@ header small{color:#c0d4ce}h1{margin:4px 0 0;font-size:clamp(24px,4vw,38px)}h2{f
 .cards,.charts{display:grid;gap:12px}.cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
 section,article{background:#fff;border:1px solid #ccd5d1;border-radius:6px;padding:14px;margin-bottom:14px}
 article strong{display:block;font-size:22px}label{display:inline-block;margin:4px 10px 4px 0}
-select,input,button{font:inherit}button,select{padding:5px 9px}figure.tracks{margin:12px 0}#lanes{height:auto}.trackLegend{font-size:.85em;color:#475e61}
+select,input,button{font:inherit}select{max-width:100%}.cycle{display:flex;align-items:center;gap:8px;margin-right:0;min-width:0}.cycle select{min-width:0}button,select{padding:5px 9px}figure.tracks{margin:12px 0}#lanes{height:auto}.trackLegend{font-size:.85em;color:#475e61}
 input[type=range]{width:min(500px,100%);accent-color:#007566}
 canvas{display:block;width:100%;height:145px;touch-action:pan-y}canvas:focus-visible,button:focus-visible{outline:3px solid #a55008}
 .charts{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}figure{margin:0;min-width:0}
@@ -77,6 +98,7 @@ figcaption{font-weight:650}small,.muted{color:#475e61}code{overflow-wrap:anywher
  <div class="trackLegend">Cinza · pendente　 Verde · posição　 ◆ veto ou invalidação　 ● mudança de gestão</div>
  </figure><label for="cursor">Tick</label><input type="range" id="cursor" min="0" step="1"><output id="time"></output></section>
 <section><h2>Decisões neste instante</h2><label>Estratégia <select id="owner"><option value="">Todas</option></select></label>
+<label class="cycle">Ciclo <select id="cycle"><option value="">Todos</option></select></label>
 <button id="prev">Decisão anterior</button> <button id="next">Próxima decisão</button><p id="account"></p>
 <ul id="events" aria-live="polite"></ul></section><details><summary>Identidade do recibo</summary><code>__RECEIPT__</code></details></main>
 <script id="frozen" type="application/json">__DATA__</script><script>
@@ -143,7 +165,18 @@ function lanes(index){
  });
  c.strokeStyle='#293c68';c.setLineDash([3,3]);c.beginPath();c.moveTo(x(index),0);c.lineTo(x(index),h);c.stroke();
 }
-function eventsAt(i){const owner=el('owner').value;return frames[i].events.filter(e=>!owner||owner===e.owner)}
+const cycleStarts=new Map();
+frames.forEach((frame,index)=>{for(const e of frame.events)if(e.event==='armed')cycleStarts.set(e.cycle_id,{owner:e.owner,index})});
+function setCycles(){
+ const combo=el('cycle'),owner=el('owner').value;
+ combo.replaceChildren(new Option('Todos',''));
+ for(const [id,item] of cycleStarts)if(!owner||owner===item.owner)
+  combo.add(new Option(item.owner+' · '+utc(marks[item.index].key[0])+' · '+id.slice(0,8),id));
+}
+setCycles();
+function eventsAt(i){const owner=el('owner').value,cycle=el('cycle').value;
+ return frames[i].events.filter(e=>(!owner||owner===e.owner)&&(!cycle||cycle===e.cycle_id))}
+
 function draw(){
  const i=Number(el('cursor').value),m=marks[i],metric=el('metric');el('time').value=utc(m.key[0])+' · seq '+m.key[1];
  lanes(i);el('metricTitle').textContent=metric.selectedOptions[0].text;chart(el('price'),'bid',false);chart(el('curve'),metric.value,true);
@@ -155,7 +188,7 @@ function draw(){
   if(e.reason==='local_loss_streak')explanation.textContent=e.local.losses+' perdas consecutivas encerradas. Limite do ciclo de novas entradas: '+data.limits[e.owner]+'.';
   if(e.reason==='shared_margin')explanation.textContent='Solicitação de '+money(e.requested_margin)+' com '+money(e.margin)+' já reservados e patrimônio de '+money(e.equity)+'.';
   if(e.reason==='reference_lost')explanation.textContent='Referência '+(e.reference??'do ciclo')+' · bid '+e.bid+' · ask '+e.ask+' ticks.';
-  raw.textContent=JSON.stringify(e,null,2);detail.append(title);if(explanation.textContent)detail.append(explanation);detail.append(raw);li.append(detail);list.append(li)}
+  raw.textContent=JSON.stringify({event:e,rule:data.rules[e.owner],risk_limit:data.risk_limit},null,2);detail.append(title);if(explanation.textContent)detail.append(explanation);detail.append(raw);li.append(detail);list.append(li)}
  if(!list.children.length){const li=document.createElement('li');li.textContent='Sem decisão neste tick para a seleção.';list.append(li)}
 }
 function move(step,onlyEvents){let i=Number(el('cursor').value)+step;
@@ -167,6 +200,8 @@ for(const id of ['price','curve','lanes']){
  let a=0,b=marks.length-1;while(a<b){let mid=(a+b)>>1;if(marks[mid].key[0]<t)a=mid+1;else b=mid}el('cursor').value=a;draw()};
 }
 el('prev').onclick=()=>move(-1,true);el('next').onclick=()=>move(1,true);
-el('owner').onchange=el('metric').onchange=el('cursor').oninput=draw;
+el('owner').onchange=()=>{setCycles();draw()};
+el('cycle').onchange=()=>{const cycle=cycleStarts.get(el('cycle').value);if(cycle)el('cursor').value=cycle.index;draw()};
+el('metric').onchange=el('cursor').oninput=draw;
 new ResizeObserver(draw).observe(el('price'));draw();
 </script></html>"""

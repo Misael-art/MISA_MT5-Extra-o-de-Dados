@@ -12,7 +12,16 @@ def add_parser(sub):
     parser = sub.add_parser("laboratory", help="séries, confluências e comparação exploratória entre timeframes")
     actions = parser.add_subparsers(dest="laboratory_action", required=True)
     actions.add_parser("ultra-capabilities", help="capacidades do replay Ultra offline").set_defaults(func=run)
-    actions.add_parser("ultra-tester-capabilities", help="capacidades do livro MQL5 e do executor nativo").set_defaults(func=run)
+    supported = actions.add_parser("ultra-tester-capabilities", help="capacidades do livro e do executor para o pacote")
+    supported.add_argument("--package", help="pacote congelado a conferir")
+    supported.set_defaults(func=run)
+    explain = actions.add_parser("ultra-explain", help="consulta decisões, regras e orçamento de um tick da carteira")
+    explain.add_argument("--receipt", required=True)
+    explain.add_argument("--ordinal", type=int, required=True, help="índice do tick contado a partir de zero")
+    explain.set_defaults(func=run)
+    batch = actions.add_parser("ultra-batch", help="avalia em sequência as definições por ativo")
+    batch.add_argument("--definition", action="append", required=True, help="arquivo JSON por ativo, em ordem")
+    batch.set_defaults(func=run)
     freeze = actions.add_parser("ultra-freeze", help="congela política e referência ao snapshot")
     freeze.add_argument("--definition", required=True)
     freeze.set_defaults(func=run)
@@ -190,8 +199,22 @@ def run(args, ctx):
         if args.laboratory_action == "ultra-capabilities":
             result = ultra.capabilities()
         elif args.laboratory_action == "ultra-tester-capabilities":
-            from .ultra_tester import capabilities
-            result = capabilities()
+            from .ultra_tester import capabilities, package_capabilities
+            result = package_capabilities(ctx.db, json.loads(Path(args.package).read_text(encoding="utf-8-sig"))) if args.package else capabilities()
+        elif args.laboratory_action == "ultra-explain":
+            from .ultra_report import explain
+            result = explain(ctx.db, args.receipt, args.ordinal)
+        elif args.laboratory_action == "ultra-batch":
+            items = []
+            for name in args.definition:
+                try:
+                    frozen = ultra.freeze(ctx.db, json.loads(Path(name).read_text(encoding="utf-8-sig")))
+                    replay = ultra.replay(ctx.db, frozen["receipt"])
+                    item = {key: replay[key] for key in ("receipt", "manifest_id", "status", "reasons", "progress")}
+                except (OSError, ValueError) as exc:
+                    item = {"status": "invalid_definition", "reason": str(exc)}
+                items.append(dict(item, definition=name))
+            result = {"items": items}
         elif args.laboratory_action == "ultra-freeze":
             result = ultra.freeze(ctx.db, json.loads(Path(args.definition).read_text(encoding="utf-8-sig")))
         elif args.laboratory_action == "ultra-replay":
