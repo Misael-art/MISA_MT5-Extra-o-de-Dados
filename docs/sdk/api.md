@@ -1581,4 +1581,9 @@ terminal os valores de tick e margem e as barras M1 anteriores à amostra. O rec
 `tester_contract_verified` inclui essas observações e o arquivo de configuração para
 repetir o ensaio no Tester.
 
+Na exportação avulsa da bancada de fatias FOK, `slice_id` identifica a tentativa e
+vincula o Expert ao checkpoint. Use 32 dígitos hexadecimais com
+`prepare_tester=True` e deixe `restart_id` vazio. A execução por
+`ultra_run_tester` com `origin="strategy_tester_sliced"` gera esse identificador.
+
 A origem `strategy_tester_orders` em `ultra_run_tester` executa o Expert de ordens da plataforma exclusivamente no Strategy Tester DEMO. O recibo inclui o relatório original, o journal local do agente e a trilha HTML por ciclo quando disponíveis. Em `ultra_compare_native_book`, a mesma origem retorna os campos `modeled_status` e `native_order_parity`, a regra e os eventos por ciclo, solicitações e transações. A igualdade do journal avulso tem o valor `journal_matches`. O executor verifica também a tabela de negócios do relatório da plataforma.
