@@ -2,8 +2,7 @@
 from hashlib import sha256
 
 from ..experiments.schema import closed, digest
-from ..presets.compiler import verify_ultra_research
-from .ultra import inspect_receipt
+from ..presets.compiler import ultra_research_ledger, verify_ultra_research
 
 
 def _difference(expected, observed, path):
@@ -45,7 +44,7 @@ def compare_trace(db, package, trace=None, *, journal=None):
         raise ValueError("Identidade do Tester, pacote, fonte ou livro incompatível.")
     if not journal or sha256(journal).hexdigest() != trace["journal_sha256"]:
         raise ValueError("Journal bruto ausente ou divergente do hash declarado no livro.")
-    run = inspect_receipt(db, checked["receipt"], timeline=True)
+    run = ultra_research_ledger(db, checked["receipt"])
     expected, observed = run["timeline"], trace["timeline"]
     for index, (left, right) in enumerate(zip(expected, observed)):
         diff = _difference(left, right, "frame")

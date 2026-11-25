@@ -1,0 +1,42 @@
+#ifndef MT5X_ULTRA_PATTERN_BOOL
+#define MT5X_ULTRA_PATTERN_BOOL
+int PatternAnd(const int a,const int b) { return (a==0 || b==0 ? 0 : a<0 || b<0 ? -1 : 1); }
+int PatternOr(const int a,const int b) { return (a==1 || b==1 ? 1 : a<0 || b<0 ? -1 : 0); }
+int PatternNot(const int a) { return a<0 ? -1 : 1-a; }
+int PatternCmp(const long a,const long b,const int op) {
+   if(a==LONG_MIN || b==LONG_MIN) return -1;
+   return (int)(op==0 ? a<b : op==1 ? a<=b : op==2 ? a>b : a>=b);
+}
+#endif
+struct UltraKernel$slot
+{
+   long minute,available,opening,highest,lowest,closing,prior,last_day;
+   double reference;
+   int direction,verdict;
+   bool emitted;
+   void observe(const long msc,const double bid)
+   {
+      const long next_minute=msc/60000,q=(long)MathRound(bid/TICK_SIZE);
+      direction=0;available=0;reference=0;verdict=1;
+      if(minute!=next_minute)
+      {
+         if(minute<0) prior=LONG_MIN;
+         else
+         {
+            if($reference!=LONG_MIN && ($condition)==1$session)
+            {
+               direction=$direction;available=(minute+1)*60000;reference=(double)$reference*TICK_SIZE;
+               emitted=true;last_day=minute/1440;
+               int invalid=0;$variables
+$checks
+               verdict=(invalid==1 ? 0 : invalid==-1 ? -1 : 1);
+            }
+            prior=closing;
+         }
+         opening=q;highest=q;lowest=q;minute=next_minute;
+      }
+      if(q>highest) highest=q;
+      if(q<lowest) lowest=q;
+      closing=q;
+   }
+};

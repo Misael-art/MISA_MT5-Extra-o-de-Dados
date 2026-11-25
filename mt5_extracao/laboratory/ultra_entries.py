@@ -5,7 +5,7 @@ from pathlib import Path
 from ..analytics import datasets
 from ..composition import ultra as book
 from ..experiments.schema import digest
-from ..presets.compiler import verify_ultra_research
+from ..presets.compiler import ultra_research_ledger, verify_ultra_research
 from . import ultra, ultra_evaluation
 
 
@@ -115,7 +115,7 @@ def compare(db, package, spacing):
                 "capital": policy["cash"], "risk_limit": policy["risk_limit"], "liquidity": policy["fill_steps_per_tick"],
                 "executor": sha256(Path(__file__).read_text(encoding="utf-8").encode()).hexdigest()}
     experiment = digest(protocol)
-    reference = ultra.inspect_receipt(db, package["receipt"], timeline=True)["timeline"]
+    reference = ultra_research_ledger(db, package["receipt"])["timeline"]
     ticks, signals = ultra._inputs(datasets.load(db, package["source_manifest"]), policy)
     direct, single = _arm(policy, ticks, signals, 0)
     for index, (old, repeated) in enumerate(zip(reference, direct, strict=True)):

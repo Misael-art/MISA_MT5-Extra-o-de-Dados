@@ -32,8 +32,7 @@ struct UltraSignals
       }
       if(bars+1>=WARM_N)
       {
-         if(fast>slow && prev_fast<=prev_slow) s09=1;
-         if(fast<slow && prev_fast>=prev_slow) s09=-1;
+${closed_cross}
       }
       bool active=false;
       if(bars>=13)

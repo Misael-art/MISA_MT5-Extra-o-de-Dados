@@ -8,8 +8,7 @@ from tempfile import TemporaryDirectory
 
 from ..experiments.schema import digest
 
-from ..presets.compiler import verify_ultra_research
-from .ultra import inspect_receipt
+from ..presets.compiler import ultra_research_ledger, verify_ultra_research
 from . import ultra_preparation
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "robots" / "templates"
@@ -33,7 +32,9 @@ def capabilities():
             "origins": list(MARKERS), "feed": "synthetic_bid_ticks_m1_utc",
             "max_ticks": 10000, "tester_requires_connected_demo": True,
             "broker_orders": False, "simulated_platform_orders": {
-                "origin": PLATFORM, "portfolio": "independent_donchian_or_s09_per_owner", "orders": "limit_with_sl_tp", "management": ["cancel", "breakeven"],
+                "origin": PLATFORM, "portfolio": "independent_signal_per_owner",
+                "strategies": ["donchian", "s09_reference", "pattern_definition"],
+                "pattern_scope": "M1 OHLC/prior_close, on-grid comparisons, and/or/not, cancel_before_entry", "orders": "limit_with_sl_tp", "management": ["cancel", "breakeven"],
                 "hedging": "per_cycle_magic_and_position", "netting": "exclusive_cycle_independent_protection",
                 "requires": "Strategy Tester on prepared custom symbol", "acceptance": "requires_agent_evidence"}, "economic_approval": False,
             "tester_primer_m1_bars": ultra_preparation.PRIMER_MINUTES}
@@ -43,8 +44,16 @@ def _templates(platform=False):
     templates = {name: (TEMPLATES / (name + ".tmpl")).read_text(encoding="utf-8") for name in NATIVE_TEMPLATES}
     hook = ("      if(owner>=0) PlatformIntent(msc,seq,owner,opened,kind,cycle[owner].side,cycle[owner].limit,qty,stop,target);\n"
             if platform else "")
+    templates["UltraSignals.mqh"] = Template(templates["UltraSignals.mqh"]).substitute(closed_cross=(
+        "         s09=HDKS09Cross(prev_fast,prev_slow,fast,slow,bars+1,SLOW_N);" if platform else
+        "         if(fast>slow && prev_fast<=prev_slow) s09=1;\n         if(fast<slow && prev_fast>=prev_slow) s09=-1;"))
     templates["UltraBook.mqh"] = Template(templates["UltraBook.mqh"]).substitute(
         platform_intent=hook, owners="OWNER_COUNT" if platform else "2",
+        owner_storage="OWNER_STORAGE" if platform else "2",
+        owner_inputs="(long)MathRound(observed.refs[i]/TICK_SIZE),observed.times[i],observed.verdicts[i]" if platform else "reference,observed.available",
+        verdict_param=",const int verdict" if platform else "",
+        entry_verdict=('      if(verdict!=1) { event(i,available,(verdict==0 ? "invalidated" : "veto"),'
+                       '(verdict==0 ? "pattern_invalidation" : "unknown_pattern_condition"));return; }\n' if platform else ""),
         side_for_owner="observed.sides[i]" if platform else "(i==DON_SLOT ? observed.donchian : observed.s09)")
     return templates
 
@@ -59,35 +68,49 @@ def _kernel_constants(don, s09):
             "FAST_N": s09.get("fast", 1), "SLOW_N": s09.get("slow", 2), "WARM_N": s09.get("warmup_bars", 2)}
 
 
-def _platform_signals(slots):
-    template = _templates()["UltraSignals.mqh"]
+def _platform_signals(slots, tick):
+    from . import ultra_pattern_native
+    templates = {False: _templates()["UltraSignals.mqh"], True: _templates(platform=True)["UltraSignals.mqh"]}
     kernels, declarations, observations = [], [], []
     seen = set()
     for i, module in enumerate(slots):
         kind = module["strategy"]
         params = module["params"]
-        values = _kernel_constants(params if kind == "donchian" else {}, params if kind == "s09_reference" else {})
-        if max(values["ENTRY_N"], values["ATR_AVG"]) > 4096:
-            raise ValueError("O indicador excede o limite verificado dos anéis do Expert.")
-        names = dict(values, UltraSignals=f"UltraKernel{i}")
-        kernels.append(re.sub(r"\b("+"|".join(names)+r")\b", lambda match: str(names[match[0]]), template))
+        if kind == "pattern_definition":
+            pattern = (TEMPLATES / "UltraPattern.mqh.tmpl").read_text(encoding="utf-8")
+            kernels.append(ultra_pattern_native.kernel(pattern, module, i, tick))
+            signal, verdict = "direction", f"kernel{i}.verdict"
+        else:
+            values = _kernel_constants(params if kind == "donchian" else {}, params if kind == "s09_reference" else {})
+            if max(values["ENTRY_N"], values["ATR_AVG"]) > 4096:
+                raise ValueError("O indicador excede o limite verificado dos anéis do Expert.")
+            names = dict(values, UltraSignals=f"UltraKernel{i}")
+            kernels.append(re.sub(r"\b("+"|".join(names)+r")\b", lambda match: str(names[match[0]]),
+                                  templates[kind == "s09_reference"]))
+            signal, verdict = ("donchian" if kind == "donchian" else "s09"), "1"
         declarations.append(f"   UltraKernel{i} kernel{i};")
-        signal = "donchian" if kind == "donchian" else "s09"
         observations.extend((f"      if(minute<0) kernel{i}.minute=-1;", f"      kernel{i}.observe(msc,bid);",
-                             f"      sides[{i}]=kernel{i}.{signal};",
-                             f"      if(sides[{i}]!=0) {{ available=kernel{i}.available;reference=kernel{i}.reference; }}"))
-        if kind not in seen:
+                             f"      sides[{i}]=kernel{i}.{signal};verdicts[{i}]={verdict};",
+                             f"      times[{i}]=kernel{i}.available;refs[{i}]=kernel{i}.reference;",
+                             f"      if(sides[{i}]!=0) {{",
+                             f'         PrintFormat("MT5X_ULTRA_SIGNAL1|{i}|%I64d|%I64d|%d|%I64d",msc,times[{i}],'
+                             f'sides[{i}],(long)MathRound(refs[{i}]/TICK_SIZE));',
+                             f"         if(available==0) {{ available=times[{i}];reference=refs[{i}]; }}",
+                             "      }"))
+        if kind != "pattern_definition" and kind not in seen:
             observations.append(f"      {signal}=sides[{i}];")
             seen.add(kind)
     return "\n".join([*kernels, "struct UltraSignals {", *declarations,
-        "   long minute, available; double reference; int donchian, s09, sides[OWNER_COUNT];",
+        "   long minute,available,times[OWNER_STORAGE]; double reference,refs[OWNER_STORAGE];",
+        "   int donchian,s09,sides[OWNER_STORAGE],verdicts[OWNER_STORAGE];",
         "   void observe(const long msc,const double bid) {",
         "      available=0;reference=0;donchian=0;s09=0;", *observations, "      minute=msc/60000;", "   }", "};"])
 
 
-def _platform_revision(slots):
-    return digest([_templates(platform=True), _platform_source(), _platform_signals(slots)])
-
+def _platform_revision(slots, tick):
+    from ..robots.ultra_hadouken import HEADERS
+    return digest([_templates(platform=True), _platform_source(), _platform_signals(slots, tick),
+                   HEADERS if any(m["strategy"]=="s09_reference" for m in slots) else {}])
 
 
 def _context(db, package, *, platform=False):
@@ -96,16 +119,15 @@ def _context(db, package, *, platform=False):
     modules = {}
     for module in policy["modules"]:
         modules.setdefault(module["strategy"], module)
-    if (not modules or set(modules).difference(FIELDS[4:6]) or
+    if (set(modules).difference((*FIELDS[4:6], "pattern_definition")) or
             (not platform and (len(policy["modules"]) != 2 or set(modules) != set(FIELDS[4:6])))
             or package["sample_kind"] != "synthetic" or package["feed"].get("derivation") != "bid_ticks_m1"
             or package["time"].get("broker_utc_offset_hours") != 0):
-        raise ValueError("O Expert de ordens aceita donos Donchian/S09 em ticks bid M1 sintéticos UTC. O livro histórico requer um dono de cada.")
-    run = inspect_receipt(db, package["receipt"])
+        raise ValueError("O Expert de ordens aceita Donchian, S09 e hipóteses direcionais de preço em ticks bid M1 sintéticos UTC. O livro histórico requer um dono de cada.")
+    run = ultra_research_ledger(db, package["receipt"])
     if not 0 < run["progress"] <= 10000:
         raise ValueError("O journal de pesquisa admite de 1 a 10000 cotações.")
-    frames = inspect_receipt(db, package["receipt"], timeline=True)["timeline"]
-    return modules, frames
+    return modules, run["timeline"]
 
 
 def _restart_template():
@@ -130,7 +152,7 @@ def _build(db, package, restart_id, prepare_tester):
     constants.update(TICK_CASH=policy["tick_cash"], INITIAL_CASH=policy["cash"], MARGIN_STEP=policy["margin"],
                      FEE=policy["fee"], RISK_LIMIT=policy["risk_limit"], FILL_CAPACITY=policy["fill_steps_per_tick"],
                      DON_SLOT=slots.index(modules["donchian"]) if don else -1)
-    highest = max(frame["mark"]["ask"] for frame in frames) + max(max(m["stop"], m["target"]) for m in slots)
+    highest = max(frame["mark"]["ask"] for frame in frames) + max((max(m["stop"], m["target"]) for m in slots), default=0)
     quantity = sum(m["steps"] for m in slots)
     worst = quantity * (highest * policy["tick_cash"] + policy["margin"] + 2 * policy["fee"])
     if (policy["cash"] + 4 * len(frames) * worst >= 2**63
@@ -145,19 +167,20 @@ def _build(db, package, restart_id, prepare_tester):
     revision = digest(templates)
     def program(name, kind, restart=None, binding=None, instrument=symbol):
         physical = kind == PLATFORM
-        build_revision = _platform_revision(slots) if physical else digest([revision, restart]) if restart else revision
+        build_revision = _platform_revision(slots, unit) if physical else digest([revision, restart]) if restart else revision
         runtime_template = templates["UltraRuntime.mqh"]
         source_defines = defines
         if physical:
-            source_defines += f"\n#define OWNER_COUNT {len(slots)}\n#define MAGIC_STRIDE {max(2,len(slots))}"
+            source_defines += f"\n#define OWNER_COUNT {len(slots)}\n#define OWNER_STORAGE {max(1, len(slots))}\n#define MAGIC_STRIDE {max(2,len(slots))}"
             runtime_template = runtime_template.replace("(signals.donchian!=0 || signals.s09!=0)", "(signals.available!=0)")
         runtime = Template(runtime_template).substitute(
-            defines=source_defines, core=_platform_signals(slots) if physical else templates["UltraSignals.mqh"], book=_templates(platform=True)["UltraBook.mqh"] if physical else templates["UltraBook.mqh"],
+            defines=source_defines, core=_platform_signals(slots, unit) if physical else templates["UltraSignals.mqh"], book=_templates(platform=True)["UltraBook.mqh"] if physical else templates["UltraBook.mqh"],
             modules=assignments, package=key, manifest=package["source_manifest"], revision=build_revision,
             marker=MARKERS[kind])
         if physical:
             return Template(_platform_source()).substitute(runtime=runtime, symbol=instrument, package=key,
                 manifest=package["source_manifest"], revision=build_revision, volume_step=Decimal(str(spec["volume_step"])),
+                signal_includes='#include "HADOUKEN/Strategies/HDK_S09Reference.mqh"' if s09 else "",
                 currency=policy["currency"])
         if restart:
             return Template(restart).substitute(runtime=runtime, symbol=symbol, binding=binding)
@@ -185,6 +208,9 @@ def _build(db, package, restart_id, prepare_tester):
             contents["UltraPreparedTester.mq5"] = program("UltraConcurrent.mq5", "strategy_tester", instrument=info["symbol"])
         contents["UltraPlatformOrders.mq5"] = program(None, PLATFORM, instrument=info["symbol"])
         metadata["tester_contract"] = info
+        if s09:
+            from ..robots.ultra_hadouken import HEADERS
+            metadata["hadouken_headers"] = dict(HEADERS)
     metadata.update(capability="two_owner_modeled_book" if legacy else "multi_owner_strategy_tester", package_hash=key, symbol=symbol, ticks=len(frames),
                     sha256={name: sha256(content.encode("utf-8")).hexdigest() for name, content in contents.items()})
     return contents, metadata
@@ -194,7 +220,8 @@ def package_capabilities(db, package):
     verify_ultra_research(db, package)
     result = {"package_hash": package["package_hash"], "source_manifest": package["source_manifest"],
               "symbol": package["symbol"], "sample_kind": package["sample_kind"], "research": package["capabilities"],
-              "owners": [m["owner"] for m in package["policy"]["modules"]], "native_order_parity": "pending"}
+              "owners": [m["owner"] for m in package["policy"]["modules"]],
+              "owner_signals": {m["owner"]: m["strategy"] for m in package["policy"]["modules"]}, "native_order_parity": "pending"}
     try:
         _, metadata = _build(db, package, None, True)
     except ValueError as exc:
@@ -296,7 +323,7 @@ def compare(db, package, journal, *, origin):
     if origin == "terminal_restart":
         revision = digest([revision, _restart_template()])
     if origin == PLATFORM:
-        revision = _platform_revision(package["policy"]["modules"])
+        revision = _platform_revision(package["policy"]["modules"], Decimal(str(package["specification"]["tick_size"])))
     begin = ["BEGIN", package["package_hash"], package["source_manifest"], revision]
     count = sum(row[0] == "FRAME" for row in rows)
     if (len(rows) < 2 or rows[0][:-1] != begin or not rows[0][-1].isdigit() or int(rows[0][-1]) <= 0
@@ -314,12 +341,32 @@ def compare(db, package, journal, *, origin):
             proof = reconcile(package, frames, lines, contract["symbol"], revision, modeled["terminal_build"])
         except ValueError as exc:
             proof = {"status": "platform_journal_incomplete", "native_order_parity": "pending", "platform_error": str(exc)}
+        from . import ultra_pattern_native
+        checks = ultra_pattern_native.audit(db, package, frames, lines)
+        proof["predicate_audit"] = checks
+        signals = ultra_pattern_native.audit_signals(package, frames, lines)
+        proof["signal_audit"] = signals
+        by_magic = {c["magic"]: c for c in proof.get("cycles", [])}
+        stride = max(2, len(package["policy"]["modules"]))
+        for slot, msc, available, index, value in checks["observed"]:
+            cycle = by_magic.get(available * stride + slot)
+            if cycle is not None:
+                cycle.setdefault("predicate_values", []).append({"msc": msc, "rule_index": index, "value": value})
+        for slot, msc, available, side, reference in signals["observed"]:
+            cycle = by_magic.get(available * stride + slot)
+            if cycle is not None:
+                cycle["observed_signal"] = {"msc": msc, "available_msc": available, "side": side, "reference_ticks": reference}
+        def earliest(*differences):
+            candidates = [d for d in differences if d]
+            return min(candidates, key=lambda d: tuple(d.get("key") or (float("inf"),)), default=None)
+        first = earliest(modeled["first_divergence"], signals["first_divergence"], checks["first_divergence"])
+        if first:
+            modeled = dict(modeled, status="diverged", first_divergence=first)
         combined = dict(modeled, **proof)
         combined.update(scope="strategy_tester_platform_orders", modeled_status=modeled["status"],
-                        modeled_first_divergence=modeled["first_divergence"],
-                        platform_first_divergence=proof.get("first_divergence"))
-        if modeled["first_divergence"]:
-            combined.update(status="diverged", first_divergence=modeled["first_divergence"])
+                        modeled_first_divergence=first, platform_first_divergence=proof.get("first_divergence"))
+        if first:
+            combined.update(status="diverged", first_divergence=earliest(first, proof.get("first_divergence")))
         return combined
 
     def difference(index, key, field, expected, observed):

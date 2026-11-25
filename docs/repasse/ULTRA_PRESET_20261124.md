@@ -194,6 +194,16 @@ Nos controles sintéticos de 372 ticks, o gradiente de um tick terminou USD 26,7
 
 ### Topologia do Expert de ordens
 
-A origem `strategy_tester_orders` gera um estado de sinal e de ciclo para cada dono Donchian/S09 do pacote. Os parâmetros dos indicadores e a precedência vêm da política congelada. Um período sem sinal aceito pode atravessar toda a amostra com zero ordens. A consulta de capacidades lista as origens disponíveis para a topologia escolhida. Os executáveis de controle e retomada da série anterior conservam a topologia de um dono de cada estratégia.
+A origem `strategy_tester_orders` gera um estado de sinal e de ciclo para cada dono com sinal implementado no pacote. Os parâmetros dos indicadores e a precedência vêm da política congelada. Um período sem sinal aceito pode atravessar toda a amostra com zero ordens. A consulta de capacidades lista as origens disponíveis para a topologia escolhida. Os executáveis de controle e retomada da série anterior conservam a topologia de um dono de cada estratégia.
 
 O preparador configura e relê as permissões de operação, ordens limite, stop e alvo no símbolo personalizado. O Expert registra um veto quando o ticket pendente ou a posição alvo da gestão já não existe. A modalidade da conta e os efeitos de cada solicitação exigem o journal produzido no agente. [Permissões do símbolo em MQL5](https://www.mql5.com/en/book/automation/symbols/symbols_trade_mode)
+
+### Sinal de catálogo e hipótese congelada no mesmo Expert
+
+O Expert de ordens usa a função de cruzamento `HDKS09Cross` do HADOUKEN para S09. O runner confere os dois includes da biblioteca configurada antes de compilar. O recibo de exportação relaciona os hashes do contrato. A implementação de Donchian usa os parâmetros de cada dono.
+
+Um dono `pattern_definition` pode compartilhar a conta do Tester com os demais. O Expert forma as barras M1 com o bid e avalia a hipótese no primeiro tick após o fechamento. O subconjunto disponível inclui OHLC, fechamento anterior, comparações de preços na grade, composição booleana e cancelamento antes da entrada. O journal identifica o dono, o lado, o preço de referência, o instante de disponibilidade, a regra e seu valor verdadeiro, falso ou desconhecido. A trilha compara esses valores com a definição congelada e abre os dados do ciclo. A CLI e a interface identificam os sinais do pacote e informam o motivo de recusa de uma expressão sem implementação nativa.
+
+No pacote sintético com os donos H e B, o Laboratório observou 11 armações de H, 4 invalidações, 6 ordens modeladas, 12 preenchimentos modelados e 5 saídas em 372 ticks. A conferência desses eventos com ordens físicas requer o journal do agente e o relatório de negócios da mesma execução.
+
+Quando a seleção qualificada contém zero estratégias, o compilador deriva do snapshot as marcas de uma carteira integralmente em caixa. O recibo de origem conserva o resultado `no_candidate`. A plataforma pode percorrer os ticks com zero donos. O comparador distingue esse caso de `no_confirmed_signal`, no qual existia um dono e seu sinal nunca ocorreu.

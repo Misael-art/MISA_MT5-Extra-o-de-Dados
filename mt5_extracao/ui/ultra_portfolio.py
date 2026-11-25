@@ -83,7 +83,11 @@ def open_receipts(panel):
             elif result["status"] == "capability_absent":
                 note.configure(text=result["symbol"] + " · " + result["reason"])
             else:
-                note.configure(text=f'{result["symbol"]} · M1 UTC · ' + ", ".join(result["owners"])
+                signals = ", ".join(f"{owner} ({signal})" for owner, signal in result["owner_signals"].items())
+                if not signals:
+                    note.configure(text=f'{result["symbol"]} · Carteira em caixa · Nenhuma estratégia selecionada.')
+                    return
+                note.configure(text=f'{result["symbol"]} · M1 UTC · {signals}'
                                + " · pendente com stop e alvo · cancelamento e breakeven."
                                + " Netting exige ciclo exclusivo. Aceite exige journal do agente."
                                )

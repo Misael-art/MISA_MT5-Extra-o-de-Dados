@@ -198,3 +198,21 @@ def test_restores_persisted_binary_and_prefix_in_a_new_attempt(tmp_path):
     (initial / "partial.bin").write_bytes(b"altered")
     with pytest.raises(ValueError, match="diverge"):
         ultra_restart.read_parent(persisted, package)
+
+
+def test_pinned_s09_headers_require_matching_configured_library(tmp_path, monkeypatch):
+    from hashlib import sha256
+    from mt5_extracao.robots import ultra_hadouken
+    root = tmp_path / "Include/Framework/HADOUKEN"
+    data = {"Strategies/cross.mqh": b"cross\n", "Contracts/market.mqh": b"market\n"}
+    pins = {name: sha256(blob).hexdigest() for name, blob in data.items()}
+    monkeypatch.setattr(ultra_hadouken, "HEADERS", pins)
+    monkeypatch.setattr(ultra_hadouken, "library_dirs", lambda config: [tmp_path])
+    for name, blob in data.items():
+        path = root / name
+        path.parent.mkdir(parents=True)
+        path.write_bytes(blob.replace(b"\n", b"\r\n"))
+    assert ultra_hadouken.headers(None) == {name: root / name for name in pins}
+    (root / "Contracts/market.mqh").write_bytes(b"changed")
+    with pytest.raises(ValueError, match="incompatível"):
+        ultra_hadouken.headers(None)

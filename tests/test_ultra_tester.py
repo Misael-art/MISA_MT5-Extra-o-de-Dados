@@ -150,13 +150,14 @@ def test_linear_grid_preserves_control_and_frozen_total_budget(campaign):
         ultra_entries.compare(db, package, 3)
 
 
-def test_single_owner_without_signal_has_separate_tick_and_platform_acceptances(campaign, tmp_path):
+@pytest.mark.parametrize("empty", [False, True], ids=["no_signal", "no_candidate"])
+def test_cash_control_has_separate_tick_and_platform_acceptances(campaign, tmp_path, empty):
     from mt5_extracao.laboratory import ultra_platform as platform
     db, old = campaign
     definition = {k: deepcopy(v) for k,v in old["policy"].items() if k not in ("tick_cash","engine_hash","revision")}
     module = definition["modules"][0]
     module["params"]["entry_period"] = 100
-    definition["modules"] = [module]
+    definition["modules"] = [] if empty else [module]
     receipt = ultra.freeze(db, definition)["receipt"]
     ultra.replay(db, receipt)
     package = compile_ultra_research(db, receipt)
@@ -166,7 +167,8 @@ def test_single_owner_without_signal_has_separate_tick_and_platform_acceptances(
     assert "UltraConcurrent.mq5" not in exported["sha256"]
     modules, frames = ultra_tester._context(db, package, platform=True)
     assert all(e["event"] == "session" for f in frames for e in f["events"])
-    rev = ultra_tester._platform_revision(definition["modules"])
+    from decimal import Decimal
+    rev = ultra_tester._platform_revision(definition["modules"], Decimal(str(package["specification"]["tick_size"])))
     head = ("BEGIN", package["package_hash"], package["source_manifest"], rev, 6324)
     records = [head, *((k,*v) for _,_,k,_,v in ultra_tester._expected_rows(frames, modules, package["policy"])),
                ("END", len(frames), 0)]
@@ -180,7 +182,13 @@ def test_single_owner_without_signal_has_separate_tick_and_platform_acceptances(
         return ultra_tester.compare(db,package,blob,origin=ultra_tester.PLATFORM)
     result = compare(records,physical)
     assert (result["status"],result["native_order_parity"],result["cycles"]) == ("platform_orders_match","journal_matches",[])
-    assert result["no_order_reason"] == "no_confirmed_signal"
+    assert result["no_order_reason"] == ("no_candidate" if empty else "no_confirmed_signal")
+    if empty:
+        assert package["selection_status"] == ultra.inspect_receipt(db, receipt)["status"] == "no_candidate"
+        assert cap["owner_signals"] == {} and all(f["mark"]["cash"] == 100000 for f in frames)
+        from mt5_extracao.laboratory import ultra_entries
+        entries = ultra_entries.compare(db, package, 1)
+        assert entries["net_difference"] == 0 and entries["frames_compared"] == len(frames)
     incomplete = compare(records,physical[:-1])
     assert incomplete["modeled_status"] == "modeled_book_matches" and incomplete["status"] == "platform_journal_incomplete"
     corrupted = records.copy()

@@ -144,7 +144,7 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         db.close()
 
 
-def test_new_pattern_replays_causal_rules_and_counterfactual(campaign):
+def test_new_pattern_replays_causal_rules_and_counterfactual(campaign, tmp_path):
     from test_pattern_engine import definition as define, field, literal
     from mt5_extracao.laboratory import ultra_evaluation
     db, campaign_def = campaign
@@ -162,6 +162,45 @@ def test_new_pattern_replays_causal_rules_and_counterfactual(campaign):
     c = ultra_evaluation.compare(db, run["receipt"])
     assert c["conditional"]["completed_cycles"] == 0 < c["static"]["completed_cycles"]
     assert any(e["reference_net"] is not None for e in c["paired_vetoes"])
+    from mt5_extracao.laboratory import ultra_pattern_native, ultra_tester
+    from mt5_extracao.presets.compiler import compile_ultra_research
+    from decimal import Decimal
+    package = compile_ultra_research(db, run["receipt"])
+    cap = ultra_tester.package_capabilities(db, package)
+    assert cap["supported_origins"] == [ultra_tester.PLATFORM]
+    assert cap["owner_signals"] == {module["owner"]: "pattern_definition"}
+    export = ultra_tester.export(db, package, tmp_path / "mql", prepare_tester=True)
+    expert = (tmp_path / "mql/UltraPlatformOrders.mq5").read_text()
+    assert "hadouken_headers" not in export and "PatternCmp(closing,105,3)" in expert
+    marker = "MT5X_ULTRA_PREDICATE1|"
+    records = []
+    for frame in timeline:
+        for event in frame["events"]:
+            if event["event"] == "armed":
+                records.append(f"{marker}0|{event['key'][0]}|{event['available_msc']}|0|1")
+    armed = [e for frame in timeline for e in frame["events"] if e["event"] == "armed"]
+    signals = [f"MT5X_ULTRA_SIGNAL1|0|{e['key'][0]}|{e['available_msc']}|{e['side']}|{e['reference']}" for e in armed]
+    assert ultra_pattern_native.audit_signals(package, timeline, signals)["first_divergence"] is None
+    missing = ultra_pattern_native.audit_signals(package, timeline, signals[1:])["first_divergence"]
+    assert missing["field"] == "owner.signal" and missing["key"] == armed[0]["key"]
+    assert len(records) == len(rejected) > 0
+    check = ultra_pattern_native.audit(db, package, timeline, records)
+    assert check["first_divergence"] is None and check["expected_records"] == len(records)
+    for wrong in (records[0][:-1]+"0", marker+"invalid", records[0].replace(marker+"0|", marker+"2|")):
+        check = ultra_pattern_native.audit(db, package, timeline, [wrong, *records[1:]])
+        assert check["first_divergence"]["key"] == rejected[0]["key"]
+    with pytest.raises(ValueError, match="grade"):
+        ultra_pattern_native._price(literal("105.00000000000001", "price"), Decimal("0.25"))
+    composite = {"op": "or", "terms": [condition, {"op": "not", "term": condition}]}
+    first = dict(module, params=dict(module["params"], definition=dict(body,
+                 condition_expression=composite, repetition_policy="first_per_session")))
+    template = (ultra_tester.TEMPLATES / "UltraPattern.mqh.tmpl").read_text()
+    generated = ultra_pattern_native.kernel(template, first, 1, Decimal("1"))
+    assert "PatternOr(PatternCmp(closing,105,3),PatternNot(" in generated and "last_day!=minute/1440" in generated
+    crossing = {"op": "crosses_above", "left": field("close"), "right": field("prior_close")}
+    unsupported = dict(module, params=dict(module["params"], definition=dict(body, condition_expression=crossing)))
+    with pytest.raises(ValueError, match="crosses_above"):
+        ultra_pattern_native.kernel(template, unsupported, 0, Decimal("1"))
     outside = dict(body, universe_definition={"mode": "explicit", "symbols": ["OTHER"]})
     module["params"] = dict(definition=outside, apply_invalidation=True)
     assert "symbol_outside_pattern_universe" in ultra.freeze(db, dict(campaign_def, modules=[module]))["reasons"]
