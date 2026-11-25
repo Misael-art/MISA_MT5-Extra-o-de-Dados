@@ -229,7 +229,7 @@ def test_portfolio_compares_pattern_on_closed_bars_and_identifies_first_differen
     pattern = dict(definition=definition, apply_invalidation=True)
     t = AXIS * 1000
     # A primeira barra não conhece prior_close. A segunda fecha na máxima e invalida.
-    quotes = [(t+1, 1.09960), (t+60_001, 1.09965), (t+60_002, 1.09966), (t+120_007, 1.09965)]
+    quotes = [(t+1, 1.0995999999999999), (t+60_001, 1.09965), (t+60_002, 1.09966), (t+120_007, 1.09965)]
     monkeypatch.setattr(market, "_csv_rows", lambda *_: iter(quotes))
     manifest = {"symbol": "EURUSD", "manifest_hash": "a" * 64}
     observed = f"MT5X_ULTRA_MARKET_PATTERN|{t+120_007}|{t+120_000}|1|1|109960"

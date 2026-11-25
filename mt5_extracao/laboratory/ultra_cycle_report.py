@@ -66,13 +66,14 @@ dd{{margin:0;overflow-wrap:anywhere}}:focus-visible{{outline:3px solid #166ac2}}
 def write_market_report(receipt, path):
     """Mostra os donos e posições conciliados no passe de mercado."""
     result = receipt["comparison"]
+    receipt_name = escape(Path(receipt["receipt_path"]).name, quote=True)
     parts = ["""<!doctype html><html lang="pt-BR"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Carteira EURUSD no Strategy Tester</title>
 <style>body{max-width:64rem;margin:auto;padding:1rem;color:#1b2631;font:1rem/1.5 system-ui}
 summary{padding:.5rem;cursor:pointer}details{margin:.5rem 0}dl{border-left:3px solid #678;padding-left:1rem}
 dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}:focus-visible{outline:3px solid #166ac2}</style>
-<main><h1>Carteira EURUSD no Strategy Tester</h1>
-<p><a href="receipt.json">Recibo completo</a> · <a href="report.htm">Relatório do MT5</a></p>"""]
+<main><h1>Carteira EURUSD no Strategy Tester</h1>""",
+        f'<p><a href="{receipt_name}">Recibo completo</a> · <a href="report.htm">Relatório do MT5</a></p>']
     parts.append(_records("Identificação", [{key: receipt[key] for key in
                          ("attempt", "status", "manifest_hash", "source_sha256", "binary_sha256")}]))
     for key, label in (("tick_comparison", "Fita do broker e ticks recebidos"), ("peak", "Posições simultâneas"),

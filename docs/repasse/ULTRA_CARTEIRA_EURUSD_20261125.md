@@ -35,8 +35,13 @@ O catálogo informa aquecimento, dados requeridos, modos de conta e recorte de e
 | Primeira execução com 11 módulos | `5971241b251841948daa488bf7d1debb`. A execução e o HTML fecharam. A chamada de auditoria exigia o contexto de um dono. |
 | Repetição com auditoria | `1444343cb028419881448d8040148c5a`. Build 6327, MetaEditor sem erros ou avisos, duas posições simultâneas, dez ordens e dez negócios. |
 | Encerramento | Saldo e patrimônio de USD 980,12 sobre USD 1.000,00. Ordens e posições abertas zeradas. Journal persistido `d3b27253e953cc10acd33ca5a146af42db9864555cddca551abc6357ea142ad2`. |
+| Passe com 13 módulos | `f5eb4270fc374b7599ae5969ac9cb7cb`. Compilação sem erros ou avisos, 18.707 avaliações de barra, duas posições simultâneas, dez ordens, dez negócios e saldo final de USD 980,12. |
+| Hipótese de preço M1 | 663 ocorrências idênticas em Python e MQL5, das quais 116 foram invalidadas antes da ordem. |
+| Recibo corrigido | A primeira auditoria dos 13 módulos parou na conversão de preços da DLL, que podem estar a um ULP do decimal. A repetição da auditoria sobre a mesma fita e o mesmo journal converteu os preços com a regra de grade já usada na coleta e conciliou o passe. |
 
 As ordens de entrada trazem o SL da estratégia e o alvo aplicável. A conciliação usa tick, passo de lote e centavo de USD como unidades. O HTML do MT5 é cruzado ticket a ticket com os negócios do agente. O pico de duas posições aparece no `OnTick` e na reconstrução cronológica dos negócios. O primeiro passe e sua divergência de auditoria ficam preservados para revisão.
+
+No passe com 13 módulos, Donchian, S09, VWAP e HA HiLo registraram negócios. Cada módulo avaliou 1.439 barras. A amostra exercitou fechamento por sinal e por stop. O recibo inclui 19 planos, 7 respostas de transação e 10 notificações de negócio. A hipótese executou sua decisão e seus vetos no mesmo Expert, sem preenchimento no recorte.
 
 O Forex da amostra teve volume negociado zero. A VWAP usa o volume de cotações entregue nas barras M1 do MT5. O relógio histórico e os custos econômicos seguem com o alcance do [protocolo de EURUSD](ULTRA_EURUSD_PROTOCOLO_20261125.md).
 

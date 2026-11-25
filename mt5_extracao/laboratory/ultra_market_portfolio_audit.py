@@ -72,6 +72,12 @@ def _pattern_comparison(snapshot, manifest, policy, journal, tick):
         # com uma transformação numérica reversível e sem declarar o fuso histórico.
         return datetime.fromtimestamp(msc / 1000, timezone.utc).isoformat()
 
+    def grid_price(price):
+        atoms = ultra_market._price_atoms(price, tick)
+        if atoms is None:
+            raise ValueError("Cotação observada fora da grade de preço da hipótese.")
+        return str(atoms * tick)
+
     previous, previous_end = None, None
     expected = []
     for minute, quotes in groupby(ultra_market._csv_rows(snapshot, manifest), key=lambda r: r[0] // 60000):
@@ -89,7 +95,7 @@ def _pattern_comparison(snapshot, manifest, policy, journal, tick):
         end_msc = (minute + 1) * 60000
         previous = dict(source_namespace=namespace, symbol=symbol, timeframe="M1", revision=1, session_id=None,
                         bar_start_utc=axis(minute * 60000), bar_end_utc=axis(end_msc), available_at_utc=axis(end_msc),
-                        open=str(opening), high=str(high), low=str(low), close=str(closing))
+                        open=grid_price(opening), high=grid_price(high), low=grid_price(low), close=grid_price(closing))
         # A coordenada inteira fica separada da observação validada pelo motor.
         previous_end = end_msc
     marker = "MT5X_ULTRA_MARKET_PATTERN|"
