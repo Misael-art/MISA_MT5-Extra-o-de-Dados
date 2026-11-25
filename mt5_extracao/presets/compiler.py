@@ -178,15 +178,36 @@ def read_package(manifest_path,robot):
     return load_package(manifest,set_path.read_bytes(),robot)
 
 
+def ultra_research_ledger(db, receipt):
+    """Reabre o livro ou deriva as marcas em caixa de uma política vazia já qualificada."""
+    from ..analytics import datasets
+    from ..composition import ultra as portfolio
+    from ..laboratory import ultra
+
+    run = ultra.inspect_receipt(db, receipt, timeline=True)
+    if run["status"] == "complete":
+        return run
+    policy = run["policy"]
+    if run["status"] != "no_candidate" or policy["modules"] or run["reasons"]:
+        raise ValueError("Pacote Ultra exige livro de replay concluído ou carteira vazia qualificada.")
+    if policy["engine_hash"] != ultra.source_identity():
+        raise ValueError("Motor do controle em caixa diverge da revisão congelada.")
+    ticks, _ = ultra._inputs(datasets.load(db, run["manifest_id"]), policy)
+    state = portfolio.initial_state(policy["cash"])
+    frames = []
+    for tick in ticks:
+        events, mark = portfolio.advance(state, policy, tick, {})
+        frames.append({"events": events, "mark": mark})
+    return dict(run, account=state, timeline=frames, progress=len(frames))
+
+
 def compile_ultra_research(db, receipt):
     """Pacote de reprodução ligado ao livro congelado; o executor MT5 tem gate próprio."""
     from ..analytics import datasets
     from ..experiments.schema import digest
     from ..laboratory import ultra
 
-    run = ultra.inspect_receipt(db, receipt, timeline=True)
-    if run["status"] != "complete":
-        raise ValueError("Pacote Ultra exige livro de replay concluído.")
+    run = ultra_research_ledger(db, receipt)
     snapshot = datasets.load(db, run["manifest_id"])
     manifest = snapshot.manifest
     payload = {"version": 1, "kind": "ultra_research", "receipt": receipt,
@@ -197,6 +218,8 @@ def compile_ultra_research(db, receipt):
                "capabilities": ultra.capabilities(), "source_manifest": run["manifest_id"],
                "ledger_hash": digest(run["timeline"]), "account_hash": digest(run["account"]),
                "native_status": "capability_absent", "economic_approval": False}
+    if run["status"] == "no_candidate":
+        payload["selection_status"] = "no_candidate"
     return dict(payload, package_hash=digest(payload))
 
 

@@ -14,9 +14,9 @@ struct UltraMark { long cash, equity, risk, margin, pending_cost, exposure, cost
 
 struct UltraBook
 {
-   UltraModule module[${owners}];
-   UltraCycle cycle[${owners}];
-   UltraLocal local[${owners}];
+   UltraModule module[${owner_storage}];
+   UltraCycle cycle[${owner_storage}];
+   UltraLocal local[${owner_storage}];
    long cash, cost, spread, session, msc, bid, ask;
    int seq;
 
@@ -84,13 +84,13 @@ ${platform_intent}   }
       }
    }
 
-   void arm(const int i,const int side,const long reference,const long available)
+   void arm(const int i,const int side,const long reference,const long available${verdict_param})
    {
       if(side==0) return;
       UltraModule p=module[i];
       const long price=(side==1 ? bid : ask), limit=(side==1 ? ask : bid);
       event(i,available,"armed","closed_bar");
-      if(cycle[i].opened!=0) { event(i,available,"veto","owner_cycle_open"); return; }
+${entry_verdict}      if(cycle[i].opened!=0) { event(i,available,"veto","owner_cycle_open"); return; }
       if(local[i].losses>=p.max_losses || local[i].pnl>=p.goal)
       {
          event(i,available,"veto",(local[i].losses>=p.max_losses ? "local_loss_streak" : "local_daily_goal"));
@@ -142,7 +142,7 @@ ${platform_intent}   }
          event(-1,0,"session","utc_day_reset");
       }
       for(int i=0;i<${owners};i++) manage(i,cycle[i]);
-      for(int i=0;i<${owners};i++) arm(i,${side_for_owner},reference,observed.available);
+      for(int i=0;i<${owners};i++) arm(i,${side_for_owner},${owner_inputs});
       long capacity=FILL_CAPACITY;
       for(int i=0;i<${owners};i++) fill(i,cycle[i],capacity);
    }

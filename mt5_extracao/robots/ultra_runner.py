@@ -178,6 +178,14 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         subdir = Path("MT5XUltra") / (name + "_" + _sha(source)[:20])
         dest = _install(source, mql / kind / subdir / source.name, data)
         if name == "UltraPlatformOrders":
+            if exported.get("hadouken_headers"):
+                from .ultra_hadouken import headers
+                try:
+                    hdk = headers(config)
+                except ValueError as exc:
+                    return save("hadouken_library_incompatible", reason=str(exc))
+                observed_headers = {n: _sha(_install(p, dest.parent / "HADOUKEN" / n, data)) for n, p in hdk.items()}
+                save("compiling", hadouken_headers=observed_headers)
             from . import safety_lib
             lib = safety_lib.lib_dir(config)
             if not lib:

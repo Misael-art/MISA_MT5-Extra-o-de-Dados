@@ -318,6 +318,8 @@ def reconcile(package, frames, lines, symbol, revision, build):
     no_orders = None
     if not history and not rows["ORDER"] and not deals:
         no_orders = "no_confirmed_signal" if not cycles else "no_entry_reserved" if not entry_orders else "no_platform_order_observed"
+    if not slots and no_orders:
+        no_orders = "no_candidate"
     return {"status": "diverged" if first else "platform_orders_match", "no_order_reason": no_orders,
             "native_order_parity": "diverged" if first else "journal_matches",
             "first_divergence": first, "platform_account": head, "platform_final": end,

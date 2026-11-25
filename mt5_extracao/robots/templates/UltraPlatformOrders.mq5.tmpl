@@ -1,12 +1,13 @@
 #property strict
 #property version "1.00"
 #include "HDK_ExecutionResult.mqh"
+$signal_includes
 
 $runtime
 
 const string audit="MT5X_ULTRA_ORDERS1|";
 bool platform_active=false, uncertain=false;
-long last_requested[OWNER_COUNT];
+long last_requested[OWNER_STORAGE];
 
 bool TesterContext()
 {

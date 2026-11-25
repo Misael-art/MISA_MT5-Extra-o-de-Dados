@@ -45,11 +45,13 @@ dd{{margin:0;overflow-wrap:anywhere}}:focus-visible{{outline:3px solid #166ac2}}
         heading = f'{cycle["owner"]} · {cycle["cycle_id"]}'
         parts.append(f'<details><summary>{escape(heading)}</summary>')
         parts.append(_records("Regra congelada", [dict(cycle["rule"], cycle_version=cycle["version"])]))
-        for key, label in (("events", "Decisões e orçamento no tick"), ("vetoes", "Vetos de execução"),
+        if cycle.get("observed_signal"):
+            parts.append(_records("Sinal observado no Expert", [cycle["observed_signal"]]))
+        for key, label in (("events", "Decisões e orçamento no tick"), ("predicate_values", "Predicados observados no Expert"), ("vetoes", "Vetos de execução"),
                            ("requests", "Solicitações e respostas"), ("transactions", "Transações recebidas"),
                            ("history", "Ordens no histórico"), ("deals", "Negócios e resultado"),
                            ("snapshots", "Posição, proteção e conta por tick")):
-            parts.append(_records(label, cycle[key]))
+            parts.append(_records(label, cycle.get(key, [])))
         parts.append("</details>")
     parts.append("</main></html>")
     with Path(path).open("x", encoding="utf-8") as handle:
