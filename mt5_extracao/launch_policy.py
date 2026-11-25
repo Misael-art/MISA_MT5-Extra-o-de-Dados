@@ -39,6 +39,8 @@ def command_name(argv):
 
 def needs_bridge(argv):
     args = _command_args(argv)
+    if args[:2] == ["laboratory", "ultra-market-capture"]:
+        return True
     return not (args and (args[0] in LOCAL_COMMANDS or args[:2] == ["workflow", "methods"]))
 
 

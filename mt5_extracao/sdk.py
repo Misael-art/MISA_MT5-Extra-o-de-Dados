@@ -527,7 +527,10 @@ from .laboratory.ultra_study import evaluate as ultra_evaluate_study
 from .laboratory.ultra_parity import compare_trace as ultra_compare_trace
 from .laboratory.ultra_tester import capabilities as ultra_tester_capabilities
 from .laboratory.ultra_tester import export as ultra_export_tester, compare as ultra_compare_native_book
+from .laboratory.ultra_market import capture as ultra_capture_market, verify as ultra_verify_market
+from .laboratory.ultra_market import export_probe as ultra_export_market_probe, compare_probe as ultra_compare_market_probe
 from .robots.ultra_runner import run as ultra_run_tester
+from .robots.ultra_market_runner import run as ultra_run_market_tester
 from .laboratory.ultra_report import list_receipts as ultra_list
 from .laboratory.ultra_report import export as ultra_export_report
 from .presets.compiler import compile_ultra_research, verify_ultra_research
@@ -538,6 +541,8 @@ __all__ = [
     "ultra_register_study", "ultra_evaluate_study", "ultra_list", "ultra_export_report", "ultra_compare_trace",
     "compile_ultra_research", "verify_ultra_research", "ultra_export_tester",
     "ultra_compare_native_book", "ultra_run_tester", "ultra_tester_capabilities",
+    "ultra_capture_market", "ultra_verify_market", "ultra_export_market_probe", "ultra_compare_market_probe",
+    "ultra_run_market_tester",
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
     "pattern_campaign_status", "f19_research_preset",

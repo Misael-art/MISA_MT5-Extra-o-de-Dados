@@ -1557,9 +1557,31 @@ Tester. Um livro normalizado coincidente ainda exige auditoria de origem do bin�
 modelo de ticks, journal e versão do terminal.
 
 `sdk.ultra_tester_capabilities()` informa as estratégias, as origens e o limite de ticks do
-Expert. `sdk.ultra_export_tester(db, package, destination)` verifica o pacote e grava os
+Expert. O campo `catalog` é derivado dos registros do Laboratório e da composição.
+Cada item informa requisitos, estado do Expert concorrente e evidência disponível.
+`sdk.ultra_export_tester(db, package, destination)` verifica o pacote e grava os
 fontes MQL5 e as cotações em uma pasta nova. O retorno identifica o símbolo e o SHA-256
 de cada arquivo.
+
+`sdk.ultra_capture_market(backend, symbol, start, end, destination, expected_server=server)`
+lê uma DEMO existente pelo backend do MT5 e grava os campos originais em CSVs particionados.
+Use limites inclusive/exclusivo no relógio bruto do MT5, por exemplo
+`2026-11-23T08:00:00` e `2026-11-23T10:00:00`. A sequência no mesmo milissegundo
+conserva a ordem do broker. `sdk.ultra_verify_market(source)` verifica hashes e fronteiras.
+Especificações atuais, custos históricos e relógio comprovado têm estados distintos no manifesto.
+
+`sdk.ultra_export_market_probe(source, destination, attempt=ident)` gera um Expert
+passivo para o próprio símbolo do broker no Tester M1, modelo 4. Use um identificador
+de 32 dígitos hexadecimais por execução. O Expert grava os dados recebidos em
+`Common/Files` e emite marcadores de abertura/fechamento no journal do agente.
+`sdk.ultra_compare_market_probe(source, tape, binding=binding, agent_journal=journal)`
+confere o vínculo, a contagem, a primeira divergência e o prefixo idêntico. O resultado
+é evidência do fluxo de ticks e tem `order_parity="not_exercised"`.
+
+`sdk.ultra_run_market_tester(config, snapshot, output, mode="ticks")` compila o
+Expert passivo, executa o modelo 4 no perfil portátil e guarda o recibo com o journal
+do agente. O modo `s09_cycle` usa um controle técnico com ordens simuladas no
+EURUSD da MetaQuotes-Demo, com o perfil e as restrições do protocolo congelado.
 
 `sdk.ultra_run_tester(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300)`
 executa o ensaio no terminal portátil configurado. O recibo identifica a tentativa e o

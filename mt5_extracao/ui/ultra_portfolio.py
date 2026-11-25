@@ -5,8 +5,42 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 import webbrowser
 
-from ..laboratory import ultra_report, ultra_tester
+from ..laboratory import ultra_catalog, ultra_market, ultra_report, ultra_tester
 from ..laboratory.ultra_cycle_report import write_report
+
+
+def show_catalog(anchor):
+    window = tk.Toplevel(anchor)
+    window.title("Catálogo operacional do Ultra")
+    body = ttk.Frame(window, padding=12)
+    body.pack(fill=tk.BOTH, expand=True)
+    catalog = ultra_catalog.catalog()
+    rows = ttk.Treeview(body, columns=("tester",), show="tree headings", height=10, selectmode="browse")
+    rows.heading("#0", text="Estratégia")
+    rows.heading("tester", text="Expert concorrente")
+    detail = ttk.Label(body, wraplength=520, justify=tk.LEFT)
+    by_key = {row["key"]: row for row in catalog["strategies"]}
+    for key, row in by_key.items():
+        state = "Recorte M1 sintético" if row["ultra_scope"] == "bounded_m1_synthetic" else "Pendente"
+        rows.insert("", tk.END, iid=key, text=row["name"], values=(state,))
+
+    def select(_event=None):
+        selected = rows.selection()
+        if not selected:
+            return
+        row = by_key[selected[0]]
+        modes = ", ".join(row["supported_account_modes"])
+        lines = [row["indicators"], row["warmup"], row["reference_rules"],
+                 f"Modos de conta do recorte no Tester · {modes}" if modes else None,
+                 row["evidence"], row["eurusd_data_constraint"]]
+        detail.configure(text="\n\n".join(line for line in lines if line))
+
+    rows.bind("<<TreeviewSelect>>", select)
+    rows.pack(fill=tk.BOTH, expand=True)
+    detail.pack(fill=tk.X, pady=(8, 0))
+    if by_key:
+        rows.selection_set(next(iter(by_key)))
+        select()
 
 
 def open_receipts(panel):
@@ -119,6 +153,42 @@ def open_receipts(panel):
         platform.configure(state="disabled")
         panel.ui.run_bg(compare, finished)
 
+    def show_market():
+        folder = filedialog.askdirectory(parent=window, title="Escolher fita congelada de mercado")
+        if not folder:
+            return
+        def finished(result, error):
+            if not window.winfo_exists():
+                return
+            market.configure(state="normal")
+            if error:
+                note.configure(text=str(error))
+                return
+            quotes = result["coverage"]["executable"]
+            source = result["source"]
+            note.configure(text=f'{result["symbol"]} · {source["server"]} · {quotes} cotações conferidas. '
+                                "Relógio, sessões e custos aguardam evidência histórica.")
+        market.configure(state="disabled")
+        panel.ui.run_bg(lambda: ultra_market.verify(folder), finished)
+
+    def run_market_probe():
+        from ..robots.ultra_market_runner import run
+
+        snapshot = filedialog.askdirectory(parent=window, title="Escolher fita congelada de mercado")
+        if not snapshot:
+            return
+        output = filedialog.askdirectory(parent=window, title="Salvar a execução do Tester em")
+        if not output:
+            return
+        config = panel._config()
+        def finished(result, error):
+            if not window.winfo_exists():
+                return
+            probe.configure(state="normal")
+            note.configure(text=str(error) if error else f'{result["status"]} · {result["receipt_path"]}')
+        probe.configure(state="disabled")
+        panel.ui.run_bg(lambda: run(config, snapshot, output), finished)
+
     nav = ttk.Frame(body)
     nav.pack(fill=tk.X)
     previous = ttk.Button(nav, text="Anterior", state="disabled", command=lambda: page(-50))
@@ -127,6 +197,11 @@ def open_receipts(panel):
     following.pack(side=tk.LEFT)
     submit = ttk.Button(body, text="Salvar e abrir linha do tempo…", state="disabled", command=show)
     submit.pack(anchor="w", pady=8)
+    ttk.Button(body, text="Catálogo operacional…", command=lambda: show_catalog(window)).pack(anchor="w", pady=4)
+    market = ttk.Button(body, text="Verificar fita de mercado…", command=show_market)
+    market.pack(anchor="w", pady=4)
+    probe = ttk.Button(body, text="Rodar sonda de ticks no Tester…", command=run_market_probe)
+    probe.pack(anchor="w", pady=4)
     capabilities = ttk.Button(body, text="Capacidades do pacote…", command=show_capabilities)
     capabilities.pack(anchor="w", pady=4)
     platform = ttk.Button(body, text="Conferir pacote e journal do Tester…", command=show_platform)

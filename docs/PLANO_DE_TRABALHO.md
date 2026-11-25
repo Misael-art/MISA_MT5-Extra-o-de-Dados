@@ -5507,3 +5507,12 @@ A alternativa linear compartilha capital e capacidade por tick, reserva todos os
 ### T19.53 · Quantidade de donos no Expert de pesquisa
 
 O exportador do Expert de ordens instancia o indicador e a política de cada dono Donchian/S09. Os identificadores de ordem, as reservas e as proteções incluem o índice de precedência. Há controles para um, dois e três donos e um período sem sinais. A retomada de referência mantém o contrato original para dois donos.
+
+### T19.53 · Inventário operacional e fita MetaQuotes-Demo
+
+O catálogo deriva do registro Python, dos contratos nativos e da via declarativa. A UI, a CLI e o
+exportador consultam as permissões do mesmo módulo. O teste de inventário acusa chaves novas
+sem representação. A geração concorrente continua limitada ao recorte explicitado no catálogo.
+A CLI congela os ticks originais em blocos com SHA-256 e exporta um Expert passivo que compara
+o fluxo efetivamente recebido pelo Tester com a fita do broker. O protocolo econômico foi
+congelado em [Ultra EURUSD](repasse/ULTRA_EURUSD_PROTOCOLO_20261125.md).

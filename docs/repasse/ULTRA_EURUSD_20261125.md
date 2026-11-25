@@ -1,0 +1,56 @@
+# Ultra Preset · EURUSD na MetaQuotes-Demo
+
+O controle anterior permanece reproduzível pela revisão `c925c92187fa` da PR 412.
+Os casos sintéticos cobrem 372 ticks por instrumento, 32 e 36 negócios no Tester,
+retomada de uma reserva parcial no mesmo passe e gestão por versão de abertura.
+O [repasse anterior](ULTRA_PRESET_20261124.md) documenta os limites da grade,
+do preenchimento nativo e do netting, além da divergência da hipótese no tick 199.
+
+O protocolo desta etapa congela treino, validação, reserva inédita e ensaio técnico
+em [Ultra EURUSD](ULTRA_EURUSD_PROTOCOLO_20261125.md). A janela técnica de
+23/11/2026, das 08h às 10h no relógio bruto do MT5, usa o EURUSD original do
+servidor. O manifesto de aquisição tem SHA-256
+`ad05add4962d6e29b398247360d3f14618be29d3754f807c9c218b38d977c0f1`.
+
+| Verificação | Evidência da janela técnica |
+|---|---|
+| Catálogo | 11 referências Python. Super ATR triplo tem um contrato nativo e uma variante gráfica. Hipóteses executáveis exigem regra versionada. O recorte concorrente atual cobre sinais Donchian, S09 e hipóteses M1 restritas. |
+| Ticks do broker | 18.207 cotações utilizáveis em 120 minutos. Há 61 registros adicionais no mesmo milissegundo, zero duplicatas idênticas, zero cotações cruzadas e uma lacuna interna máxima de 19,225 s. |
+| Grade e volumes | Todas as cotações estão na grade de 0,00001 após desconsiderar até um ULP da representação binária. O spread varia de 2 a 4 ticks. A fita contém cotações e nenhum volume negociado positivo. |
+| Tester modelo 4 | O agente 6327 entregou as mesmas 18.207 cotações, com horários, preços, volumes e sequência iguais. Os flags divergem desde o ordinal zero. O agente recebeu 130 e a ponte recebeu 1154. O XOR é `0x400` em todos os ticks. O campo original continua na fita. |
+| Contrato observado | Conta USD, hedging, alavancagem 1:100; USD 1 por tick e lote, lote/passo mínimo 0,01, execução Market e FOK, stops e freeze declarados em 0 pontos. São propriedades observadas na coleta. |
+| Economia | Comissão, margem aplicada, swap no período, conversão e calendário histórico precisam de evidência com vigência. A modalidade de volume negociado da VWAP fica inelegível para a fita observada. A modalidade de contagem de cotações exige histórico e âncora de sessão suficientes. |
+
+A referência de tempo é o eixo bruto do MT5. O SDK preserva o inteiro original
+recebido da API. Na falta de confirmação histórica, o manifesto registra o UTC
+como inconclusivo. MetaQuotes documenta que o modo de ticks reais pode gerar ticks
+a partir de barras M1 quando falta histórico de ticks. Nesta janela a comparação
+usa o fluxo de `OnTick` diretamente. [Tester e ticks reais](https://www.mql5.com/en/docs/runtime/testing)
+
+## Reprodução no launcher
+
+Abra o terminal portátil na conta DEMO autorizada para a coleta. Defina um destino
+novo para `SNAPSHOT` e preserve os CSVs e o manifesto sem edição.
+
+```sh
+./run.sh --cli --json laboratory ultra-tester-capabilities
+./run.sh --cli --json laboratory ultra-market-capture --symbol EURUSD --server MetaQuotes-Demo \
+  --start 2026-11-23T08:00:00 --end 2026-11-23T10:00:00 --out "$SNAPSHOT"
+./run.sh --cli --json laboratory ultra-market-verify --snapshot "$SNAPSHOT"
+```
+
+Feche o terminal de coleta para liberar o perfil ao Tester. O comando usa a
+seleção DEMO salva no MT5 e suporta a seleção explícita documentada no repasse
+anterior. Use a política de capacidade do host antes de iniciar o Tester.
+
+```sh
+./run.sh --cli --json laboratory ultra-market-tester-run --snapshot "$SNAPSHOT" --out "$RUNS"
+./run.sh --cli --json laboratory ultra-market-tester-run --snapshot "$SNAPSHOT" --out "$RUNS" --mode s09_cycle
+```
+
+No Laboratório, abra **Carteiras Ultra** para consultar o catálogo, verificar a
+fita ou executar a sonda passiva. Cada tentativa nova guarda fonte, binário, hashes,
+configuração do Tester, journal do agente, relatório e recibo quando disponíveis.
+O modo `s09_cycle` é um controle de um ciclo com ordens simuladas, parâmetros
+fixados no protocolo e proteção nativa. O caminho prospectivo nesta etapa é um
+observador passivo preparado para a DEMO com negociação automática desativada.

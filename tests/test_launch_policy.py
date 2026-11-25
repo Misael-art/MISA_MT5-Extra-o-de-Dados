@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_global_options_are_skipped_before_the_command():
     assert launch_policy.command_name(["--config", "x.ini", "--json", "--db=y.db", "tables"]) == "tables"
     assert not launch_policy.needs_bridge(["--db", "a.db", "-v", "laboratory", "catalog"])
+    assert launch_policy.needs_bridge(["laboratory", "ultra-market-capture"])
+    assert not launch_policy.needs_bridge(["laboratory", "ultra-market-verify"])
     assert launch_policy.needs_bridge(["extract", "--symbols", "X"])
     assert launch_policy.needs_bridge([]) and launch_policy.needs_bridge(["comando-novo"])
 

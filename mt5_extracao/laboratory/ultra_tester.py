@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from ..experiments.schema import digest
 
 from ..presets.compiler import ultra_research_ledger, verify_ultra_research
-from . import ultra_preparation
+from . import ultra_catalog, ultra_preparation
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "robots" / "templates"
 FIELDS = ("time_msc", "seq", "bid", "ask", "donchian", "s09_reference", "available_msc", "reference")
@@ -33,11 +33,12 @@ NATIVE_TEMPLATES = ("UltraRuntime.mqh", "UltraSignals.mqh", "UltraBook.mqh", "Ul
 
 def capabilities():
     return {"scope": "two_owner_modeled_book", "strategies": ["donchian", "s09_reference"],
+            "catalog": ultra_catalog.catalog(),
             "origins": list(MARKERS), "feed": "synthetic_bid_ticks_m1_utc",
             "max_ticks": 10000, "tester_requires_connected_demo": True,
             "broker_orders": False, "simulated_platform_orders": {
                 "origin": PLATFORM, "portfolio": "independent_signal_per_owner",
-                "strategies": ["donchian", "s09_reference", "pattern_definition"],
+                "strategies": [key for key in ultra_catalog.EVIDENCE if ultra_catalog.physical_signal_supported(key)],
                 "pattern_scope": "M1 OHLC/prior_close, on-grid comparisons, and/or/not, cancel_before_entry", "orders": "limit_with_sl_tp", "management": ["cancel", "breakeven"],
                 "hedging": "per_cycle_magic_and_position", "netting": "exclusive_cycle_independent_protection",
                 "requires": "Strategy Tester on prepared custom symbol", "execution_mode": "exchange",
@@ -163,7 +164,7 @@ def _context(db, package, *, platform=False):
     modules = {}
     for module in policy["modules"]:
         modules.setdefault(module["strategy"], module)
-    if (set(modules).difference((*FIELDS[4:6], "pattern_definition")) or
+    if (any(not ultra_catalog.physical_signal_supported(key) for key in modules) or
             (not platform and (len(policy["modules"]) != 2 or set(modules) != set(FIELDS[4:6])))
             or package["sample_kind"] != "synthetic" or package["feed"].get("derivation") != "bid_ticks_m1"
             or package["time"].get("broker_utc_offset_hours") != 0):

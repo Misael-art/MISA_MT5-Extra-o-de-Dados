@@ -1,0 +1,48 @@
+#property strict
+// Raw tick evidence. This Expert only runs in the Strategy Tester.
+const string Manifest="$manifest", Binding="$binding", ExpectedSymbol="$symbol";
+const long FromMsc=$start, ToMsc=$end;
+int tape=INVALID_HANDLE;
+long count=0;
+bool complete=false, failed=false;
+
+int OnInit()
+{
+   if(!MQLInfoInteger(MQL_TESTER) || MQLInfoInteger(MQL_OPTIMIZATION)
+      || AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO
+      || _Symbol!=ExpectedSymbol || _Period!=PERIOD_M1
+      || SymbolInfoInteger(_Symbol,SYMBOL_CUSTOM)) return INIT_FAILED;
+   tape=FileOpen("MT5XUltraMarket_"+Binding+".bin",FILE_BIN|FILE_WRITE|FILE_COMMON);
+   if(tape==INVALID_HANDLE) return INIT_FAILED;
+   PrintFormat("MT5X_ULTRA_MARKET|BEGIN|%s|%s|%s|%d|%d",Manifest,Binding,_Symbol,
+               (int)TerminalInfoInteger(TERMINAL_BUILD),(int)AccountInfoInteger(ACCOUNT_MARGIN_MODE));
+   return INIT_SUCCEEDED;
+}
+
+void OnTick()
+{
+   if(tape==INVALID_HANDLE || failed || complete) return;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) { failed=true; return; }
+   if(tick.time_msc<FromMsc) return;
+   if(tick.time_msc>=ToMsc) { complete=true; return; }
+   failed = FileWriteLong(tape,tick.time_msc)!=8
+         || FileWriteDouble(tape,tick.bid)!=8
+         || FileWriteDouble(tape,tick.ask)!=8
+         || FileWriteDouble(tape,tick.last)!=8
+         || FileWriteLong(tape,(long)tick.volume)!=8
+         || FileWriteInteger(tape,(int)tick.flags,INT_VALUE)!=4
+         || FileWriteDouble(tape,tick.volume_real)!=8;
+   if(!failed)
+   {
+      count++;
+      if(count%4096==0) FileFlush(tape);
+   }
+}
+
+void OnDeinit(const int reason)
+{
+   if(tape==INVALID_HANDLE) return;
+   FileClose(tape);
+   PrintFormat("MT5X_ULTRA_MARKET|END|%s|%I64d|%d|%d",Binding,count,(int)complete,(int)failed);
+}
