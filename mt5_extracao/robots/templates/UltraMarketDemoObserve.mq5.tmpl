@@ -1,7 +1,8 @@
 #property strict
 const string Audit="MT5X_ULTRA_MARKET_DEMO|", Manifest="$manifest", Binding="$binding";
-const ulong DurationMsc=45000;
-ulong started=0, ready_since=0;
+const int ObservationIntervals=12, ConnectionAttempts=45;
+int attempts=0, connected_intervals=0;
+bool ready=false, context_logged=false;
 long seen=0;
 datetime history_start=0;
 double opening_balance=0;
@@ -19,21 +20,35 @@ bool Authorized()
 int OnInit()
 {
    if(MQLInfoInteger(MQL_TESTER) || _Symbol!="EURUSD" || _Period!=PERIOD_M1) return INIT_FAILED;
-   started=GetTickCount64();
    return EventSetTimer(1) ? INIT_SUCCEEDED : INIT_FAILED;
 }
 
 void OnTimer()
 {
-   ulong now=GetTickCount64();
-   if(!TerminalInfoInteger(TERMINAL_CONNECTED) || !Authorized())
+   bool connected=TerminalInfoInteger(TERMINAL_CONNECTED)!=0;
+   if(connected && !context_logged)
    {
-      if(ready_since!=0 || now-started>45000) { Print(Audit,"UNAVAILABLE|",Binding); ExpertRemove(); }
+      context_logged=true;
+      PrintFormat("%sCONTEXT|%s|%d|%d|%d|%d",Audit,Binding,
+         (int)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED),(int)MQLInfoInteger(MQL_TRADE_ALLOWED),
+         (int)AccountInfoInteger(ACCOUNT_TRADE_MODE),(int)(AccountInfoString(ACCOUNT_SERVER)=="MetaQuotes-Demo"));
+   }
+   if(!connected || !Authorized())
+   {
+      attempts++;
+      if(ready || attempts>=ConnectionAttempts)
+      {
+         PrintFormat("%sUNAVAILABLE|%s|%d|%d|%d|%d|%d",Audit,Binding,
+            (int)TerminalInfoInteger(TERMINAL_CONNECTED),(int)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED),
+            (int)MQLInfoInteger(MQL_TRADE_ALLOWED),(int)AccountInfoInteger(ACCOUNT_TRADE_MODE),
+            (int)(AccountInfoString(ACCOUNT_SERVER)=="MetaQuotes-Demo"));
+         ExpertRemove();
+      }
       return;
    }
-   if(ready_since==0)
+   if(!ready)
    {
-      ready_since=now;
+      ready=true;
       history_start=TimeTradeServer();
       opening_balance=AccountInfoDouble(ACCOUNT_BALANCE);
       opening_positions=PositionsTotal();
@@ -49,7 +64,8 @@ void OnTimer()
             PrintFormat("%sSESSION|%d|%u|%I64d|%I64d",Audit,day,i,(long)from,(long)to);
       }
    }
-   if(now-ready_since<DurationMsc) return;
+   connected_intervals++;
+   if(connected_intervals<ObservationIntervals) return;
    bool known=HistorySelect(history_start,TimeTradeServer());
    int orders=(known ? HistoryOrdersTotal() : -1), deals=(known ? HistoryDealsTotal() : -1);
    PrintFormat("%sEND|%s|%I64d|%d|%d|%d|%d|%.2f|%I64d|%I64d",Audit,Binding,seen,
@@ -60,7 +76,7 @@ void OnTimer()
 
 void OnTick()
 {
-   if(ready_since==0 || !Authorized() || !TerminalInfoInteger(TERMINAL_CONNECTED)) return;
+   if(!ready || !Authorized() || !TerminalInfoInteger(TERMINAL_CONNECTED)) return;
    MqlTick tick={};
    if(!SymbolInfoTick(_Symbol,tick)) return;
    seen++;
