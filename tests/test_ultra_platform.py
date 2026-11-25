@@ -59,6 +59,8 @@ def test_cycle_from_intent_to_balance_and_accessible_report(tmp_path):
     ("|25.25|90|103", "|25.25|89|103", "position.protected", 2),
     ("|25.25|90|103", "|25.50|90|103", "position.price_times_steps", 2),
     ("|1|101|-1|0|0|0", "|1|101|-2|0|0|0", "deal.execution", 2),
+    ("|1|101|-1|0|0|0", "|1|101|0|-1|0|0", "deal.execution", 2),
+    ("ORDER_TYPE_SELL|1200|1|0", "ORDER_TYPE_SELL|1200|2|0", "history.filled_volume", 3),
     ("|2000|7|10008|0|0", "|2000|8|10008|0|0", "transaction.request", 1),
     ("|0|1|10008|11|0|7", "|0|0|10006|11|0|7", "request.accepted", 1),
     ("DEAL_ADD|12|22|11", "DEAL_ADD|12|23|11", "deal.ticket_links", 3),
