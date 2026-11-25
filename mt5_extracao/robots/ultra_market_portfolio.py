@@ -201,6 +201,10 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
         raise ValueError("A carteira técnica exige EURUSD da MetaQuotes-Demo.")
     if not manifest["coverage"]["executable"] or not re.fullmatch(r"[a-f0-9]{32}", attempt):
         raise ValueError("A fita ou o identificador da tentativa é inválido para a carteira.")
+    coverage = manifest["coverage"]
+    if (coverage["rows"] != sum(block["rows"] for block in manifest["blocks"])
+            or not manifest["time"]["start_msc"] <= coverage["last_msc"] < manifest["time"]["end_msc"]):
+        raise ValueError("A contagem e o último tick precisam pertencer à janela congelada.")
     roots = [path for path in library_dirs(config) if (path / "Include" / _ENGINE).is_file()]
     if len(roots) != 1:
         raise ValueError("Configure uma única referência HADOUKEN para a carteira.")
@@ -251,7 +255,8 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
     template = Template(template_path.read_text(encoding="utf-8"))
     sources.write(PurePosixPath(destination.name), template.substitute(
         manifest=manifest["manifest_hash"], binding=binding, start=manifest["time"]["start_msc"],
-        end=manifest["time"]["end_msc"], closure=closure, safety=safety, cap=CAP_PCT, budgets=budgets,
+        end=manifest["time"]["end_msc"], last=coverage["last_msc"], tick_count=coverage["rows"],
+        closure=closure, safety=safety, cap=CAP_PCT, budgets=budgets,
         entry_levels="\n".join(level_cases),
         includes="\n".join(includes), init="\n".join(init), ticks="\n".join(ticks)))
     return dict(manifest_hash=manifest["manifest_hash"], symbol="EURUSD", binding=binding, tester_model="4",

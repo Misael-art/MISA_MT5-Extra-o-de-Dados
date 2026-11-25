@@ -43,6 +43,10 @@ As ordens de entrada trazem o SL da estratégia e o alvo aplicável. A concilia�
 
 No passe com 13 módulos, Donchian, S09, VWAP e HA HiLo registraram negócios. Cada módulo avaliou 1.439 barras. A amostra exercitou fechamento por sinal e por stop. O recibo inclui 19 planos, 7 respostas de transação e 10 notificações de negócio. A hipótese executou sua decisão e seus vetos no mesmo Expert, sem preenchimento no recorte.
 
+O passe `2b269e7d3bab48ae963cf3260b43342b` de 16 a 20/11 conciliou 989.333 ticks, 32 ordens e 32 negócios. Duas admissões de donos distintos ocorreram no mesmo tick em dois momentos. O saldo e o patrimônio fecharam em USD 956,99 e o journal registrou 72 vetos de orçamento global. A hipótese teve 3.299 ocorrências idênticas no confronto com Python, com 725 invalidações antes de envio.
+
+O controle de gestão de 16/11 registrou saída parcial do Pullback de 0,31 lote a partir de 0,62, seguida de breakeven em 1,10245. O relatório agora mantém a ordem do journal quando duas ações chegam no mesmo milissegundo. O primeiro ensaio diário conciliou os negócios, mas o `ToDate` do Tester deixou de fora três cotações do último segundo. O Expert passou a usar o último milissegundo e a contagem de cotações da fita para encerrar o teste. O gate continua comparando toda a janela congelada.
+
 O Forex da amostra teve volume negociado zero. A VWAP usa o volume de cotações entregue nas barras M1 do MT5. O relógio histórico e os custos econômicos seguem com o alcance do [protocolo de EURUSD](ULTRA_EURUSD_PROTOCOLO_20261125.md).
 
 ## Reprodução no Linux

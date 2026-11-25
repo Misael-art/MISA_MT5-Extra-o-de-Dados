@@ -240,3 +240,15 @@ def test_portfolio_compares_pattern_on_closed_bars_and_identifies_first_differen
     first = tampered["first_divergence"]
     assert first == {"ordinal": 0, "expected": (t+120_007, t+120_000, 1, 1, 109960),
                      "observed": (t+120_007, t+120_000, 1, 0, 109960)}
+
+
+def test_portfolio_keeps_partial_before_breakeven_at_same_tick():
+    from mt5_extracao.laboratory.ultra_market_portfolio_audit import _records
+
+    journal = "\n".join((
+        "MT5X_ULTRA_PORTFOLIO|CLOSE|12|1670000000000|3|parcial|0.62|0.31|0.31|1|1|",
+        "MT5X_ULTRA_PORTFOLIO|PROTECT|12|1670000000000|3|breakeven|1.10253|1.10245|1.10245|1|1|",
+    ))
+    ordered = []
+    _records(journal, management_order=ordered)
+    assert [(kind, fields[3]) for kind, fields in ordered] == [("CLOSE", "parcial"), ("PROTECT", "breakeven")]

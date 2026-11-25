@@ -93,7 +93,7 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
                     listener.bind(("127.0.0.1", 0))
                     port = listener.getsockname()[1]
             ini = mt5.tester_ini(mt5.expert_name(Path(result.compiled), data), bundle["symbol"], "M1",
-                dates[0], dates[1] if portfolio else dates[1] + timedelta(days=1), 1000, key, model="4", visual=False,
+                dates[0], dates[1] + timedelta(days=1), 1000, key, model="4", visual=False,
                 currency=state["account"]["currency"], parameters=parameters, port=port)
             leverage = state["account"]["leverage"]
             if type(leverage) is not int or leverage < 1:

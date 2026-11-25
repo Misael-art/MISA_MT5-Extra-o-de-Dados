@@ -18,7 +18,7 @@ _WIDTHS = {"OWNER": 4, "RULES": 8, "ACCOUNT": 4, "BAR": 12, "ENTRY": 10, "PEAK":
            "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3}
 
 
-def _records(journal):
+def _records(journal, *, management_order=None):
     rows = defaultdict(list)
     for line in journal.splitlines():
         if MARKER not in line:
@@ -29,6 +29,8 @@ def _records(journal):
         if len(values) != _WIDTHS.get(kind):
             raise ValueError(f"Registro de carteira inválido em {kind}.")
         rows[kind].append(values)
+        if management_order is not None and kind in ("PROTECT", "CLOSE"):
+            management_order.append((kind, values))
     return rows
 
 
@@ -108,7 +110,8 @@ def _pattern_comparison(snapshot, manifest, policy, journal, tick):
 
 
 def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapshot=None, manifest=None):
-    rows = _records(agent_journal)
+    management_order = []
+    rows = _records(agent_journal, management_order=management_order)
     if len(rows["ACCOUNT"]) != 1 or len(rows["FINAL"]) != 1 or rows["FINAL"][0][0] != bundle["binding"]:
         raise ValueError("A conta e o fechamento do journal não confirmam a mesma tentativa.")
     issues = []
@@ -210,25 +213,30 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
     protects, closes = defaultdict(Counter), defaultdict(Counter)
     protections = defaultdict(list)
     management = defaultdict(list)
-    for magic, msc, ticket, kind, before, proposed, after, ok, recorded, reason in rows["PROTECT"]:
-        if ok == "1":
-            side = sides.get(int(ticket))
-            check(recorded == "1" and owners.get(int(ticket)) == magic and side is not None
-                  and _atoms(after, tick) > 0 and (Decimal(after) > Decimal(before) if side else Decimal(after) < Decimal(before)),
-                  "confirmed_protection")
-            protects[magic][kind] += 1
-            protections[int(ticket)].append((int(msc), _atoms(before, tick), _atoms(after, tick)))
-        management[magic].append(dict(tick_msc=int(msc), position=int(ticket), action=kind, previous_sl=before,
-                                      requested_sl=proposed, observed_sl=after, recorded=recorded == "1", reason=reason))
-    for magic, msc, position, kind, before, asked, after, ok, recorded, reason in rows["CLOSE"]:
-        if ok == "1":
-            out = closed_deals[int(position)]
-            reduction = _atoms(before, step) - _atoms(after, step)
-            check(recorded == "1" and owners.get(int(position)) == magic and reduction > 0
-                  and sum(d["steps"] for d in out if d["msc"] == int(msc)) == reduction, "confirmed_management_close")
-            closes[magic][kind] += 1
-        management[magic].append(dict(tick_msc=int(msc), position=int(position), action=kind, previous_volume=before,
-                                      requested_volume=asked, observed_volume=after, recorded=recorded == "1", reason=reason))
+    for record_type, row in management_order:
+        magic, msc, position, kind, before, requested, after, ok, recorded, reason = row
+        at, owner_position = int(msc), int(position)
+        event = dict(tick_msc=at, position=owner_position, action=kind, acknowledged=ok == "1",
+                     recorded=recorded == "1", reason=reason)
+        if record_type == "PROTECT":
+            if event["acknowledged"]:
+                side = sides.get(owner_position)
+                check(event["recorded"] and owners.get(owner_position) == magic and side is not None
+                      and _atoms(after, tick) > 0
+                      and (Decimal(after) > Decimal(before) if side else Decimal(after) < Decimal(before)),
+                      "confirmed_protection")
+                protects[magic][kind] += 1
+                protections[owner_position].append((at, _atoms(before, tick), _atoms(after, tick)))
+            event.update(previous_sl=before, requested_sl=requested, observed_sl=after)
+        else:
+            if event["acknowledged"]:
+                reduction = _atoms(before, step) - _atoms(after, step)
+                out = closed_deals[owner_position]
+                check(event["recorded"] and owners.get(owner_position) == magic and reduction > 0
+                      and sum(d["steps"] for d in out if d["msc"] == at) == reduction, "confirmed_management_close")
+                closes[magic][kind] += 1
+            event.update(previous_volume=before, requested_volume=requested, observed_volume=after)
+        management[magic].append(event)
     brackets = {}
     for deal in sorted(deals, key=lambda d: (d["msc"], d["ticket"])):
         position = deal["position"]
