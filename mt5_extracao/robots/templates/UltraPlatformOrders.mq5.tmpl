@@ -154,6 +154,7 @@ int OnInit()
       PositionsTotal()!=0 || OrdersTotal()!=0) return INIT_FAILED;
    const long required=SYMBOL_ORDER_LIMIT|SYMBOL_ORDER_SL|SYMBOL_ORDER_TP;
    if(SymbolInfoInteger(_Symbol,SYMBOL_TRADE_MODE)!=SYMBOL_TRADE_MODE_FULL ||
+      SymbolInfoInteger(_Symbol,SYMBOL_TRADE_EXEMODE)!=SYMBOL_TRADE_EXECUTION_EXCHANGE ||
       (SymbolInfoInteger(_Symbol,SYMBOL_ORDER_MODE)&required)!=required)
    { Print(audit,"INIT_VETO|symbol_order_capabilities");return INIT_FAILED; }
    BeginCapture();platform_active=true;

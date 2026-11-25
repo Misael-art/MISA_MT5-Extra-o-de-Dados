@@ -212,3 +212,10 @@ Quando a seleção qualificada contém zero estratégias, o compilador deriva do
 ### Seleção da conta DEMO no perfil de QA
 
 Em instalações nas quais um arquivo de inicialização alternativo abre o MT5 sem a conta salva ativa, forneça o número da DEMO existente em `MT5X_ULTRA_DEMO_LOGIN` no ambiente do launcher. A sonda e o Tester usam a mesma seleção e o MT5 recupera a autenticação do perfil. O recibo conserva o resultado da sonda e se a seleção foi explícita. A configuração anexada ao recibo continua reproduzível sem dados de conta. [Inicialização da plataforma](https://www.metatrader5.com/en/terminal/help/start_advanced/start)
+
+
+### Ordens limite executáveis no símbolo sintético
+
+No ensaio original hedging, o agente preservou os 372 ticks e os 80 eventos do livro modelado. A primeira solicitação de compra foi recusada pelo Tester com retorno 10015, embora o preço limite de 105 coincidisse com o ask do tick. O histórico nativo e o relatório registraram zero negócios e saldo USD 1.000,00.
+
+O preparador desta revisão cria outro símbolo sintético com execução Exchange para reproduzir o limite executável. Ele relê esse parâmetro junto com preços, volume e margem. O Expert valida a modalidade de execução antes de enviar solicitações. A versão da preparação faz parte da identidade do símbolo, portanto o ensaio anterior pode ser conferido pelo seu próprio journal e relatório. [Ordens limite em execução Exchange](https://www.mql5.com/en/book/automation/experts/experts_order_type)

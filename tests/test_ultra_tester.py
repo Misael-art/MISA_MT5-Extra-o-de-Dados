@@ -125,6 +125,13 @@ def test_tester_primer_precedes_window_and_preserves_frozen_quotes(campaign, tmp
     assert (contract["tick_cash_cents_per_step"], contract["margin_cents_per_step"]) == (100, 24700)
     expert = (tmp_path / "prepared/UltraPreparedTester.mq5").read_text()
     assert contract["symbol"] in expert and "quote.time_msc<FIRST_MSC" in expert and "MQL_TESTER" in expert
+    assert contract["execution_mode"] == "exchange"
+    source = tmp_path / "prepared"
+    preparation = (source / "UltraTesterContract.mq5").read_text()
+    assert "SetInteger(SYMBOL_TRADE_EXEMODE,SYMBOL_TRADE_EXECUTION_EXCHANGE)" in preparation
+    assert "SymbolInfoInteger(target,SYMBOL_TRADE_EXEMODE)==SYMBOL_TRADE_EXECUTION_EXCHANGE" in preparation
+    native = (source / "UltraPlatformOrders.mq5").read_text()
+    assert "SymbolInfoInteger(_Symbol,SYMBOL_TRADE_EXEMODE)!=SYMBOL_TRADE_EXECUTION_EXCHANGE" in native
     assert boosted["sha256"]["UltraConcurrent.mq5"] == normal["sha256"]["UltraConcurrent.mq5"]
 
 

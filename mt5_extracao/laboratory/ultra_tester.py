@@ -36,7 +36,8 @@ def capabilities():
                 "strategies": ["donchian", "s09_reference", "pattern_definition"],
                 "pattern_scope": "M1 OHLC/prior_close, on-grid comparisons, and/or/not, cancel_before_entry", "orders": "limit_with_sl_tp", "management": ["cancel", "breakeven"],
                 "hedging": "per_cycle_magic_and_position", "netting": "exclusive_cycle_independent_protection",
-                "requires": "Strategy Tester on prepared custom symbol", "acceptance": "requires_agent_evidence"}, "economic_approval": False,
+                "requires": "Strategy Tester on prepared custom symbol", "execution_mode": "exchange",
+                "acceptance": "requires_agent_evidence"}, "economic_approval": False,
             "tester_primer_m1_bars": ultra_preparation.PRIMER_MINUTES}
 
 
