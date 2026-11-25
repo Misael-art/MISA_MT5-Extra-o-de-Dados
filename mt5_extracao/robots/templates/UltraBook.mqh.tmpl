@@ -14,9 +14,9 @@ struct UltraMark { long cash, equity, risk, margin, pending_cost, exposure, cost
 
 struct UltraBook
 {
-   UltraModule module[2];
-   UltraCycle cycle[2];
-   UltraLocal local[2];
+   UltraModule module[${owners}];
+   UltraCycle cycle[${owners}];
+   UltraLocal local[${owners}];
    long cash, cost, spread, session, msc, bid, ask;
    int seq;
 
@@ -24,7 +24,7 @@ struct UltraBook
    {
       UltraMark a={};
       a.cash=cash; a.equity=cash; a.cost=cost; a.spread=spread;
-      for(int i=0;i<2;i++)
+      for(int i=0;i<${owners};i++)
       {
          UltraCycle c=cycle[i];
          if(c.opened==0) continue;
@@ -138,12 +138,12 @@ ${platform_intent}   }
       if(day!=session)
       {
          session=day;
-         for(int i=0;i<2;i++) { UltraLocal fresh={}; local[i]=fresh; }
+         for(int i=0;i<${owners};i++) { UltraLocal fresh={}; local[i]=fresh; }
          event(-1,0,"session","utc_day_reset");
       }
-      for(int i=0;i<2;i++) manage(i,cycle[i]);
-      for(int i=0;i<2;i++) arm(i,(i==DON_SLOT ? observed.donchian : observed.s09),reference,observed.available);
+      for(int i=0;i<${owners};i++) manage(i,cycle[i]);
+      for(int i=0;i<${owners};i++) arm(i,${side_for_owner},reference,observed.available);
       long capacity=FILL_CAPACITY;
-      for(int i=0;i<2;i++) fill(i,cycle[i],capacity);
+      for(int i=0;i<${owners};i++) fill(i,cycle[i],capacity);
    }
 };

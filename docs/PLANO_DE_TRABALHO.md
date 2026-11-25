@@ -5501,3 +5501,7 @@ O relatório permite escolher o ciclo por dono, abre a regra congelada e o orça
 ### T19.54 · Experimento de entrada direta e gradiente sob risco idêntico
 
 A alternativa linear compartilha capital e capacidade por tick, reserva todos os passos no preço inicial e conserva os níveis de proteção do ciclo. O controle direto precisa reproduzir o livro original por evento. O recibo também registra a primeira perda da referência observada na posição e a confirmação de um novo ciclo após descaracterização.
+
+### T19.53 · Quantidade de donos no Expert de pesquisa
+
+O exportador do Expert de ordens instancia o indicador e a política de cada dono Donchian/S09. Os identificadores de ordem, as reservas e as proteções incluem o índice de precedência. Há controles para um, dois e três donos e um período sem sinais. A retomada de referência mantém o contrato original para dois donos.

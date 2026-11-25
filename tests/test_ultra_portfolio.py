@@ -251,4 +251,5 @@ def test_batch_continues_to_three_owner_explanation(tmp_path, campaign):
     package = tmp_path / "package.json"
     cli(db, "ultra-compile", "--receipt", receipt, "--out", str(package))
     cap = cli(db, "ultra-tester-capabilities", "--package", str(package))
-    assert cap["status"] == "capability_absent" and cap["owners"] == ["A", "B", "C"]
+    assert cap["status"] == "exportable" and cap["owners"] == ["A", "B", "C"]
+    assert cap["supported_origins"] == ["strategy_tester_orders"]

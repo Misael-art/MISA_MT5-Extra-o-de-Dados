@@ -1,6 +1,7 @@
 #property strict
 // Dedicated synthetic symbol for the Strategy Tester. The original sample is read only.
 const string source="$source", target="$target", money="$currency";
+const long order_modes=SYMBOL_ORDER_MARKET|SYMBOL_ORDER_LIMIT|SYMBOL_ORDER_SL|SYMBOL_ORDER_TP;
 const int primer=$primer, sample=$count;
 const long first=$first, last=$last, prior=$prior;
 const double tick_size=$tick_size, tick_value=$tick_value, step=$step, min_lot=$min_lot,
@@ -14,6 +15,8 @@ bool CloseValue(const double actual,const double wanted)
 bool Contract()
 {
    return SymbolInfoInteger(target,SYMBOL_TRADE_CALC_MODE)==SYMBOL_CALC_MODE_FUTURES
+      && SymbolInfoInteger(target,SYMBOL_TRADE_MODE)==SYMBOL_TRADE_MODE_FULL
+      && (SymbolInfoInteger(target,SYMBOL_ORDER_MODE)&order_modes)==order_modes
       && SymbolInfoInteger(target,SYMBOL_DIGITS)==$digits && SymbolInfoInteger(target,SYMBOL_CHART_MODE)==SYMBOL_CHART_MODE_BID
       && SymbolInfoString(target,SYMBOL_CURRENCY_PROFIT)==money && SymbolInfoString(target,SYMBOL_CURRENCY_MARGIN)==money
       && CloseValue(SymbolInfoDouble(target,SYMBOL_POINT),point)
@@ -51,6 +54,7 @@ bool SetString(const ENUM_SYMBOL_INFO_STRING key,const string value)
 bool Configure()
 {
    bool ok=SetInteger(SYMBOL_TRADE_CALC_MODE,SYMBOL_CALC_MODE_FUTURES)
+      && SetInteger(SYMBOL_TRADE_MODE,SYMBOL_TRADE_MODE_FULL) && SetInteger(SYMBOL_ORDER_MODE,order_modes)
       && SetString(SYMBOL_CURRENCY_MARGIN,money) && SetString(SYMBOL_CURRENCY_PROFIT,money)
       && SetInteger(SYMBOL_DIGITS,$digits) && SetInteger(SYMBOL_CHART_MODE,SYMBOL_CHART_MODE_BID)
       && SetDouble(SYMBOL_POINT,point) && SetDouble(SYMBOL_TRADE_TICK_SIZE,tick_size)

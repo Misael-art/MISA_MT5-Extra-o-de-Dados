@@ -27,7 +27,7 @@ summary,a{{padding:.7rem 0;cursor:pointer;display:list-item}}details{{margin:.5r
 dl{{border-left:3px solid #678;padding-left:1rem}}dt{{font-weight:600}}
 dd{{margin:0;overflow-wrap:anywhere}}:focus-visible{{outline:3px solid #166ac2}}</style><main><h1>{title}</h1>"""]
     parts.append(_records("Identificação e resultado", [{k: result[k] for k in
-        ("status", "modeled_status", "native_order_parity", "package_hash", "terminal_build", "journal_sha256", "platform_error")
+        ("status", "modeled_status", "native_order_parity", "package_hash", "terminal_build", "journal_sha256", "platform_error", "no_order_reason")
         if k in result}]))
     for key, label in (("modeled_first_divergence", "Primeira divergência do livro"),
                        ("platform_first_divergence", "Primeira divergência das ordens")):
