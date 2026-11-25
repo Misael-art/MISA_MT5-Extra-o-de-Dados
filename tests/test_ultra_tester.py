@@ -126,3 +126,25 @@ def test_tester_primer_precedes_window_and_preserves_frozen_quotes(campaign, tmp
     expert = (tmp_path / "prepared/UltraPreparedTester.mq5").read_text()
     assert contract["symbol"] in expert and "quote.time_msc<FIRST_MSC" in expert and "MQL_TESTER" in expert
     assert boosted["sha256"]["UltraConcurrent.mq5"] == normal["sha256"]["UltraConcurrent.mq5"]
+
+
+def test_linear_grid_preserves_control_and_frozen_total_budget(campaign):
+    from mt5_extracao.laboratory import ultra_entries
+    db, package = campaign
+    result = ultra_entries.compare(db, package, 1)
+    assert result["status"] == "compared", result
+    assert result["frames_compared"] == 372 and result["direct"]["metrics"]["end_equity"] == 93440
+    assert result["protocol"]["risk_limit"] == package["policy"]["risk_limit"]
+    assert result["linear"]["metrics"]["end_equity"] - 93440 == result["net_difference"]
+    fills = [e for e in result["linear"]["decisions"] if e["event"] == "fill"]
+    orders = {e["cycle_id"]: e for e in result["linear"]["decisions"] if e["event"] == "order"}
+    armed = {e["cycle_id"]: e for e in result["linear"]["decisions"] if e["event"] == "armed"}
+    assert fills and all(e["risk"] <= package["policy"]["risk_limit"] for e in orders.values())
+    for fill in fills:
+        order = orders[fill["cycle_id"]]
+        side = armed[fill["cycle_id"]]["side"]
+        limit = order["ask"] if side == 1 else order["bid"]
+        assert side * (limit-fill["price"]) >= fill["last_level"] * fill["spacing_ticks"]
+    assert result["direct"]["structure"] and result["native_status"] == "capability_absent"
+    with pytest.raises(ValueError, match="stop"):
+        ultra_entries.compare(db, package, 3)
