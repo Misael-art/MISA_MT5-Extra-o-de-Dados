@@ -111,7 +111,7 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
         raise ValueError("O prazo por etapa deve estar entre 10 e 1800 segundos.")
     if resume is not None and origin != "terminal_restart":
         raise ValueError("A retomada por recibo exige a origem terminal_restart.")
-    if prepare_only and origin not in ("strategy_tester", ultra_tester.PLATFORM):
+    if prepare_only and origin not in ultra_tester.TESTER_ORIGINS:
         raise ValueError("A preparação do símbolo se aplica à origem strategy_tester.")
     output = Path(output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -130,7 +130,9 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
     try:
         bundle = folder / "bundle"
         parent = None
-        options = {"prepare_tester": True} if origin in ("strategy_tester", ultra_tester.PLATFORM) else {}
+        options = {"prepare_tester": True} if origin in ultra_tester.TESTER_ORIGINS else {}
+        if origin == ultra_tester.SLICED:
+            options["slice_id"] = attempt
         if origin == "terminal_restart":
             parent = ultra_restart.read_parent(resume, package["package_hash"])
             options["restart_id"] = parent[1]["restart_id"] if parent else attempt
@@ -138,6 +140,8 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
                 receipt["parent_receipt"] = str(parent[0])
         exported = ultra_tester.export(db, package, bundle, **options)
         receipt.update(package_hash=exported["package_hash"], symbol=exported["symbol"], input_hashes=exported["sha256"])
+        if origin == ultra_tester.SLICED:
+            receipt["slice_checkpoint_plan"] = exported["slice_checkpoint"]
         if origin == "strategy_tester" and not (bundle / "UltraPreparedTester.mq5").is_file():
             return save("capability_absent", reason="A topologia do pacote requer strategy_tester_orders.")
         prefix = mt5.wine_prefix(config)
@@ -173,8 +177,9 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
     marker = "MT5X_ULTRA_DEMO|"
     probe = origin in ("terminal_history", "terminal_restart")
     startup_common = _demo_startup() if not probe and not prepare_only else ""
-    main = {"terminal_history": "UltraTerminalProbe", "terminal_restart": "UltraRestartProbe",
-            "strategy_tester": "UltraPreparedTester", ultra_tester.PLATFORM: "UltraPlatformOrders"}[origin]
+    main = ("UltraPlatformOrders" if origin in ultra_tester.PHYSICAL_ORIGINS else
+            {"terminal_history": "UltraTerminalProbe", "terminal_restart": "UltraRestartProbe",
+             "strategy_tester": "UltraPreparedTester"}[origin])
     scripts = [("UltraImport", "Scripts"), (main, "Scripts" if probe else "Experts")]
     if not probe:
         scripts.insert(1, ("UltraTesterContract", "Scripts"))
@@ -242,6 +247,8 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         report = "ultra_" + folder.name
         ini = mt5.tester_ini(names[main], contract["symbol"], "M1", day(times[0]), day(times[-1])+timedelta(days=1),
                              package["policy"]["cash"]/100, report, model="4", visual=False, currency=package["policy"]["currency"])
+        if origin == ultra_tester.SLICED:
+            ini = ini.replace("[Tester]\r\n", "[Tester]\r\nExecutionMode=0\r\n", 1)
         (folder / "tester.ini").write_bytes(ini.encode("utf-16"))
         state = save("tester_contract_verified", tester_contract=contract, observed=ready, tester_ini="tester.ini")
         if prepare_only:
@@ -268,7 +275,7 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         try:
             path = mt5.run_tester(config, data, startup_common + ini, report, timeout=timeout)
         except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
-            if origin != ultra_tester.PLATFORM:
+            if origin not in ultra_tester.PHYSICAL_ORIGINS:
                 raise
             tester_error = str(exc)
         finally:
@@ -279,14 +286,26 @@ def _execute(config, db, data, prefix, folder, bundle, exported, package, origin
         else:
             save("tester_report_missing", tester_error=tester_error)
         # A cópia retransmitida pelo terminal não comprova a execução no agente.
-        if origin in ("strategy_tester", ultra_tester.PLATFORM):
+        if origin in ultra_tester.TESTER_ORIGINS:
             logs = [log for log in logs if any(p.casefold().startswith("agent-") for p in log.relative_to(folder / "tester-logs").parts[:-1])]
     if journal is None:
         journal, _ = _marked(logs, ultra_tester.MARKERS[origin])
     if journal is None:
         return save("tester_report_missing" if tester_error else "journal_missing")
     result = ultra_tester.compare(db, package, journal.read_bytes(), origin=origin)
-    if origin == ultra_tester.PLATFORM:
+    if origin == ultra_tester.SLICED and result.get("state_recovery", {}).get("status") == "reconciled_in_same_pass":
+        binding = exported["slice_binding"]
+        common = mt5.common_files_dir(config)
+        checkpoint = common / f"MT5XUltraSlice_{binding}.bin" if common else None
+        if (result["state_recovery"].get("binding") != binding or checkpoint is None
+                or checkpoint.is_symlink() or not checkpoint.is_file() or not checkpoint.read_bytes().startswith(binding.encode("ascii"))):
+            result.update(status="platform_state_diverged", native_order_parity="pending")
+            result["state_recovery"].update(status="checkpoint_file_unconfirmed")
+        else:
+            archived = folder / "partial-slice.bin"
+            shutil.copyfile(checkpoint, archived)
+            save("slice_checkpoint_saved", checkpoint_file=archived.name, checkpoint_sha256=_sha(archived))
+    if origin in ultra_tester.PHYSICAL_ORIGINS:
         from ..laboratory.ultra_cycle_report import write_report
         if tester_error is None and "platform_account" in result:
             from ..laboratory.ultra_platform import compare_report

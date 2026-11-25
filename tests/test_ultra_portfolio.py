@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from mt5_extracao.database_manager import DatabaseManager
-from mt5_extracao.laboratory import ultra
+from mt5_extracao.laboratory import ultra, ultra_tester
 from scripts.demo_ultra import prepare, study_plan
 
 APP = Path(__file__).resolve().parents[1]
@@ -167,7 +167,7 @@ def test_new_pattern_replays_causal_rules_and_counterfactual(campaign, tmp_path)
     from decimal import Decimal
     package = compile_ultra_research(db, run["receipt"])
     cap = ultra_tester.package_capabilities(db, package)
-    assert cap["supported_origins"] == [ultra_tester.PLATFORM]
+    assert cap["supported_origins"] == list(ultra_tester.PHYSICAL_ORIGINS)
     assert cap["owner_signals"] == {module["owner"]: "pattern_definition"}
     export = ultra_tester.export(db, package, tmp_path / "mql", prepare_tester=True)
     expert = (tmp_path / "mql/UltraPlatformOrders.mq5").read_text()
@@ -291,4 +291,4 @@ def test_batch_continues_to_three_owner_explanation(tmp_path, campaign):
     cli(db, "ultra-compile", "--receipt", receipt, "--out", str(package))
     cap = cli(db, "ultra-tester-capabilities", "--package", str(package))
     assert cap["status"] == "exportable" and cap["owners"] == ["A", "B", "C"]
-    assert cap["supported_origins"] == ["strategy_tester_orders"]
+    assert cap["supported_origins"] == list(ultra_tester.PHYSICAL_ORIGINS)

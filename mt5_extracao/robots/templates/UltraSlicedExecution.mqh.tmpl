@@ -1,0 +1,119 @@
+// In this Tester contract the book owns unsubmitted volume and the agent owns filled volume.
+const string state_marker="MT5X_ULTRA_SLICED_STATE1|";
+const string checkpoint_name="MT5XUltraSlice_$binding.bin";
+const int checkpoint_frame=$checkpoint_frame, checkpoint_slot=$checkpoint_slot;
+string active_version="$old_version";
+bool resumed=false;
+
+void PlatformIntent(const long msc,const int sequence,const int slot,const long opened,const string kind,
+                    const long side,const long limit,const long qty,const long price,const long sl,const long tp)
+{
+   if(!platform_active || slot<0 || !TesterContext()) return;
+   ulong magic=(ulong)(opened*MAGIC_STRIDE+slot);
+   if(kind=="armed")
+      PrintFormat("%sVERSION|%I64d|%d|%d|%I64d|%s|%I64d",state_marker,msc,sequence,slot,opened,
+                  active_version,book.module[slot].breakeven);
+   if(kind!="fill" && kind!="management") return;
+   MqlTradeRequest req={}; req.symbol=_Symbol; req.magic=magic;
+   req.sl=(double)sl*TICK_SIZE;req.tp=(double)tp*TICK_SIZE;
+   if(kind=="fill")
+   {
+      MqlTick quote={};
+      if(uncertain || !SymbolInfoTick(_Symbol,quote) || PriceTicks(side>0 ? quote.ask : quote.bid)!=price
+         || side*(price-limit)>0 || qty<=0)
+      { failed=true; return; }
+      req.action=TRADE_ACTION_DEAL;
+      req.type=(side>0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+      req.type_filling=ORDER_FILLING_FOK;
+      req.volume=(double)qty*$volume_step;
+      req.price=(double)price*TICK_SIZE;
+      req.comment=StringFormat("UX:%d:%I64d",slot,opened);
+      PlatformRequest(req,slot,opened);
+      return;
+   }
+   int found=0;
+   for(int i=0;i<PositionsTotal();i++)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(!ticket || PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=magic) continue;
+      req.action=TRADE_ACTION_SLTP;req.position=ticket;
+      PlatformRequest(req,slot,opened);
+      found++;
+   }
+   if(!found) failed=true;
+}
+
+struct UltraSliceCursor
+{
+   long msc, opened, filled, pending, cash, equity, margin, stop, target;
+   ulong ticket;
+   int sequence, count, build;
+};
+
+bool ReadPartial(UltraSliceCursor &cursor)
+{
+   UltraCycle c=book.cycle[checkpoint_slot];
+   if(c.opened<=0 || c.filled<=0 || c.pending<=0) return false;
+   ulong magic=(ulong)(c.opened*MAGIC_STRIDE+checkpoint_slot), ticket=0;
+   for(int i=0;i<PositionsTotal();i++)
+   {
+      ulong current=PositionGetTicket(i);
+      if(!current || PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=magic) continue;
+      if(ticket || VolumeSteps(PositionGetDouble(POSITION_VOLUME))!=c.filled ||
+         PriceTicks(PositionGetDouble(POSITION_SL))!=c.stop || PriceTicks(PositionGetDouble(POSITION_TP))!=c.target) return false;
+      ticket=current;
+   }
+   if(!ticket) return false;
+   cursor.msc=last_msc;cursor.sequence=seq;cursor.count=frames;
+   cursor.build=(int)TerminalInfoInteger(TERMINAL_BUILD);
+   cursor.opened=c.opened;cursor.filled=c.filled;cursor.pending=c.pending;
+   cursor.stop=c.stop;cursor.target=c.target;cursor.ticket=ticket;
+   cursor.cash=Cents(AccountInfoDouble(ACCOUNT_BALANCE));cursor.equity=Cents(AccountInfoDouble(ACCOUNT_EQUITY));
+   cursor.margin=Cents(AccountInfoDouble(ACCOUNT_MARGIN));
+   return true;
+}
+
+void RecordPartial(const string step,const UltraSliceCursor &c)
+{
+   PrintFormat("%s%s|$binding|%d|%I64d|%d|%d|%I64d|%I64u|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d|%I64d",
+               state_marker,step,c.count,c.msc,c.sequence,checkpoint_slot,c.opened,c.ticket,c.filled,c.pending,
+               c.cash,c.equity,c.margin,c.stop,c.target);
+}
+
+bool CheckpointAndSwitch(const MqlTick &quote)
+{
+   if(resumed || checkpoint_frame==0 || frames!=checkpoint_frame) return true;
+   UltraSliceCursor before={};
+   if(!ReadPartial(before) || FileIsExist(checkpoint_name,FILE_COMMON)) return false;
+   string temp=checkpoint_name+".tmp";
+   int f=FileOpen(temp,FILE_WRITE|FILE_BIN|FILE_ANSI|FILE_COMMON);
+   if(f==INVALID_HANDLE) return false;
+   bool saved=FileWriteString(f,"$binding")==64 && FileWriteStruct(f,before)==sizeof(before)
+      && FileWriteStruct(f,signals)==sizeof(signals) && FileWriteStruct(f,book)==sizeof(book);
+   FileFlush(f);FileClose(f);
+   if(!saved || !FileMove(temp,FILE_COMMON,checkpoint_name,FILE_COMMON)) return false;
+   RecordPartial("SAVED",before);
+   ZeroMemory(book);ZeroMemory(signals);
+   last_msc=-1;seq=0;frames=0;
+   f=FileOpen(checkpoint_name,FILE_READ|FILE_BIN|FILE_ANSI|FILE_COMMON);
+   if(f==INVALID_HANDLE) return false;
+   UltraSliceCursor loaded={};
+   bool ok=FileReadString(f,64)=="$binding" && FileReadStruct(f,loaded)==sizeof(loaded)
+      && FileReadStruct(f,signals)==sizeof(signals) && FileReadStruct(f,book)==sizeof(book) && FileTell(f)==FileSize(f);
+   FileClose(f);
+   if(!ok || loaded.build!=TerminalInfoInteger(TERMINAL_BUILD) || loaded.msc!=quote.time_msc
+      || loaded.count!=checkpoint_frame || book.seq!=loaded.sequence || book.msc!=loaded.msc
+      || book.bid!=PriceTicks(quote.bid) || book.ask!=PriceTicks(quote.ask)) return false;
+   last_msc=loaded.msc;seq=loaded.sequence;frames=loaded.count;
+   UltraSliceCursor after={};
+   if(!ReadPartial(after) || after.opened!=loaded.opened || after.filled!=loaded.filled || after.pending!=loaded.pending
+      || after.ticket!=loaded.ticket || after.cash!=loaded.cash || after.equity!=loaded.equity || after.margin!=loaded.margin
+      || after.stop!=loaded.stop || after.target!=loaded.target) return false;
+   RecordPartial("LOADED",after);
+   book.module[checkpoint_slot].breakeven=$next_breakeven;
+   active_version="$new_version";
+   PrintFormat("%sSWITCH|%d|%s|%s|%d|%I64d|%I64d",state_marker,frames,"$old_version",active_version,
+               checkpoint_slot,book.cycle[checkpoint_slot].breakeven,book.module[checkpoint_slot].breakeven);
+   resumed=true;
+   return true;
+}

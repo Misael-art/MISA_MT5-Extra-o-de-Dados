@@ -3,6 +3,8 @@ from html import escape
 import json
 from pathlib import Path
 
+from .ultra_tester import PHYSICAL_ORIGINS
+
 
 def _records(title, rows):
     if not rows:
@@ -17,8 +19,8 @@ def _records(title, rows):
 
 def write_report(result, path):
     """Aceita somente o resultado do comparador e grava um documento novo."""
-    if result.get("origin") != "strategy_tester_orders":
-        raise ValueError("A trilha de ordens exige a origem strategy_tester_orders.")
+    if result.get("origin") not in PHYSICAL_ORIGINS:
+        raise ValueError("A trilha exige uma origem de ordens físicas do Strategy Tester.")
     title = "Ciclos de execução no Strategy Tester"
     parts = [f"""<!doctype html><html lang="pt-BR"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
@@ -34,6 +36,8 @@ dd{{margin:0;overflow-wrap:anywhere}}:focus-visible{{outline:3px solid #166ac2}}
         if result.get(key):
             parts.append(_records(label, [result[key]]))
     for key, label in (("policy_limits", "Limites e unidades do pacote"), ("platform_account", "Conta no início"),
+                       ("state_recovery", "Checkpoint físico e troca de preset"),
+                       ("end_settlement", "Liquidação do Tester após o último tick"),
                        ("platform_report_comparison", "Conferência do relatório MT5"), ("platform_final", "Conta no encerramento")):
         if result.get(key):
             parts.append(_records(label, [result[key]]))

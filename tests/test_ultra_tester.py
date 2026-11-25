@@ -43,6 +43,28 @@ def test_export_frozen_expert_in_priority_order_and_refuse_overwrite(campaign, t
     assert not (tmp_path / "bad").exists()
 
 
+def test_sliced_tester_binds_first_partial_and_pins_the_open_cycle(campaign, tmp_path):
+    db, package = campaign
+    out = tmp_path / "sliced"
+    result = ultra_tester.export(db, package, out, prepare_tester=True, slice_id="1" * 32)
+    checkpoint = result["slice_checkpoint"]
+    assert (checkpoint["checkpoint"], checkpoint["filled"], checkpoint["pending"]) == (199, 1, 1)
+    assert checkpoint["old"] == package["policy"]["revision"] and checkpoint["new"] != checkpoint["old"]
+    expert = (out / "UltraPlatformOrders.mq5").read_text()
+    assert "req.action=TRADE_ACTION_DEAL" in expert and "ORDER_FILLING_FOK" in expert
+    assert "c.breakeven=p.breakeven" in expert and "book.cycle[checkpoint_slot].breakeven" in expert
+    assert result["slice_binding"] in expert and checkpoint["new"] in expert
+    assert "UltraPreparedTester.mq5" not in result["sha256"]
+    plain = ultra_tester.export(db, package, tmp_path / "plain", prepare_tester=True)
+    assert plain["tester_contract"]["symbol"] != result["tester_contract"]["symbol"]
+    assert "TRADE_ACTION_PENDING" in (tmp_path / "plain/UltraPlatformOrders.mq5").read_text()
+    assert ultra_tester.physical_origin(journal([("BEGIN",)], ultra_tester.SLICED)) == ultra_tester.SLICED
+    assert ultra_tester.physical_origin(journal([("BEGIN",)], ultra_tester.PLATFORM)) == ultra_tester.PLATFORM
+    combined = journal([("BEGIN",)], ultra_tester.SLICED) + journal([("BEGIN",)], ultra_tester.PLATFORM)
+    with pytest.raises(ValueError, match="única execução"):
+        ultra_tester.physical_origin(combined)
+
+
 def fixture_rows(db, package):
     modules, frames = ultra_tester._context(db, package)
     header = ("BEGIN", package["package_hash"], package["source_manifest"], digest(ultra_tester._templates()), 6324)
@@ -171,7 +193,7 @@ def test_cash_control_has_separate_tick_and_platform_acceptances(campaign, tmp_p
     ultra.replay(db, receipt)
     package = compile_ultra_research(db, receipt)
     cap = ultra_tester.package_capabilities(db, package)
-    assert cap["supported_origins"] == [ultra_tester.PLATFORM]
+    assert cap["supported_origins"] == list(ultra_tester.PHYSICAL_ORIGINS)
     exported = ultra_tester.export(db, package, tmp_path / "one", prepare_tester=True)
     assert "UltraConcurrent.mq5" not in exported["sha256"]
     modules, frames = ultra_tester._context(db, package, platform=True)

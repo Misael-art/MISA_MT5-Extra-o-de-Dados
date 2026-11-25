@@ -107,7 +107,8 @@ def open_receipts(panel):
             return
         def compare():
             frozen = json.loads(Path(package).read_text(encoding="utf-8-sig"))
-            result = ultra_tester.compare(db, frozen, Path(journal).read_bytes(), origin=ultra_tester.PLATFORM)
+            raw = Path(journal).read_bytes()
+            result = ultra_tester.compare(db, frozen, raw, origin=ultra_tester.physical_origin(raw))
             return write_report(result, path)
         def finished(file, error):
             if window.winfo_exists():

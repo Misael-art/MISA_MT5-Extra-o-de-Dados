@@ -51,7 +51,7 @@ def add_parser(sub):
     capture = actions.add_parser("ultra-tester-compare", help="compara eventos e saldo do journal MQL5")
     capture.add_argument("--package", required=True)
     capture.add_argument("--journal", required=True)
-    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders"), default="strategy_tester")
+    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders", "strategy_tester_sliced"), default="strategy_tester")
     capture.add_argument("--out", help="novo relatório HTML navegável por ciclo para a origem de ordens")
     capture.set_defaults(func=run)
     parity = actions.add_parser("ultra-parity", help="confere o primeiro desvio no livro normalizado do Tester")

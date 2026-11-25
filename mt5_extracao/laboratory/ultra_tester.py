@@ -17,6 +17,10 @@ MARKERS = {"strategy_tester": "MT5X_ULTRA_B1|", "terminal_history": "MT5X_ULTRA_
            "terminal_restart": "MT5X_ULTRA_RESTART_B1|"}
 PLATFORM = "strategy_tester_orders"
 MARKERS[PLATFORM] = "MT5X_ULTRA_PLATFORM_BOOK1|"
+SLICED = "strategy_tester_sliced"
+MARKERS[SLICED] = "MT5X_ULTRA_SLICED_BOOK1|"
+PHYSICAL_ORIGINS = (PLATFORM, SLICED)
+TESTER_ORIGINS = ("strategy_tester", *PHYSICAL_ORIGINS)
 RESTART_CONTROL = "MT5X_ULTRA_RESTART_CTL|"
 BALANCE = ("cash", "equity", "risk", "margin", "pending_entry_cost", "exposure_steps", "cost", "spread_cost_twice")
 EVENT = ("time_msc", "seq", "owner_slot", "cycle_available_msc", "event", "reason", "steps", "price", "stop",
@@ -37,14 +41,26 @@ def capabilities():
                 "pattern_scope": "M1 OHLC/prior_close, on-grid comparisons, and/or/not, cancel_before_entry", "orders": "limit_with_sl_tp", "management": ["cancel", "breakeven"],
                 "hedging": "per_cycle_magic_and_position", "netting": "exclusive_cycle_independent_protection",
                 "requires": "Strategy Tester on prepared custom symbol", "execution_mode": "exchange",
-                "acceptance": "requires_agent_evidence"}, "economic_approval": False,
+                "acceptance": "requires_agent_evidence"},
+            "sliced_tester": {"origin": SLICED, "account": "hedging", "execution": "instant_fok",
+                              "pending_volume": "local_reservation", "recovery": "checkpoint_in_same_tester_pass"},
+            "economic_approval": False,
             "tester_primer_m1_bars": ultra_preparation.PRIMER_MINUTES}
 
 
-def _templates(platform=False):
+def _templates(platform=False, *, sliced=False):
     templates = {name: (TEMPLATES / (name + ".tmpl")).read_text(encoding="utf-8") for name in NATIVE_TEMPLATES}
-    hook = ("      if(owner>=0) PlatformIntent(msc,seq,owner,opened,kind,cycle[owner].side,cycle[owner].limit,qty,stop,target);\n"
-            if platform else "")
+    hook = ""
+    if platform:
+        args = "qty,price,stop,target" if sliced else "qty,stop,target"
+        hook = f"      if(owner>=0) PlatformIntent(msc,seq,owner,opened,kind,cycle[owner].side,cycle[owner].limit,{args});\n"
+    if sliced:
+        book = templates["UltraBook.mqh"]
+        book = book.replace("basis, fees;", "basis, fees, ttl, breakeven, invalidate;")
+        book = book.replace("module[i].ttl", "c.ttl").replace("module[i].breakeven", "c.breakeven")
+        book = book.replace("module[i].invalidate", "c.invalidate")
+        book = book.replace("cycle[i]=c;", "c.ttl=p.ttl; c.breakeven=p.breakeven; c.invalidate=p.invalidate;\n      cycle[i]=c;")
+        templates["UltraBook.mqh"] = book
     templates["UltraSignals.mqh"] = Template(templates["UltraSignals.mqh"]).substitute(closed_cross=(
         "         s09=HDKS09Cross(prev_fast,prev_slow,fast,slow,bars+1,SLOW_N);" if platform else
         "         if(fast>slow && prev_fast<=prev_slow) s09=1;\n         if(fast<slow && prev_fast>=prev_slow) s09=-1;"))
@@ -59,8 +75,35 @@ def _templates(platform=False):
     return templates
 
 
-def _platform_source():
-    return (TEMPLATES / "UltraPlatformOrders.mq5.tmpl").read_text(encoding="utf-8")
+def _platform_source(*, sliced=False):
+    source = (TEMPLATES / "UltraPlatformOrders.mq5.tmpl").read_text(encoding="utf-8")
+    if not sliced:
+        return source
+    first, last = source.index("void PlatformIntent("), source.index("void Snapshot()")
+    execution = (TEMPLATES / "UltraSlicedExecution.mqh.tmpl").read_text(encoding="utf-8")
+    source = source[:first] + execution + "\n" + source[last:]
+    source = source.replace("long last_requested[OWNER_STORAGE];\n", "")
+    source = source.replace("SYMBOL_ORDER_LIMIT|", "SYMBOL_ORDER_MARKET|")
+    source = source.replace("SYMBOL_TRADE_EXECUTION_EXCHANGE", "SYMBOL_TRADE_EXECUTION_INSTANT")
+    source = source.replace("PositionsTotal()!=0 || OrdersTotal()!=0", "PositionsTotal()!=0 || OrdersTotal()!=0 ||\n      AccountInfoInteger(ACCOUNT_MARGIN_MODE)!=ACCOUNT_MARGIN_MODE_RETAIL_HEDGING")
+    source = source.replace("   if(frames>previous) Snapshot();", "   if(frames>previous)\n   { Snapshot(); if(!failed && !CheckpointAndSwitch(quote)) failed=true; }")
+    return source.replace("   if(checked && (result.retcode", "   if(!checked || !sent || result.retcode!=TRADE_RETCODE_DONE) failed=true;\n   if(checked && (result.retcode")
+
+
+def _preparation_source(*, sliced=False):
+    source = (TEMPLATES / "UltraTesterContract.mq5.tmpl").read_text(encoding="utf-8")
+    if not sliced:
+        return source
+    source = source.replace("SYMBOL_TRADE_EXECUTION_EXCHANGE", "SYMBOL_TRADE_EXECUTION_INSTANT")
+    source = source.replace("SYMBOL_ORDER_LIMIT|", "")
+    source = source.replace("      && CloseValue(SymbolInfoDouble(target,SYMBOL_MARGIN_MAINTENANCE),margin);",
+        "      && CloseValue(SymbolInfoDouble(target,SYMBOL_MARGIN_MAINTENANCE),margin)\n"
+        "      && SymbolInfoInteger(target,SYMBOL_MARGIN_HEDGED_USE_LEG)==0\n"
+        "      && CloseValue(SymbolInfoDouble(target,SYMBOL_MARGIN_HEDGED),2.0*margin);")
+    return source.replace("      && SetDouble(SYMBOL_MARGIN_MAINTENANCE,margin);",
+        "      && SetDouble(SYMBOL_MARGIN_MAINTENANCE,margin)\n"
+        "      && SetInteger(SYMBOL_MARGIN_HEDGED_USE_LEG,0)\n"
+        "      && SetDouble(SYMBOL_MARGIN_HEDGED,2.0*margin);")
 
 
 def _kernel_constants(don, s09):
@@ -108,9 +151,9 @@ def _platform_signals(slots, tick):
         "      available=0;reference=0;donchian=0;s09=0;", *observations, "      minute=msc/60000;", "   }", "};"])
 
 
-def _platform_revision(slots, tick):
+def _platform_revision(slots, tick, *, sliced=False):
     from ..robots.ultra_hadouken import HEADERS
-    return digest([_templates(platform=True), _platform_source(), _platform_signals(slots, tick),
+    return digest([_templates(platform=True, sliced=sliced), _platform_source(sliced=sliced), _platform_signals(slots, tick),
                    HEADERS if any(m["strategy"]=="s09_reference" for m in slots) else {}])
 
 
@@ -135,10 +178,17 @@ def _restart_template():
     return (TEMPLATES / "UltraRestartProbe.mq5.tmpl").read_text(encoding="utf-8")
 
 
-def _build(db, package, restart_id, prepare_tester):
+def _build(db, package, restart_id, prepare_tester, slice_id=None):
     if restart_id is not None and (not isinstance(restart_id, str) or not re.fullmatch(r"[a-f0-9]{32}", restart_id)):
         raise ValueError("O identificador da retomada deve conter 32 dígitos hexadecimais.")
     modules, frames = _context(db, package, platform=prepare_tester and restart_id is None)
+    sliced = slice_id is not None
+    if sliced and (not prepare_tester or restart_id is not None or not re.fullmatch(r"[a-f0-9]{32}", slice_id)):
+        raise ValueError("A sessão de fatias exige preparo e um identificador próprio.")
+    plan = None
+    if sliced:
+        from . import ultra_sliced
+        frames, plan = ultra_sliced.replay(db, package, frames)
     key = package["package_hash"]
     symbol = "UX_" + key[:20]
     csv = symbol + ".csv"
@@ -167,22 +217,27 @@ def _build(db, package, restart_id, prepare_tester):
     templates = _templates()
     revision = digest(templates)
     def program(name, kind, restart=None, binding=None, instrument=symbol):
-        physical = kind == PLATFORM
-        build_revision = _platform_revision(slots, unit) if physical else digest([revision, restart]) if restart else revision
+        physical = kind in PHYSICAL_ORIGINS
+        use_slices = kind == SLICED
+        build_revision = _platform_revision(slots, unit, sliced=use_slices) if physical else digest([revision, restart]) if restart else revision
         runtime_template = templates["UltraRuntime.mqh"]
         source_defines = defines
         if physical:
             source_defines += f"\n#define OWNER_COUNT {len(slots)}\n#define OWNER_STORAGE {max(1, len(slots))}\n#define MAGIC_STRIDE {max(2,len(slots))}"
             runtime_template = runtime_template.replace("(signals.donchian!=0 || signals.s09!=0)", "(signals.available!=0)")
         runtime = Template(runtime_template).substitute(
-            defines=source_defines, core=_platform_signals(slots, unit) if physical else templates["UltraSignals.mqh"], book=_templates(platform=True)["UltraBook.mqh"] if physical else templates["UltraBook.mqh"],
+            defines=source_defines, core=_platform_signals(slots, unit) if physical else templates["UltraSignals.mqh"], book=_templates(platform=True, sliced=use_slices)["UltraBook.mqh"] if physical else templates["UltraBook.mqh"],
             modules=assignments, package=key, manifest=package["source_manifest"], revision=build_revision,
             marker=MARKERS[kind])
         if physical:
-            return Template(_platform_source()).substitute(runtime=runtime, symbol=instrument, package=key,
+            profile = plan or {}
+            return Template(_platform_source(sliced=use_slices)).substitute(runtime=runtime, symbol=instrument, package=key,
                 manifest=package["source_manifest"], revision=build_revision, volume_step=Decimal(str(spec["volume_step"])),
                 signal_includes='#include "HADOUKEN/Strategies/HDK_S09Reference.mqh"' if s09 else "",
-                currency=policy["currency"])
+                currency=policy["currency"], binding=digest([key, build_revision, slice_id, plan]),
+                checkpoint_frame=profile.get("checkpoint", 0), checkpoint_slot=profile.get("slot", 0),
+                old_version=policy["revision"], new_version=profile.get("new", policy["revision"]),
+                next_breakeven=profile.get("breakeven", 0))
         if restart:
             return Template(restart).substitute(runtime=runtime, symbol=symbol, binding=binding)
         return Template(templates[name]).substitute(runtime=runtime, symbol=instrument)
@@ -202,12 +257,15 @@ def _build(db, package, restart_id, prepare_tester):
         contents["UltraRestartProbe.mq5"] = program("UltraRestartProbe.mq5", "terminal_restart", restart, binding)
         metadata.update(restart_id=restart_id, checkpoint_binding=binding)
     if prepare_tester:
-        prepared, info = ultra_preparation.render((TEMPLATES / "UltraTesterContract.mq5.tmpl").read_text(encoding="utf-8"),
-                                                  package, symbol, frames)
+        prepared, info = ultra_preparation.render(_preparation_source(sliced=sliced), package, symbol, frames)
+        if sliced:
+            info["execution_mode"] = "instant_fok"
+            metadata["slice_checkpoint"] = plan
+            metadata["slice_binding"] = digest([key, _platform_revision(slots, unit, sliced=True), slice_id, plan])
         contents["UltraTesterContract.mq5"] = prepared
-        if legacy:
+        if legacy and not sliced:
             contents["UltraPreparedTester.mq5"] = program("UltraConcurrent.mq5", "strategy_tester", instrument=info["symbol"])
-        contents["UltraPlatformOrders.mq5"] = program(None, PLATFORM, instrument=info["symbol"])
+        contents["UltraPlatformOrders.mq5"] = program(None, SLICED if sliced else PLATFORM, instrument=info["symbol"])
         metadata["tester_contract"] = info
         if s09:
             from ..robots.ultra_hadouken import HEADERS
@@ -227,16 +285,16 @@ def package_capabilities(db, package):
         _, metadata = _build(db, package, None, True)
     except ValueError as exc:
         return dict(result, status="capability_absent", reason=str(exc))
-    origins = list(MARKERS) if "UltraConcurrent.mq5" in metadata["sha256"] else [PLATFORM]
+    origins = list(MARKERS) if "UltraConcurrent.mq5" in metadata["sha256"] else list(PHYSICAL_ORIGINS)
     return dict(result, status="exportable", supported_origins=origins, tester=capabilities(), tester_contract=metadata["tester_contract"],
                 sources=metadata["sha256"])
 
 
-def export(db, package, destination, *, restart_id=None, prepare_tester=False):
+def export(db, package, destination, *, restart_id=None, prepare_tester=False, slice_id=None):
     target = Path(destination)
     if target.exists():
         raise FileExistsError(f"Escolha uma pasta nova para o Expert: {target}")
-    contents, metadata = _build(db, package, restart_id, prepare_tester)
+    contents, metadata = _build(db, package, restart_id, prepare_tester, slice_id)
     with TemporaryDirectory(dir=target.parent) as temporary:
         stage = Path(temporary) / "bundle"
         stage.mkdir()
@@ -313,18 +371,36 @@ def _restart_proof(lines, marker, frames, policy):
                            "opened_msc": int(opened), "filled": int(filled), "pending": int(pending)}}
 
 
+def _journal_text(journal):
+    encoding = "utf-16" if journal.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+    return journal.decode(encoding)
+
+
+def physical_origin(journal):
+    text = _journal_text(journal)
+    matches = [origin for origin in PHYSICAL_ORIGINS if MARKERS[origin] in text]
+    if len(matches) != 1:
+        raise ValueError("Selecione o journal de uma única execução física do Strategy Tester.")
+    return matches[0]
+
+
 def compare(db, package, journal, *, origin):
     """O chamador escolhe a origem que pretende auditar. Cada executável tem seu próprio marcador."""
-    modules, frames = _context(db, package, platform=origin == PLATFORM)
+    native = origin in PHYSICAL_ORIGINS
+    sliced = origin == SLICED
+    modules, frames = _context(db, package, platform=native)
+    plan = None
+    if sliced:
+        from . import ultra_sliced
+        frames, plan = ultra_sliced.replay(db, package, frames)
     marker = MARKERS[origin]
-    encoding = "utf-16" if journal.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
-    lines = journal.decode(encoding).splitlines()
+    lines = _journal_text(journal).splitlines()
     rows = [line.partition(marker)[2].split("|") for line in lines if marker in line]
     revision = digest(_templates())
     if origin == "terminal_restart":
         revision = digest([revision, _restart_template()])
-    if origin == PLATFORM:
-        revision = _platform_revision(package["policy"]["modules"], Decimal(str(package["specification"]["tick_size"])))
+    if native:
+        revision = _platform_revision(package["policy"]["modules"], Decimal(str(package["specification"]["tick_size"])), sliced=sliced)
     begin = ["BEGIN", package["package_hash"], package["source_manifest"], revision]
     count = sum(row[0] == "FRAME" for row in rows)
     if (len(rows) < 2 or rows[0][:-1] != begin or not rows[0][-1].isdigit() or int(rows[0][-1]) <= 0
@@ -336,12 +412,26 @@ def compare(db, package, journal, *, origin):
               "first_divergence": None}
     def physical(modeled):
         from .ultra_platform import reconcile
-        _, contract = ultra_preparation.render((TEMPLATES / "UltraTesterContract.mq5.tmpl").read_text(encoding="utf-8"),
-                                               package, "UX_" + package["package_hash"][:20], frames)
+        _, contract = ultra_preparation.render(_preparation_source(sliced=sliced), package,
+                                               "UX_" + package["package_hash"][:20], frames)
         try:
-            proof = reconcile(package, frames, lines, contract["symbol"], revision, modeled["terminal_build"])
+            proof = reconcile(package, frames, lines, contract["symbol"], revision, modeled["terminal_build"], sliced=sliced)
         except ValueError as exc:
             proof = {"status": "platform_journal_incomplete", "native_order_parity": "pending", "platform_error": str(exc)}
+        if sliced and "cycles" in proof:
+            if plan:
+                owner = package["policy"]["modules"][plan["slot"]]["owner"]
+                for cycle in proof["cycles"]:
+                    if cycle["owner"] == owner and cycle["version"] == plan["new"]:
+                        cycle["rule"] = dict(cycle["rule"], breakeven=plan["breakeven"])
+            try:
+                proof["state_recovery"] = ultra_sliced.check_state(package, frames, lines, proof, plan, marker)
+            except ValueError as exc:
+                proof["state_recovery"] = {"status": "diverged", "reason": str(exc)}
+                if proof["status"] == "platform_orders_match":
+                    proof.update(status="platform_state_diverged", native_order_parity="pending")
+            proof["sliced_execution"] = {"native_order": "market_fok", "remaining": "local_reservation",
+                                         "margin": "physical_volume_only", "recovery": "same_tester_pass"}
         from . import ultra_pattern_native
         checks = ultra_pattern_native.audit(db, package, frames, lines)
         proof["predicate_audit"] = checks
@@ -364,7 +454,7 @@ def compare(db, package, journal, *, origin):
         if first:
             modeled = dict(modeled, status="diverged", first_divergence=first)
         combined = dict(modeled, **proof)
-        combined.update(scope="strategy_tester_platform_orders", modeled_status=modeled["status"],
+        combined.update(scope="strategy_tester_sliced" if sliced else "strategy_tester_platform_orders", modeled_status=modeled["status"],
                         modeled_first_divergence=first, platform_first_divergence=proof.get("first_divergence"))
         if first:
             combined.update(status="diverged", first_divergence=earliest(first, proof.get("first_divergence")))
@@ -373,7 +463,7 @@ def compare(db, package, journal, *, origin):
     def difference(index, key, field, expected, observed):
         modeled = dict(result, status="diverged", first_divergence={
             "ordinal": index, "key": key, "field": field, "expected": expected, "observed": observed})
-        return physical(modeled) if origin == PLATFORM else modeled
+        return physical(modeled) if native else modeled
     actual = iter(rows[1:-1])
     last = None
     for index, key, kind, fields, values in _expected_rows(frames, modules, package["policy"]):
@@ -394,4 +484,4 @@ def compare(db, package, journal, *, origin):
     if origin == "terminal_restart":
         result.update(_restart_proof(lines, marker, frames, package["policy"]))
     result.update(status="modeled_book_matches", end_equity=frames[-1]["mark"]["equity"])
-    return physical(result) if origin == PLATFORM else result
+    return physical(result) if native else result

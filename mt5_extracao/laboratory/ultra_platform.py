@@ -1,6 +1,7 @@
 """Confronto entre as decisões congeladas e os registros do agente do Strategy Tester."""
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
+import re
 
 MARKER = "MT5X_ULTRA_ORDERS1|"
 SCHEMAS = {
@@ -72,11 +73,13 @@ def _confirms_request(request, tx, magic):
         return False
     if request["request_id"]:
         return tx["request_id"] == request["request_id"] and tx["magic"] in (0, magic)
-    return (request["action"] == "TRADE_ACTION_PENDING" and request["result_order"] > 0
-            and tx["request_id"] == 0 and tx["order"] == request["result_order"] and tx["magic"] == magic)
+    if (request["action"] not in ("TRADE_ACTION_PENDING", "TRADE_ACTION_DEAL") or request["result_order"] <= 0
+            or tx["request_id"] != 0 or tx["order"] != request["result_order"] or tx["magic"] != magic):
+        return False
+    return request["action"] == "TRADE_ACTION_PENDING" or (request["result_deal"] > 0 and tx["deal"] == request["result_deal"])
 
 
-def reconcile(package, frames, lines, symbol, revision, build):
+def reconcile(package, frames, lines, symbol, revision, build, *, sliced=False):
     rows = _records(lines)
     head, end = rows["BEGIN"][0], rows["END"][0]
     policy = package["policy"]
@@ -85,6 +88,8 @@ def reconcile(package, frames, lines, symbol, revision, build):
         raise ValueError("Identidade da execução de ordens incompatível com o pacote.")
     if head["mode"] not in ("ACCOUNT_MARGIN_MODE_RETAIL_HEDGING", "ACCOUNT_MARGIN_MODE_RETAIL_NETTING", "ACCOUNT_MARGIN_MODE_EXCHANGE"):
         raise ValueError("Modalidade de conta desconhecida no journal do agente.")
+    if sliced and head["mode"] != "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING":
+        raise ValueError("O cenário de fatias exige tickets físicos separados em hedging.")
     if (end["history"], end["frames"], end["orders"], end["deals"]) != (1, len(frames), len(rows["HISTORY"]), len(rows["DEAL"])):
         raise ValueError("Histórico físico incompleto no encerramento.")
     keys = [tuple(f["mark"]["key"]) for f in frames]
@@ -96,6 +101,11 @@ def reconcile(package, frames, lines, symbol, revision, build):
         raise ValueError("Registro físico fora da sequência de cotações.")
     history = _tickets(rows["HISTORY"])
     deals = _tickets(rows["DEAL"])
+    final_positions = {r["position_id"]: r for r in snapshots["POSITION"][keys[-1]]} if sliced else {}
+    tester_closes = {int(m.group(1)) for line in lines if (m := re.search(r"position closed due end of test at \S+ \[#(\d+) ", line))} if sliced else set()
+    closing = {t: d for t, d in deals.items() if d["position_id"] in final_positions
+               and final_positions[d["position_id"]]["ticket"] in tester_closes
+               and (d["msc"], d["entry"], d["reason"]) == (keys[-1][0], "DEAL_ENTRY_OUT", "DEAL_REASON_CLIENT")}
     slots = {m["owner"]: i for i, m in enumerate(policy["modules"])}
     stride = max(2, len(slots))
     cycles = {}
@@ -121,7 +131,7 @@ def reconcile(package, frames, lines, symbol, revision, build):
         if not 0 <= r["slot"] < len(slots) or r["opened"] <= 0 or magic not in cycles:
             raise ValueError("Solicitação sem intenção do pacote.")
         cycles[magic]["requests"].append(r)
-        if r["result_order"] and r["action"] == "TRADE_ACTION_PENDING":
+        if r["result_order"] and r["action"] in ("TRADE_ACTION_PENDING", "TRADE_ACTION_DEAL"):
             order_magic[r["result_order"]] = magic
     for r in rows["VETO"]:
         magic = stride*r["opened"] + r["slot"]
@@ -143,7 +153,8 @@ def reconcile(package, frames, lines, symbol, revision, build):
             continue
         cycles[magic]["deals"].append(r)
         order_magic.setdefault(r["order"], magic)
-        per_tick[r["msc"]].append((magic, r))
+        if r["ticket"] not in closing:
+            per_tick[r["msc"]].append((magic, r))
     for t, r in history.items():
         magic = order_magic.get(t, positions.get(r["position_id"]))
         if magic in cycles:
@@ -151,15 +162,15 @@ def reconcile(package, frames, lines, symbol, revision, build):
         else:
             unbound.append(r)
     request_magics = {r["request_id"]: stride*r["opened"]+r["slot"] for r in rows["REQUEST"] if r["request_id"]}
-    pending_without_id = {r["result_order"]: r for r in rows["REQUEST"]
-                          if not r["request_id"] and r["action"] == "TRADE_ACTION_PENDING" and r["result_order"]}
+    without_id = {r["result_order"]: r for r in rows["REQUEST"] if not r["request_id"] and r["result_order"]
+                  and r["action"] in ("TRADE_ACTION_PENDING", "TRADE_ACTION_DEAL")}
     for r in rows["TX"]:
         if r["type"] == "TRADE_TRANSACTION_REQUEST":
             magic = request_magics.get(r["request_id"])
-            if r["request_id"] == 0 and r["order"] in pending_without_id:
-                pending_request = pending_without_id[r["order"]]
-                candidate = stride * pending_request["opened"] + pending_request["slot"]
-                if _confirms_request(pending_request, r, candidate):
+            if r["request_id"] == 0 and r["order"] in without_id:
+                request = without_id[r["order"]]
+                candidate = stride * request["opened"] + request["slot"]
+                if _confirms_request(request, r, candidate):
                     magic = candidate
         else:
             magic = order_magic.get(r["order"], r["magic"])
@@ -178,7 +189,7 @@ def reconcile(package, frames, lines, symbol, revision, build):
             first = {"ordinal": ordinal[key], "key": list(key), "field": field, "expected": expected, "observed": observed,
                      "cycle_id": cycle and cycle["cycle_id"]}
 
-    pending, held, basis = {}, {}, {}
+    pending, held, basis, pieces = {}, {}, {}, {}
     entry_orders = {}
     unit = Decimal(str(package["specification"]["tick_size"]))
     tick_keys = {key[0]: key for key in reversed(keys)}
@@ -188,6 +199,7 @@ def reconcile(package, frames, lines, symbol, revision, build):
         check(key, "platform.veto", [], snapshots["VETO"][key])
         wants = []
         fills = []
+        slices = {}
         for e in frame["events"]:
             if e["cycle_id"] is None:
                 continue
@@ -199,33 +211,42 @@ def reconcile(package, frames, lines, symbol, revision, build):
                 entry_orders[magic] = key
                 limit = mark["ask"] if side == 1 else mark["bid"]
                 pending[magic] = [e["steps"], limit, e["stop"], e["target"]]
-                wants.append((magic, "TRADE_ACTION_PENDING"))
+                if not sliced:
+                    wants.append((magic, "TRADE_ACTION_PENDING"))
             elif kind == "fill":
                 pending[magic][0] -= e["steps"]
                 if not pending[magic][0]:
                     del pending[magic]
                 held[magic] = [held.get(magic, [0])[0]+e["steps"], e["stop"], e["target"]]
                 basis[magic] = basis.get(magic, 0) + e["steps"]*e["price"]
+                pieces[magic] = pieces.get(magic, 0) + 1
+                if sliced:
+                    wants.append((magic, "TRADE_ACTION_DEAL"))
+                    slices[magic] = ["ORDER_TYPE_BUY" if side == 1 else "ORDER_TYPE_SELL", e["steps"], e["price"], e["stop"], e["target"]]
                 fills.append((magic, "DEAL_ENTRY_IN", "DEAL_TYPE_BUY" if side == 1 else "DEAL_TYPE_SELL",
                               "DEAL_REASON_EXPERT", e["steps"], e["price"], -e["fee"], 0, 0, 0))
             elif kind == "exit":
                 gross = side * (e["steps"]*e["price"]-basis[magic]) * policy["tick_cash"]
-                del held[magic], basis[magic]
+                del held[magic], basis[magic], pieces[magic]
                 fills.append((magic, "DEAL_ENTRY_OUT", "DEAL_TYPE_SELL" if side == 1 else "DEAL_TYPE_BUY",
                               "DEAL_REASON_SL" if e["reason"] == "stop" else "DEAL_REASON_TP",
                               e["steps"], e["price"], -e["fee"], 0, 0, gross))
             elif kind == "cancel":
                 pending.pop(magic, None)
-                wants.append((magic, "TRADE_ACTION_REMOVE"))
+                if not sliced:
+                    wants.append((magic, "TRADE_ACTION_REMOVE"))
             elif kind == "management":
                 held[magic][1:] = [e["stop"], e["target"]]
-                wants.append((magic, "TRADE_ACTION_SLTP"))
+                wants.extend([(magic, "TRADE_ACTION_SLTP")] * (pieces[magic] if sliced else 1))
         requests = snapshots["REQUEST"][key]
         check(key, "platform.requests", wants, [(stride*r["opened"]+r["slot"], r["action"]) for r in requests])
         for r in requests:
             magic = stride*r["opened"]+r["slot"]
             cycle = cycles[magic]
             check(key, "request.accepted", True, bool(r["sent"]) and r["retcode"] in (10008, 10009, 10010), cycle)
+            if sliced and r["action"] == "TRADE_ACTION_DEAL":
+                check(key, "request.sliced_volume_price_and_protection", slices.get(magic),
+                      [r[v] for v in ("type", "steps", "price", "stop", "target")], cycle)
             if r["action"] == "TRADE_ACTION_PENDING":
                 event = next((e for e in frame["events"] if e["event"] == "order" and e["cycle_id"] == cycle["cycle_id"]), None)
                 if event:
@@ -260,19 +281,31 @@ def reconcile(package, frames, lines, symbol, revision, build):
                 "orders": [r for r in active_orders if r["magic"] == magic],
                 "positions": [dict(r, basis=str(r["basis"])) for r in active_positions if r["magic"] == magic]})
         check(key, "account.object_counts", [account["orders"], account["positions"]], [len(active_orders), len(active_positions)])
-        check(key, "order.pending", sorted((m, *v) for m, v in pending.items()),
+        check(key, "order.pending", [] if sliced else sorted((m, *v) for m, v in pending.items()),
               sorted((r["magic"], r["steps"], r["price"], r["stop"], r["target"]) for r in active_orders))
+        observed_positions = defaultdict(int)
+        for r in active_positions:
+            observed_positions[r["magic"], r["stop"], r["target"]] += r["steps"]
+        physical_positions = (sorted((magic, steps, sl, tp) for (magic, sl, tp), steps in observed_positions.items()) if sliced
+                              else sorted((r["magic"], r["steps"], r["stop"], r["target"]) for r in active_positions))
         check(key, "position.protected", sorted((m, *v) for m, v in held.items()),
-              sorted((r["magic"], r["steps"], r["stop"], r["target"]) for r in active_positions))
+              physical_positions)
+        observed_basis = defaultdict(Decimal)
         for r in active_positions:
             m = r["magic"]
             if m in held:
                 check(key, "position.side", "POSITION_TYPE_BUY" if cycles[m]["side"]==1 else "POSITION_TYPE_SELL",r["type"],cycles[m])
-                expected_basis = unit*basis[m]
-                observed_basis = r["basis"]*r["steps"]
-                if observed_basis != expected_basis:
-                    check(key, "position.price_times_steps", str(expected_basis), str(observed_basis), cycles[m])
-        for field in ("margin", "cash", "equity"):
+                value = r["basis"]*r["steps"]
+                if sliced:
+                    observed_basis[m] += value
+                elif value != unit*basis[m]:
+                    check(key, "position.price_times_steps", str(unit*basis[m]), str(value), cycles[m])
+        for m, value in observed_basis.items():
+            if value != unit*basis[m]:
+                check(key, "position.price_times_steps", str(unit*basis[m]), str(value), cycles[m])
+        margin = sum(v[0] for v in held.values())*policy["margin"] if sliced else mark["margin"]
+        check(key, "account.margin", margin, account["margin"])
+        for field in ("cash", "equity"):
             check(key, "account."+field, mark[field], account[field])
     volume_by_order = defaultdict(int)
     for d in deals.values():
@@ -286,14 +319,14 @@ def reconcile(package, frames, lines, symbol, revision, build):
                   and 0 < observed_steps <= order["initial"], cycle)
         if order["state"] == "ORDER_STATE_FILLED":
             check(key, "history.filled_volume", order["initial"], observed_steps, cycle)
-    submitted = {r["result_order"] for r in rows["REQUEST"] if r["action"] == "TRADE_ACTION_PENDING"}
+    submitted = {r["result_order"] for r in rows["REQUEST"] if r["action"] in ("TRADE_ACTION_PENDING", "TRADE_ACTION_DEAL")}
     linked = submitted.union(d["order"] for d in deals.values())
     check(keys[-1], "history.extra_orders", [], sorted(history.keys() - linked))
     for magic, key in entry_orders.items():
         cycle = cycles[magic]
         for request in cycle["requests"]:
             request_key = (request["msc"], request["seq"])
-            if request["action"] == "TRADE_ACTION_PENDING":
+            if request["action"] in ("TRADE_ACTION_PENDING", "TRADE_ACTION_DEAL"):
                 ticket = request["result_order"]
                 remains = ticket in {o["ticket"] for o in snapshots["ORDER"][keys[-1]]}
                 if ticket in history:
@@ -301,6 +334,10 @@ def reconcile(package, frames, lines, symbol, revision, build):
                     check(request_key, "history.request_binding", [magic, request["type"], request["steps"]],
                           [order["magic"], order["type"], order["initial"]], cycle)
                 check(request_key, "history.order_ticket", True, ticket > 0 and (ticket in history or remains), cycle)
+            if request["action"] == "TRADE_ACTION_DEAL":
+                deal = deals.get(request["result_deal"], {})
+                check(request_key, "history.sliced_deal_ticket", True, deal.get("order") == ticket
+                      and deal.get("entry") == "DEAL_ENTRY_IN" and deal.get("steps") == request["steps"], cycle)
             if request["action"] == "TRADE_ACTION_REMOVE":
                 ticket = request["order"]
                 canceled = history.get(ticket, {})
@@ -316,14 +353,32 @@ def reconcile(package, frames, lines, symbol, revision, build):
             deal_key = tick_keys.get(d["msc"], keys[-1])
             check(deal_key, "deal.ticket_links", True, d["position_id"]>0 and d["order"] in history and
                   history[d["order"]]["position_id"] == d["position_id"] and
-                  any(t["type"]=="TRADE_TRANSACTION_DEAL_ADD" and t["deal"]==d["ticket"] and t["order"]==d["order"] for t in cycle["transactions"]),cycle)
+                  (d["ticket"] in closing or any(t["type"]=="TRADE_TRANSACTION_DEAL_ADD" and t["deal"]==d["ticket"]
+                                                 and t["order"]==d["order"] for t in cycle["transactions"])),cycle)
             if d["msc"] not in tick_keys:
                 check(keys[-1], "deal.outside_sample", None, d["ticket"],cycle)
     check(keys[-1], "history.unbound", [], unbound)
     confirmed = {r["deal"] for r in rows["TX"] if r["type"] == "TRADE_TRANSACTION_DEAL_ADD"}
     check(keys[-1], "transaction.extra_deals", [], sorted(confirmed - deals.keys()))
-    check(keys[-1], "final.cash", frames[-1]["mark"]["cash"], end["cash"])
-    check(keys[-1], "final.equity", frames[-1]["mark"]["equity"], end["equity"])
+    final_mark = frames[-1]["mark"]
+    expected_cash, expected_equity = final_mark["cash"], final_mark["equity"]
+    settlement = None
+    if sliced:
+        check(keys[-1], "settlement.positions", sorted(final_positions), sorted(d["position_id"] for d in closing.values()))
+        for d in closing.values():
+            p = final_positions[d["position_id"]]
+            long = p["type"] == "POSITION_TYPE_BUY"
+            price = final_mark["bid" if long else "ask"]
+            qty = p["steps"]
+            profit = (price - p["basis"]/unit)*qty*policy["tick_cash"]*(1 if long else -1)
+            check(keys[-1], "settlement.execution", ["DEAL_TYPE_SELL" if long else "DEAL_TYPE_BUY", qty, price, -qty*policy["fee"], 0, 0, profit],
+                  [d[k] for k in ("type", "steps", "price", "commission", "fee", "swap", "profit")], cycles.get(p["magic"]))
+        exit_cost = policy["fee"]*sum(v[0] for v in held.values())
+        expected_cash = expected_equity = final_mark["equity"] - exit_cost
+        settlement = {"marked_equity": final_mark["equity"], "exit_commission": exit_cost,
+                      "expected_settled_cash": expected_cash, "observed_tickets": sorted(closing)}
+    check(keys[-1], "final.cash", expected_cash, end["cash"])
+    check(keys[-1], "final.equity", expected_equity, end["equity"])
     if first:
         first["diagnosis"] = {
             "deal.execution": "Conferir a liquidez por tick, o tipo de negócio, o preço e os custos do Tester.",
@@ -336,13 +391,16 @@ def reconcile(package, frames, lines, symbol, revision, build):
         no_orders = "no_confirmed_signal" if not cycles else "no_entry_reserved" if not entry_orders else "no_platform_order_observed"
     if not slots and no_orders:
         no_orders = "no_candidate"
-    return {"status": "diverged" if first else "platform_orders_match", "no_order_reason": no_orders,
+    result = {"status": "diverged" if first else "platform_orders_match", "no_order_reason": no_orders,
             "native_order_parity": "diverged" if first else "journal_matches",
             "first_divergence": first, "platform_account": head, "platform_final": end,
             "tolerance": {"ticks": 0, "volume_steps": 0, "currency_cents": 0},
             "cycles": list(cycles.values()), "unbound_history": unbound,
             "policy_limits": {key: policy[key] for key in ("cash", "currency", "risk_limit", "margin", "fee", "tick_cash")},
             "global_events": [e for f in frames for e in f["events"] if e["cycle_id"] is None]}
+    if settlement is not None:
+        result["end_settlement"] = settlement
+    return result
 
 
 def compare_report(package, comparison, html):

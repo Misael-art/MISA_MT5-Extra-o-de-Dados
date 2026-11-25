@@ -222,3 +222,21 @@ O preparador desta revisão cria outro símbolo sintético com execução Exchan
 
 
 O primeiro teste Exchange passou pela validação do preço e retornou 10016 nas proteções. O novo símbolo da bancada preserva bid e ask do pacote e acrescenta Last sintético, dado pelo ponto médio arredondado para baixo na grade. A preparação relê os três preços e registra a derivação. Nenhum tick da fonte é substituído. O journal informa bid, ask, Last, nível mínimo de proteção e retorno de checagem quando a solicitação falha. [Ativação de ordens no Tester](https://www.metatrader5.com/en/terminal/help/algotrading/testing_features)
+
+### Fatias físicas, checkpoint e troca de preset no Tester
+
+O ensaio `strategy_tester_sliced` mantém a capacidade por tick do pacote. Ao liberar uma fatia, o Expert envia uma ordem a mercado FOK com stop e alvo, no símbolo sintético de execução instantânea e com latência zero. O preço precisa coincidir com o bid ou ask executável e respeitar o limite do ciclo. A quantidade ainda por executar permanece reservada no livro. O comparador confere a proteção de cada ticket, a margem das posições físicas e a reserva do livro em seus registros próprios. [Políticas de volume do MQL5](https://www.mql5.com/en/book/automation/experts/experts_execution_filling)
+
+No primeiro preenchimento parcial da intenção, o Expert salva o cursor, os sinais e o livro, zera o estado em memória e relê o checkpoint. O Tester continua na mesma execução, com os tickets físicos abertos. A carga compara posição, volume, stop, alvo, saldo, patrimônio e margem. Em seguida, o ensaio ativa uma versão com outro limiar de breakeven. O ciclo em andamento conserva a regra de origem e as novas intenções identificam a regra vigente. Encerrar o Tester finaliza a sessão simulada. A validação de retomada deste modo ocorre dentro da mesma sessão. [Ciclo de vida do Expert no Tester](https://www.mql5.com/en/docs/common/expertremove)
+
+Execute a preparação e consulte `tester_contract.symbol` no recibo. Nas configurações avançadas do Tester, escolha hedging e configure a comissão instantânea do símbolo em moeda do depósito, de acordo com a unidade do pacote. Nos dois controles de um passo por fatia, use a faixa de 0 a 100 lotes e USD 0,05 por negócio, em entradas e saídas. Feche o terminal de QA para executar o launcher. [Configurações de comissão do Tester](https://www.metatrader5.com/en/terminal/help/algotrading/testing#advanced)
+
+```sh
+cli robots ultra-test "$PACOTE" --ultra-origin strategy_tester_sliced --prepare-only --report "$RECEBOS"
+cli robots ultra-test "$PACOTE" --ultra-origin strategy_tester_sliced --report "$RECEBOS"
+cli laboratory ultra-tester-compare --origin strategy_tester_sliced --package "$PACOTE" --journal "$JOURNAL_DO_AGENTE" --out "$CICLOS"
+```
+
+No UltraQA Linux/Wine, os controles inteiro e fracionário percorreram 372 ticks cada. A primeira fatia executou no tick 199, com um passo físico e um passo reservado. O checkpoint preservou o ticket e a proteção. A troca manteve o limiar de breakeven 4 no ciclo aberto e aplicou o limiar 3 aos novos ciclos do dono. O journal e o HTML concordaram em 32 negócios e USD 946,40 no inteiro. No fracionário, concordaram em 36 negócios e USD 957,20. O patrimônio marcado antes do encerramento fracionário foi USD 957,30. O Tester fechou as duas posições restantes com USD 0,10 de comissão, em negócios identificados em separado no recibo.
+
+O repasse incremental contém o perfil de comissões de cada símbolo. Em outro perfil portátil de QA, importe esse arquivo nas configurações avançadas do Strategy Tester depois da preparação. A comissão efetivamente cobrada consta nos negócios do agente. O recibo registra divergência quando o custo observado difere do custo congelado.
