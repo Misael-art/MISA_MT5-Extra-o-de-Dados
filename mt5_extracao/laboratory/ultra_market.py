@@ -320,7 +320,7 @@ def verify_m1(backend, source):
         raise ValueError("A conferência M1 exige o tamanho de tick do símbolo.")
     unit = Decimal(str(tick_size))
     compared, mismatches, bad_volume, real_volume = 0, 0, 0, 0
-    first, index = None, []
+    first, first_volume, index = None, None, []
     for block in manifest["blocks"]:
         start, end = block["start_msc"], block["end_msc"]
         if start % 60000 or end % 60000:
@@ -347,7 +347,11 @@ def verify_m1(backend, source):
             real_volume += bool(b and b["real_volume"] > 0)
             if a and b:
                 compared += 1
-                bad_volume += a["tick_volume"] != b["tick_volume"]
+                if a["tick_volume"] != b["tick_volume"]:
+                    bad_volume += 1
+                    if first_volume is None:
+                        first_volume = dict(start_msc=minute, observed_quote_events=a["tick_volume"],
+                                            reported_bar_tick_volume=b["tick_volume"])
             if not (a and b and a["ohlc"] == b["ohlc"] and None not in a["ohlc"]):
                 mismatches += 1
                 if first is None:
@@ -357,7 +361,7 @@ def verify_m1(backend, source):
     status = "m1_ohlc_matches" if compared and not mismatches else "m1_ohlc_unconfirmed"
     return dict(status=status, manifest_hash=manifest["manifest_hash"], compared_bars=compared,
                 ohlc_mismatches=mismatches, tick_volume_mismatches=bad_volume, real_volume_bars=real_volume,
-                first_ohlc_divergence=first, blocks=index)
+                first_ohlc_divergence=first, first_tick_volume_divergence=first_volume, blocks=index)
 
 
 def compare_probe(source, tape, *, binding, agent_journal):

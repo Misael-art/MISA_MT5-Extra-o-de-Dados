@@ -1,6 +1,6 @@
 #property strict
 const string Audit="MT5X_ULTRA_MARKET_DEMO|", Manifest="$manifest", Binding="$binding";
-const int Seconds=45;
+const ulong DurationMsc=45000;
 ulong started=0, ready_since=0;
 long seen=0;
 datetime history_start=0;
@@ -49,7 +49,7 @@ void OnTimer()
             PrintFormat("%sSESSION|%d|%u|%I64d|%I64d",Audit,day,i,(long)from,(long)to);
       }
    }
-   if(now-ready_since<Seconds*1000) return;
+   if(now-ready_since<DurationMsc) return;
    bool known=HistorySelect(history_start,TimeTradeServer());
    int orders=(known ? HistoryOrdersTotal() : -1), deals=(known ? HistoryDealsTotal() : -1);
    PrintFormat("%sEND|%s|%I64d|%d|%d|%d|%d|%.2f|%I64d|%I64d",Audit,Binding,seen,
