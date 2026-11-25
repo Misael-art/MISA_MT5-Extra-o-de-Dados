@@ -135,8 +135,7 @@ void OnTick()
    if(ultra_tape==INVALID_HANDLE || ultra_failed) return;
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) {ultra_failed=true;return;}
-   if(tick.time_msc<UltraStart) return;
-   if(tick.time_msc>=UltraEnd) {TesterStop();return;}
+   if(tick.time_msc<UltraStart || tick.time_msc>=UltraEnd) return;
    ultra_msc=tick.time_msc;
    ultra_failed=FileWriteLong(ultra_tape,tick.time_msc)!=8 || FileWriteDouble(ultra_tape,tick.bid)!=8 ||
       FileWriteDouble(ultra_tape,tick.ask)!=8 || FileWriteDouble(ultra_tape,tick.last)!=8 ||
@@ -159,9 +158,12 @@ $ticks
          if(PositionGetTicket(i)!=0) owners+=(i==0 ? "" : ",")+IntegerToString(PositionGetInteger(POSITION_MAGIC));
       Print(UltraPrefix,"PEAK|",ultra_msc,"|",ultra_peak,"|",owners);
    }
-   // O Tester recebe um dia de folga. A própria fita define o último tick do ensaio.
-   // A contagem preserva a ordem quando há mais de uma cotação no último milissegundo.
-   if(ultra_ticks==UltraTickCount && ultra_msc==UltraLast) TesterStop();
+   // Liquida a janela na última cotação congelada e deixa o Tester gerar seu relatório completo.
+   if(ultra_ticks==UltraTickCount && ultra_msc==UltraLast)
+   {
+$settlement
+      PrintFormat("%sBOUNDARY|%I64d|%I64d|%d|%d",UltraPrefix,ultra_msc,ultra_ticks,PositionsTotal(),OrdersTotal());
+   }
 }
 
 void OnTradeTransaction(const MqlTradeTransaction &transaction,const MqlTradeRequest &request,const MqlTradeResult &result)

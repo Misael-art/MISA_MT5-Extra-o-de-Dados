@@ -15,7 +15,7 @@ from .ultra_platform import compare_report
 
 _WIDTHS = {"OWNER": 4, "RULES": 8, "ACCOUNT": 4, "BAR": 12, "ENTRY": 10, "PEAK": 3,
            "PROTECT": 10, "CLOSE": 10, "ORDER": 11, "DEAL": 16, "FINAL": 11,
-           "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3}
+           "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3, "BOUNDARY": 4}
 
 
 def _records(journal, *, management_order=None):
@@ -151,6 +151,9 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
     check(decisions.keys() == expected.keys(), "all_owners_evaluated")
     observed_orders = {int(o[0]): o for o in rows["ORDER"]}
     deals = list(_deals(rows["DEAL"], tick, step))
+    if window := bundle.get("window"):
+        check(rows["BOUNDARY"] == [[str(window["last_msc"]), str(window["ticks"]), "0", "0"]]
+              and all(window["start_msc"] <= d["msc"] <= window["last_msc"] for d in deals), "window_settlement")
     deal_by_ticket = {d["ticket"]: d for d in deals}
     check(len(observed_orders) == len(rows["ORDER"]) and len(deal_by_ticket) == len(deals), "unique_tickets")
     observed_entries = Counter()
@@ -275,5 +278,6 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
                 totals=dict(orders=len(observed_orders), deals=len(deals), partials=sum(partials.values())),
                 peak=dict(on_tick=int(peak), chronological=replay_peak, samples=rows["PEAK"]),
                 final=final, report_comparison=report, deals=deals, pattern_parity=pattern_result, economic_approval=False,
-                observations=dict(plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events)),
+                observations=dict(plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
+                                  boundary=rows["BOUNDARY"]),
                 units=dict(tick_size=str(tick), volume_step=str(step), cash_unit="0.01 USD"))

@@ -236,7 +236,7 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
     template_path = _TEMPLATES / "UltraMarketPortfolio.mq5.tmpl"
     closure = digest({"reference": sources.originals, "generated": sources.files, "host_template": _sha(template_path)})
     budgets = ";".join(f"{row['magic']}={RISK_PCT}" for row in slots)
-    includes, init, ticks = [], [], []
+    includes, init, ticks, settlement = [], [], [], []
     for i, row in enumerate(slots):
         includes.append(f'#include "{row["include"]}"\nCHDKPortfolioRiskGuard owner_{i};')
         init.append(f'''   if(U{i}_OnInit()!=INIT_SUCCEEDED ||
@@ -245,6 +245,7 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
    UltraRules({row["magic"]},U{i}_g_rules.target_r,U{i}_g_rules.partial_r,U{i}_g_rules.partial_fraction,
               U{i}_g_rules.breakeven_after_partial,U{i}_g_rules.trailing_atr,U{i}_g_rules.max_bars,U{i}_g_rules.eod_exit);''')
         ticks.append(f"   U{i}_OnTick();")
+        settlement.append(f'      UltraCloseOwned(U{i}_g_exec,{row["magic"]},"fim da fita");')
     level_cases = []
     for row in slots:
         if row["key"] in ("s09_reference", MARKET_PATTERN):
@@ -258,9 +259,11 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
         end=manifest["time"]["end_msc"], last=coverage["last_msc"], tick_count=coverage["rows"],
         closure=closure, safety=safety, cap=CAP_PCT, budgets=budgets,
         entry_levels="\n".join(level_cases),
-        includes="\n".join(includes), init="\n".join(init), ticks="\n".join(ticks)))
+        includes="\n".join(includes), init="\n".join(init), ticks="\n".join(ticks),
+        settlement="\n".join(settlement)))
     return dict(manifest_hash=manifest["manifest_hash"], symbol="EURUSD", binding=binding, tester_model="4",
                 source_sha256=sources.files[destination.name], source_closure_sha256=closure,
                 source_files=sources.files, canonical_files=sources.originals, slots=slots, orders=True,
                 slot_risk_pct=float(RISK_PCT), portfolio_cap_pct=float(CAP_PCT),
+                window=dict(start_msc=manifest["time"]["start_msc"], last_msc=coverage["last_msc"], ticks=coverage["rows"]),
                 tape=f"MT5XUltraMarket_{binding}.bin")
