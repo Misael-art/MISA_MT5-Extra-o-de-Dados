@@ -67,6 +67,15 @@ def _executions(rows):
     return [list(key) + amounts for key, amounts in sorted(grouped.items())]
 
 
+def _confirms_request(request, tx, magic):
+    if tx["type"] != "TRADE_TRANSACTION_REQUEST" or tx["retcode"] != request["retcode"]:
+        return False
+    if request["request_id"]:
+        return tx["request_id"] == request["request_id"] and tx["magic"] in (0, magic)
+    return (request["action"] == "TRADE_ACTION_PENDING" and request["result_order"] > 0
+            and tx["request_id"] == 0 and tx["order"] == request["result_order"] and tx["magic"] == magic)
+
+
 def reconcile(package, frames, lines, symbol, revision, build):
     rows = _records(lines)
     head, end = rows["BEGIN"][0], rows["END"][0]
@@ -142,9 +151,16 @@ def reconcile(package, frames, lines, symbol, revision, build):
         else:
             unbound.append(r)
     request_magics = {r["request_id"]: stride*r["opened"]+r["slot"] for r in rows["REQUEST"] if r["request_id"]}
+    pending_without_id = {r["result_order"]: r for r in rows["REQUEST"]
+                          if not r["request_id"] and r["action"] == "TRADE_ACTION_PENDING" and r["result_order"]}
     for r in rows["TX"]:
         if r["type"] == "TRADE_TRANSACTION_REQUEST":
             magic = request_magics.get(r["request_id"])
+            if r["request_id"] == 0 and r["order"] in pending_without_id:
+                pending_request = pending_without_id[r["order"]]
+                candidate = stride * pending_request["opened"] + pending_request["slot"]
+                if _confirms_request(pending_request, r, candidate):
+                    magic = candidate
         else:
             magic = order_magic.get(r["order"], r["magic"])
         if magic in cycles:
@@ -294,8 +310,8 @@ def reconcile(package, frames, lines, symbol, revision, build):
                 applied = any(p["ticket"] == request["position"] and p["magic"] == magic and p["stop"] == request["stop"]
                               and p["target"] == request["target"] for p in snapshots["POSITION"][request_key])
                 check(request_key, "position.protection_applied", True, applied, cycle)
-            check(request_key, "transaction.request", True, request["request_id"] > 0 and any(t["type"]=="TRADE_TRANSACTION_REQUEST" and t["request_id"]==request["request_id"]
-                  and t["retcode"]==request["retcode"] for t in cycle["transactions"]), cycle)
+            check(request_key, "transaction.request", True,
+                  any(_confirms_request(request, tx, magic) for tx in cycle["transactions"]), cycle)
         for d in cycle["deals"]:
             deal_key = tick_keys.get(d["msc"], keys[-1])
             check(deal_key, "deal.ticket_links", True, d["position_id"]>0 and d["order"] in history and

@@ -75,6 +75,17 @@ def test_first_difference_with_equal_closing_equity(old, new, field, ordinal):
     assert result["platform_final"]["equity"] == 1008
 
 
+def test_first_callback_with_zero_request_id_uses_matching_order_ticket_and_magic():
+    source = JOURNAL.replace("|10008|11|0|7|1", "|10008|11|0|0|1")
+    source = source.replace("REQUEST|0|0|0|2000|7|10008", "REQUEST|11|0|0|2000|0|10008")
+    result = compare(source)
+    assert result["status"] == "platform_orders_match" and result["unbound_history"] == []
+    for wrong in ("REQUEST|12|0|0|2000|0|10008", "REQUEST|11|0|0|2001|0|10008"):
+        mismatched = compare(source.replace("REQUEST|11|0|0|2000|0|10008", wrong))
+        assert mismatched["first_divergence"]["field"] == "transaction.request"
+        assert mismatched["unbound_history"]
+
+
 def test_incomplete_and_duplicate_traces():
     with pytest.raises(ValueError, match="completa"):
         compare(JOURNAL.rpartition("\nEND|")[0])
