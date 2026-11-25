@@ -59,12 +59,11 @@ def _tickets(rows):
 
 
 def _executions(rows):
-    grouped = defaultdict(lambda: [0, 0, 0])
-    for magic, entry, side, reason, steps, price, costs, profit in rows:
+    grouped = defaultdict(lambda: [0, 0, 0, 0, 0])
+    for magic, entry, side, reason, steps, price, commission, fee, swap, profit in rows:
         amounts = grouped[magic, entry, side, reason, price]
-        amounts[0] += steps
-        amounts[1] += costs
-        amounts[2] += profit
+        for i, value in enumerate((steps, commission, fee, swap, profit)):
+            amounts[i] += value
     return [list(key) + amounts for key, amounts in sorted(grouped.items())]
 
 
@@ -89,12 +88,13 @@ def reconcile(package, frames, lines, symbol, revision, build):
     history = _tickets(rows["HISTORY"])
     deals = _tickets(rows["DEAL"])
     slots = {m["owner"]: i for i, m in enumerate(policy["modules"])}
+    stride = max(2, len(slots))
     cycles = {}
     by_id = {}
     for frame in frames:
         for event in frame["events"]:
             if event["event"] == "armed":
-                magic = 2 * event["available_msc"] + slots[event["owner"]]
+                magic = stride * event["available_msc"] + slots[event["owner"]]
                 cycle = {"owner": event["owner"], "cycle_id": event["cycle_id"], "version": event["cycle_version"],
                          "magic": magic, "side": event["side"], "events": [], "requests": [], "vetoes": [],
                          "history": [], "deals": [], "transactions": [], "snapshots": [],
@@ -108,14 +108,14 @@ def reconcile(package, frames, lines, symbol, revision, build):
     # A ordem de chegada dos callbacks não é a ordem do ciclo. Use os vínculos do histórico.
     order_magic = {t: r["magic"] for t, r in history.items() if r["magic"] in cycles}
     for r in rows["REQUEST"]:
-        magic = 2*r["opened"] + r["slot"]
+        magic = stride*r["opened"] + r["slot"]
         if not 0 <= r["slot"] < len(slots) or r["opened"] <= 0 or magic not in cycles:
             raise ValueError("Solicitação sem intenção do pacote.")
         cycles[magic]["requests"].append(r)
         if r["result_order"] and r["action"] == "TRADE_ACTION_PENDING":
             order_magic[r["result_order"]] = magic
     for r in rows["VETO"]:
-        magic = 2*r["opened"] + r["slot"]
+        magic = stride*r["opened"] + r["slot"]
         if not 0 <= r["slot"] < len(slots) or r["opened"] <= 0 or magic not in cycles:
             raise ValueError("Veto sem ciclo do pacote.")
         cycles[magic]["vetoes"].append(r)
@@ -141,9 +141,12 @@ def reconcile(package, frames, lines, symbol, revision, build):
             cycles[magic]["history"].append(r)
         else:
             unbound.append(r)
-    request_magics = {r["request_id"]: 2*r["opened"]+r["slot"] for r in rows["REQUEST"] if r["request_id"]}
+    request_magics = {r["request_id"]: stride*r["opened"]+r["slot"] for r in rows["REQUEST"] if r["request_id"]}
     for r in rows["TX"]:
-        magic = order_magic.get(r["order"], request_magics.get(r["request_id"], r["magic"]))
+        if r["type"] == "TRADE_TRANSACTION_REQUEST":
+            magic = request_magics.get(r["request_id"])
+        else:
+            magic = order_magic.get(r["order"], r["magic"])
         if magic in cycles:
             cycles[magic]["transactions"].append(r)
         elif r["position"] in positions:
@@ -188,13 +191,13 @@ def reconcile(package, frames, lines, symbol, revision, build):
                 held[magic] = [held.get(magic, [0])[0]+e["steps"], e["stop"], e["target"]]
                 basis[magic] = basis.get(magic, 0) + e["steps"]*e["price"]
                 fills.append((magic, "DEAL_ENTRY_IN", "DEAL_TYPE_BUY" if side == 1 else "DEAL_TYPE_SELL",
-                              "DEAL_REASON_EXPERT", e["steps"], e["price"], -e["fee"], 0))
+                              "DEAL_REASON_EXPERT", e["steps"], e["price"], -e["fee"], 0, 0, 0))
             elif kind == "exit":
                 gross = side * (e["steps"]*e["price"]-basis[magic]) * policy["tick_cash"]
                 del held[magic], basis[magic]
                 fills.append((magic, "DEAL_ENTRY_OUT", "DEAL_TYPE_SELL" if side == 1 else "DEAL_TYPE_BUY",
                               "DEAL_REASON_SL" if e["reason"] == "stop" else "DEAL_REASON_TP",
-                              e["steps"], e["price"], -e["fee"], gross))
+                              e["steps"], e["price"], -e["fee"], 0, 0, gross))
             elif kind == "cancel":
                 pending.pop(magic, None)
                 wants.append((magic, "TRADE_ACTION_REMOVE"))
@@ -202,9 +205,9 @@ def reconcile(package, frames, lines, symbol, revision, build):
                 held[magic][1:] = [e["stop"], e["target"]]
                 wants.append((magic, "TRADE_ACTION_SLTP"))
         requests = snapshots["REQUEST"][key]
-        check(key, "platform.requests", wants, [(2*r["opened"]+r["slot"], r["action"]) for r in requests])
+        check(key, "platform.requests", wants, [(stride*r["opened"]+r["slot"], r["action"]) for r in requests])
         for r in requests:
-            magic = 2*r["opened"]+r["slot"]
+            magic = stride*r["opened"]+r["slot"]
             cycle = cycles[magic]
             check(key, "request.accepted", True, bool(r["sent"]) and r["retcode"] in (10008, 10009, 10010), cycle)
             if r["action"] == "TRADE_ACTION_PENDING":
@@ -218,8 +221,12 @@ def reconcile(package, frames, lines, symbol, revision, build):
         if previous_msc == key[0] and actual_deals:
             check(key, "deal.tick_sequence", "identifiable", "multiple_ticks_at_deal_millisecond")
         previous_msc = key[0]
-        observed = [(m, r["entry"], r["type"], r["reason"], r["steps"], r["price"], r["commission"]+r["fee"]+r["swap"], r["profit"]) for m, r in actual_deals]
-        check(key, "deal.execution", _executions(fills), _executions(observed))
+        observed = [(m, r["entry"], r["type"], r["reason"], r["steps"], r["price"], r["commission"], r["fee"], r["swap"], r["profit"]) for m, r in actual_deals]
+        expected_fills, observed_fills = _executions(fills), _executions(observed)
+        differing = next((v[0] for v in expected_fills if v not in observed_fills), None)
+        if differing is None:
+            differing = next((v[0] for v in observed_fills if v not in expected_fills), None)
+        check(key, "deal.execution", expected_fills, observed_fills, cycles.get(differing))
         active_orders = snapshots["ORDER"][key]
         active_positions = snapshots["POSITION"][key]
         for objects in (active_orders, active_positions):
@@ -251,7 +258,18 @@ def reconcile(package, frames, lines, symbol, revision, build):
                     check(key, "position.price_times_steps", str(expected_basis), str(observed_basis), cycles[m])
         for field in ("margin", "cash", "equity"):
             check(key, "account."+field, mark[field], account[field])
-    check(keys[-1], "history.unbound", [], unbound)
+    volume_by_order = defaultdict(int)
+    for d in deals.values():
+        volume_by_order[d["order"]] += d["steps"]
+    for ticket, order in history.items():
+        cycle = cycles.get(order_magic.get(ticket))
+        observed_steps = volume_by_order[ticket]
+        key = tick_keys.get(order["done_msc"], keys[-1])
+        if observed_steps:
+            check(key, "history.fill_state", True, order["state"] in ("ORDER_STATE_FILLED", "ORDER_STATE_CANCELED", "ORDER_STATE_EXPIRED")
+                  and 0 < observed_steps <= order["initial"], cycle)
+        if order["state"] == "ORDER_STATE_FILLED":
+            check(key, "history.filled_volume", order["initial"], observed_steps, cycle)
     submitted = {r["result_order"] for r in rows["REQUEST"] if r["action"] == "TRADE_ACTION_PENDING"}
     linked = submitted.union(d["order"] for d in deals.values())
     check(keys[-1], "history.extra_orders", [], sorted(history.keys() - linked))
@@ -262,6 +280,10 @@ def reconcile(package, frames, lines, symbol, revision, build):
             if request["action"] == "TRADE_ACTION_PENDING":
                 ticket = request["result_order"]
                 remains = ticket in {o["ticket"] for o in snapshots["ORDER"][keys[-1]]}
+                if ticket in history:
+                    order = history[ticket]
+                    check(request_key, "history.request_binding", [magic, request["type"], request["steps"]],
+                          [order["magic"], order["type"], order["initial"]], cycle)
                 check(request_key, "history.order_ticket", True, ticket > 0 and (ticket in history or remains), cycle)
             if request["action"] == "TRADE_ACTION_REMOVE":
                 ticket = request["order"]
@@ -281,6 +303,7 @@ def reconcile(package, frames, lines, symbol, revision, build):
                   any(t["type"]=="TRADE_TRANSACTION_DEAL_ADD" and t["deal"]==d["ticket"] and t["order"]==d["order"] for t in cycle["transactions"]),cycle)
             if d["msc"] not in tick_keys:
                 check(keys[-1], "deal.outside_sample", None, d["ticket"],cycle)
+    check(keys[-1], "history.unbound", [], unbound)
     confirmed = {r["deal"] for r in rows["TX"] if r["type"] == "TRADE_TRANSACTION_DEAL_ADD"}
     check(keys[-1], "transaction.extra_deals", [], sorted(confirmed - deals.keys()))
     check(keys[-1], "final.cash", frames[-1]["mark"]["cash"], end["cash"])
@@ -292,7 +315,10 @@ def reconcile(package, frames, lines, symbol, revision, build):
             "platform.veto": "A recusa e a modalidade da conta constam no journal físico.",
             "request.accepted": "A solicitação foi recusada ou ficou incerta. Consultar check, retcode e Safety.",
         }.get(first["field"], "Conferir o registro do agente no tick indicado.")
-    return {"status": "diverged" if first else "platform_orders_match",
+    no_orders = None
+    if not history and not rows["ORDER"] and not deals:
+        no_orders = "no_confirmed_signal" if not cycles else "no_entry_reserved" if not entry_orders else "no_platform_order_observed"
+    return {"status": "diverged" if first else "platform_orders_match", "no_order_reason": no_orders,
             "native_order_parity": "diverged" if first else "journal_matches",
             "first_divergence": first, "platform_account": head, "platform_final": end,
             "tolerance": {"ticks": 0, "volume_steps": 0, "currency_cents": 0},

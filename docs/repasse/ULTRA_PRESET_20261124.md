@@ -182,7 +182,7 @@ Use `laboratory ultra-study-run --study ID` e abra `policies.<política>.reserve
 
 `laboratory ultra-explain --receipt ID --ordinal 348` abre a chave de tempo, a regra de cada dono, as ordens, os fills e as reservas observados no tick 348, contado a partir de zero. No relatório da carteira, selecione a estratégia e o ciclo para ir à primeira decisão. As ações de decisão anterior e próxima navegam pelo ciclo escolhido.
 
-`laboratory ultra-batch --definition primeiro.json --definition seguinte.json` emite um resultado por definição e continua depois de um ativo inconclusivo. Em **Carteiras Ultra → Capacidades do pacote**, a interface confere o pacote selecionado contra o recibo e mostra se há implementação no Tester. O agente consulta o mesmo resultado com `laboratory ultra-tester-capabilities --package pacote.json`. O Laboratório aceita mais donos no modelo Python. O exportador do Expert desta revisão exige exatamente um dono Donchian e um dono S09.
+`laboratory ultra-batch --definition primeiro.json --definition seguinte.json` emite um resultado por definição e continua depois de um ativo inconclusivo. Em **Carteiras Ultra → Capacidades do pacote**, a interface confere o pacote selecionado contra o recibo e mostra se há implementação no Tester. O agente consulta o mesmo resultado com `laboratory ultra-tester-capabilities --package pacote.json`. O pacote informa os donos e as origens disponíveis na versão consultada. A seção seguinte de topologia descreve a expansão do Expert de ordens.
 
 ### Entrada direta e gradiente linear no Laboratório
 
@@ -191,3 +191,9 @@ Use `laboratory ultra-study-run --study ID` e abra `policies.<política>.reserve
 Em cada ciclo o recibo distingue a perda da referência enquanto havia posição, o encerramento com referência íntegra e a entrada em novo sinal após a perda da estrutura anterior. A decisão usa o bid ou ask executável daquele tick. A seleção temporal e o atraso de detecção da degradação estatística são registrados no estudo entre sessões.
 
 Nos controles sintéticos de 372 ticks, o gradiente de um tick terminou USD 26,70 acima da entrada direta no contrato inteiro e USD 21,35 acima no fracionário. Os resultados pertencem ao modelo de liquidez da pesquisa. A campanha de ordens do Tester desta revisão executa a entrada direta.
+
+### Topologia do Expert de ordens
+
+A origem `strategy_tester_orders` gera um estado de sinal e de ciclo para cada dono Donchian/S09 do pacote. Os parâmetros dos indicadores e a precedência vêm da política congelada. Um período sem sinal aceito pode atravessar toda a amostra com zero ordens. A consulta de capacidades lista as origens disponíveis para a topologia escolhida. Os executáveis de controle e retomada da série anterior conservam a topologia de um dono de cada estratégia.
+
+O preparador configura e relê as permissões de operação, ordens limite, stop e alvo no símbolo personalizado. O Expert registra um veto quando o ticket pendente ou a posição alvo da gestão já não existe. A modalidade da conta e os efeitos de cada solicitação exigem o journal produzido no agente. [Permissões do símbolo em MQL5](https://www.mql5.com/en/book/automation/symbols/symbols_trade_mode)

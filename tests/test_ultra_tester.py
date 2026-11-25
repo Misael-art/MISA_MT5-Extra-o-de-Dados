@@ -148,3 +148,43 @@ def test_linear_grid_preserves_control_and_frozen_total_budget(campaign):
     assert result["direct"]["structure"] and result["native_status"] == "capability_absent"
     with pytest.raises(ValueError, match="stop"):
         ultra_entries.compare(db, package, 3)
+
+
+def test_single_owner_without_signal_has_separate_tick_and_platform_acceptances(campaign, tmp_path):
+    from mt5_extracao.laboratory import ultra_platform as platform
+    db, old = campaign
+    definition = {k: deepcopy(v) for k,v in old["policy"].items() if k not in ("tick_cash","engine_hash","revision")}
+    module = definition["modules"][0]
+    module["params"]["entry_period"] = 100
+    definition["modules"] = [module]
+    receipt = ultra.freeze(db, definition)["receipt"]
+    ultra.replay(db, receipt)
+    package = compile_ultra_research(db, receipt)
+    cap = ultra_tester.package_capabilities(db, package)
+    assert cap["supported_origins"] == [ultra_tester.PLATFORM]
+    exported = ultra_tester.export(db, package, tmp_path / "one", prepare_tester=True)
+    assert "UltraConcurrent.mq5" not in exported["sha256"]
+    modules, frames = ultra_tester._context(db, package, platform=True)
+    assert all(e["event"] == "session" for f in frames for e in f["events"])
+    rev = ultra_tester._platform_revision(definition["modules"])
+    head = ("BEGIN", package["package_hash"], package["source_manifest"], rev, 6324)
+    records = [head, *((k,*v) for _,_,k,_,v in ultra_tester._expected_rows(frames, modules, package["policy"])),
+               ("END", len(frames), 0)]
+    physical = [("BEGIN", *head[1:4], cap["tester_contract"]["symbol"], 6324, "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING",
+                 "USD",100000)]
+    physical.extend(("ACCOUNT", *f["mark"]["key"],100000,100000,0,0,0) for f in frames)
+    physical.append(("END", len(frames), 1, 0, 0, 100000, 100000))
+    def compare(book_rows, platform_rows):
+        text = journal(book_rows, ultra_tester.PLATFORM).decode("utf-16")
+        blob = (text + "\n" + "\n".join(platform.MARKER+"|".join(map(str,r)) for r in platform_rows)).encode()
+        return ultra_tester.compare(db,package,blob,origin=ultra_tester.PLATFORM)
+    result = compare(records,physical)
+    assert (result["status"],result["native_order_parity"],result["cycles"]) == ("platform_orders_match","journal_matches",[])
+    assert result["no_order_reason"] == "no_confirmed_signal"
+    incomplete = compare(records,physical[:-1])
+    assert incomplete["modeled_status"] == "modeled_book_matches" and incomplete["status"] == "platform_journal_incomplete"
+    corrupted = records.copy()
+    pos = next(i for i, row in enumerate(corrupted) if row[0] == "FRAME")
+    corrupted[pos] = (*corrupted[pos][:3], -1, *corrupted[pos][4:])
+    result = compare(corrupted,physical)
+    assert result["modeled_status"] == "diverged" and result["native_order_parity"] == "journal_matches"

@@ -138,6 +138,8 @@ def run(db, config, package, output, *, origin="strategy_tester", chart="EURUSD"
                 receipt["parent_receipt"] = str(parent[0])
         exported = ultra_tester.export(db, package, bundle, **options)
         receipt.update(package_hash=exported["package_hash"], symbol=exported["symbol"], input_hashes=exported["sha256"])
+        if origin == "strategy_tester" and not (bundle / "UltraPreparedTester.mq5").is_file():
+            return save("capability_absent", reason="A topologia do pacote requer strategy_tester_orders.")
         prefix = mt5.wine_prefix(config)
         data = mt5.data_dir(config).resolve()
         if data != mt5.install_dir(config).resolve():

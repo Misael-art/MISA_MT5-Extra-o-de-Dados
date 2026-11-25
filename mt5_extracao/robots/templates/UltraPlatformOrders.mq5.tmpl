@@ -6,7 +6,7 @@ $runtime
 
 const string audit="MT5X_ULTRA_ORDERS1|";
 bool platform_active=false, uncertain=false;
-long last_requested[2];
+long last_requested[OWNER_COUNT];
 
 bool TesterContext()
 {
@@ -42,8 +42,8 @@ void PlatformIntent(const long msc,const int sequence,const int slot,const long 
 {
    if(!platform_active || slot<0 || !TesterContext()) return;
    if(kind!="order" && kind!="cancel" && kind!="management") return;
-   ulong magic=(ulong)(opened*2+slot);
-   bool occupied=false, protected_book=true;
+   ulong magic=(ulong)(opened*MAGIC_STRIDE+slot);
+   bool occupied=false, protected_book=true, found_target=false;
    long risk=0,reserved=0;
    long spread_cost=(book.ask-book.bid)*TICK_CASH;
 
@@ -54,7 +54,7 @@ void PlatformIntent(const long msc,const int sequence,const int slot,const long 
       ulong ticket=OrderGetTicket(i);
       if(!ticket || OrderGetString(ORDER_SYMBOL)!=_Symbol) continue;
       ulong id=(ulong)OrderGetInteger(ORDER_MAGIC);
-      occupied|=(!hedging || id%2==(ulong)slot);
+      occupied|=(!hedging || id%MAGIC_STRIDE==(ulong)slot);
       long pending=VolumeSteps(OrderGetDouble(ORDER_VOLUME_CURRENT));
       long price=PriceTicks(OrderGetDouble(ORDER_PRICE_OPEN)),stop=PriceTicks(OrderGetDouble(ORDER_SL));
       long dir=(OrderGetInteger(ORDER_TYPE)==ORDER_TYPE_BUY_LIMIT ? 1 : -1);
@@ -64,7 +64,7 @@ void PlatformIntent(const long msc,const int sequence,const int slot,const long 
       reserved+=pending*(MARGIN_STEP+spread_cost+FEE);
       if(kind=="cancel" && id==magic)
       {
-         req.action=TRADE_ACTION_REMOVE;req.order=ticket;
+         found_target=true;req.action=TRADE_ACTION_REMOVE;req.order=ticket;
          PlatformRequest(req,slot,opened);
       }
    }
@@ -73,7 +73,7 @@ void PlatformIntent(const long msc,const int sequence,const int slot,const long 
       ulong ticket=PositionGetTicket(i);
       if(!ticket || PositionGetString(POSITION_SYMBOL)!=_Symbol) continue;
       ulong id=(ulong)PositionGetInteger(POSITION_MAGIC);
-      occupied|=(!hedging || id%2==(ulong)slot);
+      occupied|=(!hedging || id%MAGIC_STRIDE==(ulong)slot);
       long held=VolumeSteps(PositionGetDouble(POSITION_VOLUME)),stop=PriceTicks(PositionGetDouble(POSITION_SL));
       long gap=(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY ? book.bid-stop : stop-book.ask);
       if(stop<=0) protected_book=false;
@@ -81,11 +81,16 @@ void PlatformIntent(const long msc,const int sequence,const int slot,const long 
       reserved+=held*MARGIN_STEP;
       if(kind=="management" && id==magic)
       {
-         req.action=TRADE_ACTION_SLTP;req.position=ticket;req.sl=(double)sl*TICK_SIZE;req.tp=(double)tp*TICK_SIZE;
+         found_target=true;req.action=TRADE_ACTION_SLTP;req.position=ticket;req.sl=(double)sl*TICK_SIZE;req.tp=(double)tp*TICK_SIZE;
          PlatformRequest(req,slot,opened);
       }
    }
-   if(kind!="order") return;
+   if(kind!="order")
+   {
+      if(!found_target) PrintFormat("%sVETO|%I64d|%d|%d|%I64d|%s",audit,msc,sequence,slot,opened,
+                                    kind=="cancel" ? "pending_ticket_missing" : "position_ticket_missing");
+      return;
+   }
    string veto="";
    if(uncertain) veto="request_outcome_unknown";
    else if(occupied) veto=(hedging ? "owner_still_exposed" : "netting_independent_protection");
@@ -170,11 +175,12 @@ void OnTick()
 
 void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &req,const MqlTradeResult &res)
 {
-   if(!platform_active || (trans.symbol!=_Symbol && !(trans.type==TRADE_TRANSACTION_REQUEST && req.symbol==_Symbol))) return;
+   bool response=(trans.type==TRADE_TRANSACTION_REQUEST);
+   if(!platform_active || (response ? req.symbol!=_Symbol : trans.symbol!=_Symbol)) return;
    PrintFormat("%sTX|%s|%I64u|%I64u|%I64u|%I64u|%u|%u|%I64d|%I64d",audit,EnumToString(trans.type),
-               trans.order,trans.deal,trans.position,trans.type==TRADE_TRANSACTION_REQUEST ? req.magic : 0,
-               trans.type==TRADE_TRANSACTION_REQUEST ? res.request_id : 0,trans.type==TRADE_TRANSACTION_REQUEST ? res.retcode : 0,
-               VolumeSteps(trans.volume),PriceTicks(trans.price));
+               response ? res.order : trans.order,response ? res.deal : trans.deal,response ? req.position : trans.position,
+               response ? req.magic : 0,response ? res.request_id : 0,response ? res.retcode : 0,
+               VolumeSteps(response ? res.volume : trans.volume),PriceTicks(response ? res.price : trans.price));
 }
 
 void OnDeinit(const int reason)
