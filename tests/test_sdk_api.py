@@ -15,6 +15,7 @@ SURFACE = {
     "ultra_compare_native_book": ["db", "package", "journal", "origin"],
     "ultra_capture_market": ["backend", "symbol", "start", "end", "destination", "expected_server", "chunk_minutes"],
     "ultra_verify_market": ["source"],
+    "ultra_verify_market_m1": ["backend", "source"],
     "ultra_export_market_probe": ["source", "destination", "attempt"],
     "ultra_compare_market_probe": ["source", "tape", "binding", "agent_journal"],
     "ultra_run_market_tester": ["config", "snapshot", "output", "mode", "timeout"],

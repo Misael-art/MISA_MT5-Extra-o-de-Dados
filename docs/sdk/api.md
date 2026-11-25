@@ -1568,6 +1568,8 @@ lê uma DEMO existente pelo backend do MT5 e grava os campos originais em CSVs p
 Use limites inclusive/exclusivo no relógio bruto do MT5, por exemplo
 `2026-11-23T08:00:00` e `2026-11-23T10:00:00`. A sequência no mesmo milissegundo
 conserva a ordem do broker. `sdk.ultra_verify_market(source)` verifica hashes e fronteiras.
+`sdk.ultra_verify_market_m1(backend, source)` compara o OHLC reconstruído pelo bid,
+a contagem de cotações e o volume negociado informado nas barras do servidor.
 Especificações atuais, custos históricos e relógio comprovado têm estados distintos no manifesto.
 
 `sdk.ultra_export_market_probe(source, destination, attempt=ident)` gera um Expert

@@ -528,6 +528,7 @@ from .laboratory.ultra_parity import compare_trace as ultra_compare_trace
 from .laboratory.ultra_tester import capabilities as ultra_tester_capabilities
 from .laboratory.ultra_tester import export as ultra_export_tester, compare as ultra_compare_native_book
 from .laboratory.ultra_market import capture as ultra_capture_market, verify as ultra_verify_market
+from .laboratory.ultra_market import verify_m1 as ultra_verify_market_m1
 from .laboratory.ultra_market import export_probe as ultra_export_market_probe, compare_probe as ultra_compare_market_probe
 from .robots.ultra_runner import run as ultra_run_tester
 from .robots.ultra_market_runner import run as ultra_run_market_tester
@@ -542,6 +543,7 @@ __all__ = [
     "compile_ultra_research", "verify_ultra_research", "ultra_export_tester",
     "ultra_compare_native_book", "ultra_run_tester", "ultra_tester_capabilities",
     "ultra_capture_market", "ultra_verify_market", "ultra_export_market_probe", "ultra_compare_market_probe",
+    "ultra_verify_market_m1",
     "ultra_run_market_tester",
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",

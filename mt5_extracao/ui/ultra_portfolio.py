@@ -32,7 +32,7 @@ def show_catalog(anchor):
         modes = ", ".join(row["supported_account_modes"])
         lines = [row["indicators"], row["warmup"], row["reference_rules"],
                  f"Modos de conta do recorte no Tester · {modes}" if modes else None,
-                 row["evidence"], row["eurusd_data_constraint"]]
+                 row["evidence"], row["market_technical_control"], row["eurusd_data_constraint"]]
         detail.configure(text="\n\n".join(line for line in lines if line))
 
     rows.bind("<<TreeviewSelect>>", select)
@@ -41,6 +41,50 @@ def show_catalog(anchor):
     if by_key:
         rows.selection_set(next(iter(by_key)))
         select()
+
+
+def capture_market(panel, anchor, note):
+    dialog = tk.Toplevel(anchor)
+    dialog.title("Congelar cotações da DEMO")
+    form = ttk.Frame(dialog, padding=12)
+    form.pack(fill=tk.BOTH, expand=True)
+    form.columnconfigure(1, weight=1)
+    entries = []
+    for index, (label, default) in enumerate((
+            ("Símbolo exato", "EURUSD"), ("Servidor DEMO", "MetaQuotes-Demo"),
+            ("Início no relógio do MT5", ""), ("Fim exclusivo no relógio do MT5", ""))):
+        ttk.Label(form, text=label).grid(row=index, column=0, sticky="w", padx=(0, 6), pady=3)
+        value = ttk.Entry(form, width=29)
+        value.insert(0, default)
+        value.grid(row=index, column=1, sticky="ew", pady=3)
+        entries.append(value)
+    ttk.Label(form, text="Abra a DEMO no terminal configurado. Use AAAA-MM-DDTHH:MM:SS.",
+              wraplength=360).grid(row=4, column=0, columnspan=2, sticky="w", pady=8)
+
+    def submit_capture():
+        path = filedialog.asksaveasfilename(parent=dialog, title="Nome da nova pasta da fita")
+        if not path:
+            return
+        symbol, server, start, end = [value.get().strip() for value in entries]
+        config, config_path = panel._config(), panel.ui.app.config_path
+        draw.configure(state="disabled")
+        def finished(result, error):
+            if not dialog.winfo_exists():
+                return
+            draw.configure(state="normal")
+            if error:
+                help_text.configure(text=str(error))
+                return
+            if anchor.winfo_exists():
+                note.configure(text=f'{symbol} · {result["coverage"]["rows"]} ticks em {path}')
+            dialog.destroy()
+        panel.ui.run_bg(lambda: ultra_market.capture_configured(
+            config, config_path, symbol, start, end, path, expected_server=server), finished)
+
+    draw = ttk.Button(form, text="Congelar fita…", command=submit_capture)
+    draw.grid(row=5, column=0, columnspan=2, sticky="w")
+    help_text = ttk.Label(form, wraplength=360)
+    help_text.grid(row=6, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
 
 def open_receipts(panel):
@@ -198,6 +242,7 @@ def open_receipts(panel):
     submit = ttk.Button(body, text="Salvar e abrir linha do tempo…", state="disabled", command=show)
     submit.pack(anchor="w", pady=8)
     ttk.Button(body, text="Catálogo operacional…", command=lambda: show_catalog(window)).pack(anchor="w", pady=4)
+    ttk.Button(body, text="Coletar ticks da DEMO…", command=lambda: capture_market(panel, window, note)).pack(anchor="w", pady=4)
     market = ttk.Button(body, text="Verificar fita de mercado…", command=show_market)
     market.pack(anchor="w", pady=4)
     probe = ttk.Button(body, text="Rodar sonda de ticks no Tester…", command=run_market_probe)

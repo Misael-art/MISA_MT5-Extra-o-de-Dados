@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 from uuid import uuid4
 
+from ..analytics.data_eligibility import tester_report
 from ..laboratory import ultra_market, ultra_market_cycle
 from . import mt5_tools as mt5, safety_lib, ultra_hadouken, ultra_runner
 
@@ -73,6 +74,10 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300):
             ini = mt5.tester_ini(mt5.expert_name(Path(result.compiled), data), bundle["symbol"], "M1",
                 dates[0], dates[1] + timedelta(days=1), 1000, key, model="4", visual=False,
                 currency=state["account"]["currency"])
+            leverage = state["account"]["leverage"]
+            if type(leverage) is not int or leverage < 1:
+                return save("account_contract_missing", reason="Alavancagem da conta indisponível.")
+            ini += f"ExecutionMode=0\r\nLeverage=1:{leverage}\r\n"
             (folder / "tester.ini").write_bytes(ini.encode("utf-16"))
             save("compiled", binary_sha256=ultra_runner._sha(binary), tester_ini="tester.ini")
             before = ultra_runner._offsets(data, "Tester")
@@ -80,7 +85,9 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300):
             try:
                 html = mt5.run_tester(config, data, startup + ini, key, timeout=timeout)
                 shutil.copyfile(html, folder / "report.htm")
-                save("report_saved", report_sha256=ultra_runner._sha(folder / "report.htm"))
+                report_text = mt5.read_log_text(folder / "report.htm")
+                save("report_saved", report_sha256=ultra_runner._sha(folder / "report.htm"),
+                     tester_data_quality=tester_report(report_text, "4"))
             except RuntimeError as exc:
                 error = str(exc)
             finally:
@@ -98,7 +105,7 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300):
                 if error:
                     return save("report_missing", reason=error)
                 data_result = ultra_market_cycle.compare(snapshot, binding=bundle["binding"], agent_journal=raw,
-                                                         tester_html=mt5.read_log_text(folder / "report.htm"))
+                                                         tester_html=report_text)
             else:
                 common = mt5.common_files_dir(config)
                 if common is None:

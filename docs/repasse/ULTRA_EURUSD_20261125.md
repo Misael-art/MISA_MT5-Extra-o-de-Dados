@@ -27,6 +27,25 @@ como inconclusivo. MetaQuotes documenta que o modo de ticks reais pode gerar tic
 a partir de barras M1 quando falta histórico de ticks. Nesta janela a comparação
 usa o fluxo de `OnTick` diretamente. [Tester e ticks reais](https://www.mql5.com/en/docs/runtime/testing)
 
+## Ciclo técnico S09 no Tester
+
+O recibo `637e6446b0cb4723be5c9607f0a2d2ec` compara 119 fechamentos M1, com
+igualdade de direção e janela de disponibilidade para os dez sinais. O comparador
+confere as EMAs disponíveis com tolerância absoluta de `1e-12`. O perfil permite
+uma tentativa. Preço, volume e moeda coincidem pela grade de tick, lote e centavo.
+O relatório do agente declara 100% de ticks reais na execução.
+
+| Evento no relógio do MT5 | Fato conciliado |
+|---|---|
+| 08:31:01.798 | S09 compra 0,01 lote a 1,09968. Ordem 2, negócio 2, posição 2. |
+| Após o fill | SL 1,09948 e TP 1,09998. Risco calculado de USD 0,20 contra limite de USD 5,00. Margem verificada de USD 11,00. |
+| 08:42:16.686 | Ordem 3 e negócio 3 encerram a posição 2 pelo TP a 1,09998. |
+| Fechamento do Tester | +USD 0,30, custos registrados zero, sem posição aberta. Journal e relatório conferem com caixa e patrimônio de USD 1.000,30. |
+
+Os custos realizados pertencem ao controle no Tester. A comissão e a regra de
+conversão histórica do broker continuam sem qualificação. Os mesmos inputs são
+reconstruídos do protocolo, sem abrir a reserva inédita.
+
 ## Reprodução no launcher
 
 Abra o terminal portátil na conta DEMO autorizada para a coleta. Defina um destino

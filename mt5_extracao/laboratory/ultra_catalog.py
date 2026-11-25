@@ -85,6 +85,8 @@ def catalog():
             ultra_scope=("bounded_m1_synthetic" if physical_signal_supported(key) else "missing"),
             supported_account_modes=(["hedging", "netting_exclusive_cycle"] if physical_signal_supported(key) else []),
             evidence=EVIDENCE.get(key), full_reference_execution=False, eurusd_market="pending",
+            market_technical_control=("S09 M1, um ciclo conciliado em EURUSD da MetaQuotes-Demo"
+                                      if key == "s09_reference" else None),
             eurusd_data_constraint=("volume_source=2 exige negócios; volume_source=1 usa cotações; modo Auto é causal."
                                     if key == "vwap_bands" else None)))
     return dict(strategies=strategies, unmapped=unmapped, python_count=len(REGISTRY),

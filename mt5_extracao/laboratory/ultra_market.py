@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import file_digest
-from itertools import zip_longest
+from itertools import groupby, zip_longest
 import json
 import math
 from pathlib import Path
@@ -308,6 +308,56 @@ def diagnostics(source):
         coverage.add(row, 8 | 16 | 32 | 64)
     return dict(snapshot=manifest["manifest_hash"], coverage=coverage.summary(),
                 quote_grid_rule="nearest_tick_at_most_one_binary_ulp")
+
+
+def verify_m1(backend, source):
+    """Confronta OHLC de bid e contagem de cotações com as barras M1 do mesmo servidor."""
+    source = Path(source)
+    manifest = verify(source)
+    account, _ = _demo(backend, manifest["source"]["server"])
+    tick_size = manifest["contract"]["current"]["trade_tick_size"]
+    if type(tick_size) not in (int, float) or not math.isfinite(tick_size) or tick_size <= 0:
+        raise ValueError("A conferência M1 exige o tamanho de tick do símbolo.")
+    unit = Decimal(str(tick_size))
+    compared, mismatches, bad_volume, real_volume = 0, 0, 0, 0
+    first, index = None, []
+    for block in manifest["blocks"]:
+        start, end = block["start_msc"], block["end_msc"]
+        if start % 60000 or end % 60000:
+            raise ValueError("A conferência de barras exige blocos de minutos completos.")
+        current, _ = _demo(backend, manifest["source"]["server"])
+        if current.login != account.login:
+            raise ValueError("A conta mudou durante a conferência das barras.")
+        rates = backend.copy_rates_range(manifest["symbol"], backend.TIMEFRAME_M1, start // 1000, end // 1000)
+        if rates is None:
+            raise RuntimeError(f"O MT5 não retornou as barras na janela [{start}, {end}).")
+        fields = ("open", "high", "low", "close")
+        got = {int(row["time"]) * 1000: dict(ohlc=[_price_atoms(float(row[k]), unit) for k in fields],
+               tick_volume=int(row["tick_volume"]), real_volume=int(row["real_volume"])) for row in rates
+               if start <= int(row["time"]) * 1000 < end}
+        rows = _csv_rows(source, {"blocks": [block]})
+        want = {}
+        for minute, group in groupby(rows, lambda row: row[0] // 60000):
+            bid = [row[1] for row in group if 0 < row[1] <= row[2]]
+            if bid:
+                want[minute * 60000] = dict(ohlc=[_price_atoms(v, unit) for v in (bid[0], max(bid), min(bid), bid[-1])],
+                                          tick_volume=len(bid))
+        for minute in sorted(want.keys() | got.keys()):
+            a, b = want.get(minute), got.get(minute)
+            real_volume += bool(b and b["real_volume"] > 0)
+            if a and b:
+                compared += 1
+                bad_volume += a["tick_volume"] != b["tick_volume"]
+            if not (a and b and a["ohlc"] == b["ohlc"] and None not in a["ohlc"]):
+                mismatches += 1
+                if first is None:
+                    first = dict(start_msc=minute, reconstructed=a, broker=b)
+        index.append(dict(start_msc=start, end_msc=end, broker_bars=len(got), derived_bars=len(want),
+                          normalized_broker_hash=digest(got)))
+    status = "m1_ohlc_matches" if compared and not mismatches else "m1_ohlc_unconfirmed"
+    return dict(status=status, manifest_hash=manifest["manifest_hash"], compared_bars=compared,
+                ohlc_mismatches=mismatches, tick_volume_mismatches=bad_volume, real_volume_bars=real_volume,
+                first_ohlc_divergence=first, blocks=index)
 
 
 def compare_probe(source, tape, *, binding, agent_journal):

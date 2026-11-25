@@ -47,16 +47,15 @@ def expected(source, manifest):
     for minute, group in groupby(ticks, lambda item: item[1][0] // 60000):
         offset, first = next(group)
         last = first
+        low = high = first[1]
         for _, last in group:
-            pass
-        axis.append((minute, offset, first, last))
+            low, high = min(low, last[1]), max(high, last[1])
+        axis.append((minute, offset, first, last, low, high))
     if len(axis) < PROFILE["warmup"] + 1 or any(a[0] + 1 != b[0] for a, b in zip(axis, axis[1:])):
         raise ValueError("O controle exige um prefixo de pelo menos 31 minutos consecutivos.")
     frame = pd.DataFrame(dict(time=pd.to_datetime([row[0] * 60 for row in axis], unit="s"),
-                              close=[row[3][1] for row in axis]))
-    # O S09 usa apenas o fechamento para seu sinal e SL/TP fixos no fill.
-    # A série OHLC auxiliar de uma única cotação não entra no cálculo das EMAs.
-    frame = frame.assign(open=frame.close, high=frame.close, low=frame.close)
+                              open=[row[2][1] for row in axis], close=[row[3][1] for row in axis],
+                              low=[row[4] for row in axis], high=[row[5] for row in axis]))
     strategy = get_strategy("s09_reference", fast=PROFILE["fast"], slow=PROFILE["slow"],
                             warmup_bars=PROFILE["warmup"], stop_points=PROFILE["stop"],
                             target_points=PROFILE["target"])
@@ -65,7 +64,7 @@ def expected(source, manifest):
     slow = indicators.ema(frame.close, PROFILE["slow"])
     unit = Decimal(str(manifest["contract"]["current"]["trade_tick_size"]))
     bars, entry, exit_, entry_offset = [], None, None, None
-    for i, (minute, offset, first, _) in enumerate(axis[1:]):
+    for i, (minute, offset, first, *_ohlc) in enumerate(axis[1:]):
         direction = int(signals.entry_long.iloc[i]) - int(signals.entry_short.iloc[i])
         bid = market._price_atoms(frame.close.iloc[i], unit)
         bars.append((minute * 60000, first[0], bid, fast.iloc[i], slow.iloc[i], direction))
@@ -176,11 +175,17 @@ def compare(source, *, binding, agent_journal, tester_html):
         check("unexpected_requests", [], request)
         check("unexpected_deals", [], deals)
     expected_cash = PROFILE["capital"] + (exit_["profit"] if exit_ else 0)
+    for deal in deals:
+        check("deal.costs", [0, 0, 0], [deal["commission"], deal["swap"], deal["fee"]], tick=deal["msc"])
     check("final.balance_and_equity", [expected_cash]*2, [footer["cash"], footer["equity"]])
     check("tester.report", "report_matches", report["status"])
     status = "diverged" if first else "cycle_matches" if exit_ else "no_complete_cycle"
+    decisions = [dict(closed_at=int(closed), first_tick=int(msc), close=int(close),
+        ema_fast=float(fast) if pd.notna(fast) else None, ema_slow=float(slow) if pd.notna(slow) else None,
+        side=int(side)) for closed, msc, close, fast, slow, side in bars]
     return dict(status=status, manifest_hash=manifest["manifest_hash"], build=int(begin[0][3]), binding=binding,
                 bars_compared=min(len(actual), len(bars)), expected_entry=entry, expected_exit=exit_,
+                signals_count=sum(row["side"] != 0 for row in decisions), decisions=decisions,
                 requests=request, positions=position, risk=risk, deals=deals, final=footer,
                 report_comparison=report, first_divergence=first, economic_approval=False,
                 tolerance=dict(ticks=0, volume_steps=0, cents=0, ema_absolute=EPSILON))

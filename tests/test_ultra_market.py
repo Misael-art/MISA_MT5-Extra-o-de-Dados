@@ -1,5 +1,8 @@
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -27,7 +30,7 @@ class Broker:
 
     def account_info(self):
         return SimpleNamespace(login=99901234, server="DemoServer", trade_mode=self.trade_mode, currency="USD",
-                               name="Private Name", margin_mode=2)
+                               name="Private Name", margin_mode=2, leverage=100)
 
     def terminal_info(self):
         return SimpleNamespace(connected=True, build=6324)
@@ -86,6 +89,20 @@ def test_capture_rejects_real_account_and_preserves_failed_snapshot_state(tmp_pa
     assert list(tmp_path.iterdir()) == []
 
 
+def test_m1_readback_does_not_treat_quote_count_as_real_volume(snapshot, monkeypatch):
+    source, _, broker = snapshot
+    monkeypatch.setattr(broker, "TIMEFRAME_M1", 1, raising=False)
+    def rates(_symbol, _tf, start, _end):
+        quote, count = (DUPLICATE[1], 2) if start == AXIS else (BOUNDARY[1], 1)
+        return [dict(time=start, open=quote, high=quote, low=quote, close=quote,
+                     tick_volume=count, real_volume=0)]
+    monkeypatch.setattr(broker, "copy_rates_range", rates, raising=False)
+    result = market.verify_m1(broker, source)
+    assert result["status"] == "m1_ohlc_matches"
+    assert result["compared_bars"] == 2
+    assert result["tick_volume_mismatches"] == result["real_volume_bars"] == 0
+
+
 def test_probe_binds_agent_and_finds_first_missing_same_millisecond_tick(snapshot, tmp_path):
     source, manifest, _ = snapshot
     expert = tmp_path / "Probe.mq5"
@@ -138,3 +155,55 @@ def test_s09_market_reference_uses_next_tick_only_and_requires_warmup(tmp_path):
     assert exit_ == {"msc": ticks[32][0], "price": 109902, "reason": "TP", "steps": 1, "profit": 46}
     with pytest.raises(ValueError, match="contrato técnico"):
         ultra_market_cycle.export(source, tmp_path / "Cycle.mq5", attempt="1"*32)
+
+
+@pytest.mark.parametrize("from_agent", [True, False])
+def test_tester_runner_requires_agent_evidence_and_preserves_report(snapshot, tmp_path, monkeypatch, from_agent):
+    from mt5_extracao.robots import ultra_market_runner as runner
+
+    source, manifest, _ = snapshot
+    data = tmp_path / "terminal"
+    data.mkdir()
+    common = tmp_path / "common"
+    common.mkdir()
+    for name in ("data_dir", "install_dir", "find_metaeditor"):
+        monkeypatch.setattr(runner.mt5, name, lambda config: data)
+    monkeypatch.setattr(runner.mt5, "wine_prefix", lambda config: None)
+    monkeypatch.setattr(runner.mt5, "terminal_running", lambda config: False)
+    monkeypatch.setattr(runner.mt5, "common_files_dir", lambda config: common)
+    monkeypatch.setattr(runner.ultra_runner, "_demo_startup", lambda: "")
+
+    def compile_source(expert, *_args, **_kwargs):
+        compiled = expert.with_suffix(".ex5")
+        compiled.write_bytes(b"compiled")
+        return SimpleNamespace(ok=True, warnings=0, log_path=None, compiled=compiled)
+
+    def run_tester(config, folder, ini, key, **_kwargs):
+        assert "Model=4" in ini and "ExecutionMode=0" in ini and "Leverage=1:100" in ini
+        saved = next((tmp_path / "runs").glob("*/receipt.json"))
+        binding = json.loads(saved.read_text())["binding"]
+        tape = common / f"MT5XUltraMarket_{binding}.bin"
+        tape.write_bytes(b"".join(market.PROBE_RECORD.pack(*row) for row in (DUPLICATE, DUPLICATE, BOUNDARY)))
+        report = folder / f"{key}.htm"
+        report.write_text("<table><tr><td>Real ticks</td><td>100%</td></tr></table>")
+        logs = folder / "Tester"
+        if from_agent:
+            logs /= "Agent-127.0.0.1-3000"
+        logs /= "logs"
+        logs.mkdir(parents=True)
+        (logs / "tester.log").write_text(
+            f'{market.PROBE_MARKER}BEGIN|{manifest["manifest_hash"]}|{binding}|EURUSD.demo|6324|2\n'
+            f"{market.PROBE_MARKER}END|{binding}|3|1|0\n")
+        return report
+
+    @contextmanager
+    def lease():
+        yield
+
+    monkeypatch.setattr(runner.mt5, "tester_lease", lease)
+    monkeypatch.setattr(runner.mt5, "compile_source", compile_source)
+    monkeypatch.setattr(runner.mt5, "run_tester", run_tester)
+    result = runner.run(None, source, tmp_path / "runs")
+    assert result["status"] == ("tick_stream_matches" if from_agent else "journal_missing")
+    assert Path(result["receipt_path"]).parent.joinpath("report.htm").is_file()
+    assert result["tester_data_quality"]["real_tick_fraction_reported"] == 1.0
