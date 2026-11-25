@@ -113,6 +113,14 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         assert len(result["attempts"]) == len(plan["trials"]) and not result["economic_approval"]
         assert result["selection_effect"]["status"] == "insufficient_sessions"
         paths = result["policies"]
+        reserve = [d for d in paths["static_portfolio"]["daily"] if d["role"] == "reserve"]
+        summary = paths["static_portfolio"]["reserve_only"]
+        assert summary["sessions"] == len(reserve) and summary["first_day"] == reserve[0]["day"]
+        assert summary["net"] == sum(d["delta"] for d in reserve)
+        assert summary["opening_equity"] == reserve[0]["opening_equity"] and summary["commission"] > 0
+        assert summary["max_exposure_steps"] > 0 and summary["max_margin"] > 0
+        assert paths["cash"]["reserve_only"]["profit_factor_status"] == "no_trades"
+        assert paths["every_15_days"]["selection_status"] in ("research_candidate", "no_candidate")
         assert paths["cash"]["net"] == 0 and paths["fixed"]["net"] == 0
         assert len(paths["weekly"]["reviews"]) == 4 and len(paths["fortnightly"]["reviews"]) == 2
         epoch = date(1970, 1, 1)
@@ -208,3 +216,18 @@ def test_fractional_instrument_uses_own_price_volume_and_tick_economics(tmp_path
         assert any(e["event"] == "fill" for f in tape for e in f["events"])
     finally:
         db.close()
+
+def test_reserve_drawdown_resets_at_cut_and_respects_tick_order():
+    from mt5_extracao.laboratory.ultra_study import _reserve
+    # Um pico da validação de 3000 e seu drawdown histórico nunca entram na reserva.
+    common = {"max_exposure_steps": 2, "max_margin": 25, "commission": 2, "switch_cost": 0,
+              "spread_cost_twice": 3, "drawdown": 2000}
+    days = [dict(common, day=20, opening_equity=1000, high=1040, low=990, intraday_drawdown=10,
+                 equity=1040, delta=40, closed_cycle_net=[40]),
+            dict(common, day=23, opening_equity=1040, high=1060, low=1010, intraday_drawdown=30,
+                 equity=1050, delta=10, closed_cycle_net=[20, -10])]
+    result = _reserve(days)
+    assert (result["net"], result["max_drawdown"], result["profit_factor"], result["losses"]) == (50, 30, 6, 1)
+    assert result["gross_profit"] == 60 and result["gross_loss"] == 10
+    assert result["commission"] == 4 and result["spread_cost_vs_mid"] == 3
+    assert result["mean_session_net_interval"]["status"] == "insufficient_sessions"

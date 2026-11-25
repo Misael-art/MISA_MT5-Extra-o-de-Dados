@@ -5489,3 +5489,7 @@ O segundo símbolo personalizado conserva os ticks do pacote e acrescenta histó
 ### T19.53 · Execução de ordens no Strategy Tester
 
 O Expert de pesquisa solicita pendentes com proteção no símbolo personalizado, observa as respostas e grava negócios e estado da conta em cada tick. O launcher compara o livro, o journal do agente e a tabela de negócios do relatório. A interface abre a trilha por ciclo pelo mesmo comparador da CLI. O aceite físico depende da execução no agente de uma conta DEMO e dos recibos específicos de cada cenário.
+
+### T19.54 · Métricas da reserva temporal por alternativa
+
+O estudo calcula patrimônio marcado desde o início da reserva, drawdown, fator de lucro dos ciclos encerrados, custos, exposição e margem máxima para cada cadência e tentativa. A seleção final por política e o intervalo por blocos da média líquida por sessão integram o recibo. A identidade do avaliador muda em novos registros e os recibos concluídos preservam seus resultados.
