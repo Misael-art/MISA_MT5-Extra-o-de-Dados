@@ -16,6 +16,8 @@ TEMPLATES = Path(__file__).resolve().parents[1] / "robots" / "templates"
 FIELDS = ("time_msc", "seq", "bid", "ask", "donchian", "s09_reference", "available_msc", "reference")
 MARKERS = {"strategy_tester": "MT5X_ULTRA_B1|", "terminal_history": "MT5X_ULTRA_HISTORY_B1|",
            "terminal_restart": "MT5X_ULTRA_RESTART_B1|"}
+PLATFORM = "strategy_tester_orders"
+MARKERS[PLATFORM] = "MT5X_ULTRA_PLATFORM_BOOK1|"
 RESTART_CONTROL = "MT5X_ULTRA_RESTART_CTL|"
 BALANCE = ("cash", "equity", "risk", "margin", "pending_entry_cost", "exposure_steps", "cost", "spread_cost_twice")
 EVENT = ("time_msc", "seq", "owner_slot", "cycle_available_msc", "event", "reason", "steps", "price", "stop",
@@ -30,12 +32,27 @@ def capabilities():
     return {"scope": "two_owner_modeled_book", "strategies": ["donchian", "s09_reference"],
             "origins": list(MARKERS), "feed": "synthetic_bid_ticks_m1_utc",
             "max_ticks": 10000, "tester_requires_connected_demo": True,
-            "broker_orders": False, "economic_approval": False,
+            "broker_orders": False, "simulated_platform_orders": {
+                "origin": PLATFORM, "orders": "limit_with_sl_tp", "management": ["cancel", "breakeven"],
+                "hedging": "per_cycle_magic_and_position", "netting": "exclusive_cycle_independent_protection",
+                "requires": "Strategy Tester on prepared custom symbol", "acceptance": "requires_agent_evidence"}, "economic_approval": False,
             "tester_primer_m1_bars": ultra_preparation.PRIMER_MINUTES}
 
 
-def _templates():
-    return {name: (TEMPLATES / (name + ".tmpl")).read_text(encoding="utf-8") for name in NATIVE_TEMPLATES}
+def _templates(platform=False):
+    templates = {name: (TEMPLATES / (name + ".tmpl")).read_text(encoding="utf-8") for name in NATIVE_TEMPLATES}
+    hook = ("      if(owner>=0) PlatformIntent(msc,seq,owner,opened,kind,cycle[owner].side,cycle[owner].limit,qty,stop,target);\n"
+            if platform else "")
+    templates["UltraBook.mqh"] = Template(templates["UltraBook.mqh"]).substitute(platform_intent=hook)
+    return templates
+
+
+def _platform_source():
+    return (TEMPLATES / "UltraPlatformOrders.mq5.tmpl").read_text(encoding="utf-8")
+
+
+def _platform_revision():
+    return digest([_templates(platform=True), _platform_source()])
 
 
 
@@ -92,10 +109,16 @@ def export(db, package, destination, *, restart_id=None, prepare_tester=False):
     templates = _templates()
     revision = digest(templates)
     def program(name, kind, restart=None, binding=None, instrument=symbol):
+        physical = kind == PLATFORM
+        build_revision = _platform_revision() if physical else digest([revision, restart]) if restart else revision
         runtime = Template(templates["UltraRuntime.mqh"]).substitute(
-            defines=defines, core=templates["UltraSignals.mqh"], book=templates["UltraBook.mqh"],
-            modules=assignments, package=key, manifest=package["source_manifest"], revision=digest([revision, restart]) if restart else revision,
+            defines=defines, core=templates["UltraSignals.mqh"], book=_templates(platform=True)["UltraBook.mqh"] if physical else templates["UltraBook.mqh"],
+            modules=assignments, package=key, manifest=package["source_manifest"], revision=build_revision,
             marker=MARKERS[kind])
+        if physical:
+            return Template(_platform_source()).substitute(runtime=runtime, symbol=instrument, package=key,
+                manifest=package["source_manifest"], revision=build_revision, volume_step=Decimal(str(spec["volume_step"])),
+                currency=policy["currency"])
         if restart:
             return Template(restart).substitute(runtime=runtime, symbol=symbol, binding=binding)
         return Template(templates[name]).substitute(runtime=runtime, symbol=instrument)
@@ -118,6 +141,7 @@ def export(db, package, destination, *, restart_id=None, prepare_tester=False):
                                                   package, symbol, frames)
         contents["UltraTesterContract.mq5"] = prepared
         contents["UltraPreparedTester.mq5"] = program("UltraConcurrent.mq5", "strategy_tester", instrument=info["symbol"])
+        contents["UltraPlatformOrders.mq5"] = program(None, PLATFORM, instrument=info["symbol"])
         metadata["tester_contract"] = info
     with TemporaryDirectory(dir=target.parent) as temporary:
         stage = Path(temporary) / "bundle"
@@ -206,6 +230,8 @@ def compare(db, package, journal, *, origin):
     revision = digest(_templates())
     if origin == "terminal_restart":
         revision = digest([revision, _restart_template()])
+    if origin == PLATFORM:
+        revision = _platform_revision()
     begin = ["BEGIN", package["package_hash"], package["source_manifest"], revision]
     count = sum(row[0] == "FRAME" for row in rows)
     if (len(rows) < 2 or rows[0][:-1] != begin or not rows[0][-1].isdigit() or int(rows[0][-1]) <= 0
@@ -215,9 +241,26 @@ def compare(db, package, journal, *, origin):
               "package_hash": package["package_hash"], "terminal_build": int(rows[0][-1]),
               "journal_sha256": sha256(journal).hexdigest(), "frames_compared": 0, "events_compared": 0,
               "first_divergence": None}
+    def physical(modeled):
+        from .ultra_platform import reconcile
+        _, contract = ultra_preparation.render((TEMPLATES / "UltraTesterContract.mq5.tmpl").read_text(encoding="utf-8"),
+                                               package, "UX_" + package["package_hash"][:20], frames)
+        try:
+            proof = reconcile(package, frames, lines, contract["symbol"], revision, modeled["terminal_build"])
+        except ValueError as exc:
+            proof = {"status": "platform_journal_incomplete", "native_order_parity": "pending", "platform_error": str(exc)}
+        combined = dict(modeled, **proof)
+        combined.update(scope="strategy_tester_platform_orders", modeled_status=modeled["status"],
+                        modeled_first_divergence=modeled["first_divergence"],
+                        platform_first_divergence=proof.get("first_divergence"))
+        if modeled["first_divergence"]:
+            combined.update(status="diverged", first_divergence=modeled["first_divergence"])
+        return combined
+
     def difference(index, key, field, expected, observed):
-        return dict(result, status="diverged", first_divergence={
+        modeled = dict(result, status="diverged", first_divergence={
             "ordinal": index, "key": key, "field": field, "expected": expected, "observed": observed})
+        return physical(modeled) if origin == PLATFORM else modeled
     actual = iter(rows[1:-1])
     last = None
     for index, key, kind, fields, values in _expected_rows(frames, modules, package["policy"]):
@@ -237,4 +280,5 @@ def compare(db, package, journal, *, origin):
         return difference(len(frames), None, "record", "END", extra[0])
     if origin == "terminal_restart":
         result.update(_restart_proof(lines, marker, frames, package["policy"]))
-    return dict(result, status="modeled_book_matches", end_equity=frames[-1]["mark"]["equity"])
+    result.update(status="modeled_book_matches", end_equity=frames[-1]["mark"]["equity"])
+    return physical(result) if origin == PLATFORM else result

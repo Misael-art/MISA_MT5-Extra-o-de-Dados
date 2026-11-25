@@ -41,7 +41,7 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
     mock = monkeypatch.setattr
     def export(db, package, folder, **options):
         folder.mkdir()
-        for name in ("UltraImport.mq5", "UltraTerminalProbe.mq5", "UltraPreparedTester.mq5", "UltraTesterContract.mq5"):
+        for name in ("UltraImport.mq5", "UltraTerminalProbe.mq5", "UltraPreparedTester.mq5", "UltraTesterContract.mq5", "UltraPlatformOrders.mq5"):
             (folder / name).write_text("// MQL5")
         (folder / "UX_test.csv").write_text("1791190800000,100,101\n")
         return dict(package_hash="ABC", symbol="UX_test", sha256={}, ticks=1, tester_contract={
@@ -105,6 +105,30 @@ def test_run_history_and_gate_tester_on_observed_demo(tmp_path, monkeypatch):
     assert result["status"] == "modeled_book_matches"
     assert result["origin"] == "strategy_tester" and "tester-logs" in result["journal"]
     assert list(Path(result["directory"]).glob("*.htm"))
+    from mt5_extracao.robots import safety_lib
+    import json
+    from hashlib import sha256
+    lib = tmp_path / "lib"
+    includes = lib / "Include/QA"
+    includes.mkdir(parents=True)
+    header = "HDK_ExecutionResult.mqh"
+    (includes / header).write_bytes(b"fixture")
+    (lib / "safety.json").write_text(json.dumps({"version": "fixture", "files": [header], "include_dir": "QA",
+                                                "sha256": {header: sha256(b"fixture").hexdigest()}}))
+    mock(safety_lib, "lib_dir", lambda cfg: lib)
+    def relayed(cfg, folder, ini, report, *, timeout):
+        logs = folder / "Tester/logs"
+        logs.mkdir(exist_ok=True)
+        (logs / "controller.log").write_text("MT5X_ULTRA_PLATFORM_BOOK1|BEGIN")
+        file = folder / (report + ".htm")
+        file.write_text("fixture")
+        return file
+    mock(runner.mt5, "run_tester", relayed)
+    result = runner.run(None, None, package, tmp_path / "audit", origin="strategy_tester_orders")
+    assert result["status"] == "journal_missing" and result["report_sha256"]
+    (includes / header).write_bytes(b"unexpected")
+    result = runner.run(None, None, package, tmp_path / "audit", origin="strategy_tester_orders")
+    assert result["status"] == "safety_library_incompatible"
     mock(runner.mt5, "terminal_running", lambda cfg: True)
     assert runner.run(None, None, package, tmp_path / "audit")["status"] == "terminal_busy"
 

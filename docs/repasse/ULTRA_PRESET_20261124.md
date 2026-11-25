@@ -160,3 +160,16 @@ cli robots ultra-test "$QA/pacote.json" --report "$QA/ensaios"
 O recibo `tester_contract_verified` exige a releitura dos ticks e das barras prévias, das moedas, da grade de preço, do tamanho do contrato, dos volumes e da margem inicial e de manutenção. No Linux, o MT5 releu 128 barras prévias e 372 ticks de cada pacote. Para um passo de volume, os valores observados por tick foram USD 1,00 e USD 0,50, respectivamente. A margem inicial em ambos foi USD 247,00 por passo. Os dois contratos usam o modo de futuros sintéticos para representar os valores congelados. Essa preparação permite conferir o insumo antes do login DEMO. A aprovação da execução usa o journal do agente do Tester.
 
 A tentativa conserva o arquivo `tester.ini` antes da autenticação. Ele fixa depósito e moeda do pacote, M1, modo 4 e agente local. A repetição no Linux verificou os símbolos já criados. Passaram 32 regressões do Ultra e do serviço do Tester no host.
+
+### Ordens simuladas da plataforma
+
+O pacote de pesquisa de dois donos exporta também o Expert `UltraPlatformOrders`. No Strategy Tester, ele solicita uma pendente por ciclo com stop e alvo, registra o resultado de OrderCheck e OrderSend e associa os callbacks aos tickets do histórico. O sinal Donchian/S09 e o livro de referência pertencem aos templates do App. A observação da resposta usa o header de execução do Safety registrado no recibo. Em netting, uma segunda exposição simultânea com proteções independentes recebe o veto `netting_independent_protection`. A modalidade real vem do journal. [Eventos de transação do MQL5](https://www.mql5.com/en/docs/event_handlers/ontradetransaction)
+
+```sh
+cli robots ultra-test "$QA/pacote.json" --ultra-origin strategy_tester_orders --report "$QA/ensaios"
+cli laboratory ultra-tester-compare --origin strategy_tester_orders --package "$QA/pacote.json" --journal "$JOURNAL_DO_AGENTE" --out "$QA/ciclos.html"
+```
+
+Em **Laboratório → Carteiras Ultra → Conferir pacote e journal do Tester**, escolha o pacote e o journal do agente. Expanda o dono e o ciclo no HTML para consultar a regra congelada, a cotação, o orçamento, as solicitações, as respostas, os tickets e os níveis de proteção observados. Os grupos aceitam foco de teclado e toque. A CLI fornece os mesmos campos em JSON. O executor conserva também o HTML original do MT5 e confere ticket, ordem, volume, preço, custos, lucro e saldo dos negócios. Uma comparação avulsa do journal tem escopo menor que o recibo completo do executor.
+
+Os limites da conferência são zero tick, zero passo de lote e zero centavo nas unidades do contrato. O livro modela liquidez por tick e reserva margem para pendentes. O Tester pode produzir uma sequência diferente. O relatório preserva a primeira diferença e os dados de cada ciclo. O ensaio de ordens exige perfil portátil, terminal fechado no início, conta DEMO autenticada e símbolo personalizado preparado. A retomada após parcial está demonstrada no histórico modelado. Uma execução interrompida do Expert de ordens exige um ensaio próprio.

@@ -1580,3 +1580,5 @@ símbolo do Tester. Na execução, `prepare_only=True` compila, importa e verifi
 terminal os valores de tick e margem e as barras M1 anteriores à amostra. O recibo
 `tester_contract_verified` inclui essas observações e o arquivo de configuração para
 repetir o ensaio no Tester.
+
+A origem `strategy_tester_orders` em `ultra_run_tester` executa o Expert de ordens da plataforma exclusivamente no Strategy Tester DEMO. O recibo inclui o relatório original, o journal local do agente e a trilha HTML por ciclo quando disponíveis. Em `ultra_compare_native_book`, a mesma origem retorna os campos `modeled_status` e `native_order_parity`, a regra e os eventos por ciclo, solicitações e transações. A igualdade do journal avulso tem o valor `journal_matches`. O executor verifica também a tabela de negócios do relatório da plataforma.

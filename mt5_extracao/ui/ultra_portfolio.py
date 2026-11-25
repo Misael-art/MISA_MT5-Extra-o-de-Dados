@@ -1,10 +1,12 @@
 """Abre pelo Laboratório os mesmos recibos e o relatório usados pelo agente."""
+import json
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, ttk
 import webbrowser
 
-from ..laboratory import ultra_report
+from ..laboratory import ultra_report, ultra_tester
+from ..laboratory.ultra_cycle_report import write_report
 
 
 def open_receipts(panel):
@@ -66,6 +68,30 @@ def open_receipts(panel):
                 webbrowser.open(Path(result["file"]).resolve().as_uri())
         panel.ui.run_bg(lambda: ultra_report.export(db, selected, path, reference=other), done)
 
+    def show_platform():
+        package = filedialog.askopenfilename(parent=window, title="Escolher pacote congelado", filetypes=[("JSON", "*.json")])
+        if not package:
+            return
+        journal = filedialog.askopenfilename(parent=window, title="Escolher journal do agente do Tester")
+        if not journal:
+            return
+        path = filedialog.asksaveasfilename(parent=window, title="Salvar trilha por ciclo em arquivo novo",
+                                            defaultextension=".html")
+        if not path:
+            return
+        def compare():
+            frozen = json.loads(Path(package).read_text(encoding="utf-8-sig"))
+            result = ultra_tester.compare(db, frozen, Path(journal).read_bytes(), origin=ultra_tester.PLATFORM)
+            return write_report(result, path)
+        def finished(file, error):
+            if window.winfo_exists():
+                platform.configure(state="normal")
+                note.configure(text=str(error) if error else "Trilha salva em " + file)
+                if not error:
+                    webbrowser.open(Path(file).as_uri())
+        platform.configure(state="disabled")
+        panel.ui.run_bg(compare, finished)
+
     nav = ttk.Frame(body)
     nav.pack(fill=tk.X)
     previous = ttk.Button(nav, text="Anterior", state="disabled", command=lambda: page(-50))
@@ -74,4 +100,6 @@ def open_receipts(panel):
     following.pack(side=tk.LEFT)
     submit = ttk.Button(body, text="Salvar e abrir linha do tempo…", state="disabled", command=show)
     submit.pack(anchor="w", pady=8)
+    platform = ttk.Button(body, text="Conferir pacote e journal do Tester…", command=show_platform)
+    platform.pack(anchor="w", pady=4)
     load()
