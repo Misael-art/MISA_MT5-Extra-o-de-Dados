@@ -60,6 +60,14 @@ EVIDENCE = {
     "pattern_definition": "Subconjunto OHLC/prior_close M1; houve negócios em ensaio com divergência no tick 199.",
 }
 
+MARKET_NATIVE = {
+    "donchian": "Donchian", "ema_atr": "EmaAtr", "bb_rsi": "BbRsi", "orb": "Orb",
+    "pullback": "Pullback", "squeeze": "Squeeze", "s09_reference": "S09",
+    "stoch_ema9": "StochEma9", "vwap_bands": "VwapBands", "madrid": "Madrid", "ha_hilo": "HaHiLo",
+    "super_atr_triple": "SuperATRTriplo",
+}
+MARKET_PATTERN = "pattern_definition"
+
 
 def physical_signal_supported(key):
     return key in SIGNALS and key in EVIDENCE
@@ -72,6 +80,7 @@ def catalog():
     for key in keys:
         model = REGISTRY[key]() if key in REGISTRY else None
         native, indicators, warmup, rules = DETAILS.get(key, (None, None, None, None))
+        market = "native_reference" if key in MARKET_NATIVE else "m1_price_definition" if key == MARKET_PATTERN else None
         strategies.append(dict(key=key, name=model.info.name if model else (native or key),
             reference=model.__class__.__module__ if model else (
                 "mt5_extracao.analytics.pattern_engine" if key == "pattern_definition" else native),
@@ -82,13 +91,16 @@ def catalog():
             reference_timeframes=list(model.info.timeframes) if model else None,
             reference_exits=asdict(model.exit_rules()) if model else None,
             decision_clock=("bar_close" if model else "definition_or_native_contract"),
-            ultra_scope=("bounded_m1_synthetic" if physical_signal_supported(key) else "missing"),
+            ultra_scope=("bounded_m1_synthetic" if physical_signal_supported(key) else
+                         "eurusd_m1_tester" if market else "missing"),
             supported_account_modes=(["hedging", "netting_exclusive_cycle"] if physical_signal_supported(key) else []),
-            evidence=EVIDENCE.get(key), full_reference_execution=False, eurusd_market="pending",
+            evidence=EVIDENCE.get(key), full_reference_execution=False, eurusd_market=market or "pending",
+            market_account_modes=["hedging"] if market else [],
             market_technical_control=("S09 M1, um ciclo conciliado em EURUSD da MetaQuotes-Demo"
                                       if key == "s09_reference" else None),
             eurusd_data_constraint=("volume_source=2 exige negócios; volume_source=1 usa cotações; modo Auto é causal."
                                     if key == "vwap_bands" else None)))
     return dict(strategies=strategies, unmapped=unmapped, python_count=len(REGISTRY),
+                market_native_strategies=list(MARKET_NATIVE), market_pattern_strategy=MARKET_PATTERN,
                 missing_portfolio=[s["key"] for s in strategies if s["ultra_scope"] == "missing"],
                 full_portfolio_coverage=all(row["full_reference_execution"] for row in strategies))

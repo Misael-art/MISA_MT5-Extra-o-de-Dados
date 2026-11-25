@@ -28,7 +28,8 @@ def show_catalog(anchor):
     by_key = {row["key"]: row for row in catalog["strategies"]}
     account_modes = {"hedging": "hedging", "netting_exclusive_cycle": "netting com ciclo exclusivo"}
     for key, row in by_key.items():
-        state = "Recorte M1 sintético" if row["ultra_scope"] == "bounded_m1_synthetic" else "Pendente"
+        state = ({"native_reference": "Tester EURUSD M1", "m1_price_definition": "Hipótese OHLC M1"}
+                 .get(row["eurusd_market"], "Pendente"))
         rows.insert("", tk.END, iid=key, text=row["name"], values=(state,))
 
     def select(_event=None):
@@ -39,6 +40,7 @@ def show_catalog(anchor):
         modes = ", ".join(account_modes[mode] for mode in row["supported_account_modes"])
         lines = [row["indicators"], row["warmup"], row["reference_rules"],
                  f"Modos de conta do recorte no Tester · {modes}" if modes else None,
+                 "Carteira EURUSD M1 · hedging, modo de ticks reais" if row["market_account_modes"] else None,
                  row["evidence"], row["market_technical_control"], row["eurusd_data_constraint"]]
         detail.configure(text="\n\n".join(line for line in lines if line))
 
@@ -223,7 +225,7 @@ def open_receipts(panel):
         market.configure(state="disabled")
         panel.ui.run_bg(lambda: ultra_market.verify(folder), finished)
 
-    def run_market_probe():
+    def run_market(mode="ticks", *, strategies=None, pattern_path=None):
         from ..robots.ultra_market_runner import run
 
         snapshot = filedialog.askdirectory(parent=window, title="Escolher fita congelada de mercado")
@@ -233,13 +235,58 @@ def open_receipts(panel):
         if not output:
             return
         config = panel._config()
+
+        def execute():
+            pattern = json.loads(Path(pattern_path).read_text(encoding="utf-8")) if pattern_path else None
+            return run(config, snapshot, output, mode=mode, strategies=strategies, pattern=pattern)
+
         def finished(result, error):
             if not window.winfo_exists():
                 return
             probe.configure(state="normal")
+            portfolio.configure(state="normal")
             note.configure(text=str(error) if error else f'{result["status"]} · {result["receipt_path"]}')
+            if not error and result.get("portfolio_report"):
+                webbrowser.open(Path(result["receipt_path"]).with_name(result["portfolio_report"]).as_uri())
         probe.configure(state="disabled")
-        panel.ui.run_bg(lambda: run(config, snapshot, output), finished)
+        portfolio.configure(state="disabled")
+        panel.ui.run_bg(execute, finished)
+
+    def choose_portfolio():
+        choice = tk.Toplevel(window)
+        choice.title("Carteira no Strategy Tester")
+        form = ttk.Frame(choice, padding=12)
+        form.pack(fill=tk.BOTH, expand=True)
+        catalog = ultra_catalog.catalog()
+        strategies = {row["key"]: row["name"] for row in catalog["strategies"]}
+        included = {}
+        for key in catalog["market_native_strategies"]:
+            checked = tk.BooleanVar(choice, value=True)
+            included[key] = checked
+            ttk.Checkbutton(form, text=strategies[key], variable=checked).pack(anchor="w")
+        pattern = tk.StringVar(choice)
+
+        def choose_pattern():
+            path = filedialog.askopenfilename(parent=choice, title="Abrir hipótese de preço M1", filetypes=[("JSON", "*.json")])
+            if path:
+                pattern.set(path)
+
+        def submit_portfolio():
+            selected = [key for key, checked in included.items() if checked.get()]
+            path = pattern.get()
+            if path:
+                selected.append(catalog["market_pattern_strategy"])
+            if not selected:
+                feedback.configure(text="Selecione ao menos uma estratégia ou hipótese.")
+                return
+            choice.destroy()
+            run_market("portfolio", strategies=selected, pattern_path=path)
+
+        ttk.Button(form, text="Incluir hipótese JSON…", command=choose_pattern).pack(anchor="w", pady=(8, 0))
+        ttk.Entry(form, textvariable=pattern, width=42).pack(anchor="w")
+        feedback = ttk.Label(form)
+        feedback.pack(anchor="w")
+        ttk.Button(form, text="Selecionar fita e rodar…", command=submit_portfolio).pack(anchor="w")
 
     nav = ttk.Frame(body)
     nav.pack(fill=tk.X)
@@ -253,8 +300,10 @@ def open_receipts(panel):
     ttk.Button(body, text="Coletar ticks da DEMO…", command=lambda: capture_market(panel, window, note)).pack(anchor="w", pady=4)
     market = ttk.Button(body, text="Verificar fita de mercado…", command=show_market)
     market.pack(anchor="w", pady=4)
-    probe = ttk.Button(body, text="Rodar sonda de ticks no Tester…", command=run_market_probe)
+    probe = ttk.Button(body, text="Rodar sonda de ticks no Tester…", command=run_market)
     probe.pack(anchor="w", pady=4)
+    portfolio = ttk.Button(body, text="Rodar carteira EURUSD no Tester…", command=choose_portfolio)
+    portfolio.pack(anchor="w", pady=4)
     capabilities = ttk.Button(body, text="Capacidades do pacote…", command=show_capabilities)
     capabilities.pack(anchor="w", pady=4)
     platform = ttk.Button(body, text="Conferir pacote e journal do Tester…", command=show_platform)

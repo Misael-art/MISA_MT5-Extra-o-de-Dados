@@ -5516,3 +5516,11 @@ sem representação. A geração concorrente continua limitada ao recorte explic
 A CLI congela os ticks originais em blocos com SHA-256 e exporta um Expert passivo que compara
 o fluxo efetivamente recebido pelo Tester com a fita do broker. O protocolo econômico foi
 congelado em [Ultra EURUSD](repasse/ULTRA_EURUSD_PROTOCOLO_20261125.md).
+
+Foi integrado o modo `portfolio` do Tester no EURUSD M1 da MetaQuotes-Demo. As 11
+referências do Laboratório, o Super ATR Triplo e uma hipótese direcional M1 selecionada
+podem compartilhar conta hedging, orçamento e journal no mesmo Expert. As estratégias
+mantêm as regras nativas de gestão de suas referências. A primeira execução com as 11
+referências conciliou 260.178 cotações, duas posições simultâneas e dez negócios. O
+[repasse da carteira](repasse/ULTRA_CARTEIRA_EURUSD_20261125.md) registra os controles e
+o alcance da paridade.

@@ -13,7 +13,10 @@ def test_registered_strategies_have_inventory_and_use_same_gate_as_tester():
     assert set(REGISTRY) <= rows.keys()
     assert rows["ema_atr"]["reference_exits"]["trailing_atr"] == 3.0
     assert rows["vwap_bands"]["eurusd_data_constraint"]
-    assert "super_atr_triple" in catalog["missing_portfolio"]
+    assert set(REGISTRY) < set(catalog["market_native_strategies"])
+    assert rows["super_atr_triple"]["eurusd_market"] == "native_reference"
+    assert rows["pattern_definition"]["eurusd_market"] == "m1_price_definition"
+    assert "super_atr_triple_plot" in catalog["missing_portfolio"]
     assert not catalog["full_portfolio_coverage"]
 
 

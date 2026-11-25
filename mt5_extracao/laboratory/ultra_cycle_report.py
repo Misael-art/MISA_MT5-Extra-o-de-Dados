@@ -61,3 +61,34 @@ dd{{margin:0;overflow-wrap:anywhere}}:focus-visible{{outline:3px solid #166ac2}}
     with Path(path).open("x", encoding="utf-8") as handle:
         handle.write("".join(parts))
     return str(Path(path).resolve())
+
+
+def write_market_report(receipt, path):
+    """Mostra os donos e posições conciliados no passe de mercado."""
+    result = receipt["comparison"]
+    parts = ["""<!doctype html><html lang="pt-BR"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Carteira EURUSD no Strategy Tester</title>
+<style>body{max-width:64rem;margin:auto;padding:1rem;color:#1b2631;font:1rem/1.5 system-ui}
+summary{padding:.5rem;cursor:pointer}details{margin:.5rem 0}dl{border-left:3px solid #678;padding-left:1rem}
+dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}:focus-visible{outline:3px solid #166ac2}</style>
+<main><h1>Carteira EURUSD no Strategy Tester</h1>
+<p><a href="receipt.json">Recibo completo</a> · <a href="report.htm">Relatório do MT5</a></p>"""]
+    parts.append(_records("Identificação", [{key: receipt[key] for key in
+                         ("attempt", "status", "manifest_hash", "source_sha256", "binary_sha256")}]))
+    for key, label in (("tick_comparison", "Fita do broker e ticks recebidos"), ("peak", "Posições simultâneas"),
+                       ("final", "Saldo, patrimônio e conciliação"), ("units", "Unidades do livro"),
+                       ("pattern_parity", "Hipótese de preço em Python e MQL5")):
+        if result.get(key):
+            parts.append(_records(label, [result[key]]))
+    for owner in result["owners"]:
+        deals = [row for row in result["deals"] if row["owner"] == owner["magic"]]
+        positions = sorted({row["position"] for row in deals})
+        parts.append(f'<details><summary>{escape(owner["key"])} · {len(positions)} posições</summary>')
+        parts.append(_records("Sinais, regras e vetos", [{k: v for k, v in owner.items() if k != "management"}]))
+        parts.append(_records("Proteções e saídas solicitadas", owner["management"]))
+        for position in positions:
+            parts.append(_records(f"Negócios da posição {position}", [row for row in deals if row["position"] == position]))
+        parts.append("</details>")
+    parts.append("</main></html>")
+    with Path(path).open("x", encoding="utf-8") as handle:
+        handle.write("".join(parts))

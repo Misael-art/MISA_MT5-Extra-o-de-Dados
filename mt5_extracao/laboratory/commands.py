@@ -6,6 +6,7 @@ import pandas as pd
 
 from mt5_extracao.analytics import datasets
 from . import service
+from .ultra_catalog import MARKET_NATIVE, MARKET_PATTERN
 
 
 def add_parser(sub):
@@ -31,10 +32,13 @@ def add_parser(sub):
     for option in ("snapshot", "tape", "binding", "journal"):
         market.add_argument("--" + option, required=True)
     market.set_defaults(func=run)
-    market = actions.add_parser("ultra-market-tester-run", help="compila e roda a sonda ou o controle S09 no Tester")
+    market = actions.add_parser("ultra-market-tester-run", help="compila e roda a sonda, o S09 ou a carteira no Tester")
     market.add_argument("--snapshot", required=True)
     market.add_argument("--out", required=True)
-    market.add_argument("--mode", choices=("ticks", "s09_cycle"), default="ticks")
+    market.add_argument("--mode", choices=("ticks", "s09_cycle", "portfolio"), default="ticks")
+    market.add_argument("--strategy", action="append", choices=(*MARKET_NATIVE, MARKET_PATTERN),
+                        help="módulo da carteira, em ordem de avaliação; repita para selecionar vários")
+    market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e de sua proteção de pesquisa")
     market.add_argument("--timeout", type=int, default=300)
     market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-demo-export", help="gera observador do gráfico DEMO com ordens desativadas")
@@ -238,7 +242,9 @@ def run(args, ctx):
                 result = ultra_market.export_probe(args.snapshot, args.out, attempt=args.attempt)
             elif action == "ultra-market-tester-run":
                 from ..robots.ultra_market_runner import run as run_market
-                result = run_market(ctx.config, args.snapshot, args.out, mode=args.mode, timeout=args.timeout)
+                pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
+                result = run_market(ctx.config, args.snapshot, args.out, mode=args.mode, timeout=args.timeout,
+                                    strategies=args.strategy, pattern=pattern)
             elif action == "ultra-market-demo-export":
                 result = ultra_market.export_demo_observer(args.snapshot, args.out, attempt=args.attempt)
             else:

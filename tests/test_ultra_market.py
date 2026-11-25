@@ -207,3 +207,36 @@ def test_tester_runner_requires_agent_evidence_and_preserves_report(snapshot, tm
     assert result["status"] == ("tick_stream_matches" if from_agent else "journal_missing")
     assert Path(result["receipt_path"]).parent.joinpath("report.htm").is_file()
     assert result["tester_data_quality"]["real_tick_fraction_reported"] == 1.0
+
+
+def test_portfolio_compares_pattern_on_closed_bars_and_identifies_first_difference(monkeypatch, tmp_path):
+    from mt5_extracao.laboratory.ultra_market_portfolio_audit import _pattern_comparison
+
+    def field(name):
+        return {"op": "field", "name": name}
+
+    def compare(operator, left, right):
+        return {"op": "compare", "comparison": operator, "left": field(left), "right": field(right)}
+
+    definition = dict(schema_version=1, pattern_id="eurusd.test", strategy_version="1", original_hypothesis="Teste OHLC",
+        origin="user", parent_attempt_ids=[], universe_definition={"mode": "explicit", "symbols": ["EURUSD"]},
+        data_requirements=["ohlcv"], timeframe="M1", timezone_calendar_versions={"clock": "mt5_raw_clock"},
+        features_and_versions=[], context_expression=None, condition_expression=compare("gt", "close", "prior_close"),
+        decision_clock="closed_bar_available", price_reference="prior_close", side="long",
+        simulated_entry="next_executable_open", outcome_definition={"horizon_bars": 1}, repetition_policy="all",
+        invalidation_rules=[{"id": "top", "action": "cancel_before_entry", "when": compare("gte", "close", "high")}],
+        execution_policy="research_only", cost_model_id=None, complexity={"terms": 1}, implementation_signature="test")
+    pattern = dict(definition=definition, apply_invalidation=True)
+    t = AXIS * 1000
+    # A primeira barra não conhece prior_close. A segunda fecha na máxima e invalida.
+    quotes = [(t+1, 1.09960), (t+60_001, 1.09965), (t+60_002, 1.09966), (t+120_007, 1.09965)]
+    monkeypatch.setattr(market, "_csv_rows", lambda *_: iter(quotes))
+    manifest = {"symbol": "EURUSD", "manifest_hash": "a" * 64}
+    observed = f"MT5X_ULTRA_MARKET_PATTERN|{t+120_007}|{t+120_000}|1|1|109960"
+    matched = _pattern_comparison(tmp_path, manifest, pattern, observed, Decimal("0.00001"))
+    assert matched["expected"] == matched["observed"] == matched["invalidated"] == 1
+    assert matched["first_divergence"] is None
+    tampered = _pattern_comparison(tmp_path, manifest, pattern, observed.replace("|1|109960", "|0|109960"), Decimal("0.00001"))
+    first = tampered["first_divergence"]
+    assert first == {"ordinal": 0, "expected": (t+120_007, t+120_000, 1, 1, 109960),
+                     "observed": (t+120_007, t+120_000, 1, 0, 109960)}
