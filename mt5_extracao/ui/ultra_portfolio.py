@@ -15,11 +15,18 @@ def show_catalog(anchor):
     body = ttk.Frame(window, padding=12)
     body.pack(fill=tk.BOTH, expand=True)
     catalog = ultra_catalog.catalog()
-    rows = ttk.Treeview(body, columns=("tester",), show="tree headings", height=10, selectmode="browse")
+    table = ttk.Frame(body)
+    table.pack(fill=tk.BOTH, expand=True)
+    rows = ttk.Treeview(table, columns=("tester",), show="tree headings", height=10, selectmode="browse")
+    rows.column("#0", width=365, minwidth=170)
+    rows.column("tester", width=165, minwidth=135, stretch=False)
     rows.heading("#0", text="Estratégia")
     rows.heading("tester", text="Expert concorrente")
+    scroll = ttk.Scrollbar(table, orient="vertical", command=rows.yview)
+    rows.configure(yscrollcommand=scroll.set)
     detail = ttk.Label(body, wraplength=520, justify=tk.LEFT)
     by_key = {row["key"]: row for row in catalog["strategies"]}
+    account_modes = {"hedging": "hedging", "netting_exclusive_cycle": "netting com ciclo exclusivo"}
     for key, row in by_key.items():
         state = "Recorte M1 sintético" if row["ultra_scope"] == "bounded_m1_synthetic" else "Pendente"
         rows.insert("", tk.END, iid=key, text=row["name"], values=(state,))
@@ -29,14 +36,15 @@ def show_catalog(anchor):
         if not selected:
             return
         row = by_key[selected[0]]
-        modes = ", ".join(row["supported_account_modes"])
+        modes = ", ".join(account_modes[mode] for mode in row["supported_account_modes"])
         lines = [row["indicators"], row["warmup"], row["reference_rules"],
                  f"Modos de conta do recorte no Tester · {modes}" if modes else None,
                  row["evidence"], row["market_technical_control"], row["eurusd_data_constraint"]]
         detail.configure(text="\n\n".join(line for line in lines if line))
 
     rows.bind("<<TreeviewSelect>>", select)
-    rows.pack(fill=tk.BOTH, expand=True)
+    rows.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scroll.pack(side=tk.RIGHT, fill=tk.Y)
     detail.pack(fill=tk.X, pady=(8, 0))
     if by_key:
         rows.selection_set(next(iter(by_key)))
