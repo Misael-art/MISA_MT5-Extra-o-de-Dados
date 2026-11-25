@@ -50,7 +50,8 @@ def test_cycle_from_intent_to_balance_and_accessible_report(tmp_path):
     json.dumps(result, allow_nan=False)
     path = tmp_path / "cycles.html"
     write_report(dict(result, origin="strategy_tester_orders"), path)
-    assert "<summary>A · a</summary>" in path.read_text() and "&lt;regra&gt;" in path.read_text()
+    html = path.read_text(encoding="utf-8")
+    assert "<summary>A · a</summary>" in html and "&lt;regra&gt;" in html
     with pytest.raises(FileExistsError):
         write_report(dict(result, origin="strategy_tester_orders"), path)
 
