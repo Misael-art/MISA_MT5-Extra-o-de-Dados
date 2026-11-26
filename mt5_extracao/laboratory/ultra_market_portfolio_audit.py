@@ -18,7 +18,7 @@ from .ultra_platform import compare_report
 _WIDTHS = {"OWNER": 4, "RULES": 8, "ACCOUNT": 4, "BAR": 12, "ENTRY": 10, "PEAK": 3,
            "PROTECT": 10, "CLOSE": 10, "ORDER": 11, "DEAL": 16, "FINAL": 11,
            "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3, "BOUNDARY": 4,
-           "PRESET": 5, "INPUTS": 3, "RAW": 14, "RATE": 7}
+           "PRESET": 5, "INPUTS": 3, "RAW": 14, "RATE": 7, "LOCAL": 8, "ROTATE": 6, "RECOVER": 4}
 
 
 def _records(journal, *, management_order=None):
@@ -139,6 +139,106 @@ def _report_orders(html, orders, symbol, tick, step):
     if matched != orders.keys():
         return dict(status="diverged", field="missing_orders", tickets=sorted(orders.keys() - matched))
     return dict(status="report_matches", orders=len(matched))
+
+
+def _local_expected(history, magic, day, cursor, policy):
+    owners, sizes, cycle_net, orders = {}, Counter(), Counter(), set()
+    daily, losses, reason = 0, 0, ""
+    for d in history:
+        if d["ticket"] > cursor:
+            break
+        position = d["position"]
+        opening = d["entry"] == "DEAL_ENTRY_IN"
+        if opening:
+            owners[position] = d["owner"]
+        if owners.get(position) != magic:
+            continue
+        cash = sum(d[k] for k in ("commission", "fee", "swap", "profit"))
+        cycle_net[position] += cash
+        sizes[position] += d["steps"] if opening else -d["steps"]
+        if d["msc"] // 1000 < day:
+            continue
+        daily += cash
+        if opening:
+            orders.add(d["order"])
+        elif not sizes[position] and cycle_net[position] < 0:
+            losses += 1
+        if not reason:
+            for key, amount, code in (("daily_loss_cents", -daily, "local_daily_loss"),
+                                      ("daily_profit_cents", daily, "local_daily_profit"),
+                                      ("max_attempts", len(orders), "local_attempts"),
+                                      ("max_losses", losses, "local_losses")):
+                if key in policy and amount >= policy[key]:
+                    reason = code
+                    break
+    return daily, len(orders), losses, reason
+
+
+def _local_decisions(rows, slots, deals):
+    policies = {s["magic"]: s["owner_rules"]["risk"] for s in slots if s.get("owner_rules", {}).get("risk")}
+    history = sorted(deals, key=lambda d: d["ticket"])
+    entries = defaultdict(list)
+    for row in rows["ENTRY"]:
+        entries[int(row[0]), int(row[1])].append(row)
+    result, difference = [], None
+    for row in rows["LOCAL"]:
+        magic, msc, day, cursor, cash, attempts, losses = map(int, row[:-1])
+        reason = row[-1]
+        matching = entries[magic, msc]
+        condition = (magic in policies and day == (msc // 86400000) * 86400
+                     and not any(d["ticket"] <= cursor and d["msc"] > msc for d in history)
+                     and (cash, attempts, losses, reason) == _local_expected(history, magic, day, cursor, policies[magic])
+                     and bool(matching) and (not reason or all(x[3] == "1" and x[4] == "0" for x in matching)))
+        if not condition and difference is None:
+            difference = row
+        result.append(dict(magic=magic, tick_msc=msc, session_start=day, cursor=cursor, realized_cents=cash,
+                           opening_attempts=attempts, losing_cycles=losses, reason=reason,
+                           entry_reason=matching[-1][-1] if matching else None))
+    return dict(decisions=result, first_divergence=difference)
+
+
+def _rotation(rows, bundle, deals):
+    request = bundle.get("rotation")
+    if request is None:
+        return None, not rows["ROTATE"] and not rows["RECOVER"]
+    installs, held, events = {}, set(), []
+    magics = {s["magic"] for s in bundle["slots"]}
+    valid = bool(rows["ROTATE"])
+    for owner, msc, action, position, digest, version in rows["ROTATE"]:
+        magic, moment, incumbent, revision = map(int, (owner, msc, position, version))
+        events.append(dict(magic=magic, tick_msc=moment, action=action, position=incumbent,
+                           policy_sha256=digest, version=revision))
+        valid &= magic in magics and request["switch_at_msc"] <= moment <= bundle["window"]["last_msc"]
+        valid &= magic not in installs
+        if action == "held":
+            active = sum(d["steps"] if d["entry"] == "DEAL_ENTRY_IN" else -d["steps"]
+                         for d in deals if d["position"] == incumbent and d["owner"] == magic and d["msc"] < moment)
+            valid &= magic not in held and (incumbent == 0 or active > 0)
+            valid &= (digest, revision) == (bundle["preset_sha256"], bundle["preset_version"])
+            held.add(magic)
+        elif action == "adopted":
+            successor = request["successor"]
+            valid &= incumbent == 0 and (digest, revision) == (successor["preset_sha256"], successor["version"])
+            installs[magic] = moment
+        else:
+            valid = False
+    later = []
+    for d in deals:
+        magic, moment = d["owner"], d["msc"]
+        if d["entry"] != "DEAL_ENTRY_IN" or moment < request["switch_at_msc"]:
+            continue
+        valid &= magic in installs and installs[magic] <= moment
+        later.append(dict(magic=magic, tick_msc=moment, position=d["position"], deal=d["ticket"]))
+    recovered = []
+    restore_at = request["restore_at_msc"]
+    for owner, msc, journal_sha, snapshot in rows["RECOVER"]:
+        magic, moment = int(owner), int(msc)
+        valid &= (restore_at is not None and restore_at <= moment <= bundle["window"]["last_msc"]
+                  and magic in magics and re.fullmatch(r"[a-f0-9]{64}", journal_sha) is not None)
+        recovered.append(dict(magic=magic, tick_msc=moment, journal_sha256=journal_sha, snapshot=snapshot))
+    if restore_at is not None:
+        valid &= len(recovered) == len(magics) == len({r["magic"] for r in recovered})
+    return dict(events=events, later_entries=later, recovered=recovered), valid
 
 
 def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapshot=None, manifest=None):
@@ -311,6 +411,10 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
     report_orders = _report_orders(tester_html, observed_orders, symbol, tick, step)
     check(report_orders["status"] == "report_matches", "tester_report_orders")
     counts_by_owner = Counter(row[1] for row in observed_orders.values())
+    local = _local_decisions(rows, bundle["slots"], deals)
+    check(local["first_divergence"] is None, "local_risk_accounting")
+    rotation, rotation_ok = _rotation(rows, bundle, deals)
+    check(rotation_ok, "policy_rotation")
     owners_result = [dict(key=key, magic=int(magic), evaluated_bars=decisions[magic], signal_bars=signals[magic],
                           raw_signal_bars=raw_signals[magic] if rows["RAW"] else None, orders=counts_by_owner[magic],
                           rules=rules.get(magic), entries=openings[magic].pop("deals", 0),
@@ -324,7 +428,7 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
                 totals=dict(orders=len(observed_orders), deals=len(deals), partials=sum(partials.values())),
                 peak=dict(on_tick=int(peak), chronological=replay_peak, samples=rows["PEAK"]),
                 final=final, report_comparison=report, report_orders=report_orders, deals=deals, pattern_parity=pattern_result,
-                economic_approval=False,
+                local_risk=local, rotation=rotation, economic_approval=False,
                 observations=dict(plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
                                   preset=rows["PRESET"], raw_decisions=len(rows["RAW"]), decision_rates=len(rows["RATE"]),
                                   boundary=rows["BOUNDARY"]),

@@ -72,3 +72,110 @@ grade, pausa ou reativação ficam fora deste contrato técnico.
 O perfil congelado destina-se ao Tester. A qualificação econômica exige
 outro período, ainda inédito, com custos, calendário e critérios
 congelados antes da abertura da reserva.
+
+## Pesquisa de mercado e política portátil
+
+Abra **Carteiras Ultra → Pesquisar candidatos no Tester…** e escolha a
+fita de treino, o plano JSON e a nova pasta de resultados. Aplique a
+política produzida em **Executar preset no Tester…** e escolha uma fita
+posterior. A interface usa o mesmo fluxo de pesquisa e execução da CLI.
+
+```bash
+.venv/bin/python -m mt5_extracao.cli --json laboratory ultra-market-research \
+  --training "$TREINO" --plan "$PLANO" --out "$EVIDENCIAS/pesquisa" --timeout 900
+.venv/bin/python -m mt5_extracao.cli --json laboratory ultra-market-tester-run \
+  --mode portfolio --snapshot "$FITA_POSTERIOR" \
+  --preset "$EVIDENCIAS/pesquisa/policy.json" --out "$EVIDENCIAS/execucao" --timeout 900
+```
+
+Exemplo de plano técnico para comparar duas médias em treino. O piso
+negativo permite examinar alternativas de desempenho negativo.
+
+```json
+{
+  "max_attempts": 2,
+  "max_modules": 1,
+  "min_cycles": 1,
+  "min_net_cents": -2000,
+  "candidates": [
+    {"id": "ema-10", "strategy": "ema_atr", "parameters": {"fast": 10}},
+    {"id": "ema-30", "strategy": "ema_atr", "parameters": {"fast": 30}}
+  ]
+}
+```
+
+Cada ensaio usa um único módulo no mesmo histórico do Tester. O
+Laboratório ordena os candidatos elegíveis por lucro líquido de treino
+e resolve empates pela ordem registrada no plano. Seleciona até
+`max_modules`, com uma alternativa por módulo. `selection.json` inclui
+os resultados, os vetos do critério, o período e os caminhos dos recibos.
+Uma seleção vazia termina com `no_candidate`. `progress.json` mostra a
+etapa, os ensaios concluídos e o recibo em andamento. A pontuação isolada
+sustenta a seleção técnica. A carteira conjunta tem recibo próprio.
+
+`policy.json` fixa parâmetros, prioridades, gestão, requisitos de
+mercado, fontes e origem do treino. O recibo de cada execução vincula a
+mesma política à fita, janela, especificações observadas, regra de
+aquecimento, fontes geradas, EX5 e relatório. A política portátil exige
+EURUSD M1, dias completos no relógio bruto do servidor, ambiente
+MetaQuotes-Demo hedging em USD e as especificações congeladas de
+preço, volume e execução. O formato preso à janela permanece verificável.
+Use `ultra-market-preset-freeze --portable` para controles técnicos
+pré-definidos.
+
+### Parâmetros da pesquisa
+
+Os valores vão de `candidates[].parameters` a `profile.modules[].inputs`
+e aos valores literais da referência MQL5 que compõe o Expert. Consulte
+`composition.registry.STRATEGY_PARAMETERS` para tipos, unidades e limites.
+A validação também confere combinações incompatíveis e a presença de
+volume de negócios quando solicitado pelo VWAP.
+
+| Módulo | Parâmetro → campo nativo |
+|---|---|
+| `ema_atr` | `fast` → `InpFastPeriod`, `slow` → `InpSlowPeriod`, `trend` → `InpTrendPeriod`, `stop_atr` → `InpStopAtrMult`, `trail_atr` → `InpTrailAtrMult` |
+| `donchian` | `entry_period` → `InpEntryPeriod`, `exit_period` → `InpExitPeriod`, `adx_min` → `InpAdxMin`, `atr_avg` → `InpAtrAvgPeriod`, `stop_atr` → `InpStopAtrMult` |
+| `bb_rsi` | `bb_period` → `InpBbPeriod`, `bb_k` → `InpBbDeviation`, `rsi_period` → `InpRsiPeriod`, `rsi_low` → `InpRsiLow`, `adx_max` → `InpAdxMax`, `stop_atr` → `InpStopAtrMult`, `max_bars` → `InpMaxBars` |
+| `orb` | `range_minutes` → `InpRangeMinutes`, `target_mult` → `InpTargetMult`, `min_range_atr` → `InpMinRangeAtr` |
+| `pullback` | `trend` → `InpTrendPeriod`, `adx_min` → `InpAdxMin`, `rsi_period` → `InpRsiPeriod`, `rsi_pullback` → `InpRsiPullback`, `swing_bars` → `InpSwingBars`, `target_r` → `InpTakeProfitR` |
+| `squeeze` | `period` → `InpPeriod`, `bb_k` → `InpBbDeviation`, `kc_mult` → `InpKeltnerMult`, `lookback` → `InpLookback`, `stop_atr` → `InpStopAtrMult`, `trail_atr` → `InpTrailAtrMult` |
+| `s09_reference` | `fast` → `InpFastPeriod`, `slow` → `InpSlowPeriod`, `warmup_bars` → `InpWarmupBars`, `stop_points` → `InpStopPoints`, `target_points` → `InpTargetPoints` |
+| `stoch_ema9` | `k_period` → `InpKPeriod`, `slowing` → `InpSlowing`, `d_period` → `InpDPeriod`, `ema_period` → `InpEmaPeriod`, `upper_level` → `InpUpperLevel`, `lower_level` → `InpLowerLevel`, `stop_offset_points` → `InpStopOffsetPoints`, `target_points` → `InpTargetPoints` |
+| `vwap_bands` | `entry_band_pct` → `InpEntryBandPct`, `target_band_pct` → `InpTargetBandPct`, `stop_offset_points` → `InpStopPoints`, `volume_source` → `InpVolumeSource` |
+| `madrid` | `first_period` → `InpFirstPeriod`, `period_step` → `InpPeriodStep`, `distance_atr` → `InpDistanceAtr`, `distance_points` → `InpDistancePoints`, `trail_line` → `InpTrailLine`, `offset_atr` → `InpOffsetAtr` |
+| `ha_hilo` | `hilo_period` → `InpHiLoPeriod`, `hilo_offset` → `InpHiLoOffset`, `stop_buffer_points` → `InpStopBufferPoints` |
+| `super_atr_triple` | `seed_start_broker` → `InpSeedStart`, `period` → `InpPeriod`, `mean` → `InpMean`, `deviation1` → `InpDeviation1`, `deviation2` → `InpDeviation2`, `deviation3` → `InpDeviation3`, `initial_side` → `InpInitialSide`, `entries_enabled` → `InpEntriesEnabled` |
+| `pattern_definition` | `pattern.definition` → expressão MQL5 gerada, `apply_invalidation` → condição, `stop_points` → `InpStopPoints`, `target_points` → `InpTargetPoints` |
+
+A hipótese usa as modalidades OHLC M1 e `cancel_before_entry` documentadas
+acima. Auto e ticks são modalidades de VWAP válidas em fitas com cotações.
+O modo Real exige volume de negócios registrado. O Super ATR usa a
+primeira barra observada da janela como âncora padrão e admite uma
+âncora explícita no relógio do broker.
+
+### Limites locais, gestão e revisão
+
+Cada candidato pode ter `owner_rules.risk` com `daily_loss_cents`,
+`daily_profit_cents`, `max_attempts` ou `max_losses`. Uma tentativa
+é uma ordem de abertura com pelo menos um preenchimento no dia do
+servidor. O limite de perdas conta ciclos encerrados com resultado
+líquido negativo e atribui a perda ao dia da última saída. Uma saída
+parcial altera o resultado diário realizado e conserva o ciclo até
+zerar o volume. O realizado usa lucro, comissão, tarifa e swap do
+histórico de cada posição. Uma trava atingida permanece válida até a
+virada do dia. As posições continuam sob a gestão do seu módulo e
+as entradas também passam pelos limites globais de exposição, margem
+e perda. O recibo confronta `LOCAL` com os negócios por identificador e
+ticket. `owner_rules.management` admite `partial_r`, `partial_fraction`,
+`breakeven_after_partial` e `trailing_atr` sobre os gatilhos do
+motor canônico.
+
+No mesmo passe, acrescente `--successor SEGUNDO_JSON --switch-at-msc TICK`
+para instalar um sucessor direto de gestão no tick ou no próximo
+disponível. Uma posição incumbente conserva a política de origem até o
+encerramento. Cada módulo passa ao sucessor quando está livre e
+conciliado. O journal registra `ROTATE` por módulo. `--restore-at-msc`
+exercita a reidratação do executor e a conciliação do livro no próprio
+passe, registrando `RECOVER`. A reabertura do MT5 com posições herdadas
+exige evidência no ambiente de destino. O plano de pesquisa técnico e o
+observador da DEMO não habilitam negociação prospectiva.

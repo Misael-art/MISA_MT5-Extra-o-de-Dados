@@ -136,6 +136,11 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         ticks, signals = ultra._inputs(datasets.load(db, policy["manifest_id"]), policy)
         longer = ultra_study.simulate(policy, dict(plan, validation_start="2026-10-14"), ticks, signals)
         assert longer["selection_effect"]["status"] == "estimated"
+        weekend = ultra_study.simulate(policy, dict(plan, validation_start="2026-10-16"), ticks, signals)
+        review = weekend["policies"]["every_15_days"]["reviews"][1]
+        assert review["scheduled_day"] == (date(2026, 10, 31) - epoch).days
+        assert review["day"] == (date(2026, 11, 2) - epoch).days
+        assert review["last_training_day"] < review["day"]
         # Mudar a última cotação da reserva jamais muda decisões de revisão anteriores.
         ticks[-1] = dict(ticks[-1], bid=ticks[-1]["bid"] + 10, ask=ticks[-1]["ask"] + 10)
         alternative = ultra_study.simulate(policy, plan, ticks, signals)

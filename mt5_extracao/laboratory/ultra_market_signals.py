@@ -11,25 +11,19 @@ import pandas as pd
 
 from ..robots.ultra_market_portfolio import MARKER
 from ..strategies import get_strategy, indicators
+from .ultra_market_parameters import INPUTS
 from .ultra_market_portfolio_audit import _WIDTHS
 
 
 _BITS = ("entry_long", "entry_short", "exit_long", "exit_short")
 _LEVELS = ("stop_long", "stop_short", "target_long", "target_short")
 _FIELDS = (*_BITS, *_LEVELS)
-_OPTIONS = {
-    "orb": {"range_minutes": "InpRangeMinutes", "target_mult": "InpTargetMult", "min_range_atr": "InpMinRangeAtr"},
-    "s09_reference": {"fast": "InpFastPeriod", "slow": "InpSlowPeriod", "warmup_bars": "InpWarmupBars",
-                      "stop_points": "InpStopPoints", "target_points": "InpTargetPoints"},
-    "vwap_bands": {"entry_band_pct": "InpEntryBandPct", "target_band_pct": "InpTargetBandPct",
-                   "stop_offset_points": "InpStopPoints", "volume_source": "InpVolumeSource"},
-}
 
 
 def _reference(slot):
     inputs = slot["inputs"]
-    return get_strategy(slot["key"], **{name: json.loads(inputs[param]) for name, param in
-                                       _OPTIONS.get(slot["key"], {}).items()})
+    return get_strategy(slot["key"], **{name: json.loads(inputs["Inp" + field])
+                                       for name, field in INPUTS[slot["key"]].items()})
 
 
 def _raw(model, rates):
@@ -45,7 +39,8 @@ def _decisions(slot, records, rates, indices, point):
     offset = model.exit_rules().signal_stop_offset_points * point
     key = slot["key"]
     # A janela de 1500 barras contém todo o dia M1, usado por ORB e VWAP.
-    indexed = _raw(model, rates) if key in ("orb", "vwap_bands") else None
+    daily = key == "vwap_bands" or (key == "orb" and model.params["min_range_atr"] == 0)
+    indexed = _raw(model, rates) if daily else None
     if key == "s09_reference" and records:
         closed = int(records[0][0][4])
         anchor = indices[closed] + 1 - model.params["warmup_bars"]

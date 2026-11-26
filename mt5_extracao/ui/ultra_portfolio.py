@@ -4,6 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from queue import Empty, SimpleQueue
 from tkinter import filedialog, ttk
+from uuid import uuid4
 import webbrowser
 
 from ..laboratory import ultra_catalog, ultra_market, ultra_market_preset, ultra_report, ultra_tester
@@ -226,26 +227,8 @@ def open_receipts(panel):
         market.configure(state="disabled")
         panel.ui.run_bg(lambda: ultra_market.verify(folder), finished)
 
-    def run_market(mode="ticks", *, preset_path=None):
-        from ..robots.ultra_market_runner import run
-
-        snapshot = filedialog.askdirectory(parent=window, title="Escolher fita congelada de mercado")
-        if not snapshot:
-            return
-        output = filedialog.askdirectory(parent=window, title="Salvar a execução do Tester em")
-        if not output:
-            return
-        config = panel._config()
+    def market_job(work, label, complete):
         stages = SimpleQueue()
-        if preset_path:
-            try:
-                selected = ultra_market_preset.read(preset_path)
-            except (OSError, ValueError) as error:
-                note.configure(text=str(error))
-                return
-            label = f'{Path(preset_path).name} · v{selected["version"]} · {selected["preset_sha256"][:12]} · '
-        else:
-            selected, label = None, ""
         active = True
 
         def show_stage():
@@ -262,27 +245,70 @@ def open_receipts(panel):
                 note.configure(text=f"{label}{status} · {path}")
             window.after(750, show_stage)
 
-        def execute():
-            return run(config, snapshot, output, mode=mode, preset=selected,
-                       progress=lambda status, path: stages.put((status, path)))
-
         def finished(result, error):
             nonlocal active
             active = False
             if not window.winfo_exists():
                 return
-            for button in (probe, portfolio, frozen_portfolio):
+            for button in (probe, portfolio, frozen_portfolio, research):
                 button.configure(state="normal")
-            detail = str(error) if error else " · ".join(filter(None, (result["status"], result.get("reason"),
-                                                                       result["receipt_path"])))
-            note.configure(text=label + detail)
-            if not error and result.get("portfolio_report"):
-                webbrowser.open(Path(result["receipt_path"]).with_name(result["portfolio_report"]).as_uri())
-        for button in (probe, portfolio, frozen_portfolio):
+            note.configure(text=label + (str(error) if error else complete(result)))
+        for button in (probe, portfolio, frozen_portfolio, research):
             button.configure(state="disabled")
         note.configure(text=label + "Preparando o Strategy Tester…")
         show_stage()
-        panel.ui.run_bg(execute, finished)
+        panel.ui.run_bg(lambda: work(lambda status, path: stages.put((status, path))), finished)
+
+    def run_market(mode="ticks", *, preset_path=None):
+        from ..robots.ultra_market_runner import run
+
+        try:
+            selected = ultra_market_preset.read(preset_path) if preset_path else None
+        except (OSError, ValueError) as error:
+            note.configure(text=str(error))
+            return
+        snapshot = filedialog.askdirectory(parent=window, title="Escolher fita congelada de mercado")
+        if not snapshot:
+            return
+        output = filedialog.askdirectory(parent=window, title="Salvar a execução do Tester em")
+        if not output:
+            return
+        config = panel._config()
+        label = (f'{Path(preset_path).name} · v{selected["version"]} · {selected["preset_sha256"][:12]} · '
+                 if selected else "")
+
+        def complete(result):
+            if result.get("portfolio_report"):
+                webbrowser.open(Path(result["receipt_path"]).with_name(result["portfolio_report"]).as_uri())
+            return " · ".join(filter(None, (result["status"], result.get("reason"), result["receipt_path"])))
+
+        market_job(lambda progress: run(config, snapshot, output, mode=mode, preset=selected, progress=progress),
+                   label, complete)
+
+    def research_market():
+        from ..laboratory.ultra_market_research import run
+
+        plan = filedialog.askopenfilename(parent=window, title="Escolher plano de treino", filetypes=[("JSON", "*.json")])
+        if not plan:
+            return
+        training = filedialog.askdirectory(parent=window, title="Escolher fita congelada de treino")
+        if not training:
+            return
+        output = filedialog.askdirectory(parent=window, title="Escolher destino da pesquisa")
+        if not output:
+            return
+        root = Path(output) / ("ultra-treino-" + uuid4().hex)
+        config = panel._config()
+
+        def work(progress):
+            definition = json.loads(Path(plan).read_text(encoding="utf-8"))
+            return run(config, training, definition, root, timeout=900, progress=progress)
+
+        def complete(result):
+            return " · ".join(filter(None, (result["status"], result.get("reason"),
+                                           result.get("policy_path") or str(root / "progress.json"))))
+
+        market_job(work, "Treino · ", complete)
 
     def open_market_preset():
         path = filedialog.askopenfilename(parent=window, title="Abrir preset congelado do Laboratório",
@@ -378,6 +404,8 @@ def open_receipts(panel):
     portfolio.pack(anchor="w", pady=4)
     frozen_portfolio = ttk.Button(body, text="Executar preset no Tester…", command=open_market_preset)
     frozen_portfolio.pack(anchor="w", pady=4)
+    research = ttk.Button(body, text="Pesquisar candidatos no Tester…", command=research_market)
+    research.pack(anchor="w", pady=4)
     capabilities = ttk.Button(body, text="Capacidades do pacote…", command=show_capabilities)
     capabilities.pack(anchor="w", pady=4)
     platform = ttk.Button(body, text="Conferir pacote e journal do Tester…", command=show_platform)

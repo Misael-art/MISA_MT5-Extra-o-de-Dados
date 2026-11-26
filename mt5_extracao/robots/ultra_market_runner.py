@@ -1,5 +1,5 @@
 """Executa a sonda, o controle S09 ou a carteira no Tester local."""
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import shutil
@@ -27,17 +27,15 @@ def _headers(config, expert, terminal):
     return {name: ultra_runner._sha(path) for name, path in deps.items()}
 
 
-def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None, pattern=None, preset=None, progress=None):
+def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None, pattern=None, preset=None,
+        successor=None, switch_at=None, restore_at=None, progress=None):
     if mode not in ("ticks", "s09_cycle", "portfolio") or type(timeout) is not int or not 10 <= timeout <= 1800:
         raise ValueError("Use ticks, s09_cycle ou portfolio no Tester e um prazo de 10 a 1800 segundos.")
     state = ultra_market.verify(snapshot)
     dates = [datetime.fromisoformat(state["time"][k]) for k in ("start_inclusive", "end_exclusive")]
     portfolio = mode == "portfolio"
-    if not portfolio and (strategies is not None or pattern is not None or preset is not None):
-        raise ValueError("Seleção, hipótese e preset exigem o modo portfolio.")
-    if portfolio and (any(d.time() != time() for d in dates) or state["account"]["margin_mode"] != 2
-                      or state["account"]["currency"] != "USD" or state["account"]["currency_digits"] != 2):
-        raise ValueError("A carteira exige fita de dias completos e especificação da conta DEMO hedging USD.")
+    if not portfolio and any(arg is not None for arg in (strategies, pattern, preset, successor, switch_at, restore_at)):
+        raise ValueError("Seleção, hipótese, preset e troca de versão exigem o modo portfolio.")
     data = mt5.data_dir(config).resolve()
     if data != mt5.install_dir(config).resolve():
         raise ValueError("Use um perfil portátil autorizado do MT5 para a reprodução da fita.")
@@ -62,11 +60,15 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
     source = folder / f"{name}.mq5"
     export = ultra_market_cycle.export if cycle else ultra_market.export_probe
     try:
+        rotation = {} if successor is None and switch_at is None and restore_at is None else dict(
+            successor=successor, switch_at=switch_at, restore_at=restore_at)
         bundle = (ultra_market_portfolio.export(config, snapshot, source, attempt=attempt, strategies=strategies,
-                                                pattern=pattern, preset=preset, manifest=state) if portfolio
+                                                pattern=pattern, preset=preset, manifest=state, **rotation) if portfolio
                   else export(snapshot, source, attempt=attempt))
         if portfolio:
             ultra_market_preset.write(folder / "preset-frozen.json", bundle["preset"])
+            if "rotation" in bundle:
+                ultra_market_preset.write(folder / "successor-frozen.json", bundle["rotation"]["successor"])
         key = "UltraMarket_" + attempt[:16]
         expert = data / "MQL5" / "Experts" / "MT5XUltra" / key / source.name
         save("exported", last_completed="exported", **bundle)

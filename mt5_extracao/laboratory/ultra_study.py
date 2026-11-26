@@ -178,12 +178,14 @@ def simulate(policy, plan, ticks, signals):
                     path["state"]["cash"] -= fee
                     path["active"] = selected
                     cadence = review_intervals[name]
+                    scheduled = path["next"]
                     path["next"] = (validation + ((day - validation) // cadence + 1) * cadence) if cadence else end
                     decision = ("keep" if old == selected else "suspend" if selected == cash else
                                 "reactivate" if old == cash and not first else "select" if first else "replace")
                     total = sum(r["cycles_closed"] for r in history[selected])
                     path["p_win"] = sum(r["wins_closed"] for r in history[selected]) / total if total else None
-                    path["reviews"].append({"day": day, "last_training_day": history[0][-1]["day"],
+                    path["reviews"].append({"day": day, "scheduled_day": scheduled,
+                         "last_training_day": history[0][-1]["day"],
                          "scores": list(gains), "old": old, "selected": selected, "decision": decision,
                          "switch_cost": fee, "revision": variants[selected][0]["revision"],
                          "previous_revision": variants[old][0]["revision"],

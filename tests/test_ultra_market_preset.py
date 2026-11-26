@@ -83,6 +83,53 @@ def test_order_report_compares_protection_and_volume_by_ticket():
     assert compare() == {"status": "diverged", "ticket": 2, "field": "sl", "expected": 110214, "observed": 110215}
 
 
+def test_market_parameters_cover_registry_and_reject_invalid_types():
+    from mt5_extracao.composition.registry import STRATEGY_PARAMETERS
+    from mt5_extracao.laboratory import ultra_market_parameters as params
+    from mt5_extracao.laboratory.ultra_catalog import MARKET_NATIVE
+
+    assert params.INPUTS.keys() == MARKET_NATIVE.keys()
+    for key, mapping in params.INPUTS.items():
+        assert mapping.keys() == STRATEGY_PARAMETERS[key].keys()
+    assert params.edits({"ema_atr": {"fast": 10}, "vwap_bands": {"volume_source": 1}}) == {
+        "ema_atr": {"InpFastPeriod": "10"}, "vwap_bands": {"InpVolumeSource": "1"}}
+    with pytest.raises(ValueError, match=r"parameters\.ema_atr\.fast"):
+        params.edits({"ema_atr": {"fast": True}})
+    with pytest.raises(ValueError, match=r"parameters\.madrid\.period_step"):
+        params.validate_effective("madrid", {"InpFirstPeriod": "20", "InpPeriodStep": "110"})
+
+
+def test_research_selects_by_net_with_strategy_uniqueness_and_can_hold_cash():
+    from mt5_extracao.laboratory.ultra_market_research import select
+
+    trials = [dict(id="first", strategy="ema_atr", index=0, net_cents=-1934, cycles=4),
+              dict(id="next", strategy="ema_atr", index=1, net_cents=-1940, cycles=5),
+              dict(id="other", strategy="orb", index=2, net_cents=-1934, cycles=2),
+              dict(id="thin", strategy="pullback", index=3, net_cents=100, cycles=0)]
+    assert select(dict(max_modules=2, min_cycles=1, min_net_cents=-2000), trials) == ["first", "other"]
+    assert [t["decision"] for t in trials] == ["selected", "another_candidate_selected", "selected", "too_few_cycles"]
+    assert select(dict(max_modules=2, min_cycles=1, min_net_cents=0), trials) == []
+
+
+def test_local_risk_counts_partial_entry_order_once_and_carries_cycle_costs_across_day():
+    from mt5_extracao.laboratory.ultra_market_portfolio_audit import _local_expected
+
+    def deal(ticket, magic, owner_position, order, second, entry, steps, profit=0, commission=0):
+        return dict(ticket=ticket, owner=magic, position=owner_position, order=order, msc=second * 1000,
+                    entry="DEAL_ENTRY_" + entry, steps=steps, profit=profit, commission=commission, fee=0, swap=0)
+
+    rows = [deal(2, 100, 2, 2, 86400, "IN", 4, commission=-20),
+            deal(3, 100, 2, 2, 86401, "IN", 6, commission=-30),
+            deal(4, 200, 4, 3, 86402, "IN", 1, commission=-100),
+            deal(5, 100, 2, 4, 86403, "OUT", 5, profit=10),
+            deal(6, 100, 2, 5, 172801, "OUT", 5, profit=20),
+            deal(7, 100, 7, 6, 172802, "IN", 1)]
+    assert _local_expected(rows, 100, 86400, 5, {"max_attempts": 1}) == (-40, 1, 0, "local_attempts")
+    assert _local_expected(rows, 200, 86400, 5, {"daily_loss_cents": 100}) == (-100, 1, 0, "local_daily_loss")
+    assert _local_expected(rows, 100, 172800, 6, {"max_losses": 1}) == (20, 0, 1, "local_losses")
+    assert _local_expected(rows, 100, 172800, 7, {"daily_profit_cents": 20}) == (20, 1, 1, "local_daily_profit")
+
+
 def test_signal_comparison_reads_native_journal_and_checks_its_hash(tmp_path):
     from mt5_extracao.laboratory.ultra_market_signals import compare
 

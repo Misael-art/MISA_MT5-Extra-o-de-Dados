@@ -1,0 +1,92 @@
+// Reconstitui o livro do dono a partir das execuções do MT5. O Magic da
+// abertura fixa a titularidade até o último fechamento do identificador.
+struct UltraOwnedCycle
+{
+   ulong position;
+   long volume, net;
+};
+
+string UltraReadOwnerRisk(const long magic,const long loss_limit,const long profit_limit,
+                          const int attempt_limit,const int loss_count_limit)
+{
+   datetime now=(datetime)(ultra_msc/1000), day=now-now%86400;
+   if(!HistorySelect(0,now+1)) return "local_history";
+   UltraOwnedCycle cycles[];
+   ulong counted[];
+   int attempts=0, losses=0;
+   long net=0;
+   ulong cursor=0;
+   string cause="";
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   if(step<=0) return "local_volume";
+   for(int i=0;i<HistoryDealsTotal();i++)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0) return "local_history";
+      if(deal>cursor) cursor=deal;
+      ENUM_DEAL_TYPE side=(ENUM_DEAL_TYPE)HistoryDealGetInteger(deal,DEAL_TYPE);
+      if(HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol || (side!=DEAL_TYPE_BUY && side!=DEAL_TYPE_SELL)) continue;
+      ulong id=(ulong)HistoryDealGetInteger(deal,DEAL_POSITION_ID);
+      ENUM_DEAL_ENTRY entry=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
+      long owner=HistoryDealGetInteger(deal,DEAL_MAGIC);
+      if(entry==DEAL_ENTRY_IN && owner!=magic) continue;
+      int idx=-1;
+      for(int j=0;j<ArraySize(cycles);j++)
+         if(cycles[j].position==id) {idx=j; break;}
+      if(idx<0)
+      {
+         if(entry!=DEAL_ENTRY_IN)
+         {
+            if(owner==magic) return "local_unbound_position";
+            continue;
+         }
+         idx=ArraySize(cycles);
+         if(id==0 || ArrayResize(cycles,idx+1)!=idx+1) return "local_unbound_position";
+         cycles[idx].position=id;
+         cycles[idx].volume=0;
+         cycles[idx].net=0;
+      }
+      if(entry!=DEAL_ENTRY_IN && entry!=DEAL_ENTRY_OUT) return "local_deal_entry";
+      long volume=(long)MathRound(HistoryDealGetDouble(deal,DEAL_VOLUME)/step);
+      if(volume<=0) return "local_deal_volume";
+      long cents=(long)MathRound(HistoryDealGetDouble(deal,DEAL_PROFIT)*100)
+                +(long)MathRound(HistoryDealGetDouble(deal,DEAL_COMMISSION)*100)
+                +(long)MathRound(HistoryDealGetDouble(deal,DEAL_SWAP)*100)
+                +(long)MathRound(HistoryDealGetDouble(deal,DEAL_FEE)*100);
+      datetime at=(datetime)HistoryDealGetInteger(deal,DEAL_TIME);
+      cycles[idx].volume+=(entry==DEAL_ENTRY_IN ? volume : -volume);
+      cycles[idx].net+=cents;
+      if(cycles[idx].volume<0) return "local_deal_volume";
+      if(at<day) continue;
+      net+=cents;
+      if(entry==DEAL_ENTRY_IN)
+      {
+         ulong order=(ulong)HistoryDealGetInteger(deal,DEAL_ORDER);
+         if(order==0) return "local_unbound_order";
+         bool seen=false;
+         for(int j=0;j<ArraySize(counted) && !seen;j++) seen=counted[j]==order;
+         if(!seen)
+         {
+            if(ArrayResize(counted,attempts+1)!=attempts+1) return "local_history";
+            counted[attempts++]=order;
+         }
+      }
+      else if(cycles[idx].volume==0 && cycles[idx].net<0) losses++;
+      if(cause=="")
+      {
+         if(loss_limit>0 && net<=-loss_limit) cause="local_daily_loss";
+         else if(profit_limit>0 && net>=profit_limit) cause="local_daily_profit";
+         else if(attempt_limit>0 && attempts>=attempt_limit) cause="local_attempts";
+         else if(loss_count_limit>0 && losses>=loss_count_limit) cause="local_losses";
+      }
+   }
+   PrintFormat("%sLOCAL|%I64d|%I64d|%I64d|%I64u|%I64d|%d|%d|%s",UltraPrefix,magic,ultra_msc,
+               (long)day,cursor,net,attempts,losses,cause);
+   return cause;
+}
+
+string UltraOwnerReason(const long magic)
+{
+$cases
+   return "";
+}

@@ -40,6 +40,9 @@ def add_parser(sub):
                         help="módulo da carteira, em ordem de avaliação; repita para selecionar vários")
     market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e de sua proteção de pesquisa")
     market.add_argument("--preset", type=Path, help="preset congelado pelo Laboratório, no modo portfolio")
+    market.add_argument("--successor", type=Path, help="sucessor de gestão pré-carregado no mesmo passe")
+    market.add_argument("--switch-at-msc", type=int, help="instante da troca no eixo bruto do MT5")
+    market.add_argument("--restore-at-msc", type=int, help="reidrata o executor e confere o livro no mesmo passe")
     market.add_argument("--timeout", type=int, default=300)
     market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-preset-freeze", help="congela ou revisa um preset EURUSD M1 da carteira")
@@ -49,6 +52,14 @@ def add_parser(sub):
     market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e da proteção")
     market.add_argument("--parameters", type=Path, help="arquivo JSON de parâmetros editáveis por estratégia")
     market.add_argument("--previous", type=Path, help="preset congelado que esta versão revisa")
+    market.add_argument("--portable", action="store_true", help="fixa a política sem fixar a janela de execução")
+    market.add_argument("--owner-rules", type=Path, help="JSON de limites e gestão para o preset portátil")
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-research", help="ranqueia candidatos no treino real e congela a seleção")
+    market.add_argument("--training", required=True)
+    market.add_argument("--plan", type=Path, required=True)
+    market.add_argument("--out", type=Path, required=True)
+    market.add_argument("--timeout", type=int, default=300)
     market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-compare-signals", help="compara todas as decisões Python deste recibo")
     market.add_argument("--receipt", required=True)
@@ -257,13 +268,26 @@ def run(args, ctx):
                 from ..robots.ultra_market_runner import run as run_market
                 pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
                 result = run_market(ctx.config, args.snapshot, args.out, mode=args.mode, timeout=args.timeout,
-                                    strategies=args.strategy, pattern=pattern, preset=args.preset)
+                                    strategies=args.strategy, pattern=pattern, preset=args.preset,
+                                    successor=args.successor, switch_at=args.switch_at_msc,
+                                    restore_at=args.restore_at_msc)
             elif action == "ultra-market-preset-freeze":
-                from .ultra_market_preset import freeze
+                from .ultra_market_preset import freeze, freeze_portable
                 pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
                 parameters = json.loads(args.parameters.read_text(encoding="utf-8")) if args.parameters else None
-                result = freeze(ctx.config, args.snapshot, args.out, strategies=args.strategy, pattern=pattern,
-                                parameters=parameters, previous=args.previous)
+                if args.portable:
+                    rules = json.loads(args.owner_rules.read_text(encoding="utf-8")) if args.owner_rules else None
+                    result = freeze_portable(ctx.config, args.snapshot, args.out, strategies=args.strategy, pattern=pattern,
+                                             parameters=parameters, owner_rules=rules, previous=args.previous)
+                else:
+                    if args.owner_rules is not None:
+                        raise ValueError("owner_rules: requer --portable.")
+                    result = freeze(ctx.config, args.snapshot, args.out, strategies=args.strategy, pattern=pattern,
+                                    parameters=parameters, previous=args.previous)
+            elif action == "ultra-market-research":
+                from .ultra_market_research import run as run_research
+                result = run_research(ctx.config, args.training, json.loads(args.plan.read_text(encoding="utf-8")),
+                                      args.out, timeout=args.timeout)
             elif action == "ultra-market-compare-signals":
                 from .ultra_market_signals import compare
                 result = compare(args.receipt, strategies=args.strategy)

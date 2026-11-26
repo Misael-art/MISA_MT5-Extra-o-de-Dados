@@ -5529,3 +5529,18 @@ mantêm as regras nativas de gestão de suas referências. A primeira execução
 referências conciliou 260.178 cotações, duas posições simultâneas e dez negócios. O
 [repasse da carteira](repasse/ULTRA_CARTEIRA_EURUSD_20261125.md) registra os controles e
 o alcance da paridade.
+
+### T19.53 · Pesquisa nativa e política portátil (26/11/2026)
+
+O Laboratório compara alternativas dos módulos de mercado no histórico
+de treino do Tester e congela a seleção para fitas posteriores. Cada
+execução comprova a combinação de política, fita, especificações e EX5.
+O Expert reconstrói os limites realizados de cada módulo pelos negócios
+do MT5, sob os limites globais da carteira. O controle de revisão retém
+a gestão de origem nas posições abertas e só adota a versão seguinte
+para novas entradas daquele módulo após conciliar o livro.
+
+O [guia da carteira](ultra-preset-mercado.md) descreve o fluxo da CLI e da
+interface, os parâmetros e os recibos. O ensaio econômico depende de
+sessões e custos vigentes no período a pesquisar. A semana já examinada
+permanece como regressão técnica.
