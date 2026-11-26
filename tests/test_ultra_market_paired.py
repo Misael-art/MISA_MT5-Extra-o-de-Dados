@@ -28,6 +28,8 @@ def test_ablation_distinguishes_rejected_capital_from_absent_signal():
     assert (diff["net_cents"], diff["profit_factor"], diff["capital_vetoes"]) == (40, None, 1)
     assert diff["displaced"][0]["tick_msc"] == 20
     assert paired.marginal(dict(full, refusals=[]), base)["capital_vetoes"] == 0
+    daily = "risco da ordem (US$ 4,75) maior que o que resta hoje (US$ 4,11)"
+    assert paired.marginal(dict(full, refusals=[[11, 20, "buy", daily]]), base)["capital_vetoes"] == 1
 
 
 def test_reversal_exports_fraction_on_price_grid():

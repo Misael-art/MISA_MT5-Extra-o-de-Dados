@@ -139,7 +139,8 @@ def marginal(full, reduced):
     reasons = {tuple(row[:3]): row[3] for row in full["refusals"]}
     missed = [dict(magic=k[0], tick_msc=k[1], direction=k[2], count=n, reason=reasons.get(k))
               for k, n in displaced.items()]
-    capital = re.compile(r"orçamento (?:global excedido|do robô .+ excedido)|margem necessária .+ excede disponível", re.I)
+    capital = re.compile(r"orçamento (?:global excedido|do robô .+ excedido)|margem necessária .+ excede disponível"
+                         r"|risco da ordem \(.+\) maior que o que resta hoje \(.+\)|risco aberto total iria a ", re.I)
     loss_days = {day: full.get("daily_net_cents", {}).get(day, 0) - value
                  for day,value in reduced.get("daily_net_cents", {}).items() if value < 0}
     return dict(net_cents=full["net_cents"]-reduced["net_cents"], marginal_cents_on_losing_days=loss_days,
