@@ -1,0 +1,62 @@
+// Super ATR Triplo usa o cálculo e a verificação do prefixo do Expert original.
+input long InpMagicNumber=909202611;
+input double InpRiskPct=0.5;
+input double InpDailyLossPct=2.0;
+input double InpWeeklyLossPct=4.0;
+input double InpMaxDrawdownPct=10.0;
+input int InpDeviationPoints=20;
+input datetime InpSeedStart=(datetime)$seed;
+input int InpPeriod=20;
+input int InpMean=0;
+input double InpDeviation1=1.0;
+input double InpDeviation2=2.0;
+input double InpDeviation3=3.0;
+input int InpInitialSide=1;
+input bool InpEntriesEnabled=true;
+#include <Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh>
+#include <Framework/HADOUKEN/Indicators/HDK_SuperATRTriple.mqh>
+#include <Framework/HADOUKEN/Contracts/HDK_MarketContext.mqh>
+
+CHDKSuperATRTriple triplo_curves;
+MqlRates triplo_prefix[];
+int triplo_count=0;
+bool triplo_revision_block=false;
+
+$closed_point
+
+void StrategyRules(HDKExitRules &rules) {}
+void StrategySignal(const HDKBars &bars,HDKSignal &s)
+{
+   g_episode=0;
+   HDKMarketContextV1 context;
+   ZeroMemory(context);
+   context.timeframe=_Period;
+   context.bar_open_at=bars.time[bars.n-1];
+   HDKSuperATRTriplePointV1 point;
+   datetime episode=0;
+   int gaps=0;
+   string reason;
+   if(!TriploClosedPoint(context,point,episode,gaps,reason))
+   {
+      PrintFormat("MT5X_ULTRA_SUPER_ATR|%I64d|0|%s",(long)context.bar_open_at,reason);
+      return;
+   }
+   PrintFormat("MT5X_ULTRA_SUPER_ATR|%I64d|1|%d|%I64d|%d|%.*f|%.*f|%.*f",(long)context.bar_open_at,
+               point.consensus,(long)episode,gaps,_Digits,point.first,_Digits,point.second,_Digits,point.third);
+   if(point.consensus==0) return;
+   g_episode=episode;
+   s.exit_long=point.consensus<0;
+   s.exit_short=point.consensus>0;
+   bool eligible=InpEntriesEnabled && episode>0 && episode+PeriodSeconds(_Period)>UltraStart/1000;
+   s.entry_long=eligible && point.consensus>0;
+   s.entry_short=eligible && point.consensus<0;
+   s.stop_long=point.consensus>0 ? point.first : 0;
+   s.stop_short=point.consensus<0 ? point.first : 0;
+}
+int OnInit()
+{
+   if(!triplo_curves.Init(InpPeriod,InpMean,InpDeviation1,InpDeviation2,InpDeviation3,InpInitialSide))
+      return INIT_PARAMETERS_INCORRECT;
+   return StrategyInit("HDK_SuperATRTriplo");
+}
+void OnTick() {StrategyTick();}

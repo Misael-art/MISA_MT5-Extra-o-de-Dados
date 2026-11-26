@@ -5490,6 +5490,8 @@ O segundo símbolo personalizado conserva os ticks do pacote e acrescenta histó
 
 O Expert de pesquisa solicita pendentes com proteção no símbolo personalizado, observa as respostas e grava negócios e estado da conta em cada tick. O launcher compara o livro, o journal do agente e a tabela de negócios do relatório. A interface abre a trilha por ciclo pelo mesmo comparador da CLI. O aceite físico depende da execução no agente de uma conta DEMO e dos recibos específicos de cada cenário.
 
+O ensaio de paridade por fatias executou ordens físicas FOK nos controles inteiro e fracionário em hedging, com 372 ticks por controle. A conferência do primeiro preenchimento no tick 199 inclui o ticket, a proteção e a comissão. O checkpoint reabre o estado dentro da mesma passagem do Tester e a troca mantém a proteção e a regra de origem dos ciclos abertos. A liquidação do Tester após o último tick tem conferência própria. [Repasse e comandos](repasse/ULTRA_PRESET_20261124.md#fatias-físicas-checkpoint-e-troca-de-preset-no-tester)
+
 ### T19.54 · Métricas da reserva temporal por alternativa
 
 O estudo calcula patrimônio marcado desde o início da reserva, drawdown, fator de lucro dos ciclos encerrados, custos, exposição e margem máxima para cada cadência e tentativa. A seleção final por política e o intervalo por blocos da média líquida por sessão integram o recibo. A identidade do avaliador muda em novos registros e os recibos concluídos preservam seus resultados.
@@ -5505,3 +5507,46 @@ A alternativa linear compartilha capital e capacidade por tick, reserva todos os
 ### T19.53 · Quantidade de donos no Expert de pesquisa
 
 O exportador do Expert de ordens instancia o indicador e a política de cada dono Donchian/S09. Os identificadores de ordem, as reservas e as proteções incluem o índice de precedência. Há controles para um, dois e três donos e um período sem sinais. A retomada de referência mantém o contrato original para dois donos.
+
+### T19.53 · Inventário operacional e fita MetaQuotes-Demo
+
+O Laboratório congela a seleção técnica da carteira EURUSD M1 com
+`ultra-market-preset-freeze`. A CLI e a interface abrem o mesmo JSON para
+gerar um único Expert. O pacote e o journal vinculam preset, valores
+efetivos por módulo, fita e binário. O recorte exclui promoção econômica.
+
+O catálogo deriva do registro Python, dos contratos nativos e da via declarativa. A UI, a CLI e o
+exportador consultam as permissões do mesmo módulo. O teste de inventário acusa chaves novas
+sem representação. A geração concorrente continua limitada ao recorte explicitado no catálogo.
+A CLI congela os ticks originais em blocos com SHA-256 e exporta um Expert passivo que compara
+o fluxo efetivamente recebido pelo Tester com a fita do broker. O protocolo econômico foi
+congelado em [Ultra EURUSD](repasse/ULTRA_EURUSD_PROTOCOLO_20261125.md).
+
+Foi integrado o modo `portfolio` do Tester no EURUSD M1 da MetaQuotes-Demo. As 11
+referências do Laboratório, o Super ATR Triplo e uma hipótese direcional M1 selecionada
+podem compartilhar conta hedging, orçamento e journal no mesmo Expert. As estratégias
+mantêm as regras nativas de gestão de suas referências. A primeira execução com as 11
+referências conciliou 260.178 cotações, duas posições simultâneas e dez negócios. O
+[repasse da carteira](repasse/ULTRA_CARTEIRA_EURUSD_20261125.md) registra os controles e
+o alcance da paridade.
+
+### T19.53 · Pesquisa nativa e política portátil (26/11/2026)
+
+O Laboratório compara alternativas dos módulos de mercado no histórico
+de treino do Tester e congela a seleção para fitas posteriores. Cada
+execução comprova a combinação de política, fita, especificações e EX5.
+O Expert reconstrói os limites realizados de cada módulo pelos negócios
+do MT5, sob os limites globais da carteira. O controle de revisão retém
+a gestão de origem nas posições abertas e só adota a versão seguinte
+para novas entradas daquele módulo após conciliar o livro.
+
+O [guia da carteira](ultra-preset-mercado.md) descreve o fluxo da CLI e da
+interface, os parâmetros e os recibos. O ensaio econômico depende de
+sessões e custos vigentes no período a pesquisar. A semana já examinada
+permanece como regressão técnica.
+
+### T19.53 · Conciliação do Pullback e ablação da reversão
+
+O diagnóstico reproduziu os 24 vetos na fita de 16/11 e isolou o resíduo de volume da proteção 10. O protocolo EURUSD congela a hipótese de reversão, sua invalidação, o caixa e os cinco braços para medir a contribuição conjunta no Tester. A entrega posterior de uma revisão técnica usa o recibo do Expert em execução. [Operação e reprodução](repasse/ULTRA_EURUSD_CONCILIACAO.md)
+
+A campanha histórica de T19.53 motivou a retomada de relatório da mesma tentativa depois do prazo do observador. O botão de pesquisa e a CLI reutilizam o recibo, a fita, o EX5 e o journal do agente. O roteiro de EURUSD registra o comando, a ablação dos 13 módulos e as amostras de treino e validação. [Roteiro e resultados](repasse/ULTRA_EURUSD_CONCILIACAO.md)

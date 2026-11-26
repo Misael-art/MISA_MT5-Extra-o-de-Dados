@@ -11,8 +11,17 @@ REPO = Path(__file__).resolve().parents[1]
 SURFACE = {
     "ultra_capabilities": [],
     "ultra_tester_capabilities": [],
-    "ultra_export_tester": ["db", "package", "destination", "restart_id", "prepare_tester"],
+    "ultra_export_tester": ["db", "package", "destination", "restart_id", "prepare_tester", "slice_id"],
     "ultra_compare_native_book": ["db", "package", "journal", "origin"],
+    "ultra_capture_market": ["backend", "symbol", "start", "end", "destination", "expected_server", "chunk_minutes"],
+    "ultra_verify_market": ["source"],
+    "ultra_verify_market_m1": ["backend", "source"],
+    "ultra_export_market_probe": ["source", "destination", "attempt"],
+    "ultra_compare_market_probe": ["source", "tape", "binding", "agent_journal"],
+    "ultra_run_market_tester": ["config", "snapshot", "output", "mode", "timeout"],
+    "ultra_run_market_portfolio": ["config", "snapshot", "output", "strategies", "pattern", "timeout"],
+    "ultra_freeze_market_preset": ["config", "snapshot", "output", "strategies", "pattern", "parameters", "previous"],
+    "ultra_run_market_preset": ["config", "snapshot", "output", "preset", "timeout"],
     "ultra_run_tester": ["db", "config", "package", "output", "origin", "chart", "timeout", "resume", "prepare_only"],
     "ultra_freeze": ['db', 'definition'],
     "ultra_replay": ['db', 'receipt', 'until'],
@@ -132,6 +141,17 @@ def test_signatures_did_not_change():
     for name, expected in SURFACE.items():
         if expected is not None:
             assert list(inspect.signature(getattr(sdk, name)).parameters) == expected, name
+
+
+def test_ultra_market_sdk_keeps_legacy_mode_and_forwards_portfolio_selection(monkeypatch):
+    monkeypatch.setattr(sdk, "_run_ultra_market_tester", lambda *args, **kwargs: (args, kwargs))
+    args = (object(), "snapshot", "output")
+    assert sdk.ultra_run_market_tester(*args, mode="s09_cycle") == (args, {"mode": "s09_cycle", "timeout": 300})
+    pattern = {"definition": {}}
+    assert sdk.ultra_run_market_portfolio(*args, strategies=["pattern_definition"], pattern=pattern) == (
+        args, {"mode": "portfolio", "timeout": 300, "strategies": ["pattern_definition"], "pattern": pattern})
+    assert sdk.ultra_run_market_preset(*args, preset="frozen.json") == (
+        args, {"mode": "portfolio", "timeout": 300, "preset": "frozen.json"})
 
 
 def test_query_catalog_database_is_optional_for_existing_offline_callers():

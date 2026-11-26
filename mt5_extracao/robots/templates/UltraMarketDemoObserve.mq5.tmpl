@@ -1,0 +1,85 @@
+#property strict
+const string Audit="MT5X_ULTRA_MARKET_DEMO|", Manifest="$manifest", Binding="$binding";
+const int ObservationIntervals=12, ConnectionAttempts=45;
+int attempts=0, connected_intervals=0;
+bool ready=false, context_logged=false;
+long seen=0;
+datetime history_start=0;
+double opening_balance=0;
+int opening_positions=0, opening_orders=0;
+
+bool Authorized()
+{
+   return !MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_TRADE_ALLOWED)
+          && !TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)
+          && AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO
+          && AccountInfoString(ACCOUNT_SERVER)=="MetaQuotes-Demo"
+          && _Symbol=="EURUSD" && _Period==PERIOD_M1 && !SymbolInfoInteger(_Symbol,SYMBOL_CUSTOM);
+}
+
+int OnInit()
+{
+   if(MQLInfoInteger(MQL_TESTER) || _Symbol!="EURUSD" || _Period!=PERIOD_M1) return INIT_FAILED;
+   return EventSetTimer(1) ? INIT_SUCCEEDED : INIT_FAILED;
+}
+
+void OnTimer()
+{
+   bool connected=TerminalInfoInteger(TERMINAL_CONNECTED)!=0;
+   if(connected && !context_logged)
+   {
+      context_logged=true;
+      PrintFormat("%sCONTEXT|%s|%d|%d|%d|%d",Audit,Binding,
+         (int)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED),(int)MQLInfoInteger(MQL_TRADE_ALLOWED),
+         (int)AccountInfoInteger(ACCOUNT_TRADE_MODE),(int)(AccountInfoString(ACCOUNT_SERVER)=="MetaQuotes-Demo"));
+   }
+   if(!connected || !Authorized())
+   {
+      attempts++;
+      if(ready || attempts>=ConnectionAttempts)
+      {
+         PrintFormat("%sUNAVAILABLE|%s|%d|%d|%d|%d|%d",Audit,Binding,
+            (int)TerminalInfoInteger(TERMINAL_CONNECTED),(int)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED),
+            (int)MQLInfoInteger(MQL_TRADE_ALLOWED),(int)AccountInfoInteger(ACCOUNT_TRADE_MODE),
+            (int)(AccountInfoString(ACCOUNT_SERVER)=="MetaQuotes-Demo"));
+         ExpertRemove();
+      }
+      return;
+   }
+   if(!ready)
+   {
+      ready=true;
+      history_start=TimeTradeServer();
+      opening_balance=AccountInfoDouble(ACCOUNT_BALANCE);
+      opening_positions=PositionsTotal();
+      opening_orders=OrdersTotal();
+      PrintFormat("%sBEGIN|%s|%s|EURUSD|MetaQuotes-Demo|%d|%d|%I64d|%I64d|%I64d|%d|%d|%.2f",
+                  Audit,Manifest,Binding,(int)TerminalInfoInteger(TERMINAL_BUILD),
+                  (int)AccountInfoInteger(ACCOUNT_MARGIN_MODE),(long)TimeCurrent(),(long)TimeTradeServer(),
+                  (long)TimeGMT(),opening_orders,opening_positions,opening_balance);
+      for(int day=0;day<7;day++)
+      {
+         datetime from=0,to=0;
+         for(uint i=0;SymbolInfoSessionTrade(_Symbol,(ENUM_DAY_OF_WEEK)day,i,from,to);i++)
+            PrintFormat("%sSESSION|%d|%u|%I64d|%I64d",Audit,day,i,(long)from,(long)to);
+      }
+   }
+   connected_intervals++;
+   if(connected_intervals<ObservationIntervals) return;
+   bool known=HistorySelect(history_start,TimeTradeServer());
+   int orders=(known ? HistoryOrdersTotal() : -1), deals=(known ? HistoryDealsTotal() : -1);
+   PrintFormat("%sEND|%s|%I64d|%d|%d|%d|%d|%.2f|%I64d|%I64d",Audit,Binding,seen,
+               OrdersTotal(),PositionsTotal(),orders,deals,AccountInfoDouble(ACCOUNT_BALANCE),
+               (long)TimeTradeServer(),(long)TimeGMT());
+   ExpertRemove();
+}
+
+void OnTick()
+{
+   if(!ready || !Authorized() || !TerminalInfoInteger(TERMINAL_CONNECTED)) return;
+   MqlTick tick={};
+   if(!SymbolInfoTick(_Symbol,tick)) return;
+   seen++;
+   PrintFormat("%sVETO|%I64d|%I64d|%I64d|%.*f|%.*f|economics_and_holdout_unverified",
+               Audit,tick.time_msc,(long)TimeTradeServer(),(long)TimeGMT(),_Digits,tick.bid,_Digits,tick.ask);
+}

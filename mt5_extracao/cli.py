@@ -1709,7 +1709,7 @@ def cmd_robots(args, ctx):
         _data(**result)
         _print("Execução Ultra: " + result["status"])
         expected = "tester_contract_verified" if args.prepare_only else "modeled_book_matches"
-        if args.ultra_origin == "strategy_tester_orders" and not args.prepare_only:
+        if args.ultra_origin in ("strategy_tester_orders", "strategy_tester_sliced") and not args.prepare_only:
             expected = "platform_orders_match"
         return EXIT_OK if result["status"] == expected else EXIT_FAIL
     if args.all_symbols and args.action != "backtest-plan":
@@ -2420,7 +2420,7 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
-    p.add_argument("--ultra-origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders"), default="strategy_tester",
+    p.add_argument("--ultra-origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders", "strategy_tester_sliced"), default="strategy_tester",
                    help="ultra-test: origem do journal MQL5")
     p.add_argument("--prepare-only", action="store_true", help="ultra-test: verifica o contrato e as barras M1 antes do ensaio")
     p.add_argument("--resume-attempt", help="ultra-test: receipt.json que contém o checkpoint de um fill parcial")

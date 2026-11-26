@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 
 
+# Elimina resíduos numéricos da média muito menores que a grade de preço.
+PRICE_COMPARISON_REL_TOLERANCE = 1e-12
+
+
 def sma(series: pd.Series, n: int) -> pd.Series:
     return series.rolling(n, min_periods=n).mean()
 

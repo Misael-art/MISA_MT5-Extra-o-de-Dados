@@ -1,0 +1,31 @@
+input long InpMagicNumber=909202612;
+input double InpRiskPct=0.5;
+input double InpDailyLossPct=2.0;
+input double InpWeeklyLossPct=4.0;
+input double InpMaxDrawdownPct=10.0;
+input int InpDeviationPoints=20;
+input int InpStopPoints=$stop;
+input int InpTargetPoints=$target;
+#include <Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh>
+
+void StrategyRules(HDKExitRules &rules) {}
+void StrategySignal(const HDKBars &b,HDKSignal &s)
+{
+   int last=b.n-1;
+   long minute=b.time[last]/60, available=(minute+1)*60000, msc=ultra_msc;
+   if(b.time[last]*1000<UltraStart || available>msc) return;
+   long opening=(long)MathRound(b.open[last]/_Point), highest=(long)MathRound(b.high[last]/_Point),
+        lowest=(long)MathRound(b.low[last]/_Point), closing=(long)MathRound(b.close[last]/_Point),
+        prior=last>0 && b.time[last-1]*1000>=UltraStart ? (long)MathRound(b.close[last-1]/_Point) : LONG_MIN;
+   if($reference==LONG_MIN || ($condition)!=1) return;
+   int invalid=0;$variables
+$checks
+   PrintFormat("MT5X_ULTRA_MARKET_PATTERN|%I64d|%I64d|%d|%d|%I64d",msc,available,$direction,invalid,$reference);
+   if(invalid!=0) return;
+   s.entry_long=$direction>0;
+   s.entry_short=$direction<0;
+   s.stop_long=b.close[last]-InpStopPoints*_Point;
+   s.stop_short=b.close[last]+InpStopPoints*_Point;
+}
+int OnInit() {return StrategyInit("UltraPatternM1");}
+void OnTick() {StrategyTick();}

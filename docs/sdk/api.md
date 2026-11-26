@@ -1557,9 +1557,55 @@ Tester. Um livro normalizado coincidente ainda exige auditoria de origem do bin�
 modelo de ticks, journal e versão do terminal.
 
 `sdk.ultra_tester_capabilities()` informa as estratégias, as origens e o limite de ticks do
-Expert. `sdk.ultra_export_tester(db, package, destination)` verifica o pacote e grava os
+Expert. O campo `catalog` é derivado dos registros do Laboratório e da composição.
+Cada item informa requisitos, estado do Expert concorrente e evidência disponível.
+`sdk.ultra_export_tester(db, package, destination)` verifica o pacote e grava os
 fontes MQL5 e as cotações em uma pasta nova. O retorno identifica o símbolo e o SHA-256
 de cada arquivo.
+
+`sdk.ultra_capture_market(backend, symbol, start, end, destination, expected_server=server)`
+lê uma DEMO existente pelo backend do MT5 e grava os campos originais em CSVs particionados.
+Use limites inclusive/exclusivo no relógio bruto do MT5, por exemplo
+`2026-11-23T08:00:00` e `2026-11-23T10:00:00`. A sequência no mesmo milissegundo
+conserva a ordem do broker. `sdk.ultra_verify_market(source)` verifica hashes e fronteiras.
+`sdk.ultra_verify_market_m1(backend, source)` compara o OHLC reconstruído pelo bid,
+a contagem de cotações e o volume negociado informado nas barras do servidor.
+Especificações atuais, custos históricos e relógio comprovado têm estados distintos no manifesto.
+
+`sdk.ultra_export_market_probe(source, destination, attempt=ident)` gera um Expert
+passivo para o próprio símbolo do broker no Tester M1, modelo 4. Use um identificador
+de 32 dígitos hexadecimais por execução. O Expert grava os dados recebidos em
+`Common/Files` e emite marcadores de abertura/fechamento no journal do agente.
+`sdk.ultra_compare_market_probe(source, tape, binding=binding, agent_journal=journal)`
+confere o vínculo, a contagem, a primeira divergência e o prefixo idêntico. O resultado
+é evidência do fluxo de ticks e tem `order_parity="not_exercised"`.
+
+`sdk.ultra_run_market_tester(config, snapshot, output, mode="ticks")` compila o
+Expert passivo, executa o modelo 4 no perfil portátil e guarda o recibo com o journal
+do agente. O modo `s09_cycle` usa um controle técnico com ordens simuladas no
+EURUSD da MetaQuotes-Demo, com o perfil e as restrições do protocolo congelado.
+O modo `portfolio` executa a carteira técnica com os módulos padrão.
+
+`sdk.ultra_run_market_portfolio(config, snapshot, output, *, strategies=None, pattern=None, timeout=300)`
+usa o mesmo executor da CLI e da UI. `strategies` seleciona chaves na ordem de avaliação.
+`pattern` recebe a definição de preço M1, o indicador booleano de invalidação e a proteção
+da hipótese em pontos. O modo de mercado exige EURUSD, M1, dias completos no relógio
+do servidor e uma conta DEMO hedging USD. O recibo reúne a fita processada, a conciliação
+das posições por dono e o relatório do Strategy Tester.
+
+`sdk.ultra_freeze_market_preset(config, snapshot, output, *, strategies=None, pattern=None, parameters=None, previous=None)`
+salva um preset técnico `mt5x-ultra-market-preset/1`. A ordem de `strategies`
+define a prioridade. O perfil vincula a fita e sua especificação do símbolo,
+os parâmetros efetivos, as referências nativas e o limite de risco agregado.
+`parameters={"orb": {"range_minutes": 15}}` altera a janela ORB. Com `previous`,
+a nova versão conserva a seleção e a fita e aponta para o hash da anterior.
+O exportador rejeita configurações fora do contrato suportado.
+
+`sdk.ultra_run_market_preset(config, snapshot, output, *, preset, timeout=300)`
+gera um único Expert a partir desse arquivo. O recibo inclui o preset, o
+relatório HTML nativo, a fita observada, o journal de decisões e os hashes
+do pacote e do EX5. O journal confirma a versão do preset e os hashes dos
+parâmetros consumidos por cada módulo. A execução é técnica no Tester DEMO.
 
 `sdk.ultra_run_tester(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300)`
 executa o ensaio no terminal portátil configurado. O recibo identifica a tentativa e o
@@ -1580,5 +1626,10 @@ símbolo do Tester. Na execução, `prepare_only=True` compila, importa e verifi
 terminal os valores de tick e margem e as barras M1 anteriores à amostra. O recibo
 `tester_contract_verified` inclui essas observações e o arquivo de configuração para
 repetir o ensaio no Tester.
+
+Na exportação avulsa da bancada de fatias FOK, `slice_id` identifica a tentativa e
+vincula o Expert ao checkpoint. Use 32 dígitos hexadecimais com
+`prepare_tester=True` e deixe `restart_id` vazio. A execução por
+`ultra_run_tester` com `origin="strategy_tester_sliced"` gera esse identificador.
 
 A origem `strategy_tester_orders` em `ultra_run_tester` executa o Expert de ordens da plataforma exclusivamente no Strategy Tester DEMO. O recibo inclui o relatório original, o journal local do agente e a trilha HTML por ciclo quando disponíveis. Em `ultra_compare_native_book`, a mesma origem retorna os campos `modeled_status` e `native_order_parity`, a regra e os eventos por ciclo, solicitações e transações. A igualdade do journal avulso tem o valor `journal_matches`. O executor verifica também a tabela de negócios do relatório da plataforma.

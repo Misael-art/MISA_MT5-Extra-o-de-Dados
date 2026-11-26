@@ -1,0 +1,253 @@
+#property strict
+#include "$safety"
+
+input string UltraBinarySha="";
+const string UltraManifest="$manifest", UltraBinding="$binding", UltraClosure="$closure";
+const string UltraPresetSha="$preset_sha";
+const int UltraPresetVersion=$preset_version;
+const long UltraStart=$start, UltraEnd=$end, UltraLast=$last, UltraTickCount=$tick_count;
+const string UltraPrefix="MT5X_ULTRA_PORTFOLIO|";
+CHDKPortfolioRiskGuard ultra_leader;
+ulong ultra_chart=0;
+int ultra_tape=INVALID_HANDLE, ultra_peak=0;
+long ultra_ticks=0, ultra_msc=0;
+bool ultra_failed=false, ultra_completed=false;
+datetime ultra_heartbeat=0;
+datetime ultra_latest_rate=0;
+
+bool UltraReconcile(string &reason)
+{
+   if(!ultra_leader.RefreshLeader(ultra_chart)) {reason="pulso do controlador indisponível"; return false;}
+   bool ok=ultra_leader.ReconcileReservations(reason);
+   if(!ok && reason=="") reason="reservas da carteira aguardam conciliação";
+   return ok;
+}
+
+bool UltraBind(CHDKPortfolioRiskGuard &guard,CHDKSafeExecutor &exec,const long magic,const string key,
+               const string preset,const string inputs)
+{
+   string reason;
+   bool ok=guard.BindContext(magic,UltraBinding,key,"mt5x-ultra-eurusd",preset,UltraPresetVersion,UltraClosure,UltraBinarySha,inputs,reason)
+           && exec.BindPortfolio(GetPointer(guard),reason);
+   Print(UltraPrefix,"OWNER|",magic,"|",key,"|",(int)ok,"|",reason);
+   Print(UltraPrefix,"INPUTS|",magic,"|",preset,"|",inputs);
+   return ok;
+}
+
+void UltraRates(const MqlRates &rates[],const int n)
+{
+   for(int i=0;i<n;i++)
+   {
+      if(rates[i].time<=ultra_latest_rate) continue;
+      PrintFormat("%sRATE|%I64d|%.17g|%.17g|%.17g|%.17g|%I64d|%I64d",UltraPrefix,(long)rates[i].time,
+                  rates[i].open,rates[i].high,rates[i].low,rates[i].close,
+                  rates[i].tick_volume,rates[i].real_volume);
+      ultra_latest_rate=rates[i].time;
+   }
+}
+
+void UltraRaw(const long magic,const datetime bar,const datetime first,const datetime closed,const int n,
+              const bool el,const bool es,const bool xl,const bool xs,
+              const double sl,const double ss,const double tl,const double ts)
+{
+   PrintFormat("%sRAW|%I64d|%I64d|%I64d|%I64d|%I64d|%d|%d|%d|%d|%d|%.16g|%.16g|%.16g|%.16g",
+               UltraPrefix,magic,ultra_msc,(long)bar,(long)first,(long)closed,n,(int)el,(int)es,(int)xl,(int)xs,sl,ss,tl,ts);
+}
+
+void UltraRules(const long magic,const double target,const double partial,const double fraction,
+                const bool breakeven,const double trailing,const int max_bars,const bool eod)
+{
+   PrintFormat("%sRULES|%I64d|%.8f|%.8f|%.8f|%d|%.8f|%d|%d",UltraPrefix,magic,target,partial,fraction,
+               (int)breakeven,trailing,max_bars,(int)eod);
+}
+
+void UltraEntryLevels(const long magic,const bool buy,const double price,double &stop,double &target)
+{
+$entry_levels
+}
+
+void UltraDecision(const long magic,const datetime bar,const datetime closed,const bool el,const bool es,
+                   const bool xl,const bool xs,const double sl,const double ss,const double tl,const double ts)
+{
+   PrintFormat("%sBAR|%I64d|%I64d|%I64d|%I64d|%d|%d|%d|%d|%.*f|%.*f|%.*f|%.*f",UltraPrefix,magic,
+               ultra_msc,(long)bar,(long)closed,(int)el,(int)es,(int)xl,(int)xs,
+               _Digits,sl,_Digits,ss,_Digits,tl,_Digits,ts);
+}
+
+void UltraEntry(const long magic,const ENUM_ORDER_TYPE type,const HDKExecutionResultV1 &out,const string reason)
+{
+   PrintFormat("%sENTRY|%I64d|%I64d|%d|%d|%d|%u|%I64u|%I64u|%.8f|%s",UltraPrefix,magic,ultra_msc,(int)type,
+               (int)out.state,out.attempts,out.retcode,out.order_ticket,out.deal_ticket,out.requested_volume,reason);
+}
+
+void UltraPlan(const long magic,const ENUM_ORDER_TYPE type,const double volume,const double price,
+               const double stop,const double target_distance,const double risk)
+{
+   PrintFormat("%sPLAN|%I64d|%I64d|%d|%.8f|%.*f|%.*f|%.*f|%.2f|%.2f|%.2f|%.2f",UltraPrefix,magic,
+               ultra_msc,(int)type,volume,_Digits,price,_Digits,stop,_Digits,target_distance,risk,
+               AccountInfoDouble(ACCOUNT_BALANCE),AccountInfoDouble(ACCOUNT_EQUITY),AccountInfoDouble(ACCOUNT_MARGIN_FREE));
+}
+
+bool UltraOwn(const ulong ticket,const long magic)
+{
+   return PositionSelectByTicket(ticket) && PositionGetInteger(POSITION_MAGIC)==magic &&
+          PositionGetString(POSITION_SYMBOL)==_Symbol;
+}
+
+bool UltraProtect(CHDKSafeExecutor &exec,const long magic,const ulong ticket,const double price,const string kind)
+{
+   if(!UltraOwn(ticket,magic)) return false;
+   const long position=PositionGetInteger(POSITION_IDENTIFIER);
+   const double before=PositionGetDouble(POSITION_SL);
+   string reason,key=StringFormat("%s:%I64d:%.*f",kind,position,_Digits,price);
+   bool ok=UltraReconcile(reason) && exec.ManagementIntent(key,reason) && exec.ModifySL(ticket,price);
+   const double after=UltraOwn(ticket,magic) ? PositionGetDouble(POSITION_SL) : 0;
+   PrintFormat("%sPROTECT|%I64d|%I64d|%I64d|%s|%.*f|%.*f|%.*f|%d|%d|%s",UltraPrefix,magic,ultra_msc,position,kind,
+               _Digits,before,_Digits,price,_Digits,after,(int)ok,(int)exec.ManagementRecorded(),ok ? "" :
+               (reason!="" ? reason : exec.LastMessage()));
+   return ok;
+}
+
+bool UltraClose(CHDKSafeExecutor &exec,const long magic,const ulong ticket,const string kind,const double volume)
+{
+   if(!UltraOwn(ticket,magic)) return false;
+   const long position=PositionGetInteger(POSITION_IDENTIFIER);
+   const double before=PositionGetDouble(POSITION_VOLUME);
+   string reason,key=StringFormat("close:%I64d:%s:%.8f",position,kind,volume);
+   bool ok=UltraReconcile(reason) && exec.ManagementIntent(key,reason) && exec.ClosePosition(ticket,kind,volume);
+   const double after=UltraOwn(ticket,magic) ? PositionGetDouble(POSITION_VOLUME) : 0;
+   PrintFormat("%sCLOSE|%I64d|%I64d|%I64d|%s|%.8f|%.8f|%.8f|%d|%d|%s",UltraPrefix,magic,ultra_msc,position,kind,
+               before,volume,after,(int)ok,(int)exec.ManagementRecorded(),ok ? "" :
+               (reason!="" ? reason : exec.LastMessage()));
+   return ok;
+}
+
+void UltraCloseOwned(CHDKSafeExecutor &exec,const long magic,const string cause)
+{
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket!=0 && UltraOwn(ticket,magic)) UltraClose(exec,magic,ticket,cause,0);
+   }
+}
+
+$includes
+
+int OnInit()
+{
+   if(!MQLInfoInteger(MQL_TESTER) || MQLInfoInteger(MQL_OPTIMIZATION) || MQLInfoInteger(MQL_VISUAL_MODE) ||
+      AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO || AccountInfoString(ACCOUNT_SERVER)!="MetaQuotes-Demo" ||
+      AccountInfoInteger(ACCOUNT_MARGIN_MODE)!=ACCOUNT_MARGIN_MODE_RETAIL_HEDGING || AccountInfoString(ACCOUNT_CURRENCY)!="USD" ||
+      _Symbol!="EURUSD" || _Period!=PERIOD_M1 || SymbolInfoInteger(_Symbol,SYMBOL_CUSTOM) || PositionsTotal()!=0 || OrdersTotal()!=0)
+   {Print(UltraPrefix,"DENIED|context");return INIT_FAILED;}
+   if(_Digits!=$digits || _Point!=$point || SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE)!=$tick ||
+      SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP)!=$lot_step)
+   {Print(UltraPrefix,"DENIED|symbol_specifications");return INIT_FAILED;}
+   Print(UltraPrefix,"PRESET|",UltraPresetSha,"|",UltraPresetVersion,"|",UltraManifest,"|",UltraClosure,"|",UltraBinarySha);
+$init
+   string reason;
+   ultra_chart=(ulong)ChartID();
+   if(ultra_chart==0 || !ultra_leader.AcquireLeader(ultra_chart) || !ultra_leader.PublishPolicy($cap,"$budgets",reason))
+   {Print(UltraPrefix,"DENIED|policy|",reason);return INIT_FAILED;}
+   ultra_tape=FileOpen("MT5XUltraMarket_"+UltraBinding+".bin",FILE_BIN|FILE_WRITE|FILE_COMMON);
+   if(ultra_tape==INVALID_HANDLE) return INIT_FAILED;
+   PrintFormat("MT5X_ULTRA_MARKET|BEGIN|%s|%s|%s|%d|%d",UltraManifest,UltraBinding,_Symbol,
+               (int)TerminalInfoInteger(TERMINAL_BUILD),(int)AccountInfoInteger(ACCOUNT_MARGIN_MODE));
+   PrintFormat("%sACCOUNT|%s|%.2f|%.*f|%.8f",UltraPrefix,_Symbol,AccountInfoDouble(ACCOUNT_BALANCE),
+               _Digits,SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE),SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP));
+   return INIT_SUCCEEDED;
+}
+
+void OnTick()
+{
+   if(ultra_tape==INVALID_HANDLE || ultra_failed) return;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) {ultra_failed=true;return;}
+   if(tick.time_msc<UltraStart || tick.time_msc>=UltraEnd) return;
+   ultra_msc=tick.time_msc;
+   ultra_failed=FileWriteLong(ultra_tape,tick.time_msc)!=8 || FileWriteDouble(ultra_tape,tick.bid)!=8 ||
+      FileWriteDouble(ultra_tape,tick.ask)!=8 || FileWriteDouble(ultra_tape,tick.last)!=8 ||
+      FileWriteLong(ultra_tape,(long)tick.volume)!=8 || FileWriteInteger(ultra_tape,(int)tick.flags,INT_VALUE)!=4 ||
+      FileWriteDouble(ultra_tape,tick.volume_real)!=8;
+   if(ultra_failed) return;
+   if(++ultra_ticks%4096==0) FileFlush(ultra_tape);
+   if(TimeCurrent()-ultra_heartbeat>=5)
+   {
+      if(!ultra_leader.RefreshLeader(ultra_chart)) {ultra_failed=true;return;}
+      ultra_heartbeat=TimeCurrent();
+   }
+$ticks
+   int count=PositionsTotal();
+   if(count>ultra_peak)
+   {
+      ultra_peak=count;
+      string owners="";
+      for(int i=0;i<count;i++)
+         if(PositionGetTicket(i)!=0) owners+=(i==0 ? "" : ",")+IntegerToString(PositionGetInteger(POSITION_MAGIC));
+      Print(UltraPrefix,"PEAK|",ultra_msc,"|",ultra_peak,"|",owners);
+   }
+   // Liquida a janela na última cotação congelada e deixa o Tester gerar seu relatório completo.
+   if(ultra_ticks==UltraTickCount && ultra_msc==UltraLast)
+   {
+$settlement
+      PrintFormat("%sBOUNDARY|%I64d|%I64d|%d|%d",UltraPrefix,ultra_msc,ultra_ticks,PositionsTotal(),OrdersTotal());
+   }
+}
+
+void OnTradeTransaction(const MqlTradeTransaction &transaction,const MqlTradeRequest &request,const MqlTradeResult &result)
+{
+   if(ultra_tape==INVALID_HANDLE) return;
+   if(transaction.type==TRADE_TRANSACTION_REQUEST)
+      PrintFormat("%sRESPONSE|%I64u|%d|%I64u|%I64u|%I64u|%u|%u",UltraPrefix,request.magic,(int)request.action,
+                  request.position,result.order,result.deal,result.request_id,result.retcode);
+   if(transaction.type==TRADE_TRANSACTION_DEAL_ADD)
+      PrintFormat("%sDEAL_EVENT|%I64u|%I64u|%I64u",UltraPrefix,transaction.deal,transaction.order,transaction.position);
+}
+
+double OnTester()
+{
+   if(ultra_tape==INVALID_HANDLE || ultra_failed || ultra_ticks==0 || !HistorySelect(0,TimeCurrent()+1)) return 0;
+   for(int i=0;i<HistoryOrdersTotal();i++)
+   {
+      ulong o=HistoryOrderGetTicket(i);
+      PrintFormat("%sORDER|%I64u|%I64d|%I64d|%I64d|%d|%d|%.8f|%.8f|%.*f|%.*f|%.*f",UltraPrefix,o,
+                  HistoryOrderGetInteger(o,ORDER_MAGIC),HistoryOrderGetInteger(o,ORDER_POSITION_ID),
+                  HistoryOrderGetInteger(o,ORDER_TIME_DONE_MSC),(int)HistoryOrderGetInteger(o,ORDER_TYPE),
+                  (int)HistoryOrderGetInteger(o,ORDER_STATE),HistoryOrderGetDouble(o,ORDER_VOLUME_INITIAL),
+                  HistoryOrderGetDouble(o,ORDER_VOLUME_CURRENT),_Digits,HistoryOrderGetDouble(o,ORDER_PRICE_OPEN),
+                  _Digits,HistoryOrderGetDouble(o,ORDER_SL),_Digits,HistoryOrderGetDouble(o,ORDER_TP));
+   }
+   for(int i=0;i<HistoryDealsTotal();i++)
+   {
+      ulong d=HistoryDealGetTicket(i);
+      if(HistoryDealGetInteger(d,DEAL_TYPE)==DEAL_TYPE_BALANCE) continue;
+      PrintFormat("%sDEAL|%I64u|%I64d|%I64d|%I64d|%I64d|%s|%s|%s|%.8f|%.*f|%.*f|%.*f|%.2f|%.2f|%.2f|%.2f",UltraPrefix,d,
+                  HistoryDealGetInteger(d,DEAL_MAGIC),HistoryDealGetInteger(d,DEAL_POSITION_ID),
+                  HistoryDealGetInteger(d,DEAL_ORDER),HistoryDealGetInteger(d,DEAL_TIME_MSC),
+                  EnumToString((ENUM_DEAL_ENTRY)HistoryDealGetInteger(d,DEAL_ENTRY)),
+                  EnumToString((ENUM_DEAL_TYPE)HistoryDealGetInteger(d,DEAL_TYPE)),
+                  EnumToString((ENUM_DEAL_REASON)HistoryDealGetInteger(d,DEAL_REASON)),
+                  HistoryDealGetDouble(d,DEAL_VOLUME),_Digits,HistoryDealGetDouble(d,DEAL_PRICE),
+                  _Digits,HistoryDealGetDouble(d,DEAL_SL),_Digits,HistoryDealGetDouble(d,DEAL_TP),
+                  HistoryDealGetDouble(d,DEAL_COMMISSION),HistoryDealGetDouble(d,DEAL_FEE),
+                  HistoryDealGetDouble(d,DEAL_SWAP),HistoryDealGetDouble(d,DEAL_PROFIT));
+   }
+   string reason,journal,checksum;
+   bool settled=UltraReconcile(reason);
+   bool audit=settled && owner_0.AuditJournal(journal,checksum,reason);
+   PrintFormat("%sFINAL|%s|%.2f|%.2f|%d|%d|%d|%d|%d|%s|%s|%s",UltraPrefix,UltraBinding,
+               AccountInfoDouble(ACCOUNT_BALANCE),AccountInfoDouble(ACCOUNT_EQUITY),PositionsTotal(),OrdersTotal(),
+               ultra_peak,(int)settled,(int)audit,journal,checksum,reason);
+   ultra_completed=true;
+   return AccountInfoDouble(ACCOUNT_BALANCE);
+}
+
+void OnDeinit(const int reason)
+{
+   if(ultra_tape!=INVALID_HANDLE)
+   {
+      FileClose(ultra_tape);
+      PrintFormat("MT5X_ULTRA_MARKET|END|%s|%I64d|%d|%d",UltraBinding,ultra_ticks,(int)ultra_completed,(int)ultra_failed);
+   }
+   if(ultra_chart!=0) ultra_leader.ReleaseLeader(ultra_chart);
+}

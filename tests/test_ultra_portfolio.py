@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from mt5_extracao.database_manager import DatabaseManager
-from mt5_extracao.laboratory import ultra
+from mt5_extracao.laboratory import ultra, ultra_tester
 from scripts.demo_ultra import prepare, study_plan
 
 APP = Path(__file__).resolve().parents[1]
@@ -136,6 +136,11 @@ def test_review_only_sees_completed_sessions_and_can_select_cash(tmp_path):
         ticks, signals = ultra._inputs(datasets.load(db, policy["manifest_id"]), policy)
         longer = ultra_study.simulate(policy, dict(plan, validation_start="2026-10-14"), ticks, signals)
         assert longer["selection_effect"]["status"] == "estimated"
+        weekend = ultra_study.simulate(policy, dict(plan, validation_start="2026-10-16"), ticks, signals)
+        review = weekend["policies"]["every_15_days"]["reviews"][1]
+        assert review["scheduled_day"] == (date(2026, 10, 31) - epoch).days
+        assert review["day"] == (date(2026, 11, 2) - epoch).days
+        assert review["last_training_day"] < review["day"]
         # Mudar a última cotação da reserva jamais muda decisões de revisão anteriores.
         ticks[-1] = dict(ticks[-1], bid=ticks[-1]["bid"] + 10, ask=ticks[-1]["ask"] + 10)
         alternative = ultra_study.simulate(policy, plan, ticks, signals)
@@ -167,7 +172,7 @@ def test_new_pattern_replays_causal_rules_and_counterfactual(campaign, tmp_path)
     from decimal import Decimal
     package = compile_ultra_research(db, run["receipt"])
     cap = ultra_tester.package_capabilities(db, package)
-    assert cap["supported_origins"] == [ultra_tester.PLATFORM]
+    assert cap["supported_origins"] == list(ultra_tester.PHYSICAL_ORIGINS)
     assert cap["owner_signals"] == {module["owner"]: "pattern_definition"}
     export = ultra_tester.export(db, package, tmp_path / "mql", prepare_tester=True)
     expert = (tmp_path / "mql/UltraPlatformOrders.mq5").read_text()
@@ -291,4 +296,4 @@ def test_batch_continues_to_three_owner_explanation(tmp_path, campaign):
     cli(db, "ultra-compile", "--receipt", receipt, "--out", str(package))
     cap = cli(db, "ultra-tester-capabilities", "--package", str(package))
     assert cap["status"] == "exportable" and cap["owners"] == ["A", "B", "C"]
-    assert cap["supported_origins"] == ["strategy_tester_orders"]
+    assert cap["supported_origins"] == list(ultra_tester.PHYSICAL_ORIGINS)

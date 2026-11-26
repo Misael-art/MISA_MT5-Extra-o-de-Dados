@@ -23,7 +23,8 @@ class Squeeze(Strategy):
         kc = ind.keltner(df, n, p["kc_mult"])
         squeeze_on = (bb["upper"] < kc["upper"]) & (bb["lower"] > kc["lower"])
         recent = squeeze_on.astype(int).rolling(as_int(p["lookback"]), min_periods=1).max().shift(1) == 1
-        momentum = close - ind.sma(close, n)
+        momentum = close - bb["mid"]
+        momentum = momentum.mask(momentum.abs() <= bb["mid"].abs() * ind.PRICE_COMPARISON_REL_TOLERANCE, 0)
         out["entry_long"] = recent & (close > bb["upper"]) & (momentum > 0)
         out["entry_short"] = recent & (close < bb["lower"]) & (momentum < 0)
         out["exit_long"] = (momentum < 0) & (momentum.shift(1) >= 0)

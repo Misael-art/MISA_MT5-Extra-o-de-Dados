@@ -1,0 +1,76 @@
+const long p_magic[@COUNT@]={@MAGICS@};
+const bool p_orb[@COUNT@]={@ORB@};
+bool p_active=false,p_loaded=false,p_error=false,p_done[@COUNT@],p_enable[@COUNT@],p_held[@COUNT@];
+long p_poll=-1,p_effective=0;
+string p_policy="",p_slot[@COUNT@],p_inputs[@COUNT@];
+int p_minutes[@COUNT@];
+
+void PolicyEvent(const long magic,const string action,const ulong position,const string policy)
+{
+   PrintFormat("%sDELIVERY|%I64d|%I64d|%s|%I64u|%s",UltraPrefix,magic,ultra_msc,action,position,policy);
+}
+bool PolicyBlocked(const int i){return p_error || (p_active && (!p_done[i] || !p_enable[i]));}
+ulong PolicyPosition(const long magic)
+{
+   for(int i=0;i<PositionsTotal();i++)
+      if(PositionGetTicket(i) && PositionGetInteger(POSITION_MAGIC)==magic && PositionGetString(POSITION_SYMBOL)==_Symbol)
+         return (ulong)PositionGetInteger(POSITION_IDENTIFIER);
+   return 0;
+}
+bool PolicyOrders(const long magic)
+{
+   for(int i=0;i<OrdersTotal();i++)
+      if(OrderGetTicket(i) && OrderGetInteger(ORDER_MAGIC)==magic && OrderGetString(ORDER_SYMBOL)==_Symbol) return true;
+   return false;
+}
+bool PolicyDigest(const string s)
+{
+   if(StringLen(s)!=64) return false;
+   for(int i=0;i<64;i++) if(StringFind("0123456789abcdef",StringSubstr(s,i,1))<0) return false;
+   return true;
+}
+bool PolicyRead(const string text)
+{
+   string cols[];
+   if(StringSplit(text,'|',cols)!=6+@COUNT@ || cols[1]!=UltraBinding || cols[2]!=UltraPresetSha ||
+      cols[3]!=IntegerToString(UltraPresetVersion+1) || !PolicyDigest(cols[5])) return false;
+   uchar data[],key[],hash[];
+   int bytes=StringToCharArray(StringSubstr(text,65),data,0,-1,CP_UTF8);
+   if(bytes<2 || ArrayResize(data,bytes-1)<1 || CryptEncode(CRYPT_HASH_SHA256,data,key,hash)!=32) return false;
+   string sum="";
+   for(int k=0;k<32;k++) sum+=StringFormat("%02x",(int)hash[k]);
+   if(sum!=cols[0]) return false;
+   p_effective=StringToInteger(cols[4]);p_policy=cols[5];
+   if(IntegerToString(p_effective)!=cols[4] || p_effective<UltraStart || p_effective>=UltraLast) return false;
+   for(int i=0;i<@COUNT@;i++)
+   {
+      string row[];
+      if(StringSplit(cols[6+i],',',row)!=5 || row[0]!=IntegerToString(p_magic[i]) ||
+         (row[1]!="0" && row[1]!="1") || !PolicyDigest(row[2]) || !PolicyDigest(row[3])) return false;
+      p_enable[i]=row[1]=="1";p_slot[i]=row[2];p_inputs[i]=row[3];p_minutes[i]=(int)StringToInteger(row[4]);
+      if(IntegerToString(p_minutes[i])!=row[4] ||
+         ((p_enable[i] && p_orb[i])?(p_minutes[i]<1 || p_minutes[i]>240):p_minutes[i]!=0)) return false;
+   }
+   return true;
+}
+void PolicyPoll()
+{
+   if(p_active || p_error) return;
+   if(!p_loaded && p_poll!=ultra_msc/60000)
+   {
+      p_poll=ultra_msc/60000;
+      string name="MT5XPolicy_"+UltraBinding+".txt";
+      if(!FileIsExist(name,FILE_COMMON)) return;
+      int h=FileOpen(name,FILE_COMMON|FILE_READ|FILE_TXT|FILE_ANSI);
+      bool ok=false;
+      if(h!=INVALID_HANDLE)
+      {
+         if(FileSize(h)<=16384) ok=PolicyRead(FileReadString(h));
+         FileClose(h);
+      }
+      if(!ok){p_error=true;PolicyEvent(0,"error",0,UltraPresetSha);return;}
+      p_loaded=true;
+      PolicyEvent(0,"received",0,p_policy);
+   }
+   if(p_loaded && ultra_msc>=p_effective){p_active=true;PolicyEvent(0,"active",0,p_policy);}
+}

@@ -6,6 +6,7 @@ import pandas as pd
 
 from mt5_extracao.analytics import datasets
 from . import service
+from .ultra_catalog import MARKET_NATIVE, MARKET_PATTERN
 
 
 def add_parser(sub):
@@ -15,6 +16,71 @@ def add_parser(sub):
     supported = actions.add_parser("ultra-tester-capabilities", help="capacidades do livro e do executor para o pacote")
     supported.add_argument("--package", help="pacote congelado a conferir")
     supported.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-capture", help="congela ticks do broker na DEMO já aberta")
+    for option in ("symbol", "server", "start", "end", "out"):
+        market.add_argument("--" + option, required=True)
+    market.add_argument("--chunk-minutes", type=int, default=15)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-verify", help="verifica o manifesto e os blocos congelados")
+    market.add_argument("--snapshot", required=True)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-export", help="exporta o Expert passivo que grava ticks do Tester")
+    for option in ("snapshot", "out", "attempt"):
+        market.add_argument("--" + option, required=True)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-compare", help="compara ticks do broker e do OnTick do Tester")
+    for option in ("snapshot", "tape", "binding", "journal"):
+        market.add_argument("--" + option, required=True)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-tester-run", help="compila e roda a sonda, o S09 ou a carteira no Tester")
+    market.add_argument("--snapshot", required=True)
+    market.add_argument("--out", required=True)
+    market.add_argument("--mode", choices=("ticks", "s09_cycle", "portfolio"), default="ticks")
+    market.add_argument("--strategy", action="append", choices=(*MARKET_NATIVE, MARKET_PATTERN),
+                        help="módulo da carteira, em ordem de avaliação; repita para selecionar vários")
+    market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e de sua proteção de pesquisa")
+    market.add_argument("--preset", type=Path, help="preset congelado pelo Laboratório, no modo portfolio")
+    market.add_argument("--policy-inbox", action="store_true", help="aceita revisão publicada durante o passe")
+    market.add_argument("--successor", type=Path, help="sucessor de gestão pré-carregado no mesmo passe")
+    market.add_argument("--switch-at-msc", type=int, help="instante da troca no eixo bruto do MT5")
+    market.add_argument("--restore-at-msc", type=int, help="reidrata o executor e confere o livro no mesmo passe")
+    market.add_argument("--timeout", type=int, default=300)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-tester-resume", help="concilia um relatório posterior do mesmo passe")
+    market.add_argument("--snapshot", type=Path, required=True)
+    market.add_argument("--receipt", type=Path, required=True)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-install", help="publica uma revisão para um Tester DEMO em execução")
+    market.add_argument("--receipt", type=Path, required=True)
+    market.add_argument("--effective-msc", type=int, required=True)
+    revision = market.add_mutually_exclusive_group(required=True)
+    revision.add_argument("--successor", type=Path)
+    revision.add_argument("--selection", type=Path, help="seleção do Laboratório para adoção ou suspensão em caixa")
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-preset-freeze", help="congela ou revisa um preset EURUSD M1 da carteira")
+    market.add_argument("--snapshot", required=True)
+    market.add_argument("--out", type=Path, required=True)
+    market.add_argument("--strategy", action="append", choices=(*MARKET_NATIVE, MARKET_PATTERN))
+    market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e da proteção")
+    market.add_argument("--parameters", type=Path, help="arquivo JSON de parâmetros editáveis por estratégia")
+    market.add_argument("--previous", type=Path, help="preset congelado que esta versão revisa")
+    market.add_argument("--portable", action="store_true", help="fixa a política sem fixar a janela de execução")
+    market.add_argument("--owner-rules", type=Path, help="JSON de limites e gestão para o preset portátil")
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-research", help="ranqueia candidatos no treino real e congela a seleção")
+    market.add_argument("--training", required=True)
+    market.add_argument("--plan", type=Path, required=True)
+    market.add_argument("--out", type=Path, required=True)
+    market.add_argument("--timeout", type=int, default=300)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-compare-signals", help="compara todas as decisões Python deste recibo")
+    market.add_argument("--receipt", required=True)
+    market.add_argument("--strategy", action="append", choices=tuple(MARKET_NATIVE))
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-demo-export", help="gera observador do gráfico DEMO com ordens desativadas")
+    for option in ("snapshot", "out", "attempt"):
+        market.add_argument("--" + option, required=True)
+    market.set_defaults(func=run)
     explain = actions.add_parser("ultra-explain", help="consulta decisões, regras e orçamento de um tick da carteira")
     explain.add_argument("--receipt", required=True)
     explain.add_argument("--ordinal", type=int, required=True, help="índice do tick contado a partir de zero")
@@ -51,7 +117,7 @@ def add_parser(sub):
     capture = actions.add_parser("ultra-tester-compare", help="compara eventos e saldo do journal MQL5")
     capture.add_argument("--package", required=True)
     capture.add_argument("--journal", required=True)
-    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders"), default="strategy_tester")
+    capture.add_argument("--origin", choices=("strategy_tester", "terminal_history", "terminal_restart", "strategy_tester_orders", "strategy_tester_sliced"), default="strategy_tester")
     capture.add_argument("--out", help="novo relatório HTML navegável por ciclo para a origem de ordens")
     capture.set_defaults(func=run)
     parity = actions.add_parser("ultra-parity", help="confere o primeiro desvio no livro normalizado do Tester")
@@ -200,7 +266,57 @@ def run(args, ctx):
     from mt5_extracao import cli
     if args.laboratory_action.startswith("ultra-"):
         from . import ultra
-        if args.laboratory_action == "ultra-capabilities":
+        if args.laboratory_action.startswith("ultra-market-"):
+            from . import ultra_market
+            action = args.laboratory_action
+            if action == "ultra-market-capture":
+                result = ultra_market.capture_configured(ctx.config, ctx.args.config, args.symbol, args.start,
+                    args.end, args.out, expected_server=args.server, chunk_minutes=args.chunk_minutes)
+            elif action == "ultra-market-verify":
+                result = ultra_market.verify(args.snapshot)
+            elif action == "ultra-market-export":
+                result = ultra_market.export_probe(args.snapshot, args.out, attempt=args.attempt)
+            elif action == "ultra-market-tester-run":
+                from ..robots.ultra_market_runner import run as run_market
+                pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
+                result = run_market(ctx.config, args.snapshot, args.out, mode=args.mode, timeout=args.timeout,
+                                    strategies=args.strategy, pattern=pattern, preset=args.preset,
+                                    successor=args.successor, switch_at=args.switch_at_msc,
+                                    restore_at=args.restore_at_msc, **({"policy_inbox": True} if args.policy_inbox else {}))
+            elif action == "ultra-market-tester-resume":
+                from ..robots.ultra_market_resume import recover
+                result = recover(ctx.config, args.snapshot, args.receipt)
+            elif action == "ultra-market-install":
+                from ..robots.ultra_market_delivery import install
+                result = install(ctx.config, args.receipt, successor=args.successor, selection=args.selection,
+                                 effective=args.effective_msc)
+            elif action == "ultra-market-preset-freeze":
+                from .ultra_market_preset import freeze, freeze_portable
+                pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
+                parameters = json.loads(args.parameters.read_text(encoding="utf-8")) if args.parameters else None
+                if args.portable:
+                    rules = json.loads(args.owner_rules.read_text(encoding="utf-8")) if args.owner_rules else None
+                    result = freeze_portable(ctx.config, args.snapshot, args.out, strategies=args.strategy, pattern=pattern,
+                                             parameters=parameters, owner_rules=rules, previous=args.previous)
+                else:
+                    if args.owner_rules is not None:
+                        raise ValueError("owner_rules: requer --portable.")
+                    result = freeze(ctx.config, args.snapshot, args.out, strategies=args.strategy, pattern=pattern,
+                                    parameters=parameters, previous=args.previous)
+            elif action == "ultra-market-research":
+                from .ultra_market_research import run as run_research
+                result = run_research(ctx.config, args.training, json.loads(args.plan.read_text(encoding="utf-8")),
+                                      args.out, timeout=args.timeout)
+            elif action == "ultra-market-compare-signals":
+                from .ultra_market_signals import compare
+                result = compare(args.receipt, strategies=args.strategy)
+            elif action == "ultra-market-demo-export":
+                result = ultra_market.export_demo_observer(args.snapshot, args.out, attempt=args.attempt)
+            else:
+                from ..robots.mt5_tools import read_log_text
+                result = ultra_market.compare_probe(args.snapshot, args.tape, binding=args.binding,
+                    agent_journal=read_log_text(Path(args.journal)))
+        elif args.laboratory_action == "ultra-capabilities":
             result = ultra.capabilities()
         elif args.laboratory_action == "ultra-tester-capabilities":
             from .ultra_tester import capabilities, package_capabilities

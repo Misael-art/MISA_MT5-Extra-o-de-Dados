@@ -20,10 +20,11 @@ class BollingerRsiReversion(Strategy):
         bb = ind.bollinger(close, as_int(p["bb_period"]), p["bb_k"])
         r = ind.rsi(close, as_int(p["rsi_period"]))
         lateral = ind.adx(df, 14)["adx"] < p["adx_max"]
-        out["entry_long"] = lateral & (df["low"] <= bb["lower"]) & (r < p["rsi_low"])
-        out["entry_short"] = lateral & (df["high"] >= bb["upper"]) & (r > 100 - p["rsi_low"])  # simétrico: RSI(2) > 90
-        out["exit_long"] = close >= bb["mid"]
-        out["exit_short"] = close <= bb["mid"]
+        epsilon = bb["mid"].abs() * ind.PRICE_COMPARISON_REL_TOLERANCE
+        out["entry_long"] = lateral & (df["low"] <= bb["lower"] + epsilon) & (r < p["rsi_low"])
+        out["entry_short"] = lateral & (df["high"] >= bb["upper"] - epsilon) & (r > 100 - p["rsi_low"])
+        out["exit_long"] = close >= bb["mid"] - epsilon
+        out["exit_short"] = close <= bb["mid"] + epsilon
         out["stop_long"] = close - p["stop_atr"] * out["atr"]
         out["stop_short"] = close + p["stop_atr"] * out["atr"]
 

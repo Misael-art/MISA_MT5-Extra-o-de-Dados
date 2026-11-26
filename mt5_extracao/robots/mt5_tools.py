@@ -78,6 +78,10 @@ def compile_timeout(config) -> int:
     if not low <= value <= high:
         raise ValueError(f"[ROBOTS] compile_timeout_seconds deve ficar entre {low} e {high} s; recebido {value}.")
     return value
+class TesterTimeout(RuntimeError):
+    """A espera terminou enquanto o terminal pode continuar o passe original."""
+
+
 TESTER_TIMEOUT = 3600
 TESTER_MODELS = {"0": "cada tick", "1": "OHLC de 1 minuto", "2": "só preços de abertura",
                  "4": "cada tick com ticks reais"}
@@ -691,7 +695,7 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     try:
         (run or run_windows_command)(command_line, terminal.parent, prefix, timeout)
     except subprocess.TimeoutExpired:
-        raise RuntimeError(f"O teste não terminou em {timeout // 60} min. Feche o MetaTrader 5 que ficou aberto e "
+        raise TesterTimeout(f"O teste não terminou em {timeout // 60} min. Feche o MetaTrader 5 que ficou aberto e "
                            "use um período menor ou [ROBOTS] tester_model = 1.") from None
     finally:
         ini.unlink(missing_ok=True)

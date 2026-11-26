@@ -1,0 +1,36 @@
+// A referência S09 congela a âncora do prefixo e fixa SL/TP em pontos.
+input long InpMagicNumber=909202610;
+input double InpRiskPct=0.5;
+input double InpDailyLossPct=2.0;
+input double InpWeeklyLossPct=4.0;
+input double InpMaxDrawdownPct=10.0;
+input int InpDeviationPoints=20;
+input int InpFastPeriod=5;
+input int InpSlowPeriod=12;
+input int InpWarmupBars=30;
+input int InpStopPoints=20;
+input int InpTargetPoints=30;
+input bool InpExportTrades=false;
+#include <Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh>
+#include <Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh>
+
+datetime s09_anchor=0;
+void StrategyRules(HDKExitRules &rules) {}
+void StrategySignal(const HDKBars &bars,HDKSignal &s)
+{
+   if(bars.n<InpWarmupBars) return;
+   int last=bars.n-1;
+   if(s09_anchor==0) s09_anchor=bars.time[bars.n-InpWarmupBars];
+   double close[],fast[],slow[];
+   int count=CopyClose(_Symbol,_Period,s09_anchor,bars.time[last],close);
+   if(count<InpWarmupBars || close[count-1]!=bars.close[last]) return;
+   HDK_Ema(close,count,InpFastPeriod,fast);
+   HDK_Ema(close,count,InpSlowPeriod,slow);
+   int side=HDKS09Cross(fast[count-2],slow[count-2],fast[count-1],slow[count-1],count,InpSlowPeriod);
+   s.entry_long=side>0;
+   s.entry_short=side<0;
+   s.stop_long=close[count-1]-InpStopPoints*_Point;
+   s.stop_short=close[count-1]+InpStopPoints*_Point;
+}
+int OnInit() {return StrategyInit("HDK_S09_Referencia");}
+void OnTick() {StrategyTick();}
