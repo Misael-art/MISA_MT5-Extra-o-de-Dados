@@ -11,6 +11,30 @@ from ..laboratory import ultra_market_preset as preset
 from . import mt5_tools, ultra_market_revision
 
 
+def selected_revision(initial, selection, folder, effective):
+    from ..laboratory.ultra_market_paired import choose
+    if (selection["plan"]["symbol"] != initial["profile"]["market"]["symbol"]
+            or type(selection.get("training_end_msc")) is not int or selection["training_end_msc"] > effective):
+        raise ValueError("Uma seleção só pode governar o mesmo ativo após o encerramento do treino.")
+    chosen = selection["chosen"]
+    arms = {"companion", "signal", "filtered_signal", "static", "conditional"}
+    if (set(selection["results"]) != arms or set(selection["policies"]) != arms
+            or any(row["policy_sha256"] != selection["policies"][key] for key,row in selection["results"].items())
+            or choose(selection["results"], selection["plan"])[0] != chosen):
+        raise ValueError("Seleção incompatível com o resultado dos cinco braços.")
+    if chosen == "cash":
+        return None
+    selected = preset.read(folder / "policy.json")
+    decision = {k: v for k,v in selection.items() if k != "policy_sha256"}
+    if (selected["schema"] != preset.PORTABLE or selected["preset_sha256"] != selection.get("policy_sha256")
+            or selected["research"] != dict(selection_sha256=digest(decision),
+                training_manifest_sha256=selection["training_manifest_sha256"], training_end_msc=selection["training_end_msc"])):
+        raise ValueError("A política não corresponde à seleção publicada pelo Laboratório.")
+    revised = dict(selected, parent_sha256=initial["preset_sha256"], version=initial["version"] + 1)
+    revised.pop("preset_sha256")
+    return dict(revised, preset_sha256=digest(revised))
+
+
 def instruction(initial, successor, selection, effective):
     old = initial["profile"]["modules"]
     if bool(successor) == bool(selection):
@@ -30,9 +54,8 @@ def instruction(initial, successor, selection, effective):
             raise ValueError("Preserve prioridade e selecione somente módulos compilados neste Expert.")
         policy_sha = successor["preset_sha256"]
     else:
-        from ..laboratory.ultra_market_paired import choose
-        if selection["chosen"] != "cash" or choose(selection["results"], selection["plan"])[0] != "cash":
-            raise ValueError("A pesquisa deve ter encerrado em caixa.")
+        if selection["chosen"] != "cash" or selection["training_end_msc"] > effective:
+            raise ValueError("A suspensão requer uma seleção causal em caixa.")
         new = {}
         policy_sha = digest(["suspend", initial["preset_sha256"], digest(selection)])
     rows = []
@@ -64,7 +87,9 @@ def install(config, receipt_path, *, successor=None, selection=None, effective):
         raise ValueError("O recibo deve identificar um Tester em execução com recepção habilitada.")
     initial = preset.read(receipt["preset"])
     selected = json.loads(Path(selection).read_text(encoding="utf-8")) if selection else None
-    policy_sha, rows = instruction(initial, successor, selected, effective)
+    if selected:
+        successor = selected_revision(initial, selected, Path(selection).parent, effective)
+    policy_sha, rows = instruction(initial, successor, None if successor else selected, effective)
     fields = [receipt["binding"], initial["preset_sha256"], initial["version"] + 1, effective, policy_sha]
     fields.extend(",".join(map(str, row)) for row in rows)
     payload = "|".join(map(str, fields))
@@ -87,7 +112,7 @@ def install(config, receipt_path, *, successor=None, selection=None, effective):
     finally:
         temp.unlink(missing_ok=True)
     return dict(status="published", binding=receipt["binding"], effective_msc=effective, policy_sha256=policy_sha,
-                packet_sha256=checksum, owners=rows)
+                packet_sha256=checksum, owners=rows, successor=preset.read(successor) if successor else None)
 
 
 def fragments(slots, sources, directory, safety):

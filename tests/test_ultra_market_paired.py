@@ -74,3 +74,19 @@ def test_reserve_is_rejected_before_opening_any_quote_block(tmp_path, monkeypatc
     monkeypatch.setattr(paired.ultra_market, "verify", lambda source: pytest.fail("leu blocos da reserva"))
     with pytest.raises(ValueError, match="desenvolvimento"):
         paired.run(None, tmp_path, plan, tmp_path / "resultado", timeout=60, progress=None)
+
+
+def test_suspension_rejects_future_or_unfinished_research(tmp_path):
+    from mt5_extracao.robots.ultra_market_delivery import selected_revision
+    initial = {"profile": {"market": {"symbol": "EURUSD"}}}
+    plan = dict(symbol="EURUSD", min_cycles=5, min_net_cents=1, max_equity_drawdown_pct=5)
+    keys = ("companion", "signal", "static", "filtered_signal", "conditional")
+    policies = {name: str(index)*64 for index, name in enumerate(keys)}
+    results = {key: dict(net_cents=-1, cycles=1, equity_drawdown_pct=1, policy_sha256=policy)
+               for key,policy in policies.items()}
+    evidence = dict(plan=plan, training_end_msc=100, chosen="cash", results=results, policies=policies)
+    assert selected_revision(initial, evidence, tmp_path, 100) is None
+    with pytest.raises(ValueError, match="encerramento"):
+        selected_revision(initial, evidence, tmp_path, 99)
+    with pytest.raises(ValueError, match="cinco"):
+        selected_revision(initial, dict(evidence, results={"signal": results["signal"]}), tmp_path, 100)

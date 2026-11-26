@@ -19,7 +19,7 @@ Na janela de carteira do Laboratório, selecione o plano JSON, a fita e o destin
 
 ## Revisão publicada com o Tester aberto
 
-Acrescente `--policy-inbox` ao passe inicial. Enquanto o recibo registra `testing`, congele uma política sucessora com `--portable --previous "$ATIVA"`. A recepção aceita a retirada de módulos compilados e a alteração de `orb.range_minutes`. A ordem das prioridades, a proteção e o orçamento precisam permanecer compatíveis. Cada passe aceita uma publicação, identificada por vínculo, revisão, política e hash do pacote.
+Acrescente `--policy-inbox` ao passe inicial. Enquanto o recibo registra `testing`, congele uma política sucessora com `--portable --previous "$ATIVA"`. A recepção aceita a retirada de módulos compilados e a alteração de `orb.range_minutes`. A ordem das prioridades, a proteção e o orçamento precisam permanecer compatíveis. Cada passe aceita uma publicação, identificada por vínculo, revisão, política e hash do pacote. Com `--selection`, o instalador verifica os cinco braços e a fronteira de treino, reutiliza a política vencedora e a vincula como sucessora da versão ativa. Uma seleção em caixa suspende as entradas.
 
 ```bash
 ./run.sh --cli --json laboratory ultra-market-install --receipt "$RECIBO" \

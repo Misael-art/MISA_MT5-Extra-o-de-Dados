@@ -51,7 +51,7 @@ def add_parser(sub):
     market.add_argument("--effective-msc", type=int, required=True)
     revision = market.add_mutually_exclusive_group(required=True)
     revision.add_argument("--successor", type=Path)
-    revision.add_argument("--selection", type=Path, help="seleção em caixa que suspende novas entradas")
+    revision.add_argument("--selection", type=Path, help="seleção do Laboratório para adoção ou suspensão em caixa")
     market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-preset-freeze", help="congela ou revisa um preset EURUSD M1 da carteira")
     market.add_argument("--snapshot", required=True)

@@ -185,7 +185,7 @@ def run(config, training, plan, output, *, timeout, progress):
     policies = arms(config, manifest, plan)
     root = Path(output).resolve()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    frozen = dict(plan=plan, training_manifest_sha256=manifest["manifest_hash"],
+    frozen = dict(plan=plan, training_manifest_sha256=manifest["manifest_hash"], training_end_msc=manifest["time"]["end_msc"],
                   policies={k: p["preset_sha256"] for k, p in policies.items()})
     with mt5_tools.tester_lease():
         target = root / "plan.json"
