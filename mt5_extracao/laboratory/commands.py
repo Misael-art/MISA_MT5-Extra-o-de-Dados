@@ -46,6 +46,10 @@ def add_parser(sub):
     market.add_argument("--restore-at-msc", type=int, help="reidrata o executor e confere o livro no mesmo passe")
     market.add_argument("--timeout", type=int, default=300)
     market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-tester-resume", help="concilia um relatório posterior do mesmo passe")
+    market.add_argument("--snapshot", type=Path, required=True)
+    market.add_argument("--receipt", type=Path, required=True)
+    market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-install", help="publica uma revisão para um Tester DEMO em execução")
     market.add_argument("--receipt", type=Path, required=True)
     market.add_argument("--effective-msc", type=int, required=True)
@@ -279,6 +283,9 @@ def run(args, ctx):
                                     strategies=args.strategy, pattern=pattern, preset=args.preset,
                                     successor=args.successor, switch_at=args.switch_at_msc,
                                     restore_at=args.restore_at_msc, **({"policy_inbox": True} if args.policy_inbox else {}))
+            elif action == "ultra-market-tester-resume":
+                from ..robots.ultra_market_resume import recover
+                result = recover(ctx.config, args.snapshot, args.receipt)
             elif action == "ultra-market-install":
                 from ..robots.ultra_market_delivery import install
                 result = install(ctx.config, args.receipt, successor=args.successor, selection=args.selection,

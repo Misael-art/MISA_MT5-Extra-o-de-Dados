@@ -177,6 +177,25 @@ def _save(path, value):
     stage.replace(path)
 
 
+def _recover_attempt(config, training, arm_dir, attempt, policy_hash, manifest_hash):
+    if not attempt or attempt.get("status") not in ("failed", "tester_timeout") or not attempt.get("receipt"):
+        return None
+    source = Path(attempt["receipt"]).resolve()
+    if source.parent.parent != arm_dir:
+        raise ValueError("A tentativa pendente pertence a outro destino.")
+    if not source.is_file():
+        return None
+    original = json.loads(source.read_text(encoding="utf-8"))
+    legacy = (original.get("status") == "failed" and original.get("last_completed") == "journal_saved"
+              and "vincular uma única execução" in (original.get("reason") or ""))
+    if original.get("status") != "tester_timeout" and not legacy:
+        return None
+    if original.get("preset_sha256") != policy_hash or original.get("manifest_hash") != manifest_hash:
+        raise ValueError("A tentativa pendente diverge do plano congelado.")
+    from ..robots.ultra_market_resume import recover
+    return recover(config, training, source)
+
+
 def run(config, training, plan, output, *, timeout, progress):
     from ..robots.ultra_market_runner import run as tester
     # Rejeite reserva e validação pelo cabeçalho, antes de abrir qualquer bloco de cotações.
@@ -211,6 +230,17 @@ def run(config, training, plan, output, *, timeout, progress):
                         or r["status"] not in _SUCCESS or metrics(r) != state["results"][name]):
                     raise ValueError("Recibo do braço concluído diverge do checkpoint.")
                 continue
+            previous = next((a for a in reversed(state["attempts"]) if a["arm"] == name), None)
+            recovered = _recover_attempt(config, training, root / name, previous, policy["preset_sha256"], manifest["manifest_hash"])
+            if recovered:
+                previous["reconciliation_status"] = recovered["status"]
+                if recovered["status"] in _SUCCESS:
+                    previous.update(outcome="completed", reconciled_receipt=recovered["receipt_path"])
+                    state["results"][name] = metrics(recovered)
+                    publish("training", last_completed=name)
+                    continue
+                if recovered["status"] == "awaiting_native_completion":
+                    return publish("awaiting_native_completion", candidate=name, reason="O mesmo terminal continua ativo.")
             if len(state["attempts"]) >= plan["max_attempts"]:
                 return publish("budget_exhausted")
             if state["attempts"] and state["attempts"][-1]["arm"] == name:
@@ -222,6 +252,9 @@ def run(config, training, plan, output, *, timeout, progress):
                 attempt.update(status=status, receipt=str(receipt_path))
                 publish("training")
             receipt = tester(config, training, root / name, mode="portfolio", preset=policy, timeout=timeout, progress=update)
+            if receipt["status"] == "tester_timeout":
+                attempt["outcome"] = "observer_timeout"
+                return publish("awaiting_native_completion", reason=receipt["reason"])
             if receipt["status"] not in _SUCCESS:
                 attempt["outcome"] = "failed"
                 return publish("training_incomplete", reason=receipt.get("reason") or receipt["status"])

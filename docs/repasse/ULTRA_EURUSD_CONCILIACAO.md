@@ -50,3 +50,18 @@ Os cinco braços consumiram cinco tentativas. O Expert e o Python identificaram 
 Na revisão posterior, o produtor observou 425.984 bytes de fita já gravada pelo Expert antes de produzir o sucessor. O ORB adotou a janela de 15 minutos no tick 1794810180682. O Pullback preservou a versão anterior na posição 12 até seu encerramento em 1794812102517. Na suspensão do dia 17, a posição 11 conservou a gestão de origem. O Expert registrou 16 vetos de novas entradas e concluiu a conciliação.
 
 A presença do ORB também deslocou uma entrada da reversão filtrada no tick 1794850200004. O guard calculou USD 4,75 de risco para a ordem e USD 4,11 de capacidade diária restante no patrimônio compartilhado. A comparação de sinais apresenta o motivo integral observado no journal.
+
+## Resultado com todos os módulos e retomada do relatório
+
+Em 16/11 o controle dos doze módulos nativos perdeu USD 19,35. Adicionar o padrão filtrado com prioridade final produziu os mesmos cinco ciclos, máximo de duas posições e drawdown de patrimônio de 1,94%. Os onze sinais válidos da reversão exigiam USD 4,75 de risco com USD 0,65 restantes. A contribuição marginal foi USD 0,00. O controle foi registrado depois da seleção primária e antes desses dois passes.
+
+No teste semanal de 16 a 20/11, a carteira de regressão processou 989.333 ticks, abriu e encerrou 16 posições e terminou com USD 956,99. O histórico de pesquisa inclui 5.908.294 ticks em 25 sessões de treino e 5.350.905 ticks nas 20 sessões de validação. No rótulo de um minuto com spread, a reversão filtrada somou −115 e −361 ticks nos dois períodos, respectivamente.
+
+O terminal pode continuar o mesmo passe depois que termina a espera da CLI. O recibo guarda o prazo e a identidade da tentativa. A retomada lê o relatório final da instalação, o journal do agente e a fita vinculada. O relatório conciliado fica na pasta `reconciled` junto ao recibo inicial. Para acompanhar um passe em aberto ou conciliar depois do encerramento, use a fita original.
+
+```bash
+./run.sh --cli --json laboratory ultra-market-tester-resume \
+  --receipt "$RECIBO_ORIGINAL" --snapshot "$FITA_ORIGINAL"
+```
+
+Reabrir o mesmo plano e destino no Laboratório também tenta recuperar o braço pendente, conferindo a identidade de sua política e de sua fita. Uma conciliação confirmada conserva a contagem de lançamentos. O mesmo procedimento reconhece recibos anteriores que terminaram com journal parcial e já possuem relatório nativo completo.

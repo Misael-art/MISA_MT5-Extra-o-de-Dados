@@ -113,6 +113,7 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
             save("compiled", last_completed="compiled", binary_sha256=binary_sha, tester_ini="tester.ini", tester_port=port)
             before = ultra_runner._offsets(data, "Tester")
             error = None
+            expired = False
             try:
                 save("testing")
                 html = mt5.run_tester(config, data, startup + ini, key, timeout=timeout)
@@ -123,6 +124,7 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
                      tester_data_quality=tester_report(report_text, "4"))
             except RuntimeError as exc:
                 error = str(exc)
+                expired = isinstance(exc, mt5.TesterTimeout)
             finally:
                 logs = ultra_runner._collect(data, "Tester", before, folder / "logs")
             agent_logs = [p for p in logs if any(part.casefold().startswith("agent-")
@@ -130,6 +132,10 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
             marker = (ultra_market_portfolio.MARKER if portfolio else
                       ultra_market_cycle.MARKER if cycle else ultra_market.PROBE_MARKER)
             journal, _ = ultra_runner._marked(agent_logs, marker)
+            if expired and portfolio:
+                saved = (dict(journal=journal.relative_to(folder).as_posix(), journal_sha256=ultra_runner._sha(journal))
+                         if journal else {})
+                return save("tester_timeout", reason=f"A espera de {timeout} s terminou. Acompanhe o passe pelo recibo.", **saved)
             if journal is None:
                 return save("journal_missing", reason=error or "Sem os marcadores do agente local.")
             save("journal_saved", last_completed="journal_saved", journal=journal.relative_to(folder).as_posix(),
