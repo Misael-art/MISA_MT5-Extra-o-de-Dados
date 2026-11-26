@@ -90,3 +90,21 @@ def test_suspension_rejects_future_or_unfinished_research(tmp_path):
         selected_revision(initial, evidence, tmp_path, 99)
     with pytest.raises(ValueError, match="cinco"):
         selected_revision(initial, dict(evidence, results={"signal": results["signal"]}), tmp_path, 100)
+
+
+def test_delivery_receipt_checks_file_against_native_policy(tmp_path):
+    from hashlib import sha256
+    from mt5_extracao.laboratory.ultra_market_portfolio_audit import _delivered_packet
+    parent, successor, binding = "a"*64, "b"*64, "c"*64
+    report = tmp_path / "report"
+    report.mkdir()
+    bundle = dict(binding=binding, preset_sha256=parent, preset_version=1,
+                  slots=[dict(magic=33)], window=dict(start_msc=100, last_msc=500))
+    payload = "|".join((binding, parent, "2", "199", successor, f"33,0,{parent},{parent},0"))
+    file = tmp_path / f"MT5XPolicy_{binding}.txt"
+    file.write_text(sha256(payload.encode()).hexdigest()+"|"+payload)
+    events = [dict(magic=0, tick_msc=200, action=a, position=0, policy_sha256=successor) for a in ("received","active")]
+    events.append(dict(magic=33, tick_msc=220, action="removed", position=0, policy_sha256=successor))
+    assert _delivered_packet(tmp_path, report, bundle, events)["matches"]
+    events[-1]["action"] = "adopted"
+    assert not _delivered_packet(tmp_path, report, bundle, events)["matches"]

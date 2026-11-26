@@ -31,3 +31,20 @@ Acrescente `--policy-inbox` ao passe inicial. Enquanto o recibo registra `testin
 O Expert consulta a entrega na primeira cotação de cada minuto. A partir da vigência, fecha a entrada para donos com posição, ordem ou incerteza. Preserva o vínculo antigo para gestão. Depois de conciliar o encerramento, aplica a nova versão aos módulos habilitados. Uma política em caixa mantém todos fechados para novas entradas. Os eventos de recebimento, ativação, retenção e adoção ficam em `comparison.observations.delivery`.
 
 A pasta de evidência privada nesta composição é `state/linux/ultra-plataforma/eurusd-20261126`. O contrato de um passe concluído fica em `receipt.json`, acompanhado de `report.htm`, `carteira.html`, EX5, fita binária e journal. O histórico de preflight, pausa e retomada fica em `host/`. O mercado permanece em observação até a qualificação da reserva econômica.
+
+## Resultados de desenvolvimento em 16 de novembro de 2026
+
+O replay corrigido preservou os 11 negócios do prefixo original. No primeiro veto anterior, tick 1794812520477, o Expert aplicou o limite de margem de USD 810,69 a um pedido que exigia USD 925,52. A ordem 13 foi executada no tick 1794812580132. O passe terminou com 43 ordens, 43 negócios, sete parciais e sete breakevens. O relatório confirmou saldo e patrimônio de USD 982,56 sem pendências. O hash SHA-256 do EX5 é `a3c41ecd4092f35db3f4f6fed3d124a85f38b004437f88c79777eaf16e24a7da`. A cópia do guard exportada pelo App conserva todas as linhas da fonte canônica. O exportador remove a marca BOM do texto.
+
+| Braço | Líquido em USD | Ciclos | Fator de lucro | Drawdown relativo de patrimônio |
+|---|---:|---:|---:|---:|
+| Caixa | 0,00 | 0 | Indefinido | 0,00% |
+| ORB | −4,56 | 1 | 0,000 | 0,46% |
+| Reversão simples | −15,98 | 8 | 0,461 | 2,48% |
+| Reversão filtrada | −15,63 | 8 | 0,472 | 2,52% |
+| ORB e reversão simples | −15,64 | 8 | 0,460 | 1,96% |
+| ORB e reversão filtrada | −15,89 | 8 | 0,456 | 2,03% |
+
+Os cinco braços consumiram cinco tentativas. O Expert e o Python identificaram as mesmas 17 ocorrências e seis invalidações. No tick 1794817261009, o fechamento bid passou de 1,10204 a 1,10176 e igualou a mínima. A carteira estática executou a ordem 8 de compra de 0,19 lote. A condicional suprimiu o sinal antes de entrar. Adicionar o padrão filtrado ao ORB reduziu o resultado em USD 11,33. Aplicar o filtro à carteira estática reduziu o resultado em USD 0,25. Cada braço atingiu no máximo uma posição simultânea. Todos ficaram abaixo do piso de retorno. A seleção técnica foi caixa.
+
+Na revisão posterior, o produtor observou 425.984 bytes de fita já gravada pelo Expert antes de produzir o sucessor. O ORB adotou a janela de 15 minutos no tick 1794810180682. O Pullback preservou a versão anterior na posição 12 até seu encerramento em 1794812102517. Na suspensão do dia 17, a posição 11 conservou a gestão de origem. O Expert registrou 16 vetos de novas entradas e concluiu a conciliação.

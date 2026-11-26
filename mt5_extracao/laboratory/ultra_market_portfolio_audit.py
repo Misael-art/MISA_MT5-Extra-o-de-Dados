@@ -2,7 +2,7 @@
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
-from hashlib import file_digest
+from hashlib import file_digest, sha256
 from html import unescape
 from itertools import groupby, zip_longest
 import re
@@ -64,6 +64,46 @@ def _journal(common, output, name, checksum):
     with target.open("rb") as stream:
         sha = file_digest(stream, "sha256").hexdigest()
     return dict(file=target.name, sha256=sha, matches=sha == checksum)
+
+
+def _delivered_packet(common, output, bundle, events):
+    source = common / ("MT5XPolicy_" + bundle["binding"] + ".txt")
+    if not source.is_file() or source.resolve().parent != common.resolve() or source.stat().st_size > 16384:
+        return None
+    raw = source.read_bytes()
+    try:
+        checksum, payload = raw.decode("ascii").rstrip("\r\n").split("|", 1)
+        link, parent, version, effective, policy, *records = payload.split("|")
+        parsed = [r.split(",") for r in records]
+        owners = {int(m): bool(int(on)) for m,on,*_ in parsed}
+        active = [e for e in events if e["action"] == "active"]
+        received = [e for e in events if e["action"] == "received"]
+        valid = (sha256(payload.encode("ascii")).hexdigest() == checksum and link == bundle["binding"]
+                 and parent == bundle["preset_sha256"] and int(version) == bundle["preset_version"] + 1
+                 and re.fullmatch(r"[0-9a-f]{64}", policy) is not None
+                 and bundle["window"]["start_msc"] <= int(effective) < bundle["window"]["last_msc"]
+                 and [int(row[0]) for row in parsed] == [s["magic"] for s in bundle["slots"]]
+                 and all(len(row) == 5 and row[1] in ("0", "1") for row in parsed)
+                 and len(active) == len(received) == 1 and received[0]["tick_msc"] <= active[0]["tick_msc"]
+                 and active[0]["tick_msc"] >= int(effective))
+        for event in events:
+            action, magic = event["action"], event["magic"]
+            if action in ("received", "active"):
+                valid &= magic == 0 and event["policy_sha256"] == policy
+            elif action == "held":
+                valid &= magic in owners and event["policy_sha256"] == parent and event["position"] > 0
+            elif magic in owners:
+                target_action = "adopted" if owners[magic] else "removed"
+                valid &= action == target_action and event["policy_sha256"] == policy and event["position"] == 0
+            else:
+                valid = False
+    except (UnicodeError, ValueError, IndexError):
+        return None
+    target = output / "delivery-packet.txt"
+    target.write_bytes(raw)
+    return dict(file=target.name, sha256=sha256(raw).hexdigest(), payload_sha256=checksum,
+                parent_sha256=parent, policy_sha256=policy, version=int(version),
+                effective_msc=int(effective), owners=parsed, matches=valid)
 
 
 def pattern_observations(snapshot, manifest, policy, tick):
@@ -279,7 +319,10 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
 
     delivery = [dict(magic=int(m), tick_msc=int(t), action=a, position=int(p), policy_sha256=s)
                 for m,t,a,p,s in rows["DELIVERY"]]
+    packet = None
     if bundle.get("policy_inbox"):
+        packet = _delivered_packet(common, output, bundle, delivery)
+        check(packet and packet["matches"], "published_policy_packet")
         active = [e for e in delivery if e["action"] == "active"]
         check(len(active) == 1 and not any(e["action"] == "error" for e in delivery), "policy_delivery")
         if active:
@@ -466,7 +509,7 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
                 peak=dict(on_tick=int(peak), chronological=replay_peak, samples=rows["PEAK"]),
                 final=final, report_comparison=report, report_orders=report_orders, deals=deals, pattern_parity=pattern_result,
                 local_risk=local, rotation=rotation, economic_approval=False,
-                observations=dict(delivery=delivery, plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
+                observations=dict(delivery=delivery, delivery_packet=packet, plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
                                   preset=rows["PRESET"], raw_decisions=len(rows["RAW"]), decision_rates=len(rows["RATE"]),
                                   boundary=rows["BOUNDARY"]),
                 units=dict(tick_size=str(tick), volume_step=str(step), cash_unit="0.01 USD"))
