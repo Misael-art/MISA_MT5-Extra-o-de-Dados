@@ -19,6 +19,7 @@ SURFACE = {
     "ultra_export_market_probe": ["source", "destination", "attempt"],
     "ultra_compare_market_probe": ["source", "tape", "binding", "agent_journal"],
     "ultra_run_market_tester": ["config", "snapshot", "output", "mode", "timeout"],
+    "ultra_run_market_portfolio": ["config", "snapshot", "output", "strategies", "pattern", "timeout"],
     "ultra_run_tester": ["db", "config", "package", "output", "origin", "chart", "timeout", "resume", "prepare_only"],
     "ultra_freeze": ['db', 'definition'],
     "ultra_replay": ['db', 'receipt', 'until'],
@@ -138,6 +139,15 @@ def test_signatures_did_not_change():
     for name, expected in SURFACE.items():
         if expected is not None:
             assert list(inspect.signature(getattr(sdk, name)).parameters) == expected, name
+
+
+def test_ultra_market_sdk_keeps_legacy_mode_and_forwards_portfolio_selection(monkeypatch):
+    monkeypatch.setattr(sdk, "_run_ultra_market_tester", lambda *args, **kwargs: (args, kwargs))
+    args = (object(), "snapshot", "output")
+    assert sdk.ultra_run_market_tester(*args, mode="s09_cycle") == (args, {"mode": "s09_cycle", "timeout": 300})
+    pattern = {"definition": {}}
+    assert sdk.ultra_run_market_portfolio(*args, strategies=["pattern_definition"], pattern=pattern) == (
+        args, {"mode": "portfolio", "timeout": 300, "strategies": ["pattern_definition"], "pattern": pattern})
 
 
 def test_query_catalog_database_is_optional_for_existing_offline_callers():

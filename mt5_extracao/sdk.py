@@ -531,10 +531,21 @@ from .laboratory.ultra_market import capture as ultra_capture_market, verify as 
 from .laboratory.ultra_market import verify_m1 as ultra_verify_market_m1
 from .laboratory.ultra_market import export_probe as ultra_export_market_probe, compare_probe as ultra_compare_market_probe
 from .robots.ultra_runner import run as ultra_run_tester
-from .robots.ultra_market_runner import run as ultra_run_market_tester
+from .robots.ultra_market_runner import run as _run_ultra_market_tester
 from .laboratory.ultra_report import list_receipts as ultra_list
 from .laboratory.ultra_report import export as ultra_export_report
 from .presets.compiler import compile_ultra_research, verify_ultra_research
+
+
+def ultra_run_market_tester(config, snapshot, output, *, mode="ticks", timeout=300):
+    """Executa uma modalidade existente do Tester de mercado."""
+    return _run_ultra_market_tester(config, snapshot, output, mode=mode, timeout=timeout)
+
+
+def ultra_run_market_portfolio(config, snapshot, output, *, strategies=None, pattern=None, timeout=300):
+    """Executa a carteira de mercado com módulos selecionados e hipótese opcional."""
+    return _run_ultra_market_tester(config, snapshot, output, mode="portfolio", timeout=timeout,
+                                    strategies=strategies, pattern=pattern)
 
 
 __all__ = [
@@ -544,7 +555,7 @@ __all__ = [
     "ultra_compare_native_book", "ultra_run_tester", "ultra_tester_capabilities",
     "ultra_capture_market", "ultra_verify_market", "ultra_export_market_probe", "ultra_compare_market_probe",
     "ultra_verify_market_m1",
-    "ultra_run_market_tester",
+    "ultra_run_market_tester", "ultra_run_market_portfolio",
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
     "pattern_campaign_status", "f19_research_preset",

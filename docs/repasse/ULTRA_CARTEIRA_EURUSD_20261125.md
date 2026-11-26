@@ -47,6 +47,8 @@ O passe `2b269e7d3bab48ae963cf3260b43342b` de 16 a 20/11 conciliou 989.333 ticks
 
 O controle de gestão de 16/11 registrou saída parcial do Pullback de 0,31 lote a partir de 0,62, seguida de breakeven em 1,10245. O relatório mantém a ordem do journal quando duas ações chegam no mesmo milissegundo. O primeiro ensaio diário conciliou os negócios, mas o `ToDate` do Tester deixou de fora três cotações do último segundo. A primeira correção recuperou a fita completa e o encerramento antecipado do Tester devolveu um HTML sem as linhas de negócios. A versão seguinte encerra a janela financeira na última cotação congelada e deixa o Tester terminar a geração do relatório. O gate compara toda a fita e exige a carteira zerada na fronteira.
 
+O reteste `5407c7d9718840df896954b76998805e` no build 6331 conciliou os 165.488 ticks, os 21 negócios no HTML do MT5 e USD 979,94 de saldo e patrimônio. O controle isolado do Squeeze `de8d085ce7a74ecaacdb869136a85e98` conciliou os mesmos 165.488 ticks, 24 negócios, 45 alterações de trailing e USD 1.010,27 de saldo e patrimônio. Entre a carteira completa e esses controles, houve preenchimentos para todos os 13 módulos do recorte.
+
 O Forex da amostra teve volume negociado zero. A VWAP usa o volume de cotações entregue nas barras M1 do MT5. O relógio histórico e os custos econômicos seguem com o alcance do [protocolo de EURUSD](ULTRA_EURUSD_PROTOCOLO_20261125.md).
 
 ## Reprodução no Linux

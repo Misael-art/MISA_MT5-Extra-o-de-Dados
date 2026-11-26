@@ -1584,6 +1584,14 @@ confere o vínculo, a contagem, a primeira divergência e o prefixo idêntico. O
 Expert passivo, executa o modelo 4 no perfil portátil e guarda o recibo com o journal
 do agente. O modo `s09_cycle` usa um controle técnico com ordens simuladas no
 EURUSD da MetaQuotes-Demo, com o perfil e as restrições do protocolo congelado.
+O modo `portfolio` executa a carteira técnica com os módulos padrão.
+
+`sdk.ultra_run_market_portfolio(config, snapshot, output, *, strategies=None, pattern=None, timeout=300)`
+usa o mesmo executor da CLI e da UI. `strategies` seleciona chaves na ordem de avaliação.
+`pattern` recebe a definição de preço M1, o indicador booleano de invalidação e a proteção
+da hipótese em pontos. O modo de mercado exige EURUSD, M1, dias completos no relógio
+do servidor e uma conta DEMO hedging USD. O recibo reúne a fita processada, a conciliação
+das posições por dono e o relatório do Strategy Tester.
 
 `sdk.ultra_run_tester(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300)`
 executa o ensaio no terminal portátil configurado. O recibo identifica a tentativa e o
