@@ -1,6 +1,7 @@
 """Paridade de decisões de barra no Tester usando o prefixo registrado pelo Expert."""
 from collections import defaultdict
 from hashlib import file_digest
+from io import TextIOWrapper
 import json
 import math
 from pathlib import Path
@@ -8,9 +9,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ..robots.mt5_tools import read_log_text
+from ..robots.ultra_market_portfolio import MARKER
 from ..strategies import get_strategy, indicators
-from .ultra_market_portfolio_audit import _records
+from .ultra_market_portfolio_audit import _WIDTHS
 
 
 _BITS = ("entry_long", "entry_short", "exit_long", "exit_short")
@@ -106,11 +107,29 @@ def _decisions(slot, records, rates, indices, point):
 def compare(source, *, strategies=None):
     receipt_path = Path(source)
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    supported = {slot["key"] for slot in receipt["slots"]} - {"pattern_definition", "super_atr_triple"}
+    selected = supported if strategies is None else set(strategies)
+    if not selected or selected - supported:
+        raise ValueError("strategy: escolha estratégias Python presentes neste recibo.")
+    slots = [slot for slot in receipt["slots"] if slot["key"] in selected]
+    magics = {str(slot["magic"]) for slot in slots}
     journal = receipt_path.parent / receipt["journal"]
     with journal.open("rb") as stream:
+        encoding = "utf-16" if stream.read(2) in (b"\xff\xfe", b"\xfe\xff") else "utf-8"
+        stream.seek(0)
         if file_digest(stream, "sha256").hexdigest() != receipt["journal_sha256"]:
             raise ValueError("journal_sha256: journal diverge do recibo original.")
-    records = _records(read_log_text(journal))
+        stream.seek(0)
+        records = defaultdict(list)
+        with TextIOWrapper(stream, encoding, errors="replace") as log:
+            for line in log:
+                kind, _, payload = line.partition(MARKER)[2].partition("|")
+                if kind != "RATE" and (kind not in ("RAW", "BAR") or payload.partition("|")[0] not in magics):
+                    continue
+                fields = payload.rstrip("\r\n").split("|")
+                if len(fields) != _WIDTHS[kind]:
+                    raise ValueError(f"{kind}: registro de decisão inválido.")
+                records[kind].append(fields)
     rates = {int(at): dict(open=float(op), high=float(high), low=float(low), close=float(close),
                            tick_volume=int(ticks), real_volume=int(real), time=pd.Timestamp(int(at), unit="s"))
              for at, op, high, low, close, ticks, real in records["RATE"]}
@@ -124,10 +143,5 @@ def compare(source, *, strategies=None):
             raise ValueError("RAW/BAR: as decisões brutas e operáveis não correspondem.")
         pairs[int(raw[0])].append((raw, bar))
     point = float(receipt["comparison"]["units"]["tick_size"])
-    supported = {slot["key"] for slot in receipt["slots"]} - {"pattern_definition", "super_atr_triple"}
-    selected = supported if strategies is None else set(strategies)
-    if not selected or selected - supported:
-        raise ValueError("strategy: escolha estratégias Python presentes neste recibo.")
     return dict(attempt=receipt["attempt"], preset_sha256=receipt["preset_sha256"], journal_sha256=receipt["journal_sha256"],
-                results=[_decisions(slot, pairs[slot["magic"]], frame, indices, point)
-                         for slot in receipt["slots"] if slot["key"] in selected])
+                results=[_decisions(slot, pairs[slot["magic"]], frame, indices, point) for slot in slots])

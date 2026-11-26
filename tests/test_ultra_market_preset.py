@@ -1,5 +1,7 @@
 from copy import deepcopy
 from decimal import Decimal
+from hashlib import sha256
+import json
 
 import pytest
 
@@ -79,3 +81,29 @@ def test_order_report_compares_protection_and_volume_by_ticket():
     assert compare() == {"status": "report_matches", "orders": 1}
     cells[6] = "1.10215"
     assert compare() == {"status": "diverged", "ticket": 2, "field": "sl", "expected": 110214, "observed": 110215}
+
+
+def test_signal_comparison_reads_native_journal_and_checks_its_hash(tmp_path):
+    from mt5_extracao.laboratory.ultra_market_signals import compare
+
+    journal = tmp_path / "agent.log"
+    marker = portfolio.MARKER
+    journal.write_text(
+        f"{marker}RATE|1794787200|1.10000|1.10010|1.09990|1.10000|2|0\n"
+        f"{marker}RATE|1794787260|1.10000|1.10030|1.10000|1.10020|3|0\n"
+        f"{marker}RAW|1|1794787320001|1794787320|1794787200|1794787260|2|1|0|0|0|1.0999|1.1001|1.1005|1.0999\n"
+        f"{marker}BAR|1|1794787320001|1794787320|1794787260|1|0|0|0|1.0999|1.1001|1.1005|1.0999\n",
+        encoding="utf-16",
+    )
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps(dict(attempt="a", preset_sha256="b", journal=journal.name,
+                                       journal_sha256=sha256(journal.read_bytes()).hexdigest(),
+                                       slots=[dict(key="orb", magic=1, inputs=dict(InpRangeMinutes="1",
+                                                   InpMinRangeAtr="0", InpTargetMult="1.5"))],
+                                       comparison=dict(units=dict(tick_size="0.00001")))))
+    result, = compare(receipt, strategies=["orb"])["results"]
+    assert result["raw_matches"] == result["operable_matches"] == result["raw_level_matches"] == 1
+    assert result["first_divergence"] == {}
+    journal.write_bytes(journal.read_bytes() + b"xx")
+    with pytest.raises(ValueError, match="journal_sha256"):
+        compare(receipt)
