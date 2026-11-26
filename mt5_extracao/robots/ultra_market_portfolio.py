@@ -368,7 +368,7 @@ def resolve(config, manifest, *, strategies, pattern, edits, workspace=None, fro
 
 
 def export(config, snapshot, destination, *, attempt, strategies=None, pattern=None, preset=None, manifest=None,
-           successor=None, switch_at=None, restore_at=None):
+           successor=None, switch_at=None, restore_at=None, policy_inbox=False):
     from ..laboratory import ultra_market_preset
     from . import ultra_market_revision
 
@@ -433,6 +433,15 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
         closure = digest([closure, sources.files[str(safety)], successor["preset_sha256"], switch_at, revision])
         binding = digest([binding, successor["preset_sha256"], switch_at, restore_at])
         execution["rotation"] = dict(switch_at_msc=switch_at, restore_at_msc=restore_at, successor=successor)
+    delivery = None
+    if policy_inbox:
+        if not portable or revision:
+            raise ValueError("A recepção posterior exige preset portátil e uma troca por passe.")
+        from . import ultra_market_delivery
+        delivery = ultra_market_delivery.fragments(slots, sources, destination.parent, safety)
+        closure = digest([closure, sources.files, delivery])
+        binding = digest([binding, closure])
+        execution["policy_inbox"] = True
     budgets = ";".join(f"{row['magic']}={row['inputs']['InpRiskPct']}" for row in slots)
     includes, init, ticks, settlement = [], [], [], []
     for i, row in enumerate(slots):
@@ -454,6 +463,9 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
                                f'      stop=price-(buy?1:-1)*{inputs["InpStopPoints"]}*_Point;\n'
                                f'      target=price+(buy?1:-1)*{inputs["InpTargetPoints"]}*_Point;\n   }}')
     host = (_TEMPLATES / "UltraMarketPortfolio.mq5.tmpl").read_text(encoding="utf-8")
+    if delivery:
+        helpers, declarations, ticks = delivery
+        includes = [helpers, *includes, *declarations]
     if revision:
         helpers, declarations, next_init, ticks = revision
         includes.extend((helpers, *declarations))

@@ -28,6 +28,16 @@ def _predicate(node, tick):
     op = node["op"]
     if op == "compare":
         which = {"lt": 0, "lte": 1, "gt": 2, "gte": 3}[node["comparison"]]
+        left, right = node["left"], node["right"]
+        if left["op"] == "percent_change" and right["op"] == "literal" and right["unit"] == "fraction":
+            number = Decimal(right["value"])
+            if number != 0 and (number.adjusted() < -9 or abs(number) >= 1):
+                raise ValueError("Use uma fração nativa em (-1, 1) com até nove casas decimais.")
+            ratio = Fraction(number)
+            if ratio.denominator > 10**9:
+                raise ValueError("Denominador da variação fora da precisão nativa.")
+            return (f'PatternChange({_price(left["value"], tick)},{_price(left["reference"], tick)},'
+                    f'{ratio.numerator},{ratio.denominator},{which})')
         return f'PatternCmp({_price(node["left"], tick)},{_price(node["right"], tick)},{which})'
     if op == "not":
         return f'PatternNot({_predicate(node["term"], tick)})'
@@ -59,9 +69,26 @@ def kernel(template, module, slot, tick):
         checks.append(f'         PrintFormat("MT5X_ULTRA_PREDICATE1|{slot}|%I64d|%I64d|{i}|%d",msc,available,value);')
         if params["apply_invalidation"]:
             checks.append("         invalid=PatternOr(invalid,value);")
-    return Template(template).substitute(slot=slot, reference=FIELDS[body["price_reference"]], condition=condition,
+    code = Template(template).substitute(slot=slot, reference=FIELDS[body["price_reference"]], condition=condition,
         session=" && (!emitted || last_day!=minute/1440)" if body["repetition_policy"] == "first_per_session" else "",
         direction=1 if body["side"] == "long" else -1, checks="\n".join(checks), variables="int value;" if checks else "")
+
+    if "PatternChange(" in code:
+        # Produtos inteiros preservam a inclusão da fronteira da fração decimal.
+        code = """#ifndef MT5X_ULTRA_PATTERN_CHANGE
+#define MT5X_ULTRA_PATTERN_CHANGE
+int PatternChange(const long value,const long reference,const long numerator,const long denominator,const int comparison)
+{
+   if(value<0 || reference<=0 || denominator<=0) return -1;
+   long difference=value-reference;
+   if(difference>LONG_MAX/denominator || difference<-(LONG_MAX/denominator) ||
+      (numerator!=0 && reference>LONG_MAX/(numerator>0 ? numerator : -numerator))) return -1;
+   long a=difference*denominator, b=reference*numerator;
+   return (int)(comparison==0 ? a<b : comparison==1 ? a<=b : comparison==2 ? a>b : a>=b);
+}
+#endif
+""" + code
+    return code
 
 
 def audit(db, package, frames, lines):

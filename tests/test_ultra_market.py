@@ -230,12 +230,14 @@ def test_portfolio_compares_pattern_on_closed_bars_and_identifies_first_differen
     t = AXIS * 1000
     # A primeira barra não conhece prior_close. A segunda fecha na máxima e invalida.
     quotes = [(t+1, 1.0995999999999999), (t+60_001, 1.09965), (t+60_002, 1.09966), (t+120_007, 1.09965)]
-    monkeypatch.setattr(market, "_csv_rows", lambda *_: iter(quotes))
+    monkeypatch.setattr(market, "_csv_rows", lambda *_: iter((msc, bid, bid + .00002) for msc, bid in quotes))
     manifest = {"symbol": "EURUSD", "manifest_hash": "a" * 64}
     observed = f"MT5X_ULTRA_MARKET_PATTERN|{t+120_007}|{t+120_000}|1|1|109960"
     matched = _pattern_comparison(tmp_path, manifest, pattern, observed, Decimal("0.00001"))
     assert matched["expected"] == matched["observed"] == matched["invalidated"] == 1
     assert matched["first_divergence"] is None
+    assert matched["occurrences"][0]["next_minute"] is None
+    assert matched["occurrences"][0]["ask"] == "1.09967"
     tampered = _pattern_comparison(tmp_path, manifest, pattern, observed.replace("|1|109960", "|0|109960"), Decimal("0.00001"))
     first = tampered["first_divergence"]
     assert first == {"ordinal": 0, "expected": (t+120_007, t+120_000, 1, 1, 109960),

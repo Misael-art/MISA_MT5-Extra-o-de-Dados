@@ -18,7 +18,7 @@ from .ultra_platform import compare_report
 _WIDTHS = {"OWNER": 4, "RULES": 8, "ACCOUNT": 4, "BAR": 12, "ENTRY": 10, "PEAK": 3,
            "PROTECT": 10, "CLOSE": 10, "ORDER": 11, "DEAL": 16, "FINAL": 11,
            "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3, "BOUNDARY": 4,
-           "PRESET": 5, "INPUTS": 3, "RAW": 14, "RATE": 7, "LOCAL": 8, "ROTATE": 6, "RECOVER": 4}
+           "PRESET": 5, "INPUTS": 3, "RAW": 14, "RATE": 7, "LOCAL": 8, "ROTATE": 6, "RECOVER": 4, "DELIVERY": 5}
 
 
 def _records(journal, *, management_order=None):
@@ -66,7 +66,7 @@ def _journal(common, output, name, checksum):
     return dict(file=target.name, sha256=sha, matches=sha == checksum)
 
 
-def _pattern_comparison(snapshot, manifest, policy, journal, tick):
+def pattern_observations(snapshot, manifest, policy, tick):
     definition = hypotheses.compile_definition(policy["definition"])
     symbol = manifest["symbol"]
     namespace = manifest["manifest_hash"]
@@ -83,17 +83,33 @@ def _pattern_comparison(snapshot, manifest, policy, journal, tick):
             raise ValueError("Cotação observada fora da grade de preço da hipótese.")
         return str(atoms * tick)
 
+    pending = None
     previous, previous_end = None, None
-    expected = []
     for minute, quotes in groupby(ultra_market._csv_rows(snapshot, manifest), key=lambda r: r[0] // 60000):
         first = next(quotes)
+        if pending is not None:
+            if minute == pending["tick_msc"] // 60000 + 1:
+                entry = pending["ask"] if pending["side"] == 1 else pending["bid"]
+                exit_quote = grid_price(first[1 if pending["side"] == 1 else 2])
+                pending["next_minute"] = dict(tick_msc=first[0], price=exit_quote, spread_included_ticks=
+                    pending["side"] * _atoms(Decimal(exit_quote) - Decimal(entry), tick))
+            yield pending
+            pending = None
         if previous is not None:
             state, event = pattern_engine.evaluate_prefix(definition, state, previous)
+            # A fita é append-only. O subconjunto OHLC exportável consulta apenas
+            # a barra atual e a anterior, inclusive para prior_close.
+            if len(state["starts"]) > 2:
+                del state["known"][state["starts"].pop(0)]
             if event:
                 result = event.get("entry_decision", {}).get("status", "confirmed")
                 invalid = {"confirmed": 0, "invalidated": 1, "unknown": -1}[result] if policy["apply_invalidation"] else 0
-                expected.append((first[0], previous_end, 1 if event["side"] == "long" else -1, invalid,
-                                 _atoms(event["signal_values"]["reference"], tick)))
+                pending = dict(next_minute=None, tick_msc=first[0], available_msc=previous_end, side=1 if event["side"] == "long" else -1,
+                           invalid=invalid, reference=_atoms(event["signal_values"]["reference"], tick),
+                           bid=grid_price(first[1]), ask=grid_price(first[2]),
+                           bar={key: previous[key] for key in ("open", "high", "low", "close")},
+                           prior_close=event["signal_values"]["prior_close"], event_id=event["event_id"],
+                           rules=event.get("entry_decision", {}).get("rules", []))
         opening = closing = high = low = first[1]
         for _, bid, *_ in quotes:
             high, low, closing = max(high, bid), min(low, bid), bid
@@ -103,13 +119,22 @@ def _pattern_comparison(snapshot, manifest, policy, journal, tick):
                         open=grid_price(opening), high=grid_price(high), low=grid_price(low), close=grid_price(closing))
         # A coordenada inteira fica separada da observação validada pelo motor.
         previous_end = end_msc
+    if pending is not None:
+        yield pending
+
+
+def _pattern_comparison(snapshot, manifest, policy, journal, tick):
+    observations = list(pattern_observations(snapshot, manifest, policy, tick))
+    expected = [(o["tick_msc"], o["available_msc"], o["side"], o["invalid"], o["reference"]) for o in observations]
+    definition = hypotheses.compile_definition(policy["definition"])
     marker = "MT5X_ULTRA_MARKET_PATTERN|"
     observed = [tuple(map(int, line.partition(marker)[2].split("|")))
                 for line in journal.splitlines() if marker in line]
     divergence = next((dict(ordinal=i, expected=pair[0], observed=pair[1])
                        for i, pair in enumerate(zip_longest(expected, observed)) if pair[0] != pair[1]), None)
     return dict(definition_hash=definition.definition_hash, expected=len(expected), observed=len(observed),
-                invalidated=sum(row[3] == 1 for row in observed), first_divergence=divergence)
+                invalidated=sum(row[3] == 1 for row in observed), first_divergence=divergence,
+                occurrences=[dict(o, mql5=list(row)) for o, row in zip(observations, observed)])
 
 
 def _report_orders(html, orders, symbol, tick, step):
@@ -252,6 +277,18 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
         if not condition and code not in issues:
             issues.append(code)
 
+    delivery = [dict(magic=int(m), tick_msc=int(t), action=a, position=int(p), policy_sha256=s)
+                for m,t,a,p,s in rows["DELIVERY"]]
+    if bundle.get("policy_inbox"):
+        active = [e for e in delivery if e["action"] == "active"]
+        check(len(active) == 1 and not any(e["action"] == "error" for e in delivery), "policy_delivery")
+        if active:
+            enabled = {e["magic"]: e["tick_msc"] for e in delivery if e["action"] == "adopted"
+                       and e["policy_sha256"] == active[0]["policy_sha256"]}
+            check(all(int(r[1]) < active[0]["tick_msc"] or int(r[1]) >= enabled.get(int(r[0]), 2**63)
+                      for r in rows["ENTRY"] if r[3] in ("4", "5")), "entries_after_delivery")
+    else:
+        check(not delivery, "unrequested_delivery")
     symbol, deposit, tick_size, volume_step = rows["ACCOUNT"][0]
     tick, step, cent = Decimal(tick_size), Decimal(volume_step), Decimal("0.01")
     _, cash, equity, positions, pending, peak, settled, audited, journal, checksum, reason = rows["FINAL"][0]
@@ -429,7 +466,7 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
                 peak=dict(on_tick=int(peak), chronological=replay_peak, samples=rows["PEAK"]),
                 final=final, report_comparison=report, report_orders=report_orders, deals=deals, pattern_parity=pattern_result,
                 local_risk=local, rotation=rotation, economic_approval=False,
-                observations=dict(plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
+                observations=dict(delivery=delivery, plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
                                   preset=rows["PRESET"], raw_decisions=len(rows["RAW"]), decision_rates=len(rows["RATE"]),
                                   boundary=rows["BOUNDARY"]),
                 units=dict(tick_size=str(tick), volume_step=str(step), cash_unit="0.01 USD"))

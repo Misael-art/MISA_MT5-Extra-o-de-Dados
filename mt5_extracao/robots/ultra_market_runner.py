@@ -28,7 +28,7 @@ def _headers(config, expert, terminal):
 
 
 def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None, pattern=None, preset=None,
-        successor=None, switch_at=None, restore_at=None, progress=None):
+        successor=None, switch_at=None, restore_at=None, policy_inbox=False, progress=None):
     if mode not in ("ticks", "s09_cycle", "portfolio") or type(timeout) is not int or not 10 <= timeout <= 1800:
         raise ValueError("Use ticks, s09_cycle ou portfolio no Tester e um prazo de 10 a 1800 segundos.")
     state = ultra_market.verify(snapshot)
@@ -36,6 +36,8 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
     portfolio = mode == "portfolio"
     if not portfolio and any(arg is not None for arg in (strategies, pattern, preset, successor, switch_at, restore_at)):
         raise ValueError("Seleção, hipótese, preset e troca de versão exigem o modo portfolio.")
+    if policy_inbox and not portfolio:
+        raise ValueError("A entrega posterior exige o modo portfolio.")
     data = mt5.data_dir(config).resolve()
     if data != mt5.install_dir(config).resolve():
         raise ValueError("Use um perfil portátil autorizado do MT5 para a reprodução da fita.")
@@ -62,6 +64,8 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
     try:
         rotation = {} if successor is None and switch_at is None and restore_at is None else dict(
             successor=successor, switch_at=switch_at, restore_at=restore_at)
+        if policy_inbox:
+            rotation["policy_inbox"] = True
         bundle = (ultra_market_portfolio.export(config, snapshot, source, attempt=attempt, strategies=strategies,
                                                 pattern=pattern, preset=preset, manifest=state, **rotation) if portfolio
                   else export(snapshot, source, attempt=attempt))

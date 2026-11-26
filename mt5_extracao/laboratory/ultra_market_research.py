@@ -69,6 +69,10 @@ def module_decisions(results):
 def run(config, training, plan, output, *, timeout=300, progress=None):
     from ..robots.ultra_market_runner import run as run_tester
 
+    from . import ultra_market_paired
+
+    if isinstance(plan, dict) and plan.get("schema") == ultra_market_paired.SCHEMA:
+        return ultra_market_paired.run(config, training, plan, output, timeout=timeout, progress=progress)
     manifest = ultra_market.verify(training)
     candidates = _prepare(config, manifest, plan)
     root = Path(output).resolve()

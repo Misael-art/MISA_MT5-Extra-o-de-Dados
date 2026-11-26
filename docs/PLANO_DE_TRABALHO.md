@@ -5544,3 +5544,7 @@ O [guia da carteira](ultra-preset-mercado.md) descreve o fluxo da CLI e da
 interface, os parâmetros e os recibos. O ensaio econômico depende de
 sessões e custos vigentes no período a pesquisar. A semana já examinada
 permanece como regressão técnica.
+
+### T19.53 · Conciliação do Pullback e ablação da reversão
+
+O diagnóstico reproduziu os 24 vetos na fita de 16/11 e isolou o resíduo de volume da proteção 10. O protocolo EURUSD congela a hipótese de reversão, sua invalidação, o caixa e os cinco braços para medir a contribuição conjunta no Tester. A entrega posterior de uma revisão técnica usa o recibo do Expert em execução. [Operação e reprodução](repasse/ULTRA_EURUSD_CONCILIACAO.md)

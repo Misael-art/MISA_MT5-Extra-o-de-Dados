@@ -40,10 +40,18 @@ def add_parser(sub):
                         help="módulo da carteira, em ordem de avaliação; repita para selecionar vários")
     market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e de sua proteção de pesquisa")
     market.add_argument("--preset", type=Path, help="preset congelado pelo Laboratório, no modo portfolio")
+    market.add_argument("--policy-inbox", action="store_true", help="aceita revisão publicada durante o passe")
     market.add_argument("--successor", type=Path, help="sucessor de gestão pré-carregado no mesmo passe")
     market.add_argument("--switch-at-msc", type=int, help="instante da troca no eixo bruto do MT5")
     market.add_argument("--restore-at-msc", type=int, help="reidrata o executor e confere o livro no mesmo passe")
     market.add_argument("--timeout", type=int, default=300)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-install", help="publica uma revisão para um Tester DEMO em execução")
+    market.add_argument("--receipt", type=Path, required=True)
+    market.add_argument("--effective-msc", type=int, required=True)
+    revision = market.add_mutually_exclusive_group(required=True)
+    revision.add_argument("--successor", type=Path)
+    revision.add_argument("--selection", type=Path, help="seleção em caixa que suspende novas entradas")
     market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-preset-freeze", help="congela ou revisa um preset EURUSD M1 da carteira")
     market.add_argument("--snapshot", required=True)
@@ -270,7 +278,11 @@ def run(args, ctx):
                 result = run_market(ctx.config, args.snapshot, args.out, mode=args.mode, timeout=args.timeout,
                                     strategies=args.strategy, pattern=pattern, preset=args.preset,
                                     successor=args.successor, switch_at=args.switch_at_msc,
-                                    restore_at=args.restore_at_msc)
+                                    restore_at=args.restore_at_msc, **({"policy_inbox": True} if args.policy_inbox else {}))
+            elif action == "ultra-market-install":
+                from ..robots.ultra_market_delivery import install
+                result = install(ctx.config, args.receipt, successor=args.successor, selection=args.selection,
+                                 effective=args.effective_msc)
             elif action == "ultra-market-preset-freeze":
                 from .ultra_market_preset import freeze, freeze_portable
                 pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None

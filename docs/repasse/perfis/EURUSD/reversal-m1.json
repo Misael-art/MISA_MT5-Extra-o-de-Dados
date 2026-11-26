@@ -1,0 +1,20 @@
+{
+  "schema": "ultra-market-paired/1",
+  "symbol": "EURUSD",
+  "family": "reversal",
+  "parameters": {"drop_fraction": "0.0002"},
+  "invalidation": "close_at_low",
+  "stop_points": 25,
+  "target_points": 35,
+  "companion": "orb",
+  "max_attempts": 7,
+  "min_cycles": 5,
+  "min_net_cents": 1,
+  "max_equity_drawdown_pct": 5,
+  "development": ["2026-11-16", "2026-11-17"],
+  "economic_windows": {
+    "training": ["2026-08-03", "2026-09-05"],
+    "validation": ["2026-09-07", "2026-10-03"],
+    "reserve": ["2026-10-05", "2026-11-07"]
+  }
+}
