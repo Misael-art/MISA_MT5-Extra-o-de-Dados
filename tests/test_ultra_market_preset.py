@@ -107,3 +107,23 @@ def test_signal_comparison_reads_native_journal_and_checks_its_hash(tmp_path):
     journal.write_bytes(journal.read_bytes() + b"xx")
     with pytest.raises(ValueError, match="journal_sha256"):
         compare(receipt)
+
+
+def test_bollinger_accepts_roundoff_at_band_but_respects_price_ticks(monkeypatch):
+    import pandas as pd
+
+    from mt5_extracao.strategies import get_strategy, indicators
+
+    close = pd.Series([1.10000, 1.10001, 1.09999])
+    frame = pd.DataFrame(dict(time=pd.date_range("2026-11-16", periods=3, freq="min"),
+                              open=close, high=close + 0.00005, low=close - 0.00005, close=close))
+    monkeypatch.setattr(indicators, "bollinger", lambda *args: pd.DataFrame(
+        dict(mid=1.100000000000001, upper=frame.high + 1e-15, lower=frame.low - 1e-15), index=frame.index))
+    monkeypatch.setattr(indicators, "rsi", lambda *args: pd.Series([91., 90., 91.]))
+    monkeypatch.setattr(indicators, "adx", lambda *args: pd.DataFrame(dict(adx=[19., 19., 20.])))
+    signals = get_strategy("bb_rsi").gerar_sinais(frame)
+    assert list(signals["exit_long"]) == [True, True, False]
+    assert list(signals["exit_short"]) == [True, False, True]
+    # O aquecimento do ATR mantém o sinal de entrada bruto fora do passe operável.
+    from mt5_extracao.laboratory.ultra_market_signals import _raw
+    assert list(_raw(get_strategy("bb_rsi"), frame)["entry_short"]) == [True, False, False]

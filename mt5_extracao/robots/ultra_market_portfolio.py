@@ -10,6 +10,7 @@ from ..analytics.hypotheses import compile_definition
 from ..laboratory import ultra_market, ultra_pattern_native
 from ..laboratory.ultra_catalog import MARKET_NATIVE, MARKET_PATTERN
 from ..experiments.schema import digest
+from ..strategies.bb_rsi import PRICE_COMPARISON_REL_TOLERANCE
 from .catalog import library_dirs
 from .ultra_runner import _sha
 
@@ -84,6 +85,22 @@ def _qualified(source, index):
     return tokens.sub(lambda m: f"U{index}_{m[0]}", source)
 
 
+def _bollinger_boundaries(source):
+    epsilon = format(Decimal(str(PRICE_COMPARISON_REL_TOLERANCE)), "f")
+    source = f"input double InpPriceCompareRelTolerance={epsilon};\n" + source
+    source = _replace(source, "   bool lateral  = adx[i] < InpAdxMax;",
+                      "   double epsilon=MathAbs(mid[i])*InpPriceCompareRelTolerance;\n"
+                      "   PrintFormat(\"MT5X_ULTRA_BB_CONTEXT|%I64d|%I64d|%.17g|%.17g|%.17g|%.17g|%.17g\","
+                      "ultra_msc,(long)b.time[i],mid[i],lower,upper,rsi[i],adx[i]);\n"
+                      "   bool lateral  = adx[i] < InpAdxMax;")
+    for old, new in (("b.low[i] <= lower", "b.low[i] <= lower + epsilon"),
+                     ("b.high[i] >= upper", "b.high[i] >= upper - epsilon"),
+                     ("b.close[i] >= mid[i]", "b.close[i] >= mid[i] - epsilon"),
+                     ("b.close[i] <= mid[i]", "b.close[i] <= mid[i] + epsilon")):
+        source = _replace(source, old, new)
+    return source
+
+
 class _Sources:
     def __init__(self, root, workspace, seed, tick):
         self.root = root
@@ -156,6 +173,8 @@ class _Sources:
             name = MARKET_NATIVE[key]
             origin = PurePosixPath(f"Experts/HADOUKEN/Estrategias/HDK_{name}/HDK_{name}.mq5")
             source = self.read(origin)
+        if key == "bb_rsi":
+            source = _bollinger_boundaries(source)
         overrides = {"InpRiskPct": RISK_PCT}
         if key == "vwap_bands":
             overrides.update(InpEntryBandPct="0.04", InpTargetBandPct="0.02", InpVolumeSource="1")

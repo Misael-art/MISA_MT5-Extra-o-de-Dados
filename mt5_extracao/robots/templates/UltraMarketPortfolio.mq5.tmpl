@@ -39,8 +39,8 @@ void UltraRates(const MqlRates &rates[],const int n)
    for(int i=0;i<n;i++)
    {
       if(rates[i].time<=ultra_latest_rate) continue;
-      PrintFormat("%sRATE|%I64d|%.*f|%.*f|%.*f|%.*f|%I64d|%I64d",UltraPrefix,(long)rates[i].time,
-                  _Digits,rates[i].open,_Digits,rates[i].high,_Digits,rates[i].low,_Digits,rates[i].close,
+      PrintFormat("%sRATE|%I64d|%.17g|%.17g|%.17g|%.17g|%I64d|%I64d",UltraPrefix,(long)rates[i].time,
+                  rates[i].open,rates[i].high,rates[i].low,rates[i].close,
                   rates[i].tick_volume,rates[i].real_volume);
       ultra_latest_rate=rates[i].time;
    }

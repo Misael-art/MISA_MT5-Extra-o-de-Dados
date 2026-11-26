@@ -57,6 +57,10 @@ grade, pausa ou reativação ficam fora deste contrato técnico.
 - O journal registra `PRESET`, `INPUTS`, `RATE`, `RAW` e `BAR`.
   As duas últimas linhas por decisão mostram os sinais antes e depois
   da validação do stop. `ENTRY` informa a resposta ou o veto da ordem.
+  `RATE` preserva os valores binários das barras do Tester na
+  representação decimal de 17 algarismos significativos. No Bollinger/RSI,
+  a comparação de preço absorve diferenças de cálculo de até
+  `10⁻¹²` vezes a banda central. O limite fica congelado no preset.
 - Use `laboratory ultra-market-compare-signals --receipt RECEIPT_JSON`
   para confrontar as estratégias Python com os prefixos de barras do
   journal. O recibo principal confronta a hipótese declarativa com a
