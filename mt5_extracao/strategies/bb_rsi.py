@@ -3,11 +3,6 @@ from . import indicators as ind
 from .base import ExitRules, Strategy, StrategyInfo, as_int
 
 
-# Conserva toques e empates na banda quando a média ou a variância
-# acumulam erros de arredondamento muito menores que a grade de preço.
-PRICE_COMPARISON_REL_TOLERANCE = 1e-12
-
-
 class BollingerRsiReversion(Strategy):
     key = "bb_rsi"
     info = StrategyInfo(
@@ -25,7 +20,7 @@ class BollingerRsiReversion(Strategy):
         bb = ind.bollinger(close, as_int(p["bb_period"]), p["bb_k"])
         r = ind.rsi(close, as_int(p["rsi_period"]))
         lateral = ind.adx(df, 14)["adx"] < p["adx_max"]
-        epsilon = bb["mid"].abs() * PRICE_COMPARISON_REL_TOLERANCE
+        epsilon = bb["mid"].abs() * ind.PRICE_COMPARISON_REL_TOLERANCE
         out["entry_long"] = lateral & (df["low"] <= bb["lower"] + epsilon) & (r < p["rsi_low"])
         out["entry_short"] = lateral & (df["high"] >= bb["upper"] - epsilon) & (r > 100 - p["rsi_low"])
         out["exit_long"] = close >= bb["mid"] - epsilon

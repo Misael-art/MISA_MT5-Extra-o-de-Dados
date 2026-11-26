@@ -10,7 +10,7 @@ from ..analytics.hypotheses import compile_definition
 from ..laboratory import ultra_market, ultra_pattern_native
 from ..laboratory.ultra_catalog import MARKET_NATIVE, MARKET_PATTERN
 from ..experiments.schema import digest
-from ..strategies.bb_rsi import PRICE_COMPARISON_REL_TOLERANCE
+from ..strategies.indicators import PRICE_COMPARISON_REL_TOLERANCE
 from .catalog import library_dirs
 from .ultra_runner import _sha
 
@@ -101,6 +101,15 @@ def _bollinger_boundaries(source):
     return source
 
 
+def _squeeze_momentum(source):
+    epsilon = format(Decimal(str(PRICE_COMPARISON_REL_TOLERANCE)), "f")
+    source = f"input double InpMomentumRelTolerance={epsilon};\n" + source
+    original = "   double momentum = b.close[i] - mid[i], before = b.close[i - 1] - mid[i - 1];"
+    return _replace(source, original, original + "\n"
+                    "   if(MathAbs(momentum)<=MathAbs(mid[i])*InpMomentumRelTolerance) momentum=0;\n"
+                    "   if(MathAbs(before)<=MathAbs(mid[i-1])*InpMomentumRelTolerance) before=0;")
+
+
 class _Sources:
     def __init__(self, root, workspace, seed, tick):
         self.root = root
@@ -175,6 +184,8 @@ class _Sources:
             source = self.read(origin)
         if key == "bb_rsi":
             source = _bollinger_boundaries(source)
+        if key == "squeeze":
+            source = _squeeze_momentum(source)
         overrides = {"InpRiskPct": RISK_PCT}
         if key == "vwap_bands":
             overrides.update(InpEntryBandPct="0.04", InpTargetBandPct="0.02", InpVolumeSource="1")

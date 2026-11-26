@@ -127,3 +127,18 @@ def test_bollinger_accepts_roundoff_at_band_but_respects_price_ticks(monkeypatch
     # O aquecimento do ATR mantém o sinal de entrada bruto fora do passe operável.
     from mt5_extracao.laboratory.ultra_market_signals import _raw
     assert list(_raw(get_strategy("bb_rsi"), frame)["entry_short"]) == [True, False, False]
+
+
+def test_squeeze_keeps_roundoff_neutral_before_testing_momentum_crosses(monkeypatch):
+    import pandas as pd
+
+    from mt5_extracao.strategies import get_strategy, indicators
+
+    close = pd.Series([1.10001, 1.1 - 1e-15, 1.1 + 1e-15, 1.09999, 1.10001])
+    frame = pd.DataFrame(dict(time=pd.date_range("2026-11-16", periods=5, freq="min"),
+                              open=close, high=close + 0.00010, low=close - 0.00010, close=close))
+    bands = pd.DataFrame(dict(mid=1.1, upper=1.10002, lower=1.09998), index=frame.index)
+    monkeypatch.setattr(indicators, "bollinger", lambda *args: bands)
+    signals = get_strategy("squeeze").gerar_sinais(frame)
+    assert list(signals["exit_long"]) == [False, False, False, True, False]
+    assert list(signals["exit_short"]) == [False, False, False, False, True]
