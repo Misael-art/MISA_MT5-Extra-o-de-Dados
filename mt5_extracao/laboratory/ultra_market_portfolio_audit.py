@@ -3,11 +3,13 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import file_digest
+from html import unescape
 from itertools import groupby, zip_longest
 import re
 import shutil
 
 from ..analytics import hypotheses, pattern_engine
+from ..robots.backtest import _CELL, _ROW, _TAG, _TIME
 from ..robots.ultra_market_portfolio import MARKER
 from . import ultra_market
 from .ultra_platform import compare_report
@@ -15,7 +17,8 @@ from .ultra_platform import compare_report
 
 _WIDTHS = {"OWNER": 4, "RULES": 8, "ACCOUNT": 4, "BAR": 12, "ENTRY": 10, "PEAK": 3,
            "PROTECT": 10, "CLOSE": 10, "ORDER": 11, "DEAL": 16, "FINAL": 11,
-           "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3, "BOUNDARY": 4}
+           "PLAN": 11, "RESPONSE": 7, "DEAL_EVENT": 3, "BOUNDARY": 4,
+           "PRESET": 5, "INPUTS": 3, "RAW": 14, "RATE": 7}
 
 
 def _records(journal, *, management_order=None):
@@ -109,6 +112,35 @@ def _pattern_comparison(snapshot, manifest, policy, journal, tick):
                 invalidated=sum(row[3] == 1 for row in observed), first_divergence=divergence)
 
 
+def _report_orders(html, orders, symbol, tick, step):
+    def atoms(text, unit):
+        return _atoms(text.replace(",", ".") or "0", unit)
+
+    matched = set()
+    for row in _ROW.findall(html):
+        cells = [unescape(_TAG.sub("", cell)).strip() for cell in _CELL.findall(row)]
+        if len(cells) != 11 or not _TIME.fullmatch(cells[0]) or not _TIME.fullmatch(cells[8]):
+            continue
+        ticket = int(cells[1])
+        if ticket in matched or ticket not in orders:
+            return dict(status="diverged", ticket=ticket, field="ticket")
+        _, _, _, msc, kind, state, initial, remaining, price, stop, target = orders[ticket]
+        initial, remaining = _atoms(initial, step), _atoms(remaining, step)
+        when = datetime.fromtimestamp(int(msc) // 1000, timezone.utc).strftime("%Y.%m.%d %H:%M:%S")
+        values = dict(symbol=(symbol, cells[2]), order_type=({"0": "buy", "1": "sell"}[kind], cells[3].lower()),
+                      volume=((initial, initial - remaining), tuple(atoms(q, step) for q in cells[4].split("/"))),
+                      price=(_atoms(price, tick), atoms(cells[5], tick)), sl=(_atoms(stop, tick), atoms(cells[6], tick)),
+                      tp=(_atoms(target, tick), atoms(cells[7], tick)), done=(when, cells[8]),
+                      state=("filled" if state == "4" else state, cells[9].lower()))
+        for field, (expected, observed) in values.items():
+            if expected != observed:
+                return dict(status="diverged", ticket=ticket, field=field, expected=expected, observed=observed)
+        matched.add(ticket)
+    if matched != orders.keys():
+        return dict(status="diverged", field="missing_orders", tickets=sorted(orders.keys() - matched))
+    return dict(status="report_matches", orders=len(matched))
+
+
 def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapshot=None, manifest=None):
     management_order = []
     rows = _records(agent_journal, management_order=management_order)
@@ -130,6 +162,11 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
     check(tape["quotes_exact"] and tape["account_margin_mode"] == 2, "real_tick_stream")
     check(symbol == bundle["symbol"] and _atoms(deposit, cent) == 100000 and tick > 0 and step > 0, "account_contract")
     expected = {str(row["magic"]): row["key"] for row in bundle["slots"]}
+    if "preset_sha256" in bundle:
+        check(rows["PRESET"] == [[bundle["preset_sha256"], str(bundle["preset_version"]), bundle["manifest_hash"],
+                                  bundle["source_closure_sha256"], bundle["binary_sha256"]]], "preset_binding")
+        check(rows["INPUTS"] == [[str(row["magic"]), row["preset_sha256"], row["inputs_sha256"]]
+                                 for row in bundle["slots"]], "module_inputs")
     pattern = next((row["pattern"] for row in bundle["slots"] if "pattern" in row), None)
     pattern_result = None
     if pattern is not None:
@@ -149,6 +186,11 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
         signals[magic] += buy == "1" or sell == "1"
         seen_bars[magic].add(bar)
     check(decisions.keys() == expected.keys(), "all_owners_evaluated")
+    if "preset_sha256" in bundle:
+        check([raw[:3] + raw[4:5] for raw in rows["RAW"]] == [bar[:4] for bar in rows["BAR"]], "raw_decision_coverage")
+        rates = [int(rate[0]) for rate in rows["RATE"]]
+        check(bool(rates) and rates == sorted(set(rates)), "decision_rate_order")
+    raw_signals = Counter(row[0] for row in rows["RAW"] if "1" in row[6:8])
     observed_orders = {int(o[0]): o for o in rows["ORDER"]}
     deals = list(_deals(rows["DEAL"], tick, step))
     if window := bundle.get("window"):
@@ -266,7 +308,11 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
                             {"cycles": [{"deals": deals}], "platform_account": {"symbol": symbol, "cash": _atoms(deposit, cent)},
                              "platform_final": final}, tester_html)
     check(report["status"] == "report_matches", "tester_report")
+    report_orders = _report_orders(tester_html, observed_orders, symbol, tick, step)
+    check(report_orders["status"] == "report_matches", "tester_report_orders")
+    counts_by_owner = Counter(row[1] for row in observed_orders.values())
     owners_result = [dict(key=key, magic=int(magic), evaluated_bars=decisions[magic], signal_bars=signals[magic],
+                          raw_signal_bars=raw_signals[magic] if rows["RAW"] else None, orders=counts_by_owner[magic],
                           rules=rules.get(magic), entries=openings[magic].pop("deals", 0),
                           exits=dict(openings[magic]), partials=partials[magic], refused=dict(refusals[magic]),
                           protections=dict(protects[magic]), managed_closes=dict(closes[magic]), management=management[magic])
@@ -277,7 +323,9 @@ def compare(bundle, tape, agent_journal, tester_html, common, output, *, snapsho
                 tick_comparison=tape, owners=owners_result, portfolio_state=state_file,
                 totals=dict(orders=len(observed_orders), deals=len(deals), partials=sum(partials.values())),
                 peak=dict(on_tick=int(peak), chronological=replay_peak, samples=rows["PEAK"]),
-                final=final, report_comparison=report, deals=deals, pattern_parity=pattern_result, economic_approval=False,
+                final=final, report_comparison=report, report_orders=report_orders, deals=deals, pattern_parity=pattern_result,
+                economic_approval=False,
                 observations=dict(plans=len(plans), responses=len(rows["RESPONSE"]), deal_events=len(deal_events),
+                                  preset=rows["PRESET"], raw_decisions=len(rows["RAW"]), decision_rates=len(rows["RATE"]),
                                   boundary=rows["BOUNDARY"]),
                 units=dict(tick_size=str(tick), volume_step=str(step), cash_unit="0.01 USD"))

@@ -2,10 +2,11 @@
 import json
 import tkinter as tk
 from pathlib import Path
+from queue import Empty, SimpleQueue
 from tkinter import filedialog, ttk
 import webbrowser
 
-from ..laboratory import ultra_catalog, ultra_market, ultra_report, ultra_tester
+from ..laboratory import ultra_catalog, ultra_market, ultra_market_preset, ultra_report, ultra_tester
 from ..laboratory.ultra_cycle_report import write_report
 
 
@@ -225,7 +226,7 @@ def open_receipts(panel):
         market.configure(state="disabled")
         panel.ui.run_bg(lambda: ultra_market.verify(folder), finished)
 
-    def run_market(mode="ticks", *, strategies=None, pattern_path=None):
+    def run_market(mode="ticks", *, preset_path=None):
         from ..robots.ultra_market_runner import run
 
         snapshot = filedialog.askdirectory(parent=window, title="Escolher fita congelada de mercado")
@@ -235,22 +236,59 @@ def open_receipts(panel):
         if not output:
             return
         config = panel._config()
+        stages = SimpleQueue()
+        if preset_path:
+            try:
+                selected = ultra_market_preset.read(preset_path)
+            except (OSError, ValueError) as error:
+                note.configure(text=str(error))
+                return
+            label = f'{Path(preset_path).name} · v{selected["version"]} · {selected["preset_sha256"][:12]} · '
+        else:
+            selected, label = None, ""
+        active = True
+
+        def show_stage():
+            if not active or not window.winfo_exists():
+                return
+            latest = None
+            try:
+                while True:
+                    latest = stages.get_nowait()
+            except Empty:
+                pass
+            if latest:
+                status, path = latest
+                note.configure(text=f"{label}{status} · {path}")
+            window.after(750, show_stage)
 
         def execute():
-            pattern = json.loads(Path(pattern_path).read_text(encoding="utf-8")) if pattern_path else None
-            return run(config, snapshot, output, mode=mode, strategies=strategies, pattern=pattern)
+            return run(config, snapshot, output, mode=mode, preset=selected,
+                       progress=lambda status, path: stages.put((status, path)))
 
         def finished(result, error):
+            nonlocal active
+            active = False
             if not window.winfo_exists():
                 return
-            probe.configure(state="normal")
-            portfolio.configure(state="normal")
-            note.configure(text=str(error) if error else f'{result["status"]} · {result["receipt_path"]}')
+            for button in (probe, portfolio, frozen_portfolio):
+                button.configure(state="normal")
+            detail = str(error) if error else " · ".join(filter(None, (result["status"], result.get("reason"),
+                                                                       result["receipt_path"])))
+            note.configure(text=label + detail)
             if not error and result.get("portfolio_report"):
                 webbrowser.open(Path(result["receipt_path"]).with_name(result["portfolio_report"]).as_uri())
-        probe.configure(state="disabled")
-        portfolio.configure(state="disabled")
+        for button in (probe, portfolio, frozen_portfolio):
+            button.configure(state="disabled")
+        note.configure(text=label + "Preparando o Strategy Tester…")
+        show_stage()
         panel.ui.run_bg(execute, finished)
+
+    def open_market_preset():
+        path = filedialog.askopenfilename(parent=window, title="Abrir preset congelado do Laboratório",
+                                          filetypes=[("JSON", "*.json")])
+        if path:
+            run_market("portfolio", preset_path=path)
 
     def choose_portfolio():
         choice = tk.Toplevel(window)
@@ -265,6 +303,7 @@ def open_receipts(panel):
             included[key] = checked
             ttk.Checkbutton(form, text=strategies[key], variable=checked).pack(anchor="w")
         pattern = tk.StringVar(choice)
+        orb_minutes = tk.StringVar(choice)
 
         def choose_pattern():
             path = filedialog.askopenfilename(parent=choice, title="Abrir hipótese de preço M1", filetypes=[("JSON", "*.json")])
@@ -279,14 +318,47 @@ def open_receipts(panel):
             if not selected:
                 feedback.configure(text="Selecione ao menos uma estratégia ou hipótese.")
                 return
-            choice.destroy()
-            run_market("portfolio", strategies=selected, pattern_path=path)
+            try:
+                minutes = int(orb_minutes.get()) if orb_minutes.get() else None
+                if minutes is not None and ("orb" not in selected or not 1 <= minutes <= 240):
+                    raise ValueError("Selecione ORB e informe uma janela de 1 a 240 minutos.")
+            except ValueError as error:
+                feedback.configure(text=str(error))
+                return
+            snapshot = filedialog.askdirectory(parent=choice, title="Escolher fita da carteira")
+            if not snapshot:
+                return
+            output = filedialog.asksaveasfilename(parent=choice, title="Salvar preset do Laboratório",
+                                                  defaultextension=".json", filetypes=[("JSON", "*.json")])
+            if not output:
+                return
+
+            def freeze():
+                definition = json.loads(Path(path).read_text(encoding="utf-8")) if path else None
+                params = {"orb": {"range_minutes": minutes}} if minutes is not None else None
+                return ultra_market_preset.freeze(panel._config(), snapshot, output, strategies=selected,
+                                                  pattern=definition, parameters=params)
+
+            def exported(result, error):
+                if not choice.winfo_exists():
+                    return
+                save_preset.configure(state="normal")
+                if error:
+                    feedback.configure(text=str(error))
+                    return
+                choice.destroy()
+                note.configure(text=f'{output} · v{result["version"]} · {result["preset_sha256"][:12]}')
+            save_preset.configure(state="disabled")
+            panel.ui.run_bg(freeze, exported)
 
         ttk.Button(form, text="Incluir hipótese JSON…", command=choose_pattern).pack(anchor="w", pady=(8, 0))
         ttk.Entry(form, textvariable=pattern, width=42).pack(anchor="w")
+        ttk.Label(form, text="Faixa ORB em minutos (opcional)").pack(anchor="w")
+        ttk.Entry(form, textvariable=orb_minutes, width=8).pack(anchor="w")
         feedback = ttk.Label(form)
         feedback.pack(anchor="w")
-        ttk.Button(form, text="Selecionar fita e rodar…", command=submit_portfolio).pack(anchor="w")
+        save_preset = ttk.Button(form, text="Congelar preset…", command=submit_portfolio)
+        save_preset.pack(anchor="w")
 
     nav = ttk.Frame(body)
     nav.pack(fill=tk.X)
@@ -302,8 +374,10 @@ def open_receipts(panel):
     market.pack(anchor="w", pady=4)
     probe = ttk.Button(body, text="Rodar sonda de ticks no Tester…", command=run_market)
     probe.pack(anchor="w", pady=4)
-    portfolio = ttk.Button(body, text="Rodar carteira EURUSD no Tester…", command=choose_portfolio)
+    portfolio = ttk.Button(body, text="Gerar preset EURUSD…", command=choose_portfolio)
     portfolio.pack(anchor="w", pady=4)
+    frozen_portfolio = ttk.Button(body, text="Executar preset no Tester…", command=open_market_preset)
+    frozen_portfolio.pack(anchor="w", pady=4)
     capabilities = ttk.Button(body, text="Capacidades do pacote…", command=show_capabilities)
     capabilities.pack(anchor="w", pady=4)
     platform = ttk.Button(body, text="Conferir pacote e journal do Tester…", command=show_platform)

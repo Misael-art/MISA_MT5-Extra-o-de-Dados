@@ -20,6 +20,8 @@ SURFACE = {
     "ultra_compare_market_probe": ["source", "tape", "binding", "agent_journal"],
     "ultra_run_market_tester": ["config", "snapshot", "output", "mode", "timeout"],
     "ultra_run_market_portfolio": ["config", "snapshot", "output", "strategies", "pattern", "timeout"],
+    "ultra_freeze_market_preset": ["config", "snapshot", "output", "strategies", "pattern", "parameters", "previous"],
+    "ultra_run_market_preset": ["config", "snapshot", "output", "preset", "timeout"],
     "ultra_run_tester": ["db", "config", "package", "output", "origin", "chart", "timeout", "resume", "prepare_only"],
     "ultra_freeze": ['db', 'definition'],
     "ultra_replay": ['db', 'receipt', 'until'],
@@ -148,6 +150,8 @@ def test_ultra_market_sdk_keeps_legacy_mode_and_forwards_portfolio_selection(mon
     pattern = {"definition": {}}
     assert sdk.ultra_run_market_portfolio(*args, strategies=["pattern_definition"], pattern=pattern) == (
         args, {"mode": "portfolio", "timeout": 300, "strategies": ["pattern_definition"], "pattern": pattern})
+    assert sdk.ultra_run_market_preset(*args, preset="frozen.json") == (
+        args, {"mode": "portfolio", "timeout": 300, "preset": "frozen.json"})
 
 
 def test_query_catalog_database_is_optional_for_existing_offline_callers():

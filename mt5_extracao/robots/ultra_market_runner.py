@@ -7,7 +7,7 @@ import socket
 from uuid import uuid4
 
 from ..analytics.data_eligibility import tester_report
-from ..laboratory import ultra_market, ultra_market_cycle
+from ..laboratory import ultra_market, ultra_market_cycle, ultra_market_preset
 from . import mt5_tools as mt5, safety_lib, ultra_hadouken, ultra_market_portfolio, ultra_runner
 
 
@@ -27,14 +27,14 @@ def _headers(config, expert, terminal):
     return {name: ultra_runner._sha(path) for name, path in deps.items()}
 
 
-def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None, pattern=None):
+def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None, pattern=None, preset=None, progress=None):
     if mode not in ("ticks", "s09_cycle", "portfolio") or type(timeout) is not int or not 10 <= timeout <= 1800:
         raise ValueError("Use ticks, s09_cycle ou portfolio no Tester e um prazo de 10 a 1800 segundos.")
     state = ultra_market.verify(snapshot)
     dates = [datetime.fromisoformat(state["time"][k]) for k in ("start_inclusive", "end_exclusive")]
     portfolio = mode == "portfolio"
-    if not portfolio and (strategies is not None or pattern is not None):
-        raise ValueError("Seleção de estratégias e hipótese exigem o modo portfolio.")
+    if not portfolio and (strategies is not None or pattern is not None or preset is not None):
+        raise ValueError("Seleção, hipótese e preset exigem o modo portfolio.")
     if portfolio and (any(d.time() != time() for d in dates) or state["account"]["margin_mode"] != 2
                       or state["account"]["currency"] != "USD" or state["account"]["currency_digits"] != 2):
         raise ValueError("A carteira exige fita de dias completos e especificação da conta DEMO hedging USD.")
@@ -52,6 +52,8 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
         stage = target.with_suffix(".tmp")
         stage.write_text(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
         stage.replace(target)
+        if progress is not None:
+            progress(status, target)
         return receipt.copy()
 
     save("preparing")
@@ -61,11 +63,13 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
     export = ultra_market_cycle.export if cycle else ultra_market.export_probe
     try:
         bundle = (ultra_market_portfolio.export(config, snapshot, source, attempt=attempt, strategies=strategies,
-                                                pattern=pattern) if portfolio
+                                                pattern=pattern, preset=preset, manifest=state) if portfolio
                   else export(snapshot, source, attempt=attempt))
+        if portfolio:
+            ultra_market_preset.write(folder / "preset-frozen.json", bundle["preset"])
         key = "UltraMarket_" + attempt[:16]
         expert = data / "MQL5" / "Experts" / "MT5XUltra" / key / source.name
-        save("exported", **bundle)
+        save("exported", last_completed="exported", **bundle)
         startup = ultra_runner._demo_startup()
         with mt5.tester_lease():
             if mt5.terminal_running(config):
@@ -100,14 +104,16 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
                 return save("account_contract_missing", reason="Alavancagem da conta indisponível.")
             ini += f"ExecutionMode=0\r\nLeverage=1:{leverage}\r\n"
             (folder / "tester.ini").write_bytes(ini.encode("utf-16"))
-            save("compiled", binary_sha256=binary_sha, tester_ini="tester.ini", tester_port=port)
+            save("compiled", last_completed="compiled", binary_sha256=binary_sha, tester_ini="tester.ini", tester_port=port)
             before = ultra_runner._offsets(data, "Tester")
             error = None
             try:
+                save("testing")
                 html = mt5.run_tester(config, data, startup + ini, key, timeout=timeout)
                 shutil.copyfile(html, folder / "report.htm")
                 report_text = mt5.read_log_text(folder / "report.htm")
-                save("report_saved", report_sha256=ultra_runner._sha(folder / "report.htm"),
+                save("report_saved", last_completed="report_saved",
+                     report_sha256=ultra_runner._sha(folder / "report.htm"),
                      tester_data_quality=tester_report(report_text, "4"))
             except RuntimeError as exc:
                 error = str(exc)
@@ -120,7 +126,7 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
             journal, _ = ultra_runner._marked(agent_logs, marker)
             if journal is None:
                 return save("journal_missing", reason=error or "Sem os marcadores do agente local.")
-            save("journal_saved", journal=journal.relative_to(folder).as_posix(),
+            save("journal_saved", last_completed="journal_saved", journal=journal.relative_to(folder).as_posix(),
                  journal_sha256=ultra_runner._sha(journal))
             raw = mt5.read_log_text(journal)
             if cycle:
@@ -142,11 +148,12 @@ def run(config, snapshot, output, *, mode="ticks", timeout=300, strategies=None,
                         return save("report_missing", reason=error, tick_comparison=data_result)
                     from ..laboratory import ultra_market_portfolio_audit
                     from ..laboratory.ultra_cycle_report import write_market_report
-                    data_result = ultra_market_portfolio_audit.compare(bundle, data_result, raw, report_text, common, folder,
+                    data_result = ultra_market_portfolio_audit.compare(dict(bundle, binary_sha256=binary_sha),
+                                                                      data_result, raw, report_text, common, folder,
                                                                       snapshot=Path(snapshot), manifest=state)
                     checked = save(data_result["status"], comparison=data_result, report_error=error)
                     write_market_report(checked, folder / "carteira.html")
-                    return save(data_result["status"], portfolio_report="carteira.html")
+                    return save(data_result["status"], portfolio_report="carteira.html", last_completed="report_compared")
             return save(data_result["status"], comparison=data_result, report_error=error)
     except (OSError, ValueError, RuntimeError) as exc:
         return save("failed", reason=str(exc))

@@ -530,6 +530,7 @@ from .laboratory.ultra_tester import export as ultra_export_tester, compare as u
 from .laboratory.ultra_market import capture as ultra_capture_market, verify as ultra_verify_market
 from .laboratory.ultra_market import verify_m1 as ultra_verify_market_m1
 from .laboratory.ultra_market import export_probe as ultra_export_market_probe, compare_probe as ultra_compare_market_probe
+from .laboratory.ultra_market_preset import freeze as ultra_freeze_market_preset
 from .robots.ultra_runner import run as ultra_run_tester
 from .robots.ultra_market_runner import run as _run_ultra_market_tester
 from .laboratory.ultra_report import list_receipts as ultra_list
@@ -548,6 +549,11 @@ def ultra_run_market_portfolio(config, snapshot, output, *, strategies=None, pat
                                     strategies=strategies, pattern=pattern)
 
 
+def ultra_run_market_preset(config, snapshot, output, *, preset, timeout=300):
+    """Executa a versão congelada pelo Laboratório no Tester de carteira."""
+    return _run_ultra_market_tester(config, snapshot, output, mode="portfolio", timeout=timeout, preset=preset)
+
+
 __all__ = [
     "ultra_capabilities", "ultra_freeze", "ultra_replay", "ultra_inspect", "ultra_compare",
     "ultra_register_study", "ultra_evaluate_study", "ultra_list", "ultra_export_report", "ultra_compare_trace",
@@ -555,7 +561,7 @@ __all__ = [
     "ultra_compare_native_book", "ultra_run_tester", "ultra_tester_capabilities",
     "ultra_capture_market", "ultra_verify_market", "ultra_export_market_probe", "ultra_compare_market_probe",
     "ultra_verify_market_m1",
-    "ultra_run_market_tester", "ultra_run_market_portfolio",
+    "ultra_run_market_tester", "ultra_run_market_portfolio", "ultra_freeze_market_preset", "ultra_run_market_preset",
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
     "pattern_campaign_status", "f19_research_preset",

@@ -39,7 +39,20 @@ def add_parser(sub):
     market.add_argument("--strategy", action="append", choices=(*MARKET_NATIVE, MARKET_PATTERN),
                         help="módulo da carteira, em ordem de avaliação; repita para selecionar vários")
     market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e de sua proteção de pesquisa")
+    market.add_argument("--preset", type=Path, help="preset congelado pelo Laboratório, no modo portfolio")
     market.add_argument("--timeout", type=int, default=300)
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-preset-freeze", help="congela ou revisa um preset EURUSD M1 da carteira")
+    market.add_argument("--snapshot", required=True)
+    market.add_argument("--out", type=Path, required=True)
+    market.add_argument("--strategy", action="append", choices=(*MARKET_NATIVE, MARKET_PATTERN))
+    market.add_argument("--pattern", type=Path, help="arquivo JSON da hipótese M1 e da proteção")
+    market.add_argument("--parameters", type=Path, help="arquivo JSON de parâmetros editáveis por estratégia")
+    market.add_argument("--previous", type=Path, help="preset congelado que esta versão revisa")
+    market.set_defaults(func=run)
+    market = actions.add_parser("ultra-market-compare-signals", help="compara todas as decisões Python deste recibo")
+    market.add_argument("--receipt", required=True)
+    market.add_argument("--strategy", action="append", choices=tuple(MARKET_NATIVE))
     market.set_defaults(func=run)
     market = actions.add_parser("ultra-market-demo-export", help="gera observador do gráfico DEMO com ordens desativadas")
     for option in ("snapshot", "out", "attempt"):
@@ -244,7 +257,16 @@ def run(args, ctx):
                 from ..robots.ultra_market_runner import run as run_market
                 pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
                 result = run_market(ctx.config, args.snapshot, args.out, mode=args.mode, timeout=args.timeout,
-                                    strategies=args.strategy, pattern=pattern)
+                                    strategies=args.strategy, pattern=pattern, preset=args.preset)
+            elif action == "ultra-market-preset-freeze":
+                from .ultra_market_preset import freeze
+                pattern = json.loads(args.pattern.read_text(encoding="utf-8")) if args.pattern else None
+                parameters = json.loads(args.parameters.read_text(encoding="utf-8")) if args.parameters else None
+                result = freeze(ctx.config, args.snapshot, args.out, strategies=args.strategy, pattern=pattern,
+                                parameters=parameters, previous=args.previous)
+            elif action == "ultra-market-compare-signals":
+                from .ultra_market_signals import compare
+                result = compare(args.receipt, strategies=args.strategy)
             elif action == "ultra-market-demo-export":
                 result = ultra_market.export_demo_observer(args.snapshot, args.out, attempt=args.attempt)
             else:

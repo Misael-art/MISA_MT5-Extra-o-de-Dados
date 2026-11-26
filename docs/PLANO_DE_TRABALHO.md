@@ -5510,6 +5510,11 @@ O exportador do Expert de ordens instancia o indicador e a política de cada don
 
 ### T19.53 · Inventário operacional e fita MetaQuotes-Demo
 
+O Laboratório congela a seleção técnica da carteira EURUSD M1 com
+`ultra-market-preset-freeze`. A CLI e a interface abrem o mesmo JSON para
+gerar um único Expert. O pacote e o journal vinculam preset, valores
+efetivos por módulo, fita e binário. O recorte exclui promoção econômica.
+
 O catálogo deriva do registro Python, dos contratos nativos e da via declarativa. A UI, a CLI e o
 exportador consultam as permissões do mesmo módulo. O teste de inventário acusa chaves novas
 sem representação. A geração concorrente continua limitada ao recorte explicitado no catálogo.

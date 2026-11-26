@@ -1593,6 +1593,20 @@ da hipótese em pontos. O modo de mercado exige EURUSD, M1, dias completos no re
 do servidor e uma conta DEMO hedging USD. O recibo reúne a fita processada, a conciliação
 das posições por dono e o relatório do Strategy Tester.
 
+`sdk.ultra_freeze_market_preset(config, snapshot, output, *, strategies=None, pattern=None, parameters=None, previous=None)`
+salva um preset técnico `mt5x-ultra-market-preset/1`. A ordem de `strategies`
+define a prioridade. O perfil vincula a fita e sua especificação do símbolo,
+os parâmetros efetivos, as referências nativas e o limite de risco agregado.
+`parameters={"orb": {"range_minutes": 15}}` altera a janela ORB. Com `previous`,
+a nova versão conserva a seleção e a fita e aponta para o hash da anterior.
+O exportador rejeita configurações fora do contrato suportado.
+
+`sdk.ultra_run_market_preset(config, snapshot, output, *, preset, timeout=300)`
+gera um único Expert a partir desse arquivo. O recibo inclui o preset, o
+relatório HTML nativo, a fita observada, o journal de decisões e os hashes
+do pacote e do EX5. O journal confirma a versão do preset e os hashes dos
+parâmetros consumidos por cada módulo. A execução é técnica no Tester DEMO.
+
 `sdk.ultra_run_tester(db, config, package, output, *, origin="strategy_tester", chart="EURUSD", timeout=300)`
 executa o ensaio no terminal portátil configurado. O recibo identifica a tentativa e o
 caminho dos arquivos. A origem `strategy_tester` exige conexão DEMO. Use

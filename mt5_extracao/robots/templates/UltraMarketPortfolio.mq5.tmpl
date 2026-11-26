@@ -3,6 +3,8 @@
 
 input string UltraBinarySha="";
 const string UltraManifest="$manifest", UltraBinding="$binding", UltraClosure="$closure";
+const string UltraPresetSha="$preset_sha";
+const int UltraPresetVersion=$preset_version;
 const long UltraStart=$start, UltraEnd=$end, UltraLast=$last, UltraTickCount=$tick_count;
 const string UltraPrefix="MT5X_ULTRA_PORTFOLIO|";
 CHDKPortfolioRiskGuard ultra_leader;
@@ -11,6 +13,7 @@ int ultra_tape=INVALID_HANDLE, ultra_peak=0;
 long ultra_ticks=0, ultra_msc=0;
 bool ultra_failed=false, ultra_completed=false;
 datetime ultra_heartbeat=0;
+datetime ultra_latest_rate=0;
 
 bool UltraReconcile(string &reason)
 {
@@ -24,10 +27,31 @@ bool UltraBind(CHDKPortfolioRiskGuard &guard,CHDKSafeExecutor &exec,const long m
                const string preset,const string inputs)
 {
    string reason;
-   bool ok=guard.BindContext(magic,UltraBinding,key,"mt5x-ultra-eurusd",preset,1,UltraClosure,UltraBinarySha,inputs,reason)
+   bool ok=guard.BindContext(magic,UltraBinding,key,"mt5x-ultra-eurusd",preset,UltraPresetVersion,UltraClosure,UltraBinarySha,inputs,reason)
            && exec.BindPortfolio(GetPointer(guard),reason);
    Print(UltraPrefix,"OWNER|",magic,"|",key,"|",(int)ok,"|",reason);
+   Print(UltraPrefix,"INPUTS|",magic,"|",preset,"|",inputs);
    return ok;
+}
+
+void UltraRates(const MqlRates &rates[],const int n)
+{
+   for(int i=0;i<n;i++)
+   {
+      if(rates[i].time<=ultra_latest_rate) continue;
+      PrintFormat("%sRATE|%I64d|%.*f|%.*f|%.*f|%.*f|%I64d|%I64d",UltraPrefix,(long)rates[i].time,
+                  _Digits,rates[i].open,_Digits,rates[i].high,_Digits,rates[i].low,_Digits,rates[i].close,
+                  rates[i].tick_volume,rates[i].real_volume);
+      ultra_latest_rate=rates[i].time;
+   }
+}
+
+void UltraRaw(const long magic,const datetime bar,const datetime first,const datetime closed,const int n,
+              const bool el,const bool es,const bool xl,const bool xs,
+              const double sl,const double ss,const double tl,const double ts)
+{
+   PrintFormat("%sRAW|%I64d|%I64d|%I64d|%I64d|%I64d|%d|%d|%d|%d|%d|%.16g|%.16g|%.16g|%.16g",
+               UltraPrefix,magic,ultra_msc,(long)bar,(long)first,(long)closed,n,(int)el,(int)es,(int)xl,(int)xs,sl,ss,tl,ts);
 }
 
 void UltraRules(const long magic,const double target,const double partial,const double fraction,
@@ -116,6 +140,10 @@ int OnInit()
       AccountInfoInteger(ACCOUNT_MARGIN_MODE)!=ACCOUNT_MARGIN_MODE_RETAIL_HEDGING || AccountInfoString(ACCOUNT_CURRENCY)!="USD" ||
       _Symbol!="EURUSD" || _Period!=PERIOD_M1 || SymbolInfoInteger(_Symbol,SYMBOL_CUSTOM) || PositionsTotal()!=0 || OrdersTotal()!=0)
    {Print(UltraPrefix,"DENIED|context");return INIT_FAILED;}
+   if(_Digits!=$digits || _Point!=$point || SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE)!=$tick ||
+      SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP)!=$lot_step)
+   {Print(UltraPrefix,"DENIED|symbol_specifications");return INIT_FAILED;}
+   Print(UltraPrefix,"PRESET|",UltraPresetSha,"|",UltraPresetVersion,"|",UltraManifest,"|",UltraClosure,"|",UltraBinarySha);
 $init
    string reason;
    ultra_chart=(ulong)ChartID();

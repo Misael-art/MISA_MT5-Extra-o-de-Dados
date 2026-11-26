@@ -3,6 +3,7 @@ from pathlib import Path, PurePosixPath
 from decimal import Decimal
 from posixpath import relpath
 import re
+from hashlib import sha256
 from string import Template
 
 from ..analytics.hypotheses import compile_definition
@@ -23,6 +24,8 @@ _OBSERVATION = _ENGINE.with_name("HDK_StrategyObservation.mqh")
 _EXECUTOR = _NATIVE / "Safety/HDK_SafeExecutor.mqh"
 _INCLUDE = re.compile(r'^(\s*#include\s+)(?:<([^>]+)>|"([^"]+)")', re.MULTILINE)
 _INPUT = re.compile(r"^input\s+(\w+)\s+(Inp\w+)\s*=\s*([^;\n]+);", re.MULTILINE)
+_LITERALS = {"bool": r"true|false", "int": r"-?[0-9]+", "long": r"[0-9]+",
+             "datetime": r"\(datetime\)[0-9]+", "double": r"-?[0-9]+(?:\.[0-9]+)?"}
 _SYMBOLS = """
 HDKSignal HDKExitRules HDKGuardTightens HDK_STRATEGY_ROBOT_MQH HDK_STRATEGY_OBSERVATION_MQH
 HDK_STRATEGY_OBSERVE_ENTRIES HDK_STRATEGY_BARS HDK_STRATEGY_MIN_BARS HDK_STRATEGY_ATR
@@ -53,6 +56,9 @@ def _engine(source, index):
          '   if(reason != "")\n   {\n#ifdef HDK_STRATEGY_OBSERVE_ENTRIES'),
         ("   HDKExecutionResultV1 observed;", "   UltraPlan(InpMagicNumber,type,lot,price,stop,tp_dist,risk_money);\n"
          "   HDKExecutionResultV1 observed;"),
+        ("   StrategySignal(g_bars, s);", "   StrategySignal(g_bars, s);\n"
+         "   UltraRaw(InpMagicNumber,bar,g_bars.time[0],g_bars.time[last],g_bars.n,s.entry_long,"
+         "s.entry_short,s.exit_long,s.exit_short,s.stop_long,s.stop_short,s.target_long,s.target_short);"),
         ("   StrategyContextTrace(bar, s);", "   UltraDecision(InpMagicNumber,bar,g_bars.time[last],s.entry_long,"
          "s.entry_short,s.exit_long,s.exit_short,s.stop_long,s.stop_short,s.target_long,s.target_short);"),
         ("g_exec.ClosePosition(ticket, why, volume)", "UltraClose(g_exec,InpMagicNumber,ticket,why,volume)"),
@@ -66,6 +72,8 @@ def _engine(source, index):
          "if(want == 0 || want == closed_by_signal || (g_episode>0 && closed_by_signal!=0)) return;"),
         ("CHDKLogger       g_log;", "datetime         g_episode=0;\nCHDKLogger       g_log;"),
     )
+    if index == 0:
+        source = _replace(source, "   g_bars.n = n;", "   UltraRates(rates,n);\n   g_bars.n = n;")
     for old, new in patches:
         source = _replace(source, old, new)
     return source
@@ -91,11 +99,13 @@ class _Sources:
         return source.read_text(encoding="utf-8-sig")
 
     def write(self, relative, source):
-        path = self.workspace / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("x", encoding="utf-8", newline="\n") as stream:
-            stream.write(source)
-        self.files[str(relative)] = _sha(path)
+        content = source.encode("utf-8")
+        if self.workspace is not None:
+            path = self.workspace / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("xb") as stream:
+                stream.write(content)
+        self.files[str(relative)] = sha256(content).hexdigest()
 
     def includes(self, source, origin, destination, engine=None):
         def include(match):
@@ -121,7 +131,7 @@ class _Sources:
             self.write(installed, self.includes(source, relative, installed))
         return installed
 
-    def owner(self, index, key, pattern):
+    def owner(self, index, key, pattern, edits, frozen):
         origin = PurePosixPath(f"Experts/HADOUKEN/Estrategias/HDK_{MARKET_NATIVE.get(key, 'Pattern')}.mq5")
         if key == "s09_reference":
             origin = PurePosixPath("Experts/HADOUKEN/Estrategias/HDK_S09_Referencia.mq5")
@@ -149,11 +159,17 @@ class _Sources:
         overrides = {"InpRiskPct": RISK_PCT}
         if key == "vwap_bands":
             overrides.update(InpEntryBandPct="0.04", InpTargetBandPct="0.02", InpVolumeSource="1")
+        overrides.update(edits)
         effective = {}
 
         def freeze(match):
             kind, param, default = match.groups()
-            value = overrides.get(param, default.strip())
+            expected = overrides.get(param, default.strip())
+            value = expected if frozen is None else frozen.get(param)
+            if value != expected:
+                raise ValueError(f"modules.{key}.inputs.{param}: valor fora da seleção suportada ({expected}).")
+            if not isinstance(value, str) or not re.fullmatch(_LITERALS.get(kind, r"(?!)"), value):
+                raise ValueError(f"modules.{key}.inputs.{param}: literal MQL5 incompatível com {kind}.")
             effective[param] = value
             return f"const {kind} {param} = {value};"
 
@@ -163,6 +179,8 @@ class _Sources:
         if not set(overrides) <= effective.keys() or re.search(r"^input\b", source, re.MULTILINE):
             raise ValueError(f"Contrato de inputs MQL5 desconhecido em {key}.")
         effective.setdefault("InpExportTrades", "false")
+        if frozen is not None and frozen != effective:
+            raise ValueError(f"modules.{key}.inputs: parâmetros incompatíveis com a referência.")
         prefix = "const bool InpExportTrades=false;\n" if "InpExportTrades" not in source else ""
         engine = PurePosixPath("refs") / _ENGINE.with_name(f"portfolio_engine_{index}.mqh")
         observation = engine.with_name(f"portfolio_observation_{index}.mqh")
@@ -190,21 +208,39 @@ void StrategyEntryTrace(const ENUM_ORDER_TYPE type,const HDKExecutionResultV1 &o
         policy = {"inputs": effective}
         if pattern is not None:
             policy["pattern"] = pattern
-        return dict(key=key, magic=magic, **policy, preset_sha256=digest([key, policy]),
+        return dict(key=key, magic=magic, priority=index, **policy, preset_sha256=digest([key, policy]),
                     inputs_sha256=digest(policy), reference=("analytics.pattern_engine" if pattern else str(origin)),
                     include=str(slot))
 
 
-def export(config, snapshot, destination, *, attempt, strategies=None, pattern=None):
-    manifest = ultra_market.verify(snapshot)
-    if manifest["symbol"] != "EURUSD" or manifest["source"]["server"] != "MetaQuotes-Demo":
-        raise ValueError("A carteira técnica exige EURUSD da MetaQuotes-Demo.")
-    if not manifest["coverage"]["executable"] or not re.fullmatch(r"[a-f0-9]{32}", attempt):
-        raise ValueError("A fita ou o identificador da tentativa é inválido para a carteira.")
+def market_contract(manifest):
+    for field, actual, expected in (
+        ("symbol", manifest["symbol"], "EURUSD"),
+        ("source.server", manifest["source"]["server"], "MetaQuotes-Demo"),
+        ("source.mode", manifest["source"]["mode"], "demo"),
+        ("account.margin_mode", manifest["account"]["margin_mode"], 2),
+        ("account.currency", manifest["account"]["currency"], "USD"),
+        ("account.currency_digits", manifest["account"]["currency_digits"], 2),
+        ("time.basis", manifest["time"]["basis"], "mt5_raw_clock"),
+    ):
+        if actual != expected:
+            raise ValueError(f"{field}: valor incompatível com o Tester de carteira ({actual!r}).")
     coverage = manifest["coverage"]
-    if (coverage["rows"] != sum(block["rows"] for block in manifest["blocks"])
+    if (not coverage["executable"] or coverage["rows"] != sum(block["rows"] for block in manifest["blocks"])
             or not manifest["time"]["start_msc"] <= coverage["last_msc"] < manifest["time"]["end_msc"]):
-        raise ValueError("A contagem e o último tick precisam pertencer à janela congelada.")
+        raise ValueError("coverage: contagem, execução ou último tick inválido para a janela congelada.")
+    if any(manifest["time"][name] % 86400000 for name in ("start_msc", "end_msc")):
+        raise ValueError("time: a carteira exige dias completos no relógio bruto MT5.")
+    contract = manifest["contract"]["current"]
+    if Decimal(str(contract["point"])) != Decimal(str(contract["trade_tick_size"])):
+        raise ValueError("contract.current.trade_tick_size: deve ser igual a point.")
+    return dict(symbol=manifest["symbol"], data=manifest["source"], account=manifest["account"],
+                specifications=manifest["contract"], clock=manifest["time"], timeframe="M1",
+                session="broker_day_m1", tester_model=4, snapshot_sha256=manifest["manifest_hash"])
+
+
+def resolve(config, manifest, *, strategies, pattern, edits, workspace=None, frozen=None):
+    market = market_contract(manifest)
     roots = [path for path in library_dirs(config) if (path / "Include" / _ENGINE).is_file()]
     if len(roots) != 1:
         raise ValueError("Configure uma única referência HADOUKEN para a carteira.")
@@ -212,30 +248,63 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
         if (not isinstance(pattern, dict) or set(pattern) != {"definition", "apply_invalidation", "stop_points", "target_points"}
                 or type(pattern["apply_invalidation"]) is not bool or any(type(pattern[k]) is not int or not 0 < pattern[k] <= 100000
                                                                           for k in ("stop_points", "target_points"))):
-            raise ValueError("Declare definição, invalidação booleana e SL/TP de pesquisa em pontos.")
+            raise ValueError("pattern: declare definition, apply_invalidation e SL/TP em pontos positivos.")
         body = compile_definition(pattern["definition"]).body
         if (manifest["symbol"] not in body["universe_definition"]["symbols"] or body["repetition_policy"] != "all"
                 or body["timezone_calendar_versions"].get("clock") != "mt5_raw_clock"):
-            raise ValueError("A hipótese de mercado exige EURUSD, relógio bruto MT5 e repetição sem dependência de sessão.")
+            raise ValueError("pattern.definition: exige EURUSD, mt5_raw_clock e repetition_policy=all.")
         pattern = dict(pattern, definition=body)
     available = (*MARKET_NATIVE, *((MARKET_PATTERN,) if pattern is not None else ()))
     keys = available if strategies is None else tuple(strategies)
     if not keys or len(keys) != len(set(keys)) or set(keys) - set(available) or (pattern and MARKET_PATTERN not in keys):
         raise ValueError("Selecione estratégias de carteira distintas e disponíveis no catálogo.")
-    destination = Path(destination)
+    if set(edits) - set(keys):
+        raise ValueError("parameters: há edição para um módulo fora da seleção.")
     seed = manifest["coverage"]["first_msc"] // 60000 * 60
     contract = manifest["contract"]["current"]
-    if Decimal(str(contract["point"])) != Decimal(str(contract["trade_tick_size"])):
-        raise ValueError("A carteira técnica exige EURUSD com ponto igual ao tick de negociação.")
-    sources = _Sources(roots[0], destination.parent, seed, Decimal(str(contract["trade_tick_size"])))
+    sources = _Sources(roots[0], workspace, seed, Decimal(str(contract["trade_tick_size"])))
     safety = sources.header(_EXECUTOR)
-    slots = [sources.owner(i, key, pattern if key == MARKET_PATTERN else None) for i, key in enumerate(keys)]
+    slots = [sources.owner(i, key, pattern if key == MARKET_PATTERN else None, edits.get(key, {}),
+                           frozen[i]["inputs"] if frozen is not None else None) for i, key in enumerate(keys)]
     if len({row["magic"] for row in slots}) != len(slots):
         raise ValueError("Há proprietários duplicados na carteira.")
-    binding = digest([manifest["manifest_hash"], attempt])
     template_path = _TEMPLATES / "UltraMarketPortfolio.mq5.tmpl"
     closure = digest({"reference": sources.originals, "generated": sources.files, "host_template": _sha(template_path)})
-    budgets = ";".join(f"{row['magic']}={RISK_PCT}" for row in slots)
+    profile = dict(market=market, modules=slots, source_closure_sha256=closure,
+                   canonical_files=sources.originals, portfolio_cap_pct=CAP_PCT)
+    return profile, sources, safety
+
+
+def export(config, snapshot, destination, *, attempt, strategies=None, pattern=None, preset=None, manifest=None):
+    from ..laboratory import ultra_market_preset
+
+    manifest = ultra_market.verify(snapshot) if manifest is None else manifest
+    if not re.fullmatch(r"[a-f0-9]{32}", attempt):
+        raise ValueError("attempt: identificador inválido para a carteira.")
+    if preset is not None and (strategies is not None or pattern is not None):
+        raise ValueError("preset: não combine preset congelado com seleção de módulos ou hipótese.")
+    destination = Path(destination)
+    if preset is None:
+        profile, sources, safety = resolve(config, manifest, strategies=strategies, pattern=pattern, edits={},
+                                           workspace=destination.parent)
+        preset = ultra_market_preset.seal(profile, parameters={}, previous=None)
+    else:
+        preset = ultra_market_preset.read(preset)
+        if preset["profile"]["market"] != market_contract(manifest):
+            raise ValueError("preset.profile.market: fita ou especificação diferente do preset congelado.")
+        slots = preset["profile"]["modules"]
+        pattern = next((row["pattern"] for row in slots if row["key"] == MARKET_PATTERN), None)
+        profile, sources, safety = resolve(config, manifest, strategies=[row["key"] for row in slots],
+                                           pattern=pattern, edits=ultra_market_preset.edits(preset),
+                                           workspace=destination.parent, frozen=slots)
+        if profile != preset["profile"]:
+            field = next(key for key in profile if profile[key] != preset["profile"].get(key))
+            raise ValueError(f"preset.profile.{field}: diverge da fita ou das referências fixadas.")
+    slots = profile["modules"]
+    coverage = manifest["coverage"]
+    closure = profile["source_closure_sha256"]
+    binding = digest([manifest["manifest_hash"], preset["preset_sha256"], attempt])
+    budgets = ";".join(f"{row['magic']}={row['inputs']['InpRiskPct']}" for row in slots)
     includes, init, ticks, settlement = [], [], [], []
     for i, row in enumerate(slots):
         includes.append(f'#include "{row["include"]}"\nCHDKPortfolioRiskGuard owner_{i};')
@@ -253,17 +322,25 @@ def export(config, snapshot, destination, *, attempt, strategies=None, pattern=N
             level_cases.append(f'   if(magic=={row["magic"]})\n   {{\n'
                                f'      stop=price-(buy?1:-1)*{inputs["InpStopPoints"]}*_Point;\n'
                                f'      target=price+(buy?1:-1)*{inputs["InpTargetPoints"]}*_Point;\n   }}')
-    template = Template(template_path.read_text(encoding="utf-8"))
+    template = Template((_TEMPLATES / "UltraMarketPortfolio.mq5.tmpl").read_text(encoding="utf-8"))
     sources.write(PurePosixPath(destination.name), template.substitute(
         manifest=manifest["manifest_hash"], binding=binding, start=manifest["time"]["start_msc"],
         end=manifest["time"]["end_msc"], last=coverage["last_msc"], tick_count=coverage["rows"],
-        closure=closure, safety=safety, cap=CAP_PCT, budgets=budgets,
+        closure=closure, safety=safety, cap=profile["portfolio_cap_pct"], budgets=budgets,
+        preset_sha=preset["preset_sha256"], preset_version=preset["version"],
+        point=contract_literal(manifest, "point"), tick=contract_literal(manifest, "trade_tick_size"),
+        lot_step=contract_literal(manifest, "volume_step"), digits=contract_literal(manifest, "digits"),
         entry_levels="\n".join(level_cases),
         includes="\n".join(includes), init="\n".join(init), ticks="\n".join(ticks),
         settlement="\n".join(settlement)))
     return dict(manifest_hash=manifest["manifest_hash"], symbol="EURUSD", binding=binding, tester_model="4",
+                preset=preset, preset_sha256=preset["preset_sha256"], preset_version=preset["version"],
                 source_sha256=sources.files[destination.name], source_closure_sha256=closure,
                 source_files=sources.files, canonical_files=sources.originals, slots=slots, orders=True,
                 slot_risk_pct=float(RISK_PCT), portfolio_cap_pct=float(CAP_PCT),
                 window=dict(start_msc=manifest["time"]["start_msc"], last_msc=coverage["last_msc"], ticks=coverage["rows"]),
                 tape=f"MT5XUltraMarket_{binding}.bin")
+
+
+def contract_literal(manifest, field):
+    return format(Decimal(str(manifest["contract"]["current"][field])), "f")

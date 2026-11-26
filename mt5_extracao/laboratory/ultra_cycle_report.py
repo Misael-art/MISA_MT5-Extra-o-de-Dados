@@ -73,9 +73,11 @@ def write_market_report(receipt, path):
 summary{padding:.5rem;cursor:pointer}details{margin:.5rem 0}dl{border-left:3px solid #678;padding-left:1rem}
 dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}:focus-visible{outline:3px solid #166ac2}</style>
 <main><h1>Carteira EURUSD no Strategy Tester</h1>""",
-        f'<p><a href="{receipt_name}">Recibo completo</a> · <a href="report.htm">Relatório do MT5</a></p>']
+        f'<p><a href="{receipt_name}">Recibo completo</a> · <a href="report.htm">Relatório do MT5</a> · '
+        '<a href="preset-frozen.json">Preset congelado</a></p>']
     parts.append(_records("Identificação", [{key: receipt[key] for key in
-                         ("attempt", "status", "manifest_hash", "source_sha256", "binary_sha256")}]))
+                         ("attempt", "status", "preset_version", "preset_sha256", "manifest_hash",
+                          "source_sha256", "binary_sha256") if key in receipt}]))
     for key, label in (("tick_comparison", "Fita do broker e ticks recebidos"), ("peak", "Posições simultâneas"),
                        ("final", "Saldo, patrimônio e conciliação"), ("units", "Unidades do livro"),
                        ("pattern_parity", "Hipótese de preço em Python e MQL5")):
