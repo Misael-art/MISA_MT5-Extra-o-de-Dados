@@ -179,3 +179,5 @@ exercita a reidratação do executor e a conciliação do livro no próprio
 passe, registrando `RECOVER`. A reabertura do MT5 com posições herdadas
 exige evidência no ambiente de destino. O plano de pesquisa técnico e o
 observador da DEMO não habilitam negociação prospectiva.
+
+O plano pareado EURUSD registra a hipótese de reversão e seus cinco braços. O botão de pesquisa aceita como destino a pasta que contém o plano já congelado para retomar uma tentativa interrompida. A interface sugere o último preset selecionado ao abrir o diálogo de execução. A CLI aceita a publicação posterior de política no recibo de um passe preparado para recebê-la. [Protocolo, comandos e limites](repasse/ULTRA_EURUSD_CONCILIACAO.md)

@@ -63,3 +63,14 @@ def test_runtime_revision_does_not_reorder_owners_or_relax_their_risk():
             instruction(base, revise([b,a]), None, 100)
         with pytest.raises(ValueError, match="titularidade"):
             instruction(base, revise([dict(a, owner_rules={"risk": {"max_losses": 2}})]), None, 100)
+
+
+def test_reserve_is_rejected_before_opening_any_quote_block(tmp_path, monkeypatch):
+    import json
+    from pathlib import Path
+    plan = json.loads((Path(__file__).resolve().parents[1] / "docs/repasse/perfis/EURUSD/reversal-m1.json").read_text())
+    a, b = plan["economic_windows"]["reserve"]
+    (tmp_path / "manifest.json").write_text(json.dumps({"time": {"start_inclusive": a, "end_exclusive": b}}))
+    monkeypatch.setattr(paired.ultra_market, "verify", lambda source: pytest.fail("leu blocos da reserva"))
+    with pytest.raises(ValueError, match="desenvolvimento"):
+        paired.run(None, tmp_path, plan, tmp_path / "resultado", timeout=60, progress=None)

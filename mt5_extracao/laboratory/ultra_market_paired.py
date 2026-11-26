@@ -31,15 +31,7 @@ def _window(value):
     return start, end
 
 
-def arms(config, manifest, plan):
-    if (set(plan) != _FIELDS or plan["symbol"] != manifest["symbol"] or plan["family"] != "reversal"
-            or plan["invalidation"] != "close_at_low" or plan["companion"] not in MARKET_NATIVE
-            or plan["schema"] != SCHEMA):
-        raise ValueError("Perfil, família, controle ou esquema de ablação incompatível.")
-    for key, lo, hi in (("max_attempts", 5, 64), ("min_cycles", 1, 2**31-1), ("min_net_cents", 1, 2**31-1),
-                        ("max_equity_drawdown_pct", 1, 100)):
-        if type(plan[key]) is not int or not lo <= plan[key] <= hi:
-            raise ValueError(f"plan.{key}: limite inválido.")
+def _check_training_window(manifest, plan):
     windows = plan["economic_windows"]
     if not isinstance(windows, dict) or set(windows) != {"training", "validation", "reserve"}:
         raise ValueError("Informe os três cortes econômicos.")
@@ -50,6 +42,17 @@ def arms(config, manifest, plan):
     observed = tuple(date.fromisoformat(manifest["time"][k][:10]) for k in ("start_inclusive", "end_exclusive"))
     if observed not in (dev, train):
         raise ValueError("A pesquisa só abre o treino ou a fita de desenvolvimento registrada.")
+
+
+def arms(config, manifest, plan):
+    if (set(plan) != _FIELDS or plan["symbol"] != manifest["symbol"] or plan["family"] != "reversal"
+            or plan["invalidation"] != "close_at_low" or plan["companion"] not in MARKET_NATIVE
+            or plan["schema"] != SCHEMA):
+        raise ValueError("Perfil, família, controle ou esquema de ablação incompatível.")
+    for key, lo, hi in (("max_attempts", 5, 64), ("min_cycles", 1, 2**31-1), ("min_net_cents", 1, 2**31-1),
+                        ("max_equity_drawdown_pct", 1, 100)):
+        if type(plan[key]) is not int or not lo <= plan[key] <= hi:
+            raise ValueError(f"plan.{key}: limite inválido.")
     family = pattern_families.compile_family(plan["family"], plan["parameters"], symbol=manifest["symbol"],
         timeframe="M1", clock_version=manifest["time"]["basis"], calendar_version="broker_bars",
         cost_model_id="tester_observed_bid_ask", horizon_bars=1)
@@ -114,7 +117,8 @@ def metrics(receipt):
     parity = comparison.get("pattern_parity") or {}
     for o in parity.get("occurrences", []):
         day = datetime.fromtimestamp(o["tick_msc"] // 1000, timezone.utc).date().isoformat()
-        verdict = "invalidated" if any(r["value"] is True for r in o["rules"]) else "confirmed"
+        values = [r["value"] for r in o["rules"]]
+        verdict = "invalidated" if True in values else "unknown" if None in values else "confirmed"
         group = groups.setdefault(day, {}).setdefault(verdict, dict(count=0, censored=0, pnl_ticks=[]))
         group["count"] += 1
         if o["next_minute"] is None:
@@ -174,6 +178,9 @@ def _save(path, value):
 
 def run(config, training, plan, output, *, timeout, progress):
     from ..robots.ultra_market_runner import run as tester
+    # Rejeite reserva e validação pelo cabeçalho, antes de abrir qualquer bloco de cotações.
+    envelope = json.loads((Path(training) / "manifest.json").read_text(encoding="utf-8"))
+    _check_training_window(envelope, plan)
     manifest = ultra_market.verify(training)
     policies = arms(config, manifest, plan)
     root = Path(output).resolve()

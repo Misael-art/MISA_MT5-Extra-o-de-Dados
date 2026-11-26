@@ -285,6 +285,8 @@ def open_receipts(panel):
         market_job(lambda progress: run(config, snapshot, output, mode=mode, preset=selected, progress=progress),
                    label, complete)
 
+    selected_policy_path = None
+
     def research_market():
         from ..laboratory.ultra_market_research import run
 
@@ -297,22 +299,30 @@ def open_receipts(panel):
         output = filedialog.askdirectory(parent=window, title="Escolher destino da pesquisa")
         if not output:
             return
-        root = Path(output) / ("ultra-treino-" + uuid4().hex)
+        root = Path(output)
         config = panel._config()
 
         def work(progress):
+            nonlocal root
+            from ..laboratory.ultra_market_paired import SCHEMA
             definition = json.loads(Path(plan).read_text(encoding="utf-8"))
+            if definition.get("schema") != SCHEMA or not (root / "plan.json").is_file():
+                root = root / ("ultra-treino-" + uuid4().hex)
             return run(config, training, definition, root, timeout=900, progress=progress)
 
         def complete(result):
+            nonlocal selected_policy_path
+            selected_policy_path = result.get("policy_path")
             return " · ".join(filter(None, (result["status"], result.get("reason"),
-                                           result.get("policy_path") or str(root / "progress.json"))))
+                                           selected_policy_path or result.get("selection_path") or str(root / "progress.json"))))
 
         market_job(work, "Treino · ", complete)
 
     def open_market_preset():
+        suggested = Path(selected_policy_path) if selected_policy_path else None
+        options = dict(initialdir=str(suggested.parent), initialfile=suggested.name) if suggested else {}
         path = filedialog.askopenfilename(parent=window, title="Abrir preset congelado do Laboratório",
-                                          filetypes=[("JSON", "*.json")])
+                                          filetypes=[("JSON", "*.json")], **options)
         if path:
             run_market("portfolio", preset_path=path)
 
