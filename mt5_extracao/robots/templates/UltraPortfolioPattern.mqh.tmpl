@@ -17,11 +17,11 @@ void StrategySignal(const HDKBars &b,HDKSignal &s)
    long opening=(long)MathRound(b.open[last]/_Point), highest=(long)MathRound(b.high[last]/_Point),
         lowest=(long)MathRound(b.low[last]/_Point), closing=(long)MathRound(b.close[last]/_Point),
         prior=last>0 && b.time[last-1]*1000>=UltraStart ? (long)MathRound(b.close[last-1]/_Point) : LONG_MIN;
-   if($reference==LONG_MIN || ($condition)!=1) return;
+$market_gate
    int invalid=0;$variables
 $checks
    PrintFormat("MT5X_ULTRA_MARKET_PATTERN|%I64d|%I64d|%d|%d|%I64d",msc,available,$direction,invalid,$reference);
-   if(invalid!=0) return;
+${trace_bar}   if(invalid!=0) return;
    s.entry_long=$direction>0;
    s.entry_short=$direction<0;
    s.stop_long=b.close[last]-InpStopPoints*_Point;

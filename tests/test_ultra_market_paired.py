@@ -41,6 +41,32 @@ def test_reversal_exports_fraction_on_price_grid():
         _predicate(node, Decimal(".00001"))
 
 
+@pytest.mark.parametrize("rule", ["close_at_low", "close_above_prior_close"])
+def test_paired_breakout_plan_exports_the_same_family_and_rule_in_all_arms(monkeypatch, rule):
+    from pathlib import Path
+    from mt5_extracao.laboratory.ultra_pattern_native import kernel
+
+    plan = dict(schema=paired.SCHEMA, symbol="EURUSD", family="breakout_failure",
+                parameters={"lookback_bars": 2, "breakout_fraction": "0.00010"}, invalidation=rule,
+                stop_points=25, target_points=35, companion="orb", max_attempts=7,
+                min_cycles=5, min_net_cents=1, max_equity_drawdown_pct=5, development=[], economic_windows={})
+    monkeypatch.setattr(paired.preset, "portable", lambda *_args, **kwargs: kwargs)
+    policies = paired.arms(None, {"symbol": "EURUSD", "time": {"basis": "mt5_raw_clock"}}, plan)
+    assert policies["companion"]["strategies"] == ["orb"]
+    for arm in ("signal", "static", "filtered_signal", "conditional"):
+        pattern = policies[arm]["pattern"]
+        assert pattern["definition"]["side"] == "short"
+        assert pattern["definition"]["invalidation_rules"][0]["id"] == rule
+        assert pattern["apply_invalidation"] == (arm in ("filtered_signal", "conditional"))
+    root = Path(__file__).resolve().parents[1] / "mt5_extracao/robots/templates"
+    source = kernel((root / "UltraPortfolioPattern.mqh.tmpl").read_text().replace("$stop", "25").replace("$target", "35"),
+                    {"params": policies["conditional"]["pattern"]}, 1, Decimal(".00001"), market=True)
+    assert "i=last-2;i<last" in source and "b.time[last-2]*1000<UltraStart" in source
+    assert "PatternChange(highest,breakout_reference,1,10000,3)" in source
+    assert "MT5X_ULTRA_BREAKOUT_BAR" in source
+    assert "s.entry_short=-1<0" in source
+
+
 def test_runtime_revision_does_not_reorder_owners_or_relax_their_risk():
     from mt5_extracao.experiments.schema import digest
     from mt5_extracao.laboratory.ultra_market_preset import PORTABLE
@@ -76,6 +102,20 @@ def test_reserve_is_rejected_before_opening_any_quote_block(tmp_path, monkeypatc
     monkeypatch.setattr(paired.ultra_market, "verify", lambda source: pytest.fail("leu blocos da reserva"))
     with pytest.raises(ValueError, match="desenvolvimento"):
         paired.run(None, tmp_path, plan, tmp_path / "resultado", timeout=60, progress=None)
+
+
+def test_development_can_fall_between_retrospective_validation_and_prospective_reserve():
+    import json
+    from pathlib import Path
+
+    plan_path = Path(__file__).resolve().parents[1] / "docs/repasse/perfis/EURUSD/breakout-failure-m1.json"
+    plan = json.loads(plan_path.read_text())
+    start, end = plan["development"]
+    envelope = {"time": {"start_inclusive": start, "end_exclusive": end}}
+    paired._check_training_window(envelope, plan)
+    plan["economic_windows"]["reserve"][0] = start
+    with pytest.raises(ValueError, match="sobrepostos"):
+        paired._check_training_window(envelope, plan)
 
 
 def test_suspension_rejects_future_or_unfinished_research(tmp_path):

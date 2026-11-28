@@ -244,6 +244,40 @@ def test_portfolio_compares_pattern_on_closed_bars_and_identifies_first_differen
                      "observed": (t+120_007, t+120_000, 1, 0, 109960)}
 
 
+@pytest.mark.parametrize("apply_rule", [False, True])
+def test_breakout_audits_signal_and_non_signal_after_closed_bar_warmup(monkeypatch, tmp_path, apply_rule):
+    from mt5_extracao.analytics.pattern_families import compile_family
+    from mt5_extracao.laboratory.ultra_market_portfolio_audit import _pattern_comparison
+
+    definition = compile_family("breakout_failure", {"breakout_fraction": "0.0001", "lookback_bars": 2},
+        symbol="EURUSD", timeframe="M1", clock_version="mt5_raw_clock", calendar_version="broker_bars",
+        cost_model_id="tester_observed_bid_ask", horizon_bars=1).body
+    definition["invalidation_rules"] = [dict(id="close_at_low", action="cancel_before_entry", when={
+        "op": "compare", "comparison": "lte", "left": {"op": "field", "name": "close"},
+        "right": {"op": "field", "name": "low"}})]
+    t = AXIS * 1000
+    quotes = [(t+1, 1.10000), (t+60_001, 1.09990), (t+120_001, 1.10020), (t+120_999, 1.09980),
+              (t+240_011, 1.10000), (t+300_017, 1.10000)]
+    monkeypatch.setattr(market, "_csv_rows", lambda *_: iter((msc, bid, bid + .00002) for msc, bid in quotes))
+    manifest = {"symbol": "EURUSD", "manifest_hash": "a" * 64}
+    pattern = dict(definition=definition, apply_invalidation=apply_rule)
+    journal = "\n".join((
+        f"MT5X_ULTRA_PREDICATE1|0|{t+240_011}|{t+180_000}|0|1",
+        f"MT5X_ULTRA_MARKET_PATTERN|{t+240_011}|{t+180_000}|-1|{int(apply_rule)}|110000",
+        f"MT5X_ULTRA_BREAKOUT_BAR|{t+240_011}|{t+180_000}|110000|110020|109980|1|{int(apply_rule)}",
+        f"MT5X_ULTRA_BREAKOUT_BAR|{t+300_017}|{t+300_000}|110020|110000|110000|0|0"))
+    matched = _pattern_comparison(tmp_path, manifest, pattern, journal, Decimal("0.00001"))
+    assert matched["expected_bars"] == matched["observed_bars"] == 2
+    assert matched["expected"] == matched["observed"] == 1
+    assert matched["first_divergence"] is None
+    assert matched["occurrences"][0]["rules"] == [{"id": "close_at_low", "value": True}]
+
+    omitted_non_signal = journal.rsplit("\n", 1)[0]
+    mismatch = _pattern_comparison(tmp_path, manifest, pattern, omitted_non_signal, Decimal("0.00001"))
+    assert mismatch["first_divergence"] == dict(field="breakout_bar", ordinal=1,
+        expected=(t+300_017, t+300_000, 110020, 110000, 110000, 0, 0), observed=None)
+
+
 def test_portfolio_keeps_partial_before_breakeven_at_same_tick():
     from mt5_extracao.laboratory.ultra_market_portfolio_audit import _records
 

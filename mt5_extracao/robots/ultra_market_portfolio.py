@@ -183,7 +183,7 @@ class _Sources:
                 raise ValueError("Contrato de operadores ternários do Ultra indisponível.")
             local = (_TEMPLATES / "UltraPortfolioPattern.mqh.tmpl").read_text(encoding="utf-8")
             local = Template(local).safe_substitute(stop=pattern["stop_points"], target=pattern["target_points"])
-            source = common + ultra_pattern_native.kernel(local, {"params": pattern}, index, self.tick)
+            source = common + ultra_pattern_native.kernel(local, {"params": pattern}, index, self.tick, market=True)
         else:
             name = MARKET_NATIVE[key]
             origin = PurePosixPath(f"Experts/HADOUKEN/Estrategias/HDK_{name}/HDK_{name}.mq5")

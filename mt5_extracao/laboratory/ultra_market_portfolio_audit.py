@@ -8,10 +8,10 @@ from itertools import groupby, zip_longest
 import re
 import shutil
 
-from ..analytics import hypotheses, pattern_engine
+from ..analytics import hypotheses, pattern_engine, pattern_families
 from ..robots.backtest import _CELL, _ROW, _TAG, _TIME
 from ..robots.ultra_market_portfolio import MARKER
-from . import ultra_market
+from . import ultra_market, ultra_pattern_native
 from .ultra_platform import compare_report
 
 
@@ -106,7 +106,7 @@ def _delivered_packet(common, output, bundle, events):
                 effective_msc=int(effective), owners=parsed, matches=valid)
 
 
-def pattern_observations(snapshot, manifest, policy, tick):
+def pattern_observations(snapshot, manifest, policy, tick, *, trace_bar=None):
     definition = hypotheses.compile_definition(policy["definition"])
     symbol = manifest["symbol"]
     namespace = manifest["manifest_hash"]
@@ -123,58 +123,91 @@ def pattern_observations(snapshot, manifest, policy, tick):
             raise ValueError("Cotação observada fora da grade de preço da hipótese.")
         return str(atoms * tick)
 
+    def closed_bars():
+        previous = None
+        for minute, quotes in groupby(ultra_market._csv_rows(snapshot, manifest), key=lambda r: r[0] // 60000):
+            first = next(quotes)
+            if previous is not None:
+                yield (*previous, first)
+            opening = closing = high = low = first[1]
+            for _, bid, *_ in quotes:
+                high, low, closing = max(high, bid), min(low, bid), bid
+            end_msc = (minute + 1) * 60000
+            row = dict(source_namespace=namespace, symbol=symbol, timeframe="M1", revision=1, session_id=None,
+                       bar_start_utc=axis(minute * 60000), bar_end_utc=axis(end_msc), available_at_utc=axis(end_msc),
+                       open=grid_price(opening), high=grid_price(high), low=grid_price(low), close=grid_price(closing))
+            previous = row, end_msc
+
+    observations = closed_bars()
+    lookback = ultra_pattern_native.breakout_lookback(definition.body)
+    if lookback is not None:
+        bars = list(observations)
+        references = pattern_families.prior_breakout_references((row for row, _, _ in bars), lookback)
+        observations = ((row, available, first) for row, (_, available, first) in zip(references, bars, strict=True))
+
     pending = None
-    previous, previous_end = None, None
-    for minute, quotes in groupby(ultra_market._csv_rows(snapshot, manifest), key=lambda r: r[0] // 60000):
-        first = next(quotes)
+    for previous, available, first in observations:
         if pending is not None:
-            if minute == pending["tick_msc"] // 60000 + 1:
+            if first[0] // 60000 == pending["tick_msc"] // 60000 + 1:
                 entry = pending["ask"] if pending["side"] == 1 else pending["bid"]
                 exit_quote = grid_price(first[1 if pending["side"] == 1 else 2])
                 pending["next_minute"] = dict(tick_msc=first[0], price=exit_quote, spread_included_ticks=
                     pending["side"] * _atoms(Decimal(exit_quote) - Decimal(entry), tick))
             yield pending
             pending = None
-        if previous is not None:
-            state, event = pattern_engine.evaluate_prefix(definition, state, previous)
-            # A fita é append-only. O subconjunto OHLC exportável consulta apenas
-            # a barra atual e a anterior, inclusive para prior_close.
-            if len(state["starts"]) > 2:
-                del state["known"][state["starts"].pop(0)]
-            if event:
-                result = event.get("entry_decision", {}).get("status", "confirmed")
-                invalid = {"confirmed": 0, "invalidated": 1, "unknown": -1}[result] if policy["apply_invalidation"] else 0
-                pending = dict(next_minute=None, tick_msc=first[0], available_msc=previous_end, side=1 if event["side"] == "long" else -1,
+        state, event = pattern_engine.evaluate_prefix(definition, state, previous)
+        # As referências de rompimento já foram calculadas sobre o prefixo fechado.
+        if len(state["starts"]) > 2:
+            del state["known"][state["starts"].pop(0)]
+        invalid = 0
+        if event:
+            result = event.get("entry_decision", {}).get("status", "confirmed")
+            invalid = {"confirmed": 0, "invalidated": 1, "unknown": -1}[result] if policy["apply_invalidation"] else 0
+            pending = dict(next_minute=None, tick_msc=first[0], available_msc=available, side=1 if event["side"] == "long" else -1,
                            invalid=invalid, reference=_atoms(event["signal_values"]["reference"], tick),
                            bid=grid_price(first[1]), ask=grid_price(first[2]),
                            bar={key: previous[key] for key in ("open", "high", "low", "close")},
                            prior_close=event["signal_values"]["prior_close"], event_id=event["event_id"],
                            rules=event.get("entry_decision", {}).get("rules", []))
-        opening = closing = high = low = first[1]
-        for _, bid, *_ in quotes:
-            high, low, closing = max(high, bid), min(low, bid), bid
-        end_msc = (minute + 1) * 60000
-        previous = dict(source_namespace=namespace, symbol=symbol, timeframe="M1", revision=1, session_id=None,
-                        bar_start_utc=axis(minute * 60000), bar_end_utc=axis(end_msc), available_at_utc=axis(end_msc),
-                        open=grid_price(opening), high=grid_price(high), low=grid_price(low), close=grid_price(closing))
-        # A coordenada inteira fica separada da observação validada pelo motor.
-        previous_end = end_msc
+        if trace_bar is not None and previous.get("reference_price") is not None:
+            trace_bar((first[0], available, *(_atoms(previous[key], tick) for key in ("reference_price", "high", "close")),
+                       int(event is not None), invalid))
     if pending is not None:
         yield pending
 
 
 def _pattern_comparison(snapshot, manifest, policy, journal, tick):
-    observations = list(pattern_observations(snapshot, manifest, policy, tick))
+    def records(marker):
+        return [tuple(map(int, line.partition(marker)[2].split("|")))
+                for line in journal.splitlines() if marker in line]
+
+    expected_bars = []
+    observations = list(pattern_observations(snapshot, manifest, policy, tick, trace_bar=expected_bars.append))
     expected = [(o["tick_msc"], o["available_msc"], o["side"], o["invalid"], o["reference"]) for o in observations]
     definition = hypotheses.compile_definition(policy["definition"])
-    marker = "MT5X_ULTRA_MARKET_PATTERN|"
-    observed = [tuple(map(int, line.partition(marker)[2].split("|")))
-                for line in journal.splitlines() if marker in line]
+    observed = records("MT5X_ULTRA_MARKET_PATTERN|")
     divergence = next((dict(ordinal=i, expected=pair[0], observed=pair[1])
                        for i, pair in enumerate(zip_longest(expected, observed)) if pair[0] != pair[1]), None)
-    return dict(definition_hash=definition.definition_hash, expected=len(expected), observed=len(observed),
+    comparison = dict(definition_hash=definition.definition_hash, expected=len(expected), observed=len(observed),
                 invalidated=sum(row[3] == 1 for row in observed), first_divergence=divergence,
                 occurrences=[dict(o, mql5=list(row)) for o, row in zip(observations, observed)])
+    if ultra_pattern_native.breakout_lookback(definition.body) is not None:
+        observed_bars = records("MT5X_ULTRA_BREAKOUT_BAR|")
+        observed_rules = [row[1:] for row in records("MT5X_ULTRA_PREDICATE1|")]
+        expected_rules = [(o["tick_msc"], o["available_msc"], i, -1 if rule["value"] is None else int(rule["value"]))
+                          for o in observations for i, rule in enumerate(o["rules"])]
+        differences = [dict(field="signal", **divergence)] if divergence else []
+        for field, wanted, got in (("breakout_bar", expected_bars, observed_bars),
+                                   ("invalidation_rule", expected_rules, observed_rules)):
+            first = next((dict(field=field, ordinal=i, expected=a, observed=b)
+                          for i, (a, b) in enumerate(zip_longest(wanted, got)) if a != b), None)
+            if first:
+                differences.append(first)
+        comparison.update(expected_bars=len(expected_bars), observed_bars=len(observed_bars),
+                          expected_rules=len(expected_rules), observed_rules=len(observed_rules),
+                          first_divergence=min(differences, key=lambda d: min(row[0] for row in
+                                               (d["expected"], d["observed"]) if row), default=None))
+    return comparison
 
 
 def _report_orders(html, orders, symbol, tick, step):

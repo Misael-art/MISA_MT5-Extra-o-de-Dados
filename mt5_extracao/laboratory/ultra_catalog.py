@@ -57,7 +57,7 @@ DETAILS = {
 EVIDENCE = {
     "donchian": "Sinal M1 e gestão fixa do Ultra nas duas fitas sintéticas; a saída de canal e o SL por ATR são da estratégia de referência.",
     "s09_reference": "Sinal M1 e gestão fixa do Ultra nas duas fitas sintéticas com ordens; a amostra não representa EURUSD.",
-    "pattern_definition": "Subconjunto OHLC/prior_close M1; houve negócios em ensaio com divergência no tick 199.",
+    "pattern_definition": "Subconjunto OHLC M1 com fechamento anterior ou máxima de rompimento causal.",
 }
 
 MARKET_NATIVE = {
