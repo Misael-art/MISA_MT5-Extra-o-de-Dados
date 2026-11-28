@@ -5,8 +5,26 @@ from itertools import zip_longest
 from string import Template
 
 from ..analytics.hypotheses import compile_definition
+from ..analytics.pattern_families import compile_family
 
-FIELDS = {"open": "opening", "high": "highest", "low": "lowest", "close": "closing", "prior_close": "prior"}
+FIELDS = {"open": "opening", "high": "highest", "low": "lowest", "close": "closing", "prior_close": "prior",
+          "reference_price": "breakout_reference"}
+
+
+def breakout_lookback(body):
+    """Localiza o produtor da referência; uma referência externa arbitrária não é exportável."""
+    if body["price_reference"] != "reference_price" or body["pattern_id"] != "breakout_failure":
+        return None
+    parameters = body["complexity"].get("parameters")
+    clock = body["timezone_calendar_versions"]
+    if not {"clock", "calendar"} <= clock.keys():
+        raise ValueError("A referência de rompimento exige versões de relógio e calendário.")
+    canonical = compile_family("breakout_failure", parameters, symbol=body["universe_definition"]["symbols"][0],
+                               timeframe=body["timeframe"], clock_version=clock["clock"], calendar_version=clock["calendar"],
+                               cost_model_id=body["cost_model_id"], horizon_bars=body["outcome_definition"]["horizon_bars"]).body
+    if any(body[key] != canonical[key] for key in ("side", "condition_expression")):
+        raise ValueError("A referência de rompimento exige o predicado e o lado vendidos da família canônica.")
+    return parameters["lookback_bars"]
 
 
 def _price(node, tick):
@@ -21,7 +39,7 @@ def _price(node, tick):
         price = Fraction(literal) / Fraction(tick)
         if abs(price) < 2**52 and price.denominator == 1:
             return str(price.numerator)
-    raise ValueError("O predicado nativo exige OHLC, prior_close ou preço literal na grade do ativo.")
+    raise ValueError("O predicado nativo exige preço observado ou literal na grade do ativo.")
 
 
 def _predicate(node, tick):
@@ -51,7 +69,7 @@ def _predicate(node, tick):
     raise ValueError(f"O operador de hipótese {op} ainda não tem implementação no Expert.")
 
 
-def kernel(template, module, slot, tick):
+def kernel(template, module, slot, tick, *, market=False):
     params = module["params"]
     body = compile_definition(params["definition"]).body
     if body["timeframe"] != "M1" or body["side"] not in {"long", "short"}:
@@ -69,9 +87,34 @@ def kernel(template, module, slot, tick):
         checks.append(f'         PrintFormat("MT5X_ULTRA_PREDICATE1|{slot}|%I64d|%I64d|{i}|%d",msc,available,value);')
         if params["apply_invalidation"]:
             checks.append("         invalid=PatternOr(invalid,value);")
-    code = Template(template).substitute(slot=slot, reference=FIELDS[body["price_reference"]], condition=condition,
+    reference = FIELDS[body["price_reference"]]
+    lookback = breakout_lookback(body)
+    if lookback is None and "breakout_reference" in "\n".join([reference, condition, *checks]):
+        raise ValueError("Referência externa sem produtor nativo de barras fechadas.")
+    history = prepare = remember = trace = ""
+    market_gate = f"   if({reference}==LONG_MIN || ({condition})!=1) return;"
+    if lookback is not None and market:
+        prepare = f"""   if(last<{lookback} || b.time[last-{lookback}]*1000<UltraStart) return;
+   long breakout_reference=LONG_MIN;
+   for(int i=last-{lookback};i<last;i++)
+      breakout_reference=MathMax(breakout_reference,(long)MathRound(b.high[i]/_Point));"""
+        log = ('PrintFormat("MT5X_ULTRA_BREAKOUT_BAR|%I64d|%I64d|%I64d|%I64d|%I64d|%d|%d",'
+               'msc,available,breakout_reference,highest,closing,')
+        market_gate = f"{prepare}\n   if(({condition})!=1) {{ {log}0,0); return; }}"
+        trace = f"   {log}1,invalid);\n"
+    elif lookback is not None:
+        history = f"   long previous_highs[{lookback}];\n   int high_count, high_cursor;"
+        prepare = f"""            long breakout_reference=LONG_MIN;
+            if(high_count=={lookback})
+               for(int i=0;i<{lookback};i++) breakout_reference=MathMax(breakout_reference,previous_highs[i]);"""
+        remember = f"""            previous_highs[high_cursor]=highest;
+            high_cursor=(high_cursor+1)%{lookback};
+            if(high_count<{lookback}) high_count++;"""
+    code = Template(template).substitute(slot=slot, reference=reference, condition=condition,
         session=" && (!emitted || last_day!=minute/1440)" if body["repetition_policy"] == "first_per_session" else "",
-        direction=1 if body["side"] == "long" else -1, checks="\n".join(checks), variables="int value;" if checks else "")
+        direction=1 if body["side"] == "long" else -1, checks="\n".join(checks), variables="int value;" if checks else "",
+        history=history + "\n" if history else "", prepare_reference=prepare + "\n" if prepare else "",
+        remember_high=remember + "\n" if remember else "", market_gate=market_gate, trace_bar=trace)
 
     if "PatternChange(" in code:
         # Produtos inteiros preservam a inclusão da fronteira da fração decimal.

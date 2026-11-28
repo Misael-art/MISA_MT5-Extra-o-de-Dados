@@ -20,6 +20,7 @@ _SUCCESS = {"portfolio_matches", "single_owner_matches", "portfolio_without_over
 _FIELDS = {"schema", "symbol", "family", "parameters", "invalidation", "stop_points", "target_points",
            "companion", "max_attempts", "min_cycles", "min_net_cents", "max_equity_drawdown_pct",
            "development", "economic_windows"}
+_INVALIDATION_FIELDS = {"close_at_low": ("lte", "low"), "close_above_prior_close": ("gt", "prior_close")}
 
 
 def _window(value):
@@ -45,8 +46,9 @@ def _check_training_window(manifest, plan):
 
 
 def arms(config, manifest, plan):
-    if (set(plan) != _FIELDS or plan["symbol"] != manifest["symbol"] or plan["family"] != "reversal"
-            or plan["invalidation"] != "close_at_low" or plan["companion"] not in MARKET_NATIVE
+    if (set(plan) != _FIELDS or plan["symbol"] != manifest["symbol"]
+            or plan["family"] not in ("reversal", "breakout_failure")
+            or plan["invalidation"] not in _INVALIDATION_FIELDS or plan["companion"] not in MARKET_NATIVE
             or plan["schema"] != SCHEMA):
         raise ValueError("Perfil, família, controle ou esquema de ablação incompatível.")
     for key, lo, hi in (("max_attempts", 5, 64), ("min_cycles", 1, 2**31-1), ("min_net_cents", 1, 2**31-1),
@@ -57,9 +59,11 @@ def arms(config, manifest, plan):
         timeframe="M1", clock_version=manifest["time"]["basis"], calendar_version="broker_bars",
         cost_model_id="tester_observed_bid_ask", horizon_bars=1)
     body = family.body
-    body["invalidation_rules"] = [dict(id="close_at_low", action="cancel_before_entry", when={
-        "op": "compare", "comparison": "lte", "left": {"op": "field", "name": "close"},
-        "right": {"op": "field", "name": "low"}})]
+    rule = plan["invalidation"]
+    comparison, field = _INVALIDATION_FIELDS[rule]
+    body["invalidation_rules"] = [dict(id=rule, action="cancel_before_entry", when={
+        "op": "compare", "comparison": comparison, "left": {"op": "field", "name": "close"},
+        "right": {"op": "field", "name": field}})]
     companion = [plan["companion"]]
     policies = {"companion": preset.portable(config, manifest, strategies=companion)}
     for conditional, solo, joint in ((False, "signal", "static"), (True, "filtered_signal", "conditional")):

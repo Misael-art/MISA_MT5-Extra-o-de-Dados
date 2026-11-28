@@ -160,8 +160,12 @@ def _inputs(snapshot, policy):
             definition = hypotheses.compile_definition(module["params"]["definition"])
             prepared = pattern_flow.snapshot_observations(snapshot, session_mode=(
                 "synthetic_utc_day" if policy["sample_kind"] == "synthetic" else "observed"))
+            observations = prepared["observations"]
+            if definition.body["pattern_id"] == "breakout_failure" and definition.body["price_reference"] == "reference_price":
+                from ..analytics.pattern_families import prior_breakout_references
+                observations = prior_breakout_references(observations, definition.body["complexity"]["parameters"]["lookback_bars"])
             _, events = pattern_engine.evaluate_batch(definition, prepared["source_namespace"],
-                                                      prepared["symbol"], prepared["observations"])
+                                                      prepared["symbol"], observations)
             signals = [{"available_msc": int(pd.Timestamp(e["decision_at_utc"]).value // 1_000_000),
                         "side": 1 if e["side"] == "long" else -1,
                         "reference": _units(e["signal_values"]["reference"], spec.tick_size),

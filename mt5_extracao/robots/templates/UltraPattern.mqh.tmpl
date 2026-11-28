@@ -14,7 +14,7 @@ struct UltraKernel$slot
    double reference;
    int direction,verdict;
    bool emitted;
-   void observe(const long msc,const double bid)
+${history}   void observe(const long msc,const double bid)
    {
       const long next_minute=msc/60000,q=(long)MathRound(bid/TICK_SIZE);
       direction=0;available=0;reference=0;verdict=1;
@@ -23,7 +23,7 @@ struct UltraKernel$slot
          if(minute<0) prior=LONG_MIN;
          else
          {
-            if($reference!=LONG_MIN && ($condition)==1$session)
+${prepare_reference}            if($reference!=LONG_MIN && ($condition)==1$session)
             {
                direction=$direction;available=(minute+1)*60000;reference=(double)$reference*TICK_SIZE;
                emitted=true;last_day=minute/1440;
@@ -31,7 +31,7 @@ struct UltraKernel$slot
 $checks
                verdict=(invalid==1 ? 0 : invalid==-1 ? -1 : 1);
             }
-            prior=closing;
+${remember_high}            prior=closing;
          }
          opening=q;highest=q;lowest=q;minute=next_minute;
       }
