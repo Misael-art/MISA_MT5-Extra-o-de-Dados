@@ -38,7 +38,8 @@ def _check_training_window(manifest, plan):
         raise ValueError("Informe os três cortes econômicos.")
     train, validation, reserve = (_window(windows[k]) for k in ("training", "validation", "reserve"))
     dev = _window(plan["development"])
-    if train[1] > validation[0] or validation[1] > reserve[0] or not (dev[1] <= train[0] or dev[0] >= reserve[1]):
+    overlaps_development = any(dev[0] < end and start < dev[1] for start, end in (train, validation, reserve))
+    if train[1] > validation[0] or validation[1] > reserve[0] or overlaps_development:
         raise ValueError("Cortes econômicos ou de desenvolvimento sobrepostos.")
     observed = tuple(date.fromisoformat(manifest["time"][k][:10]) for k in ("start_inclusive", "end_exclusive"))
     if observed not in (dev, train):

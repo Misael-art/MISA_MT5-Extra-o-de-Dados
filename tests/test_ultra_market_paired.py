@@ -104,6 +104,20 @@ def test_reserve_is_rejected_before_opening_any_quote_block(tmp_path, monkeypatc
         paired.run(None, tmp_path, plan, tmp_path / "resultado", timeout=60, progress=None)
 
 
+def test_development_can_fall_between_retrospective_validation_and_prospective_reserve():
+    import json
+    from pathlib import Path
+
+    plan_path = Path(__file__).resolve().parents[1] / "docs/repasse/perfis/EURUSD/breakout-failure-m1.json"
+    plan = json.loads(plan_path.read_text())
+    start, end = plan["development"]
+    envelope = {"time": {"start_inclusive": start, "end_exclusive": end}}
+    paired._check_training_window(envelope, plan)
+    plan["economic_windows"]["reserve"][0] = start
+    with pytest.raises(ValueError, match="sobrepostos"):
+        paired._check_training_window(envelope, plan)
+
+
 def test_suspension_rejects_future_or_unfinished_research(tmp_path):
     from mt5_extracao.robots.ultra_market_delivery import selected_revision
     initial = {"profile": {"market": {"symbol": "EURUSD"}}}
